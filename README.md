@@ -34,6 +34,19 @@ npm test
    - Output Directory: `.`
 6. Deploy.
 
+## Supabase Setup
+
+1. Create a Supabase project.
+2. Open the SQL editor.
+3. Run the contents of `supabase-schema.sql`.
+4. Copy your Project URL and anon public key.
+5. In Netlify, add environment variables:
+   - `SUPABASE_URL`
+   - `SUPABASE_ANON_KEY`
+6. Redeploy the site.
+
+Without those variables, the app runs in demo mode using browser storage.
+
 ## Deploy On Netlify
 
 1. Create a GitHub repository for this folder.
@@ -41,7 +54,7 @@ npm test
 3. Go to Netlify and choose **Add new site**.
 4. Import the GitHub repository.
 5. Use these settings:
-   - Build command: leave blank
+   - Build command: `npm run build`
    - Publish directory: `.`
 6. Deploy.
 

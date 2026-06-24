@@ -35,6 +35,73 @@ button {
   cursor: pointer;
 }
 
+[hidden] {
+  display: none !important;
+}
+
+.auth-panel {
+  align-items: center;
+  background: #eef3ef;
+  display: flex;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.auth-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 14px;
+  margin: 0 auto;
+  max-width: 460px;
+  padding: 26px;
+  width: 100%;
+}
+
+.auth-brand {
+  color: var(--ink);
+  margin-bottom: 12px;
+}
+
+.auth-brand span:last-child,
+.auth-copy,
+.auth-message {
+  color: var(--muted);
+}
+
+.auth-form {
+  display: grid;
+  gap: 12px;
+}
+
+.auth-form label {
+  color: var(--muted);
+  display: grid;
+  font-size: 0.9rem;
+  font-weight: 700;
+  gap: 6px;
+}
+
+.auth-form input {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  min-height: 42px;
+  padding: 0 12px;
+}
+
+.auth-actions {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.auth-message {
+  min-height: 20px;
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
@@ -179,6 +246,7 @@ h2 {
 }
 
 .primary-button,
+.secondary-button,
 .task-form button {
   background: var(--teal);
   border: 0;
@@ -193,6 +261,27 @@ h2 {
 .primary-button:hover,
 .task-form button:hover {
   background: var(--teal-dark);
+}
+
+.secondary-button {
+  background: #edf2ee;
+  border: 1px solid var(--line);
+  color: var(--ink);
+}
+
+.secondary-button:hover {
+  background: #dfe8e2;
+}
+
+.mode-pill {
+  background: #e6efeb;
+  border-radius: 999px;
+  color: var(--teal-dark);
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 7px 10px;
+  white-space: nowrap;
 }
 
 .metrics {
@@ -576,6 +665,10 @@ h2 {
     flex-direction: column;
   }
 
+  .mode-pill {
+    justify-content: center;
+  }
+
   .search {
     min-width: 0;
   }
@@ -594,7 +687,8 @@ h2 {
   .metrics,
   .right-rail,
   .contact-row,
-  .task-form {
+  .task-form,
+  .auth-actions {
     grid-template-columns: 1fr;
   }
 

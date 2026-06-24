@@ -5,8 +5,33 @@ const stages = [
   { id: "won", label: "Won" },
 ];
 
+const defaultAutomations = [
+  {
+    key: "next-step-tasks",
+    title: "Create next-step tasks",
+    detail: "Every lead gets a follow-up task when it changes stage.",
+    enabled: true,
+    savedHours: 4,
+  },
+  {
+    key: "lead-scoring",
+    title: "Score hot opportunities",
+    detail: "Scores rise with deal value, urgency, and buyer engagement.",
+    enabled: true,
+    savedHours: 3,
+  },
+  {
+    key: "win-back-reminders",
+    title: "Win-back reminders",
+    detail: "Dormant leads surface after seven quiet days.",
+    enabled: false,
+    savedHours: 2,
+  },
+];
+
 const seedState = {
   selectedLeadId: "lead-1",
+  workspaceName: "Personal workspace",
   leads: [
     {
       id: "lead-1",
@@ -58,32 +83,16 @@ const seedState = {
     { id: "task-2", text: "Draft Harbor Fitness proposal recap", done: false, due: "today" },
     { id: "task-3", text: "Send onboarding checklist to Stone & Finch", done: true, due: "today" },
   ],
-  automations: [
-    {
-      id: "auto-1",
-      title: "Create next-step tasks",
-      detail: "Every lead gets a follow-up task when it changes stage.",
-      enabled: true,
-      savedHours: 4,
-    },
-    {
-      id: "auto-2",
-      title: "Score hot opportunities",
-      detail: "Scores rise with deal value, urgency, and buyer engagement.",
-      enabled: true,
-      savedHours: 3,
-    },
-    {
-      id: "auto-3",
-      title: "Win-back reminders",
-      detail: "Dormant leads surface after seven quiet days.",
-      enabled: false,
-      savedHours: 2,
-    },
-  ],
+  automations: defaultAutomations.map((automation, index) => ({
+    id: `auto-${index + 1}`,
+    ...automation,
+  })),
 };
 
-let state = loadState();
+let state = structuredClone(seedState);
+let store;
+let currentUser = null;
+let supabaseClient = null;
 
 const formatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -100,32 +109,149 @@ const searchInput = document.querySelector("#searchInput");
 const leadModal = document.querySelector("#leadModal");
 const leadForm = document.querySelector("#leadForm");
 const taskForm = document.querySelector("#taskForm");
+const authPanel = document.querySelector("#authPanel");
+const authForm = document.querySelector("#authForm");
+const authMessage = document.querySelector("#authMessage");
+const modePill = document.querySelector("#modePill");
+const appShell = document.querySelector(".app-shell");
+const signOutButton = document.querySelector("#signOutButton");
+
+const config = window.ClosePilotConfig || {};
+const hasSupabaseConfig = Boolean(config.supabaseUrl && config.supabaseAnonKey);
 
 document.querySelector("#openLeadModal").addEventListener("click", () => {
   leadModal.hidden = false;
   document.querySelector("#leadName").focus();
 });
 
-document.querySelector("#closeLeadModal").addEventListener("click", () => {
-  closeLeadModal();
-});
+document.querySelector("#closeLeadModal").addEventListener("click", closeLeadModal);
 
 leadForm.addEventListener("submit", (event) => {
   event.preventDefault();
   createLeadFromForm();
 });
 
-document.querySelector("#createLeadButton").addEventListener("click", () => {
-  createLeadFromForm();
+document.querySelector("#createLeadButton").addEventListener("click", createLeadFromForm);
+
+taskForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const input = document.querySelector("#taskInput");
+  const text = input.value.trim();
+  if (!text) return;
+
+  await store.createTask({ text, done: false, due: "today" });
+  input.value = "";
+  await reloadState();
 });
 
-function createLeadFromForm() {
+searchInput.addEventListener("input", render);
+
+authForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  await signIn();
+});
+
+document.querySelector("#signUpButton").addEventListener("click", signUp);
+signOutButton.addEventListener("click", signOut);
+
+async function boot() {
+  if (!hasSupabaseConfig) {
+    store = createLocalStore();
+    state = await store.load();
+    setCloudMode(false);
+    render();
+    return;
+  }
+
+  try {
+    const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
+    supabaseClient = createClient(config.supabaseUrl, config.supabaseAnonKey);
+    const { data } = await supabaseClient.auth.getSession();
+    currentUser = data.session?.user || null;
+
+    supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+      currentUser = session?.user || null;
+      if (currentUser) {
+        await startCloudWorkspace();
+      } else {
+        showAuth();
+      }
+    });
+
+    if (!currentUser) {
+      showAuth();
+      return;
+    }
+
+    await startCloudWorkspace();
+  } catch (error) {
+    console.error(error);
+    store = createLocalStore();
+    state = await store.load();
+    setCloudMode(false, "Demo mode - cloud unavailable");
+    render();
+  }
+}
+
+async function startCloudWorkspace() {
+  hideAuth();
+  setCloudMode(true);
+  store = createSupabaseStore(supabaseClient, currentUser);
+  await store.ensureWorkspace();
+  await reloadState();
+}
+
+function showAuth() {
+  authPanel.hidden = false;
+  appShell.hidden = true;
+  signOutButton.hidden = true;
+  modePill.textContent = "Cloud mode";
+}
+
+function hideAuth() {
+  authPanel.hidden = true;
+  appShell.hidden = false;
+}
+
+function setCloudMode(enabled, label) {
+  modePill.textContent = label || (enabled ? "Cloud synced" : "Demo mode");
+  signOutButton.hidden = !enabled;
+}
+
+async function signIn() {
+  setAuthMessage("Signing in...");
+  const email = document.querySelector("#authEmail").value.trim();
+  const password = document.querySelector("#authPassword").value;
+  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  setAuthMessage(error ? error.message : "Signed in.");
+}
+
+async function signUp() {
+  setAuthMessage("Creating account...");
+  const email = document.querySelector("#authEmail").value.trim();
+  const password = document.querySelector("#authPassword").value;
+  const { data, error } = await supabaseClient.auth.signUp({ email, password });
+  if (error) {
+    setAuthMessage(error.message);
+    return;
+  }
+  setAuthMessage(data.session ? "Account created." : "Check your email to confirm your account.");
+}
+
+async function signOut() {
+  await supabaseClient.auth.signOut();
+}
+
+function setAuthMessage(message) {
+  authMessage.textContent = message;
+}
+
+async function createLeadFromForm() {
   const name = document.querySelector("#leadName").value.trim();
   const company = document.querySelector("#leadCompany").value.trim();
   if (!name || !company) return;
 
   const lead = {
-    id: crypto.randomUUID(),
     name,
     company,
     value: Number(document.querySelector("#leadValue").value),
@@ -136,49 +262,20 @@ function createLeadFromForm() {
     score: 65,
   };
 
-  state.leads.unshift(lead);
-  state.selectedLeadId = lead.id;
-  addAutomatedTask(`Follow up with ${lead.name} at ${lead.company}`);
+  const created = await store.createLead(lead);
+  await addAutomatedTask(`Follow up with ${created.name} at ${created.company}`);
+  state.selectedLeadId = created.id;
   leadForm.reset();
   closeLeadModal();
-  persistAndRender();
+  await reloadState();
 }
 
 function closeLeadModal() {
   leadModal.hidden = true;
 }
 
-taskForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  const input = document.querySelector("#taskInput");
-  const text = input.value.trim();
-  if (!text) return;
-  state.tasks.unshift({ id: crypto.randomUUID(), text, done: false, due: "today" });
-  input.value = "";
-  persistAndRender();
-});
-
-searchInput.addEventListener("input", render);
-
-function loadState() {
-  const saved = localStorage.getItem("closepilot-state");
-  if (!saved) {
-    return structuredClone(seedState);
-  }
-
-  try {
-    return JSON.parse(saved);
-  } catch {
-    return structuredClone(seedState);
-  }
-}
-
-function saveState() {
-  localStorage.setItem("closepilot-state", JSON.stringify(state));
-}
-
-function persistAndRender() {
-  saveState();
+async function reloadState() {
+  state = await store.load();
   render();
 }
 
@@ -236,7 +333,7 @@ function renderPipeline() {
   board.querySelectorAll("[data-select-lead]").forEach((button) => {
     button.addEventListener("click", () => {
       state.selectedLeadId = button.dataset.selectLead;
-      persistAndRender();
+      render();
     });
   });
 
@@ -267,17 +364,24 @@ function renderDealCard(lead) {
   `;
 }
 
-function moveLead(leadId, direction) {
+async function moveLead(leadId, direction) {
   const lead = state.leads.find((item) => item.id === leadId);
+  if (!lead) return;
+
   const index = stages.findIndex((stage) => stage.id === lead.stage);
   const nextStage = stages[Math.min(stages.length - 1, Math.max(0, index + direction))];
-  if (!lead || lead.stage === nextStage.id) return;
+  if (lead.stage === nextStage.id) return;
 
-  lead.stage = nextStage.id;
-  lead.score = Math.min(99, lead.score + (direction > 0 ? 4 : -2));
+  const updatedLead = {
+    ...lead,
+    stage: nextStage.id,
+    score: Math.min(99, Math.max(0, lead.score + (direction > 0 ? 4 : -2))),
+  };
+
+  await store.updateLead(updatedLead);
+  await addAutomatedTask(`Follow up with ${lead.name} after moving to ${nextStage.label}`);
   state.selectedLeadId = lead.id;
-  addAutomatedTask(`Follow up with ${lead.name} after moving to ${nextStage.label}`);
-  persistAndRender();
+  await reloadState();
 }
 
 function renderLeadBrief() {
@@ -322,10 +426,10 @@ function renderAutomations() {
     .join("");
 
   automationList.querySelectorAll("[data-toggle-auto]").forEach((button) => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", async () => {
       const automation = state.automations.find((item) => item.id === button.dataset.toggleAuto);
-      automation.enabled = !automation.enabled;
-      persistAndRender();
+      await store.updateAutomation({ ...automation, enabled: !automation.enabled });
+      await reloadState();
     });
   });
 }
@@ -360,25 +464,278 @@ function renderTasks() {
     .join("");
 
   taskList.querySelectorAll("[data-task-done]").forEach((checkbox) => {
-    checkbox.addEventListener("change", () => {
+    checkbox.addEventListener("change", async () => {
       const task = state.tasks.find((item) => item.id === checkbox.dataset.taskDone);
-      task.done = checkbox.checked;
-      persistAndRender();
+      await store.updateTask({ ...task, done: checkbox.checked });
+      await reloadState();
     });
   });
 
   taskList.querySelectorAll("[data-delete-task]").forEach((button) => {
-    button.addEventListener("click", () => {
-      state.tasks = state.tasks.filter((task) => task.id !== button.dataset.deleteTask);
-      persistAndRender();
+    button.addEventListener("click", async () => {
+      await store.deleteTask(button.dataset.deleteTask);
+      await reloadState();
     });
   });
 }
 
-function addAutomatedTask(text) {
-  const automation = state.automations.find((item) => item.id === "auto-1");
+async function addAutomatedTask(text) {
+  const automation = state.automations.find((item) => item.key === "next-step-tasks");
   if (!automation?.enabled) return;
-  state.tasks.unshift({ id: crypto.randomUUID(), text, done: false, due: "today" });
+  await store.createTask({ text, done: false, due: "today" });
+}
+
+function createLocalStore() {
+  return {
+    async load() {
+      const saved = localStorage.getItem("closepilot-state");
+      if (!saved) return structuredClone(seedState);
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return structuredClone(seedState);
+      }
+    },
+    save(nextState) {
+      localStorage.setItem("closepilot-state", JSON.stringify(nextState));
+    },
+    async createLead(lead) {
+      const created = { id: crypto.randomUUID(), ...lead };
+      state.leads.unshift(created);
+      state.selectedLeadId = created.id;
+      this.save(state);
+      return created;
+    },
+    async updateLead(lead) {
+      state.leads = state.leads.map((item) => (item.id === lead.id ? lead : item));
+      this.save(state);
+      return lead;
+    },
+    async createTask(task) {
+      const created = { id: crypto.randomUUID(), ...task };
+      state.tasks.unshift(created);
+      this.save(state);
+      return created;
+    },
+    async updateTask(task) {
+      state.tasks = state.tasks.map((item) => (item.id === task.id ? task : item));
+      this.save(state);
+      return task;
+    },
+    async deleteTask(taskId) {
+      state.tasks = state.tasks.filter((task) => task.id !== taskId);
+      this.save(state);
+    },
+    async updateAutomation(automation) {
+      state.automations = state.automations.map((item) =>
+        item.id === automation.id ? automation : item,
+      );
+      this.save(state);
+      return automation;
+    },
+  };
+}
+
+function createSupabaseStore(client, user) {
+  let workspaceId = null;
+  let workspaceName = "Personal workspace";
+
+  return {
+    async ensureWorkspace() {
+      const { data: membership, error: memberError } = await client
+        .from("workspace_members")
+        .select("workspace_id, workspaces(name)")
+        .eq("user_id", user.id)
+        .limit(1)
+        .maybeSingle();
+      throwIf(memberError);
+
+      if (membership?.workspace_id) {
+        workspaceId = membership.workspace_id;
+        workspaceName = membership.workspaces?.name || workspaceName;
+        await this.seedDefaults();
+        return;
+      }
+
+      const { data: workspace, error: workspaceError } = await client
+        .from("workspaces")
+        .insert({ owner_id: user.id, name: "Personal workspace" })
+        .select("id, name")
+        .single();
+      throwIf(workspaceError);
+
+      const { error: insertMemberError } = await client
+        .from("workspace_members")
+        .insert({ workspace_id: workspace.id, user_id: user.id, role: "owner" });
+      throwIf(insertMemberError);
+
+      workspaceId = workspace.id;
+      workspaceName = workspace.name;
+      await this.seedDefaults();
+    },
+    async seedDefaults() {
+      const { count, error } = await client
+        .from("automations")
+        .select("*", { count: "exact", head: true })
+        .eq("workspace_id", workspaceId);
+      throwIf(error);
+
+      if (count === 0) {
+        const { error: automationError } = await client.from("automations").insert(
+          defaultAutomations.map((automation) => ({
+            workspace_id: workspaceId,
+            automation_key: automation.key,
+            title: automation.title,
+            detail: automation.detail,
+            enabled: automation.enabled,
+            saved_hours: automation.savedHours,
+          })),
+        );
+        throwIf(automationError);
+      }
+    },
+    async load() {
+      const [{ data: leads, error: leadError }, { data: tasks, error: taskError }, automations] =
+        await Promise.all([
+          client.from("leads").select("*").eq("workspace_id", workspaceId).order("created_at"),
+          client.from("tasks").select("*").eq("workspace_id", workspaceId).order("created_at", {
+            ascending: false,
+          }),
+          this.loadAutomations(),
+        ]);
+      throwIf(leadError);
+      throwIf(taskError);
+
+      return {
+        selectedLeadId: state.selectedLeadId,
+        workspaceName,
+        leads: leads.map(fromLeadRow),
+        tasks: tasks.map(fromTaskRow),
+        automations,
+      };
+    },
+    async loadAutomations() {
+      const { data, error } = await client
+        .from("automations")
+        .select("*")
+        .eq("workspace_id", workspaceId)
+        .order("created_at");
+      throwIf(error);
+      return data.map(fromAutomationRow);
+    },
+    async createLead(lead) {
+      const { data, error } = await client
+        .from("leads")
+        .insert(toLeadRow({ ...lead, workspaceId }))
+        .select("*")
+        .single();
+      throwIf(error);
+      return fromLeadRow(data);
+    },
+    async updateLead(lead) {
+      const { data, error } = await client
+        .from("leads")
+        .update(toLeadRow({ ...lead, workspaceId }))
+        .eq("id", lead.id)
+        .eq("workspace_id", workspaceId)
+        .select("*")
+        .single();
+      throwIf(error);
+      return fromLeadRow(data);
+    },
+    async createTask(task) {
+      const { data, error } = await client
+        .from("tasks")
+        .insert({ workspace_id: workspaceId, text: task.text, done: task.done, due: task.due })
+        .select("*")
+        .single();
+      throwIf(error);
+      return fromTaskRow(data);
+    },
+    async updateTask(task) {
+      const { data, error } = await client
+        .from("tasks")
+        .update({ text: task.text, done: task.done, due: task.due })
+        .eq("id", task.id)
+        .eq("workspace_id", workspaceId)
+        .select("*")
+        .single();
+      throwIf(error);
+      return fromTaskRow(data);
+    },
+    async deleteTask(taskId) {
+      const { error } = await client
+        .from("tasks")
+        .delete()
+        .eq("id", taskId)
+        .eq("workspace_id", workspaceId);
+      throwIf(error);
+    },
+    async updateAutomation(automation) {
+      const { data, error } = await client
+        .from("automations")
+        .update({ enabled: automation.enabled })
+        .eq("id", automation.id)
+        .eq("workspace_id", workspaceId)
+        .select("*")
+        .single();
+      throwIf(error);
+      return fromAutomationRow(data);
+    },
+  };
+}
+
+function toLeadRow(lead) {
+  return {
+    workspace_id: lead.workspaceId,
+    name: lead.name,
+    company: lead.company,
+    stage: lead.stage,
+    value: lead.value,
+    score: lead.score,
+    notes: lead.notes,
+    next_action: lead.nextAction,
+    source: lead.source,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+function fromLeadRow(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    company: row.company,
+    stage: row.stage,
+    value: Number(row.value),
+    score: row.score,
+    notes: row.notes,
+    nextAction: row.next_action,
+    source: row.source,
+  };
+}
+
+function fromTaskRow(row) {
+  return {
+    id: row.id,
+    text: row.text,
+    done: row.done,
+    due: row.due,
+  };
+}
+
+function fromAutomationRow(row) {
+  return {
+    id: row.id,
+    key: row.automation_key,
+    title: row.title,
+    detail: row.detail,
+    enabled: row.enabled,
+    savedHours: row.saved_hours,
+  };
+}
+
+function throwIf(error) {
+  if (error) throw error;
 }
 
 function stageLabel(stageId) {
@@ -386,10 +743,10 @@ function stageLabel(stageId) {
 }
 
 function escapeHtml(value) {
-  return value.replace(/[&<>"']/g, (char) => {
+  return String(value).replace(/[&<>"']/g, (char) => {
     const entities = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
     return entities[char];
   });
 }
 
-render();
+boot();

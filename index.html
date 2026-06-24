@@ -5,8 +5,39 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>ClosePilot CRM</title>
     <link rel="stylesheet" href="styles.css" />
+    <script src="config.js"></script>
   </head>
   <body>
+    <section class="auth-panel" id="authPanel" hidden>
+      <div class="auth-card">
+        <div class="brand auth-brand">
+          <span class="brand-mark" aria-hidden="true">CP</span>
+          <div>
+            <strong>ClosePilot</strong>
+            <span>Sales CRM</span>
+          </div>
+        </div>
+        <p class="eyebrow">Secure workspace</p>
+        <h1>Sign in to your CRM</h1>
+        <p class="auth-copy">Use your account to keep leads, tasks, and pipeline data synced in the cloud.</p>
+        <form id="authForm" class="auth-form">
+          <label>
+            Email
+            <input id="authEmail" type="email" autocomplete="email" required />
+          </label>
+          <label>
+            Password
+            <input id="authPassword" type="password" autocomplete="current-password" minlength="6" required />
+          </label>
+          <div class="auth-actions">
+            <button class="primary-button" id="signInButton" type="submit">Sign in</button>
+            <button class="secondary-button" id="signUpButton" type="button">Create account</button>
+          </div>
+          <p id="authMessage" class="auth-message" role="status"></p>
+        </form>
+      </div>
+    </section>
+
     <div class="app-shell">
       <aside class="sidebar" aria-label="Workspace navigation">
         <div class="brand">
@@ -40,11 +71,13 @@
             <h1>Pipeline command center</h1>
           </div>
           <div class="topbar-actions">
+            <span class="mode-pill" id="modePill">Demo mode</span>
             <label class="search" for="searchInput">
               <span aria-hidden="true">⌕</span>
               <input id="searchInput" type="search" placeholder="Search leads, companies, notes" />
             </label>
             <button class="primary-button" id="openLeadModal" type="button">+ Lead</button>
+            <button class="secondary-button" id="signOutButton" type="button" hidden>Sign out</button>
           </div>
         </header>
 
@@ -171,6 +204,6 @@
       </form>
     </div>
 
-    <script src="app.js"></script>
+    <script type="module" src="app.js"></script>
   </body>
 </html>
