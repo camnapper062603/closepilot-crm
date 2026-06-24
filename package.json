@@ -1,0 +1,24 @@
+{
+  "name": "closepilot-crm",
+  "version": "1.0.0",
+  "description": "A hosted MVP CRM for pipeline, contacts, tasks, and basic automation.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "playwright test",
+    "test:ui": "playwright test --ui"
+  },
+  "keywords": [
+    "crm",
+    "sales",
+    "saas",
+    "mvp"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.61.0",
+    "@types/node": "^26.0.0"
+  }
+}

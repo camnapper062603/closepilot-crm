@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ClosePilot CRM</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Workspace navigation">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">CP</span>
+          <div>
+            <strong>ClosePilot</strong>
+            <span>CRM MVP</span>
+          </div>
+        </div>
+
+        <nav class="nav-links" aria-label="Primary">
+          <a class="active" href="#pipeline">Pipeline</a>
+          <a href="#contacts">Contacts</a>
+          <a href="#automation">Automation</a>
+          <a href="#tasks">Tasks</a>
+        </nav>
+
+        <div class="workspace-card">
+          <img src="assets/crm-workspace.png" alt="CRM workspace preview on a laptop" />
+          <div>
+            <strong>Personal workspace</strong>
+            <span>Ready to become a team SaaS workspace.</span>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Sales operating system</p>
+            <h1>Pipeline command center</h1>
+          </div>
+          <div class="topbar-actions">
+            <label class="search" for="searchInput">
+              <span aria-hidden="true">⌕</span>
+              <input id="searchInput" type="search" placeholder="Search leads, companies, notes" />
+            </label>
+            <button class="primary-button" id="openLeadModal" type="button">+ Lead</button>
+          </div>
+        </header>
+
+        <section class="metrics" aria-label="CRM summary">
+          <article>
+            <span>Pipeline value</span>
+            <strong id="pipelineValue">$0</strong>
+          </article>
+          <article>
+            <span>Hot leads</span>
+            <strong id="hotLeadCount">0</strong>
+          </article>
+          <article>
+            <span>Automation saved</span>
+            <strong id="automationSaved">0h</strong>
+          </article>
+          <article>
+            <span>Due today</span>
+            <strong id="dueToday">0</strong>
+          </article>
+        </section>
+
+        <section class="workspace-grid">
+          <section class="panel pipeline-panel" id="pipeline" aria-labelledby="pipelineHeading">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Live deals</p>
+                <h2 id="pipelineHeading">Pipeline</h2>
+              </div>
+              <div class="segmented-control" role="group" aria-label="Pipeline view">
+                <button class="active" type="button">Board</button>
+                <button type="button">Forecast</button>
+              </div>
+            </div>
+            <div class="pipeline-board" id="pipelineBoard" aria-live="polite"></div>
+          </section>
+
+          <aside class="right-rail">
+            <section class="panel selected-panel" aria-labelledby="selectedHeading">
+              <div class="panel-heading compact">
+                <div>
+                  <p class="eyebrow">Next best action</p>
+                  <h2 id="selectedHeading">Lead brief</h2>
+                </div>
+              </div>
+              <div id="leadBrief" class="lead-brief"></div>
+            </section>
+
+            <section class="panel" id="automation" aria-labelledby="automationHeading">
+              <div class="panel-heading compact">
+                <div>
+                  <p class="eyebrow">Hands-free CRM</p>
+                  <h2 id="automationHeading">Automations</h2>
+                </div>
+              </div>
+              <div id="automationList" class="automation-list"></div>
+            </section>
+          </aside>
+        </section>
+
+        <section class="lower-grid">
+          <section class="panel" id="contacts" aria-labelledby="contactsHeading">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Accounts</p>
+                <h2 id="contactsHeading">Contacts</h2>
+              </div>
+            </div>
+            <div class="contact-table" id="contactTable"></div>
+          </section>
+
+          <section class="panel" id="tasks" aria-labelledby="tasksHeading">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Daily motion</p>
+                <h2 id="tasksHeading">Tasks</h2>
+              </div>
+            </div>
+            <form class="task-form" id="taskForm">
+              <input id="taskInput" type="text" placeholder="Add a follow-up or reminder" required />
+              <button type="submit">Add</button>
+            </form>
+            <div class="task-list" id="taskList"></div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <div class="modal-backdrop" id="leadModal" hidden>
+      <form class="modal-card" id="leadForm" role="dialog" aria-modal="true" aria-labelledby="addLeadHeading">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">New opportunity</p>
+            <h2 id="addLeadHeading">Add lead</h2>
+          </div>
+          <button class="icon-button" id="closeLeadModal" type="button" aria-label="Close">×</button>
+        </div>
+        <label>
+          Contact name
+          <input id="leadName" type="text" required />
+        </label>
+        <label>
+          Company
+          <input id="leadCompany" type="text" required />
+        </label>
+        <label>
+          Deal value
+          <input id="leadValue" type="number" min="0" step="500" value="2500" required />
+        </label>
+        <label>
+          Stage
+          <select id="leadStage">
+            <option value="new">New</option>
+            <option value="qualified">Qualified</option>
+            <option value="proposal">Proposal</option>
+            <option value="won">Won</option>
+          </select>
+        </label>
+        <label>
+          Notes
+          <textarea id="leadNotes" rows="3" placeholder="Need, timing, objection, or next action"></textarea>
+        </label>
+        <button class="primary-button" id="createLeadButton" type="button">Create lead</button>
+      </form>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
