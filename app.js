@@ -93,6 +93,7 @@ let state = structuredClone(seedState);
 let store;
 let currentUser = null;
 let supabaseClient = null;
+let editingLeadId = null;
 
 const formatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -123,8 +124,7 @@ const config = window.ClosePilotConfig || {};
 const hasSupabaseConfig = Boolean(config.supabaseUrl && config.supabaseAnonKey);
 
 document.querySelector("#openLeadModal").addEventListener("click", () => {
-  leadModal.hidden = false;
-  document.querySelector("#leadName").focus();
+  openLeadModal();
 });
 
 document.querySelector("#closeLeadModal").addEventListener("click", closeLeadModal);
@@ -273,15 +273,42 @@ async function createLeadFromForm() {
     score: 65,
   };
 
-  const created = await store.createLead(lead);
-  await addAutomatedTask(`Follow up with ${created.name} at ${created.company}`);
-  state.selectedLeadId = created.id;
+  if (editingLeadId) {
+    const existingLead = state.leads.find((item) => item.id === editingLeadId);
+    const updated = await store.updateLead({
+      ...existingLead,
+      ...lead,
+      id: editingLeadId,
+      source: existingLead.source,
+      nextAction: existingLead.nextAction,
+    });
+    state.selectedLeadId = updated.id;
+  } else {
+    const created = await store.createLead(lead);
+    await addAutomatedTask(`Follow up with ${created.name} at ${created.company}`);
+    state.selectedLeadId = created.id;
+  }
+
   leadForm.reset();
   closeLeadModal();
   await reloadState();
 }
 
+function openLeadModal(lead = null) {
+  editingLeadId = lead?.id || null;
+  document.querySelector("#addLeadHeading").textContent = lead ? "Edit lead" : "Add lead";
+  document.querySelector("#createLeadButton").textContent = lead ? "Save lead" : "Create lead";
+  document.querySelector("#leadName").value = lead?.name || "";
+  document.querySelector("#leadCompany").value = lead?.company || "";
+  document.querySelector("#leadValue").value = lead?.value || 2500;
+  document.querySelector("#leadStage").value = lead?.stage || "new";
+  document.querySelector("#leadNotes").value = lead?.notes || "";
+  leadModal.hidden = false;
+  document.querySelector("#leadName").focus();
+}
+
 function closeLeadModal() {
+  editingLeadId = null;
   leadModal.hidden = true;
 }
 
@@ -421,7 +448,20 @@ function renderLeadBrief() {
     </div>
     <p>${escapeHtml(lead.notes)}</p>
     <strong>${escapeHtml(lead.nextAction)}</strong>
+    <div class="brief-actions">
+      <button class="secondary-button" data-edit-selected-lead="${lead.id}" type="button">Edit lead</button>
+      <button class="danger-button" data-delete-selected-lead="${lead.id}" type="button">Delete lead</button>
+    </div>
   `;
+
+  leadBrief.querySelector("[data-edit-selected-lead]")?.addEventListener("click", () => {
+    const selectedLead = state.leads.find((item) => item.id === lead.id);
+    openLeadModal(selectedLead);
+  });
+
+  leadBrief.querySelector("[data-delete-selected-lead]")?.addEventListener("click", async () => {
+    await deleteLead(lead.id);
+  });
 }
 
 function renderAutomations() {
@@ -521,6 +561,12 @@ async function addAutomatedTask(text) {
   await store.createTask({ text, done: false, due: "today" });
 }
 
+async function deleteLead(leadId) {
+  await store.deleteLead(leadId);
+  state.selectedLeadId = state.leads.find((lead) => lead.id !== leadId)?.id || null;
+  await reloadState();
+}
+
 function createLocalStore() {
   return {
     async load() {
@@ -546,6 +592,13 @@ function createLocalStore() {
       state.leads = state.leads.map((item) => (item.id === lead.id ? lead : item));
       this.save(state);
       return lead;
+    },
+    async deleteLead(leadId) {
+      state.leads = state.leads.filter((lead) => lead.id !== leadId);
+      if (state.selectedLeadId === leadId) {
+        state.selectedLeadId = state.leads[0]?.id || null;
+      }
+      this.save(state);
     },
     async createTask(task) {
       const created = { id: crypto.randomUUID(), ...task };
@@ -684,6 +737,14 @@ function createSupabaseStore(client, user) {
         .single();
       throwIf(error);
       return fromLeadRow(data);
+    },
+    async deleteLead(leadId) {
+      const { error } = await client
+        .from("leads")
+        .delete()
+        .eq("id", leadId)
+        .eq("workspace_id", workspaceId);
+      throwIf(error);
     },
     async createTask(task) {
       const { data, error } = await client

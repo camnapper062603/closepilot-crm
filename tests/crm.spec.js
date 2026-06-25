@@ -36,6 +36,24 @@ test('moves a lead forward and updates the lead brief', async ({ page }) => {
   await expect(page.locator('#leadBrief')).toContainText('Proposal');
 });
 
+test('edits the selected lead', async ({ page }) => {
+  await page.locator('#leadBrief').getByRole('button', { name: 'Edit lead' }).click();
+  await page.getByLabel('Company').fill('Northstar Exterior Group');
+  await page.getByLabel('Deal value').fill('11400');
+  await page.getByRole('button', { name: 'Save lead' }).click();
+
+  await expect(page.locator('#leadBrief')).toContainText('Northstar Exterior Group');
+  await expect(page.locator('#pipelineBoard').getByText('Northstar Exterior Group')).toBeVisible();
+  await expect(page.locator('#pipelineValue')).toContainText('$32,300');
+});
+
+test('deletes the selected lead', async ({ page }) => {
+  await page.locator('#leadBrief').getByRole('button', { name: 'Delete lead' }).click();
+
+  await expect(page.locator('#pipelineBoard').getByText('Northstar Roofing')).toHaveCount(0);
+  await expect(page.locator('#pipelineValue')).toContainText('$20,900');
+});
+
 test('filters contacts and pipeline by search', async ({ page }) => {
   await page.getByPlaceholder('Search leads, companies, notes').fill('fitness');
 

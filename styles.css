@@ -512,6 +512,26 @@ h2 {
   grid-template-columns: 1fr 1fr;
 }
 
+.brief-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.danger-button {
+  background: #f4e1df;
+  border: 1px solid #e6bfbc;
+  border-radius: 8px;
+  color: var(--coral);
+  font-weight: 800;
+  min-height: 38px;
+  padding: 0 12px;
+}
+
+.danger-button:hover {
+  background: #efd1ce;
+}
+
 .brief-grid div {
   background: #f8faf8;
   border: 1px solid var(--line);
