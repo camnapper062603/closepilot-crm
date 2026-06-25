@@ -268,9 +268,15 @@ async function createLeadFromForm() {
     value: Number(document.querySelector("#leadValue").value),
     stage: document.querySelector("#leadStage").value,
     notes: document.querySelector("#leadNotes").value.trim() || "New lead created from the CRM workspace.",
-    nextAction: "Review lead details and choose the best follow-up.",
-    source: "Manual",
-    score: 65,
+    nextAction:
+      document.querySelector("#leadNextAction").value.trim() ||
+      nextActionForStage(document.querySelector("#leadStage").value),
+    source: document.querySelector("#leadSource").value.trim() || "Manual",
+    score: calculateLeadScore({
+      value: Number(document.querySelector("#leadValue").value),
+      stage: document.querySelector("#leadStage").value,
+      notes: document.querySelector("#leadNotes").value.trim(),
+    }),
   };
 
   if (editingLeadId) {
@@ -279,8 +285,6 @@ async function createLeadFromForm() {
       ...existingLead,
       ...lead,
       id: editingLeadId,
-      source: existingLead.source,
-      nextAction: existingLead.nextAction,
     });
     state.selectedLeadId = updated.id;
   } else {
@@ -302,6 +306,8 @@ function openLeadModal(lead = null) {
   document.querySelector("#leadCompany").value = lead?.company || "";
   document.querySelector("#leadValue").value = lead?.value || 2500;
   document.querySelector("#leadStage").value = lead?.stage || "new";
+  document.querySelector("#leadSource").value = lead?.source || "Manual";
+  document.querySelector("#leadNextAction").value = lead?.nextAction || "";
   document.querySelector("#leadNotes").value = lead?.notes || "";
   leadModal.hidden = false;
   document.querySelector("#leadName").focus();
@@ -449,10 +455,15 @@ function renderLeadBrief() {
     <p>${escapeHtml(lead.notes)}</p>
     <strong>${escapeHtml(lead.nextAction)}</strong>
     <div class="brief-actions">
+      <button class="primary-button" data-follow-up-lead="${lead.id}" type="button">Add follow-up</button>
       <button class="secondary-button" data-edit-selected-lead="${lead.id}" type="button">Edit lead</button>
       <button class="danger-button" data-delete-selected-lead="${lead.id}" type="button">Delete lead</button>
     </div>
   `;
+
+  leadBrief.querySelector("[data-follow-up-lead]")?.addEventListener("click", async () => {
+    await createFollowUpFromLead(lead.id);
+  });
 
   leadBrief.querySelector("[data-edit-selected-lead]")?.addEventListener("click", () => {
     const selectedLead = state.leads.find((item) => item.id === lead.id);
@@ -559,6 +570,18 @@ async function addAutomatedTask(text) {
   const automation = state.automations.find((item) => item.key === "next-step-tasks");
   if (!automation?.enabled) return;
   await store.createTask({ text, done: false, due: "today" });
+}
+
+async function createFollowUpFromLead(leadId) {
+  const lead = state.leads.find((item) => item.id === leadId);
+  if (!lead) return;
+
+  await store.createTask({
+    text: `${lead.nextAction} (${lead.company})`,
+    done: false,
+    due: "today",
+  });
+  await reloadState();
 }
 
 async function deleteLead(leadId) {
@@ -870,6 +893,23 @@ function throwIf(error) {
 
 function stageLabel(stageId) {
   return stages.find((stage) => stage.id === stageId)?.label || "Unknown";
+}
+
+function nextActionForStage(stageId) {
+  const actions = {
+    new: "Qualify budget, fit, and timing.",
+    qualified: "Send proposal and confirm decision timeline.",
+    proposal: "Follow up on proposal objections and close date.",
+    won: "Schedule onboarding and collect setup details.",
+  };
+  return actions[stageId] || "Choose the next best follow-up.";
+}
+
+function calculateLeadScore(lead) {
+  const stageScores = { new: 8, qualified: 18, proposal: 28, won: 36 };
+  const valueScore = Math.min(34, Math.floor(Number(lead.value || 0) / 500));
+  const notesScore = lead.notes?.length > 30 ? 12 : 4;
+  return Math.min(99, 35 + (stageScores[lead.stage] || 0) + valueScore + notesScore);
 }
 
 function escapeHtml(value) {
