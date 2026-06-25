@@ -44,6 +44,9 @@ npm test
    - `SUPABASE_URL`
    - `SUPABASE_ANON_KEY`
 6. Redeploy the site.
+7. In Supabase Auth URL Configuration, set:
+   - Site URL: your Netlify URL
+   - Redirect URL: your Netlify URL
 
 Without those variables, the app runs in demo mode using browser storage.
 

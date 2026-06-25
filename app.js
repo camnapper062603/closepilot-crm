@@ -230,7 +230,13 @@ async function signUp() {
   setAuthMessage("Creating account...");
   const email = document.querySelector("#authEmail").value.trim();
   const password = document.querySelector("#authPassword").value;
-  const { data, error } = await supabaseClient.auth.signUp({ email, password });
+  const { data, error } = await supabaseClient.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: window.location.origin,
+    },
+  });
   if (error) {
     setAuthMessage(error.message);
     return;
