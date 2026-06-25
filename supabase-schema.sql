@@ -93,6 +93,21 @@ revoke execute on function public.is_workspace_owner(uuid) from public;
 revoke execute on function public.is_workspace_owner(uuid) from anon;
 grant execute on function public.is_workspace_owner(uuid) to authenticated;
 
+do $$
+begin
+  if exists (
+    select 1
+    from pg_proc
+    join pg_namespace on pg_namespace.oid = pg_proc.pronamespace
+    where pg_namespace.nspname = 'public'
+      and pg_proc.proname = 'rls_auto_enable'
+      and pg_get_function_identity_arguments(pg_proc.oid) = ''
+  ) then
+    revoke execute on function public.rls_auto_enable() from public;
+    revoke execute on function public.rls_auto_enable() from anon;
+  end if;
+end $$;
+
 drop policy if exists "Users can see their workspaces" on public.workspaces;
 drop policy if exists "Users can create owned workspaces" on public.workspaces;
 drop policy if exists "Owners can update workspaces" on public.workspaces;
