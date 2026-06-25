@@ -57,9 +57,49 @@ alter table public.leads enable row level security;
 alter table public.tasks enable row level security;
 alter table public.automations enable row level security;
 
+create or replace function public.is_workspace_member(target_workspace_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.workspace_members
+    where workspace_id = target_workspace_id
+      and user_id = auth.uid()
+  );
+$$;
+
+create or replace function public.is_workspace_owner(target_workspace_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.workspaces
+    where id = target_workspace_id
+      and owner_id = auth.uid()
+  );
+$$;
+
+drop policy if exists "Users can see their workspaces" on public.workspaces;
+drop policy if exists "Users can create owned workspaces" on public.workspaces;
+drop policy if exists "Owners can update workspaces" on public.workspaces;
+drop policy if exists "Users can see workspace members" on public.workspace_members;
+drop policy if exists "Users can add themselves to owned workspaces" on public.workspace_members;
+drop policy if exists "Members can read leads" on public.leads;
+drop policy if exists "Members can insert leads" on public.leads;
+drop policy if exists "Members can update leads" on public.leads;
+drop policy if exists "Members can delete leads" on public.leads;
+drop policy if exists "Members can manage tasks" on public.tasks;
+drop policy if exists "Members can manage automations" on public.automations;
+
 create policy "Users can see their workspaces"
   on public.workspaces for select
-  using (id in (select workspace_id from public.workspace_members where user_id = auth.uid()));
+  using (owner_id = auth.uid() or public.is_workspace_member(id));
 
 create policy "Users can create owned workspaces"
   on public.workspaces for insert
@@ -72,38 +112,39 @@ create policy "Owners can update workspaces"
 
 create policy "Users can see workspace members"
   on public.workspace_members for select
-  using (user_id = auth.uid());
+  using (user_id = auth.uid() or public.is_workspace_member(workspace_id));
 
 create policy "Users can add themselves to owned workspaces"
   on public.workspace_members for insert
   with check (
     user_id = auth.uid()
-    and workspace_id in (select id from public.workspaces where owner_id = auth.uid())
+    and role = 'owner'
+    and public.is_workspace_owner(workspace_id)
   );
 
 create policy "Members can read leads"
   on public.leads for select
-  using (workspace_id in (select workspace_id from public.workspace_members where user_id = auth.uid()));
+  using (public.is_workspace_member(workspace_id));
 
 create policy "Members can insert leads"
   on public.leads for insert
-  with check (workspace_id in (select workspace_id from public.workspace_members where user_id = auth.uid()));
+  with check (public.is_workspace_member(workspace_id));
 
 create policy "Members can update leads"
   on public.leads for update
-  using (workspace_id in (select workspace_id from public.workspace_members where user_id = auth.uid()))
-  with check (workspace_id in (select workspace_id from public.workspace_members where user_id = auth.uid()));
+  using (public.is_workspace_member(workspace_id))
+  with check (public.is_workspace_member(workspace_id));
 
 create policy "Members can delete leads"
   on public.leads for delete
-  using (workspace_id in (select workspace_id from public.workspace_members where user_id = auth.uid()));
+  using (public.is_workspace_member(workspace_id));
 
 create policy "Members can manage tasks"
   on public.tasks for all
-  using (workspace_id in (select workspace_id from public.workspace_members where user_id = auth.uid()))
-  with check (workspace_id in (select workspace_id from public.workspace_members where user_id = auth.uid()));
+  using (public.is_workspace_member(workspace_id))
+  with check (public.is_workspace_member(workspace_id));
 
 create policy "Members can manage automations"
   on public.automations for all
-  using (workspace_id in (select workspace_id from public.workspace_members where user_id = auth.uid()))
-  with check (workspace_id in (select workspace_id from public.workspace_members where user_id = auth.uid()));
+  using (public.is_workspace_member(workspace_id))
+  with check (public.is_workspace_member(workspace_id));
