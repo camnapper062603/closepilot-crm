@@ -115,6 +115,9 @@ const authMessage = document.querySelector("#authMessage");
 const modePill = document.querySelector("#modePill");
 const appShell = document.querySelector(".app-shell");
 const signOutButton = document.querySelector("#signOutButton");
+const onboardingPanel = document.querySelector("#onboardingPanel");
+const seedWorkspaceButton = document.querySelector("#seedWorkspaceButton");
+const dismissOnboardingButton = document.querySelector("#dismissOnboardingButton");
 
 const config = window.ClosePilotConfig || {};
 const hasSupabaseConfig = Boolean(config.supabaseUrl && config.supabaseAnonKey);
@@ -153,6 +156,8 @@ authForm.addEventListener("submit", async (event) => {
 
 document.querySelector("#signUpButton").addEventListener("click", signUp);
 signOutButton.addEventListener("click", signOut);
+seedWorkspaceButton.addEventListener("click", seedStarterWorkspace);
+dismissOnboardingButton.addEventListener("click", dismissOnboarding);
 
 async function boot() {
   if (!hasSupabaseConfig) {
@@ -297,11 +302,17 @@ function filteredLeads() {
 
 function render() {
   renderMetrics();
+  renderOnboarding();
   renderPipeline();
   renderLeadBrief();
   renderAutomations();
   renderContacts();
   renderTasks();
+}
+
+function renderOnboarding() {
+  const dismissed = localStorage.getItem(onboardingDismissalKey()) === "true";
+  onboardingPanel.hidden = dismissed || state.leads.length > 0;
 }
 
 function renderMetrics() {
@@ -485,6 +496,25 @@ function renderTasks() {
   });
 }
 
+async function seedStarterWorkspace() {
+  seedWorkspaceButton.disabled = true;
+  seedWorkspaceButton.textContent = "Loading...";
+  await store.seedStarterData();
+  localStorage.removeItem(onboardingDismissalKey());
+  await reloadState();
+  seedWorkspaceButton.disabled = false;
+  seedWorkspaceButton.textContent = "Load starter pipeline";
+}
+
+function dismissOnboarding() {
+  localStorage.setItem(onboardingDismissalKey(), "true");
+  renderOnboarding();
+}
+
+function onboardingDismissalKey() {
+  return currentUser ? `closepilot-onboarding-dismissed-${currentUser.id}` : "closepilot-onboarding-dismissed-demo";
+}
+
 async function addAutomatedTask(text) {
   const automation = state.automations.find((item) => item.key === "next-step-tasks");
   if (!automation?.enabled) return;
@@ -538,6 +568,12 @@ function createLocalStore() {
       );
       this.save(state);
       return automation;
+    },
+    async seedStarterData() {
+      state.leads = structuredClone(seedState.leads);
+      state.tasks = structuredClone(seedState.tasks);
+      state.selectedLeadId = seedState.selectedLeadId;
+      this.save(state);
     },
   };
 }
@@ -687,6 +723,33 @@ function createSupabaseStore(client, user) {
         .single();
       throwIf(error);
       return fromAutomationRow(data);
+    },
+    async seedStarterData() {
+      const { count, error } = await client
+        .from("leads")
+        .select("*", { count: "exact", head: true })
+        .eq("workspace_id", workspaceId);
+      throwIf(error);
+      if (count > 0) return;
+
+      const { data: leads, error: leadError } = await client
+        .from("leads")
+        .insert(seedState.leads.map((lead) => toLeadRow({ ...lead, workspaceId })))
+        .select("*")
+        .order("created_at");
+      throwIf(leadError);
+
+      const { error: taskError } = await client.from("tasks").insert(
+        seedState.tasks.map((task) => ({
+          workspace_id: workspaceId,
+          text: task.text,
+          done: task.done,
+          due: task.due,
+        })),
+      );
+      throwIf(taskError);
+
+      state.selectedLeadId = leads[0]?.id || state.selectedLeadId;
     },
   };
 }

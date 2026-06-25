@@ -291,7 +291,8 @@ h2 {
 }
 
 .metrics article,
-.panel {
+.panel,
+.onboarding-panel {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -312,6 +313,27 @@ h2 {
   display: block;
   font-size: 1.8rem;
   margin-top: 6px;
+}
+
+.onboarding-panel {
+  align-items: center;
+  display: flex;
+  gap: 18px;
+  justify-content: space-between;
+  padding: 18px;
+}
+
+.onboarding-panel p {
+  color: var(--muted);
+  margin-bottom: 0;
+  max-width: 660px;
+}
+
+.onboarding-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
 }
 
 .workspace-grid {
@@ -676,6 +698,15 @@ h2 {
   .metrics,
   .right-rail {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .onboarding-panel {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .onboarding-actions {
+    justify-content: flex-start;
   }
 
   .main {
