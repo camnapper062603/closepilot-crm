@@ -85,6 +85,14 @@ as $$
   );
 $$;
 
+revoke execute on function public.is_workspace_member(uuid) from public;
+revoke execute on function public.is_workspace_member(uuid) from anon;
+grant execute on function public.is_workspace_member(uuid) to authenticated;
+
+revoke execute on function public.is_workspace_owner(uuid) from public;
+revoke execute on function public.is_workspace_owner(uuid) from anon;
+grant execute on function public.is_workspace_owner(uuid) to authenticated;
+
 drop policy if exists "Users can see their workspaces" on public.workspaces;
 drop policy if exists "Users can create owned workspaces" on public.workspaces;
 drop policy if exists "Owners can update workspaces" on public.workspaces;
