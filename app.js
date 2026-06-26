@@ -716,6 +716,10 @@ function renderLeadDetail(lead) {
     </section>
     <section class="detail-section">
       <p class="eyebrow">Activity</p>
+      <form class="note-form" data-note-form="${lead.id}">
+        <textarea data-note-input="${lead.id}" rows="3" placeholder="Log a call, objection, or update"></textarea>
+        <button class="primary-button" type="submit">Add note</button>
+      </form>
       <div class="activity-timeline detail-activity">
         ${renderLeadActivities(lead.id)}
       </div>
@@ -740,6 +744,13 @@ function renderLeadDetail(lead) {
   leadDetailContent.querySelector("[data-detail-edit]")?.addEventListener("click", () => {
     closeLeadDetailModal();
     openLeadModal(lead);
+  });
+
+  leadDetailContent.querySelector("[data-note-form]")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const input = leadDetailContent.querySelector(`[data-note-input="${lead.id}"]`);
+    await addLeadNote(lead.id, input.value);
+    renderLeadDetail(state.leads.find((item) => item.id === lead.id) || lead);
   });
 }
 
@@ -993,6 +1004,19 @@ async function applyAssistantSuggestion(leadId) {
     message: "Sales assistant suggestion applied.",
   });
   state.selectedLeadId = lead.id;
+  await reloadState();
+}
+
+async function addLeadNote(leadId, note) {
+  const text = note.trim();
+  if (!text) return;
+
+  await store.createActivity({
+    leadId,
+    type: "note",
+    message: `Note: ${text}`,
+  });
+  state.selectedLeadId = leadId;
   await reloadState();
 }
 

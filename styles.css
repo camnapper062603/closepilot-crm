@@ -906,6 +906,24 @@ h2 {
   padding-top: 0;
 }
 
+.note-form {
+  display: grid;
+  gap: 8px;
+}
+
+.note-form textarea {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  min-height: 78px;
+  padding: 10px;
+  resize: vertical;
+}
+
+.note-form button {
+  justify-self: start;
+}
+
 .import-preview {
   display: grid;
   gap: 12px;

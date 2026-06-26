@@ -159,6 +159,17 @@ test('runs lead detail quick actions', async ({ page }) => {
   await expect(dialog).toContainText('Follow-up task added.');
 });
 
+test('logs manual notes in the lead detail workspace', async ({ page }) => {
+  await page.locator('#leadBrief').getByRole('button', { name: 'Open details' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Northstar Roofing' });
+
+  await dialog.getByPlaceholder('Log a call, objection, or update').fill('Customer asked for a Friday install window.');
+  await dialog.getByRole('button', { name: 'Add note' }).click();
+
+  await expect(dialog).toContainText('Note: Customer asked for a Friday install window.');
+  await expect(page.locator('#leadBrief')).toContainText('Note: Customer asked for a Friday install window.');
+});
+
 test('starts an automated follow-up sequence for the selected lead', async ({ page }) => {
   await expect(page.locator('#leadBrief')).toContainText('Suggested sequence');
   await page.locator('#leadBrief').getByRole('button', { name: 'Start sequence' }).click();
