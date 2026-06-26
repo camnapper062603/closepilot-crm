@@ -288,3 +288,15 @@ test('filters contacts and pipeline by search', async ({ page }) => {
   await expect(page.locator('#pipelineBoard').getByText('Harbor Fitness')).toBeVisible();
   await expect(page.locator('#pipelineBoard').getByText('Northstar Roofing')).toHaveCount(0);
 });
+
+test('selects and opens leads from the contact list', async ({ page }) => {
+  const harborRow = page.locator('#contactTable .contact-row').filter({ hasText: 'Harbor Fitness' });
+
+  await harborRow.getByRole('button', { name: 'View' }).click();
+  await expect(page.locator('#leadBrief')).toContainText('Nia Brooks');
+  await expect(page.locator('#leadBrief')).toContainText('Harbor Fitness');
+
+  await harborRow.getByRole('button', { name: 'Details' }).click();
+  await expect(page.getByRole('dialog', { name: 'Harbor Fitness' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Harbor Fitness' })).toContainText('Review proposal pricing');
+});

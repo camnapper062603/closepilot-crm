@@ -942,15 +942,32 @@ function renderContacts() {
   contactTable.innerHTML = leads
     .map(
       (lead) => `
-      <article class="contact-row">
+      <article class="contact-row" data-contact-row="${lead.id}">
         <p><strong>${escapeHtml(lead.name)}</strong><span>${escapeHtml(lead.company)}</span></p>
         <p>${escapeHtml(lead.source)}</p>
         <p>${stageLabel(lead.stage)}</p>
         <p>${formatter.format(lead.value)}</p>
+        <div class="contact-actions">
+          <button class="secondary-button" data-contact-select="${lead.id}" type="button">View</button>
+          <button class="primary-button" data-contact-detail="${lead.id}" type="button">Details</button>
+        </div>
       </article>
     `,
     )
     .join("");
+
+  contactTable.querySelectorAll("[data-contact-select]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.selectedLeadId = button.dataset.contactSelect;
+      render();
+    });
+  });
+
+  contactTable.querySelectorAll("[data-contact-detail]").forEach((button) => {
+    button.addEventListener("click", () => {
+      openLeadDetailModal(button.dataset.contactDetail);
+    });
+  });
 }
 
 function renderTasks() {
