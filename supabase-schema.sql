@@ -51,11 +51,21 @@ create table if not exists public.automations (
   unique (workspace_id, automation_key)
 );
 
+create table if not exists public.activities (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  lead_id uuid references public.leads(id) on delete set null,
+  type text not null default 'note',
+  message text not null,
+  created_at timestamptz not null default now()
+);
+
 alter table public.workspaces enable row level security;
 alter table public.workspace_members enable row level security;
 alter table public.leads enable row level security;
 alter table public.tasks enable row level security;
 alter table public.automations enable row level security;
+alter table public.activities enable row level security;
 
 create or replace function public.is_workspace_member(target_workspace_id uuid)
 returns boolean
@@ -119,6 +129,7 @@ drop policy if exists "Members can update leads" on public.leads;
 drop policy if exists "Members can delete leads" on public.leads;
 drop policy if exists "Members can manage tasks" on public.tasks;
 drop policy if exists "Members can manage automations" on public.automations;
+drop policy if exists "Members can manage activities" on public.activities;
 
 create policy "Users can see their workspaces"
   on public.workspaces for select
@@ -169,5 +180,10 @@ create policy "Members can manage tasks"
 
 create policy "Members can manage automations"
   on public.automations for all
+  using (public.is_workspace_member(workspace_id))
+  with check (public.is_workspace_member(workspace_id));
+
+create policy "Members can manage activities"
+  on public.activities for all
   using (public.is_workspace_member(workspace_id))
   with check (public.is_workspace_member(workspace_id));

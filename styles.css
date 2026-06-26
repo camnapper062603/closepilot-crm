@@ -539,6 +539,29 @@ h2 {
   background: #efd1ce;
 }
 
+.activity-timeline {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 8px;
+  padding-top: 12px;
+}
+
+.activity-timeline article {
+  border-left: 3px solid var(--teal);
+  display: grid;
+  gap: 2px;
+  padding-left: 10px;
+}
+
+.activity-timeline strong {
+  font-size: 0.9rem;
+}
+
+.activity-timeline span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
 .brief-grid div {
   background: #f8faf8;
   border: 1px solid var(--line);

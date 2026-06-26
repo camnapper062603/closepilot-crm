@@ -87,6 +87,22 @@ const seedState = {
     id: `auto-${index + 1}`,
     ...automation,
   })),
+  activities: [
+    {
+      id: "activity-1",
+      leadId: "lead-1",
+      type: "created",
+      message: "Lead created from Website.",
+      createdAt: "2026-06-20T15:00:00.000Z",
+    },
+    {
+      id: "activity-2",
+      leadId: "lead-1",
+      type: "stage",
+      message: "Stage set to Qualified.",
+      createdAt: "2026-06-21T15:00:00.000Z",
+    },
+  ],
 };
 
 let state = structuredClone(seedState);
@@ -292,9 +308,19 @@ async function createLeadFromForm() {
       ...lead,
       id: editingLeadId,
     });
+    await store.createActivity({
+      leadId: updated.id,
+      type: "edited",
+      message: `Lead updated for ${updated.company}.`,
+    });
     state.selectedLeadId = updated.id;
   } else {
     const created = await store.createLead(lead);
+    await store.createActivity({
+      leadId: created.id,
+      type: "created",
+      message: `Lead created from ${created.source}.`,
+    });
     await addAutomatedTask(`Follow up with ${created.name} at ${created.company}`);
     state.selectedLeadId = created.id;
   }
@@ -435,6 +461,11 @@ async function moveLead(leadId, direction) {
   };
 
   await store.updateLead(updatedLead);
+  await store.createActivity({
+    leadId,
+    type: "stage",
+    message: `Stage changed to ${nextStage.label}.`,
+  });
   await addAutomatedTask(`Follow up with ${lead.name} after moving to ${nextStage.label}`);
   state.selectedLeadId = lead.id;
   await reloadState();
@@ -465,6 +496,10 @@ function renderLeadBrief() {
     </div>
     <p>${escapeHtml(lead.notes)}</p>
     <strong>${escapeHtml(lead.nextAction)}</strong>
+    <div class="activity-timeline">
+      <p class="eyebrow">Activity</p>
+      ${renderLeadActivities(lead.id)}
+    </div>
   `;
 
   leadBrief.querySelector("[data-follow-up-lead]")?.addEventListener("click", async () => {
@@ -506,6 +541,28 @@ function renderAutomations() {
       await reloadState();
     });
   });
+}
+
+function renderLeadActivities(leadId) {
+  const activities = (state.activities || [])
+    .filter((activity) => activity.leadId === leadId)
+    .sort((left, right) => activityTime(right) - activityTime(left))
+    .slice(0, 5);
+
+  if (!activities.length) {
+    return "<p>No activity yet.</p>";
+  }
+
+  return activities
+    .map(
+      (activity) => `
+      <article>
+        <strong>${escapeHtml(activity.message)}</strong>
+        <span>${formatActivityDate(activity.createdAt)}</span>
+      </article>
+    `,
+    )
+    .join("");
 }
 
 function renderContacts() {
@@ -587,10 +644,23 @@ async function createFollowUpFromLead(leadId) {
     done: false,
     due: "today",
   });
+  await store.createActivity({
+    leadId,
+    type: "task",
+    message: "Follow-up task added.",
+  });
   await reloadState();
 }
 
 async function deleteLead(leadId) {
+  const lead = state.leads.find((item) => item.id === leadId);
+  if (lead) {
+    await store.createActivity({
+      leadId,
+      type: "deleted",
+      message: `Lead deleted for ${lead.company}.`,
+    });
+  }
   await store.deleteLead(leadId);
   state.selectedLeadId = state.leads.find((lead) => lead.id !== leadId)?.id || null;
   await reloadState();
@@ -617,6 +687,15 @@ async function importLeadsCsv(event) {
   const importedLeads = parseLeadsCsv(text);
   if (importedLeads.length) {
     const created = await store.createLeads(importedLeads);
+    await Promise.all(
+      created.map((lead) =>
+        store.createActivity({
+          leadId: lead.id,
+          type: "imported",
+          message: `Lead imported from CSV for ${lead.company}.`,
+        }),
+      ),
+    );
     state.selectedLeadId = created[0]?.id || state.selectedLeadId;
     await reloadState();
   }
@@ -725,6 +804,16 @@ function createLocalStore() {
       }
       this.save(state);
     },
+    async createActivity(activity) {
+      const created = {
+        id: crypto.randomUUID(),
+        createdAt: new Date().toISOString(),
+        ...activity,
+      };
+      state.activities = [created, ...(state.activities || [])];
+      this.save(state);
+      return created;
+    },
     async createTask(task) {
       const created = { id: crypto.randomUUID(), ...task };
       state.tasks.unshift(created);
@@ -750,6 +839,7 @@ function createLocalStore() {
     async seedStarterData() {
       state.leads = structuredClone(seedState.leads);
       state.tasks = structuredClone(seedState.tasks);
+      state.activities = structuredClone(seedState.activities);
       state.selectedLeadId = seedState.selectedLeadId;
       this.save(state);
     },
@@ -815,14 +905,19 @@ function createSupabaseStore(client, user) {
       }
     },
     async load() {
-      const [{ data: leads, error: leadError }, { data: tasks, error: taskError }, automations] =
-        await Promise.all([
-          client.from("leads").select("*").eq("workspace_id", workspaceId).order("created_at"),
-          client.from("tasks").select("*").eq("workspace_id", workspaceId).order("created_at", {
-            ascending: false,
-          }),
-          this.loadAutomations(),
-        ]);
+      const [
+        { data: leads, error: leadError },
+        { data: tasks, error: taskError },
+        automations,
+        activities,
+      ] = await Promise.all([
+        client.from("leads").select("*").eq("workspace_id", workspaceId).order("created_at"),
+        client.from("tasks").select("*").eq("workspace_id", workspaceId).order("created_at", {
+          ascending: false,
+        }),
+        this.loadAutomations(),
+        this.loadActivities(),
+      ]);
       throwIf(leadError);
       throwIf(taskError);
 
@@ -832,7 +927,19 @@ function createSupabaseStore(client, user) {
         leads: leads.map(fromLeadRow),
         tasks: tasks.map(fromTaskRow),
         automations,
+        activities,
       };
+    },
+    async loadActivities() {
+      const { data, error } = await client
+        .from("activities")
+        .select("*")
+        .eq("workspace_id", workspaceId)
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (isMissingActivitiesTable(error)) return [];
+      throwIf(error);
+      return data.map(fromActivityRow);
     },
     async loadAutomations() {
       const { data, error } = await client
@@ -879,6 +986,21 @@ function createSupabaseStore(client, user) {
         .eq("id", leadId)
         .eq("workspace_id", workspaceId);
       throwIf(error);
+    },
+    async createActivity(activity) {
+      const { data, error } = await client
+        .from("activities")
+        .insert({
+          workspace_id: workspaceId,
+          lead_id: activity.leadId,
+          type: activity.type,
+          message: activity.message,
+        })
+        .select("*")
+        .single();
+      if (isMissingActivitiesTable(error)) return null;
+      throwIf(error);
+      return fromActivityRow(data);
     },
     async createTask(task) {
       const { data, error } = await client
@@ -945,6 +1067,15 @@ function createSupabaseStore(client, user) {
       throwIf(taskError);
 
       state.selectedLeadId = leads[0]?.id || state.selectedLeadId;
+      await Promise.all(
+        leads.map((lead) =>
+          this.createActivity({
+            leadId: lead.id,
+            type: "created",
+            message: `Starter lead added for ${lead.company}.`,
+          }),
+        ),
+      );
     },
   };
 }
@@ -998,6 +1129,20 @@ function fromAutomationRow(row) {
   };
 }
 
+function fromActivityRow(row) {
+  return {
+    id: row.id,
+    leadId: row.lead_id,
+    type: row.type,
+    message: row.message,
+    createdAt: row.created_at,
+  };
+}
+
+function isMissingActivitiesTable(error) {
+  return error?.code === "42P01" || error?.message?.includes("activities");
+}
+
 function throwIf(error) {
   if (error) throw error;
 }
@@ -1021,6 +1166,19 @@ function calculateLeadScore(lead) {
   const valueScore = Math.min(34, Math.floor(Number(lead.value || 0) / 500));
   const notesScore = lead.notes?.length > 30 ? 12 : 4;
   return Math.min(99, 35 + (stageScores[lead.stage] || 0) + valueScore + notesScore);
+}
+
+function formatActivityDate(value) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function activityTime(activity) {
+  return new Date(activity.createdAt || 0).getTime();
 }
 
 function escapeHtml(value) {
