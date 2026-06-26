@@ -120,6 +120,7 @@ let editingLeadId = null;
 let pipelineView = "board";
 let pendingImport = null;
 let taskFilter = "today";
+let contactFilter = "all";
 
 const formatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -228,6 +229,14 @@ document.querySelectorAll("[data-task-filter]").forEach((button) => {
   button.addEventListener("click", () => {
     taskFilter = button.dataset.taskFilter;
     renderTasks();
+  });
+});
+
+document.querySelectorAll("[data-contact-filter]").forEach((button) => {
+  button.addEventListener("click", () => {
+    contactFilter = button.dataset.contactFilter;
+    renderPipeline();
+    renderContacts();
   });
 });
 
@@ -407,11 +416,14 @@ async function reloadState() {
 
 function filteredLeads() {
   const query = searchInput.value.trim().toLowerCase();
-  if (!query) return state.leads;
   return state.leads.filter((lead) => {
-    return [lead.name, lead.company, lead.notes, lead.source].some((field) =>
-      field.toLowerCase().includes(query),
-    );
+    const matchesStage = contactFilter === "all" || lead.stage === contactFilter;
+    const matchesSearch =
+      !query ||
+      [lead.name, lead.company, lead.notes, lead.source].some((field) =>
+        field.toLowerCase().includes(query),
+      );
+    return matchesStage && matchesSearch;
   });
 }
 
@@ -995,9 +1007,14 @@ function renderActivityFeed() {
 
 function renderContacts() {
   const leads = filteredLeads();
-  contactTable.innerHTML = leads
-    .map(
-      (lead) => `
+  document.querySelectorAll("[data-contact-filter]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.contactFilter === contactFilter);
+  });
+
+  contactTable.innerHTML = leads.length
+    ? leads
+      .map(
+        (lead) => `
       <article class="contact-row" data-contact-row="${lead.id}">
         <p><strong>${escapeHtml(lead.name)}</strong><span>${escapeHtml(lead.company)}</span></p>
         <p>${escapeHtml(lead.source)}</p>
@@ -1010,8 +1027,9 @@ function renderContacts() {
         </div>
       </article>
     `,
-    )
-    .join("");
+      )
+      .join("")
+    : "<p class=\"empty-state\">No contacts in this view.</p>";
 
   contactTable.querySelectorAll("[data-contact-select]").forEach((button) => {
     button.addEventListener("click", () => {

@@ -227,21 +227,23 @@ test('logs manual notes in the lead detail workspace', async ({ page }) => {
 });
 
 test('filters tasks by today, upcoming, done, and all', async ({ page }) => {
+  const taskFilters = page.getByRole('group', { name: 'Task filter' });
+
   await expect(page.locator('#taskList')).toContainText('Call Maya before 3 PM');
   await expect(page.locator('#taskList')).not.toContainText('Send onboarding checklist to Stone & Finch');
 
-  await page.getByRole('button', { name: /Done/ }).click();
+  await taskFilters.getByRole('button', { name: /Done/ }).click();
   await expect(page.locator('#taskList')).toContainText('Send onboarding checklist to Stone & Finch');
   await expect(page.locator('#taskList')).not.toContainText('Call Maya before 3 PM');
 
   await page.locator('#leadBrief').getByRole('button', { name: 'Start sequence' }).click();
-  await page.getByRole('button', { name: /Upcoming/ }).click();
+  await taskFilters.getByRole('button', { name: /Upcoming/ }).click();
   await expect(page.locator('#taskList')).toContainText('Send Northstar Roofing a short proposal recap.');
   await expect(page.locator('#taskList')).toContainText(
     'Ask Maya Johnson for timeline, blockers, and decision owner. (Northstar Roofing)',
   );
 
-  await page.getByRole('button', { name: /All/ }).click();
+  await taskFilters.getByRole('button', { name: /All/ }).click();
   await expect(page.locator('#taskList')).toContainText('Call Maya before 3 PM');
   await expect(page.locator('#taskList')).toContainText('Send onboarding checklist to Stone & Finch');
 });
@@ -346,6 +348,23 @@ test('filters contacts and pipeline by search', async ({ page }) => {
 
   await expect(page.locator('#pipelineBoard').getByText('Harbor Fitness')).toBeVisible();
   await expect(page.locator('#pipelineBoard').getByText('Northstar Roofing')).toHaveCount(0);
+});
+
+test('filters contacts and pipeline by stage', async ({ page }) => {
+  const contactFilters = page.getByRole('group', { name: 'Contact filter' });
+
+  await contactFilters.getByRole('button', { name: 'Proposal' }).click();
+
+  await expect(page.locator('#contactTable')).toContainText('Harbor Fitness');
+  await expect(page.locator('#contactTable')).not.toContainText('Northstar Roofing');
+  await expect(page.locator('#pipelineBoard').getByText('Harbor Fitness')).toBeVisible();
+  await expect(page.locator('#pipelineBoard').getByText('Northstar Roofing')).toHaveCount(0);
+
+  await page.getByPlaceholder('Search leads, companies, notes').fill('northstar');
+  await expect(page.locator('#contactTable')).toContainText('No contacts in this view.');
+
+  await contactFilters.getByRole('button', { name: 'All' }).click();
+  await expect(page.locator('#contactTable')).toContainText('Northstar Roofing');
 });
 
 test('selects and opens leads from the contact list', async ({ page }) => {

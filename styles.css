@@ -474,6 +474,11 @@ button.insight-card:hover {
   justify-content: flex-end;
 }
 
+.contact-filters {
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
 .task-filters button {
   align-items: center;
   display: inline-flex;
