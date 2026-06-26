@@ -49,6 +49,13 @@ test('shows a global activity feed and opens related leads', async ({ page }) =>
   await expect(page.locator('#activityFeed')).toContainText('No activity yet.');
 
   await activityFilters.getByRole('button', { name: 'All' }).click();
+  await page.getByPlaceholder('Search activity').fill('Tuesday');
+  await expect(page.locator('#activityFeed')).toContainText('Note: Customer asked for Tuesday scheduling.');
+  await expect(page.locator('#activityFeed')).not.toContainText('Stage set to Qualified.');
+  await page.getByPlaceholder('Search activity').fill('Northstar');
+  await expect(page.locator('#activityFeed')).toContainText('Stage set to Qualified.');
+  await page.getByPlaceholder('Search activity').fill('');
+
   await page.locator('#pipelineBoard').getByText('Harbor Fitness').click();
   await expect(page.locator('#leadBrief')).toContainText('Nia Brooks');
 

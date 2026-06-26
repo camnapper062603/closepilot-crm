@@ -152,6 +152,7 @@ const completeVisibleTasksButton = document.querySelector("#completeVisibleTasks
 const clearDoneTasksButton = document.querySelector("#clearDoneTasks");
 const automationList = document.querySelector("#automationList");
 const activityFeed = document.querySelector("#activityFeed");
+const activitySearchInput = document.querySelector("#activitySearch");
 const searchInput = document.querySelector("#searchInput");
 const leadModal = document.querySelector("#leadModal");
 const leadForm = document.querySelector("#leadForm");
@@ -216,6 +217,7 @@ taskSortInput.addEventListener("change", () => {
   taskSort = taskSortInput.value;
   renderTasks();
 });
+activitySearchInput.addEventListener("input", renderActivityFeed);
 
 searchInput.addEventListener("input", render);
 
@@ -1017,7 +1019,7 @@ function renderLeadActivities(leadId) {
 
 function renderActivityFeed() {
   const activities = (state.activities || [])
-    .filter((activity) => activityFilter === "all" || activity.type === activityFilter)
+    .filter((activity) => (activityFilter === "all" || activity.type === activityFilter) && activityMatchesSearch(activity))
     .slice()
     .sort((left, right) => activityTime(right) - activityTime(left))
     .slice(0, 8);
@@ -1054,6 +1056,17 @@ function renderActivityFeed() {
       render();
     });
   });
+}
+
+function activityMatchesSearch(activity) {
+  const query = activitySearchInput.value.trim().toLowerCase();
+  if (!query) return true;
+
+  const lead = state.leads.find((item) => item.id === activity.leadId);
+  const company = lead?.company || "Archived lead";
+  return [activity.message, activity.type, company].some((field) =>
+    String(field || "").toLowerCase().includes(query),
+  );
 }
 
 function renderContacts() {

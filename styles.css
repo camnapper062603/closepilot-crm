@@ -892,6 +892,24 @@ button.insight-card:hover {
   margin-bottom: 12px;
 }
 
+.activity-search {
+  color: var(--muted);
+  display: grid;
+  font-size: 0.82rem;
+  font-weight: 800;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.activity-search input {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  font: inherit;
+  min-height: 38px;
+  padding: 0 10px;
+}
+
 .activity-feed-item div {
   display: grid;
   gap: 3px;
