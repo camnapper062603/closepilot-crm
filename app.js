@@ -140,6 +140,7 @@ const board = document.querySelector("#pipelineBoard");
 const insightList = document.querySelector("#insightList");
 const leadBrief = document.querySelector("#leadBrief");
 const contactTable = document.querySelector("#contactTable");
+const contactSummary = document.querySelector("#contactSummary");
 const contactSortInput = document.querySelector("#contactSort");
 const taskList = document.querySelector("#taskList");
 const automationList = document.querySelector("#automationList");
@@ -1035,11 +1036,13 @@ function renderActivityFeed() {
 }
 
 function renderContacts() {
-  const leads = sortedContactLeads(filteredLeads());
+  const filtered = filteredLeads();
+  const leads = sortedContactLeads(filtered);
   document.querySelectorAll("[data-contact-filter]").forEach((button) => {
     button.classList.toggle("active", button.dataset.contactFilter === contactFilter);
   });
   contactSortInput.value = contactSort;
+  renderContactSummary(filtered);
 
   contactTable.innerHTML = leads.length
     ? leads
@@ -1079,6 +1082,31 @@ function renderContacts() {
       await moveLead(button.dataset.contactNext, 1);
     });
   });
+}
+
+function renderContactSummary(leads) {
+  const value = leads.reduce((sum, lead) => sum + lead.value, 0);
+  const hot = leads.filter((lead) => lead.score >= 80).length;
+  const weighted = leads.reduce((sum, lead) => sum + weightedLeadValue(lead), 0);
+
+  contactSummary.innerHTML = `
+    <article>
+      <span>Accounts shown</span>
+      <strong>${leads.length}</strong>
+    </article>
+    <article>
+      <span>Filtered value</span>
+      <strong>${formatter.format(value)}</strong>
+    </article>
+    <article>
+      <span>Hot leads</span>
+      <strong>${hot}</strong>
+    </article>
+    <article>
+      <span>Weighted value</span>
+      <strong>${formatter.format(weighted)}</strong>
+    </article>
+  `;
 }
 
 function renderTasks() {

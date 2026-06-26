@@ -504,6 +504,31 @@ button.insight-card:hover {
   padding: 0 10px;
 }
 
+.contact-summary {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 12px;
+}
+
+.contact-summary article {
+  background: #f8faf8;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+}
+
+.contact-summary span {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.contact-summary strong {
+  font-size: 1rem;
+}
+
 .task-filters button {
   align-items: center;
   display: inline-flex;
@@ -1244,6 +1269,7 @@ button.insight-card:hover {
   }
 
   .metrics,
+  .contact-summary,
   .right-rail {
     grid-template-columns: 1fr 1fr;
   }
@@ -1277,6 +1303,7 @@ button.insight-card:hover {
   }
 
   .metrics,
+  .contact-summary,
   .right-rail,
   .contact-row,
   .activity-feed-item,

@@ -353,18 +353,24 @@ test('filters contacts and pipeline by search', async ({ page }) => {
 test('filters contacts and pipeline by stage', async ({ page }) => {
   const contactFilters = page.getByRole('group', { name: 'Contact filter' });
 
+  await expect(page.locator('#contactSummary')).toContainText('Accounts shown');
+  await expect(page.locator('#contactSummary')).toContainText('$29,300');
+
   await contactFilters.getByRole('button', { name: 'Proposal' }).click();
 
   await expect(page.locator('#contactTable')).toContainText('Harbor Fitness');
   await expect(page.locator('#contactTable')).not.toContainText('Northstar Roofing');
   await expect(page.locator('#pipelineBoard').getByText('Harbor Fitness')).toBeVisible();
   await expect(page.locator('#pipelineBoard').getByText('Northstar Roofing')).toHaveCount(0);
+  await expect(page.locator('#contactSummary')).toContainText('$12,600');
 
   await page.getByPlaceholder('Search leads, companies, notes').fill('northstar');
   await expect(page.locator('#contactTable')).toContainText('No contacts in this view.');
+  await expect(page.locator('#contactSummary')).toContainText('$0');
 
   await contactFilters.getByRole('button', { name: 'All' }).click();
   await expect(page.locator('#contactTable')).toContainText('Northstar Roofing');
+  await expect(page.locator('#contactSummary')).toContainText('$8,400');
 });
 
 test('sorts contacts by value and company', async ({ page }) => {
