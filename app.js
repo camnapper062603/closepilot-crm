@@ -121,6 +121,7 @@ let pipelineView = "board";
 let pendingImport = null;
 let taskFilter = "today";
 let contactFilter = "all";
+let contactSort = "recent";
 
 const formatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -139,6 +140,7 @@ const board = document.querySelector("#pipelineBoard");
 const insightList = document.querySelector("#insightList");
 const leadBrief = document.querySelector("#leadBrief");
 const contactTable = document.querySelector("#contactTable");
+const contactSortInput = document.querySelector("#contactSort");
 const taskList = document.querySelector("#taskList");
 const automationList = document.querySelector("#automationList");
 const activityFeed = document.querySelector("#activityFeed");
@@ -238,6 +240,11 @@ document.querySelectorAll("[data-contact-filter]").forEach((button) => {
     renderPipeline();
     renderContacts();
   });
+});
+
+contactSortInput.addEventListener("change", () => {
+  contactSort = contactSortInput.value;
+  renderContacts();
 });
 
 async function boot() {
@@ -425,6 +432,28 @@ function filteredLeads() {
       );
     return matchesStage && matchesSearch;
   });
+}
+
+function sortedContactLeads(leads) {
+  const stageOrder = new Map(stages.map((stage, index) => [stage.id, index]));
+  const sortable = [...leads];
+  if (contactSort === "value-desc") {
+    return sortable.sort((left, right) => right.value - left.value || left.company.localeCompare(right.company));
+  }
+  if (contactSort === "score-desc") {
+    return sortable.sort((left, right) => right.score - left.score || left.company.localeCompare(right.company));
+  }
+  if (contactSort === "stage") {
+    return sortable.sort(
+      (left, right) =>
+        (stageOrder.get(left.stage) ?? 0) - (stageOrder.get(right.stage) ?? 0) ||
+        left.company.localeCompare(right.company),
+    );
+  }
+  if (contactSort === "company") {
+    return sortable.sort((left, right) => left.company.localeCompare(right.company));
+  }
+  return sortable;
 }
 
 function render() {
@@ -1006,10 +1035,11 @@ function renderActivityFeed() {
 }
 
 function renderContacts() {
-  const leads = filteredLeads();
+  const leads = sortedContactLeads(filteredLeads());
   document.querySelectorAll("[data-contact-filter]").forEach((button) => {
     button.classList.toggle("active", button.dataset.contactFilter === contactFilter);
   });
+  contactSortInput.value = contactSort;
 
   contactTable.innerHTML = leads.length
     ? leads

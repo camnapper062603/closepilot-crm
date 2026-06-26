@@ -474,9 +474,34 @@ button.insight-card:hover {
   justify-content: flex-end;
 }
 
+.contact-controls {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
 .contact-filters {
   flex-wrap: wrap;
-  margin-bottom: 12px;
+}
+
+.contact-sort {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  font-size: 0.82rem;
+  font-weight: 800;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.contact-sort select {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  min-height: 38px;
+  padding: 0 10px;
 }
 
 .task-filters button {
@@ -1204,6 +1229,10 @@ button.insight-card:hover {
 
   .panel-actions {
     justify-content: flex-start;
+  }
+
+  .contact-sort {
+    margin-left: 0;
   }
 
   .mode-pill {

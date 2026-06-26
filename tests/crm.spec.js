@@ -367,6 +367,17 @@ test('filters contacts and pipeline by stage', async ({ page }) => {
   await expect(page.locator('#contactTable')).toContainText('Northstar Roofing');
 });
 
+test('sorts contacts by value and company', async ({ page }) => {
+  const contactRows = page.locator('#contactTable .contact-row');
+
+  await page.getByLabel('Sort contacts').selectOption('value-desc');
+  await expect(contactRows.first()).toContainText('Harbor Fitness');
+
+  await page.getByLabel('Sort contacts').selectOption('company');
+  await expect(contactRows.first()).toContainText('Harbor Fitness');
+  await expect(contactRows.nth(1)).toContainText('Northstar Roofing');
+});
+
 test('selects and opens leads from the contact list', async ({ page }) => {
   const harborRow = page.locator('#contactTable .contact-row').filter({ hasText: 'Harbor Fitness' });
 
