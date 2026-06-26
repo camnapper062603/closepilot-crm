@@ -112,9 +112,37 @@ test('imports leads from CSV', async ({ page }) => {
     buffer: Buffer.from(csv),
   });
 
+  await expect(page.getByRole('dialog', { name: 'Import leads' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Import leads' })).toContainText('Ready');
+  await expect(page.getByRole('dialog', { name: 'Import leads' })).toContainText('Signal Labs');
+  await page.getByRole('button', { name: 'Import 1 lead' }).click();
+
   await expect(page.locator('#pipelineBoard').getByText('Signal Labs')).toBeVisible();
   await expect(page.locator('#leadBrief')).toContainText('Schedule demo');
   await expect(page.locator('#pipelineValue')).toContainText('$36,500');
+});
+
+test('reviews CSV import errors before saving', async ({ page }) => {
+  const csv = [
+    'name,company,stage,value,score,source,nextAction,notes',
+    'Taylor Kim,Atlas Ops,proposal,4300,79,CSV import,Send pricing,Valid row',
+    'Missing Company,,new,1200,55,CSV import,Qualify,Invalid row',
+  ].join('\n');
+
+  await page.locator('#importLeadsInput').setInputFiles({
+    name: 'mixed-leads.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(csv),
+  });
+
+  const dialog = page.getByRole('dialog', { name: 'Import leads' });
+  await expect(dialog).toContainText('Atlas Ops');
+  await expect(dialog).toContainText('Needs review');
+  await expect(dialog).toContainText('Row 3: Name and company are required.');
+  await page.getByRole('button', { name: 'Import 1 lead' }).click();
+
+  await expect(page.locator('#pipelineBoard').getByText('Atlas Ops')).toBeVisible();
+  await expect(page.locator('#pipelineBoard').getByText('Missing Company')).toHaveCount(0);
 });
 
 test('exports leads to CSV', async ({ page }) => {

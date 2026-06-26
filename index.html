@@ -229,6 +229,23 @@
       </form>
     </div>
 
+    <div class="modal-backdrop" id="importModal" hidden>
+      <section class="modal-card import-card" role="dialog" aria-modal="true" aria-labelledby="importHeading">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">CSV review</p>
+            <h2 id="importHeading">Import leads</h2>
+          </div>
+          <button class="icon-button" id="closeImportModal" type="button" aria-label="Close">×</button>
+        </div>
+        <div id="importPreview" class="import-preview"></div>
+        <div class="modal-actions">
+          <button class="secondary-button" id="cancelImportButton" type="button">Cancel</button>
+          <button class="primary-button" id="confirmImportButton" type="button">Import leads</button>
+        </div>
+      </section>
+    </div>
+
     <script type="module" src="app.js"></script>
   </body>
 </html>

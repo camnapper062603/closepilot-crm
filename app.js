@@ -118,6 +118,7 @@ let currentUser = null;
 let supabaseClient = null;
 let editingLeadId = null;
 let pipelineView = "board";
+let pendingImport = null;
 
 const formatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -146,6 +147,11 @@ const dismissOnboardingButton = document.querySelector("#dismissOnboardingButton
 const exportLeadsButton = document.querySelector("#exportLeadsButton");
 const importLeadsButton = document.querySelector("#importLeadsButton");
 const importLeadsInput = document.querySelector("#importLeadsInput");
+const importModal = document.querySelector("#importModal");
+const importPreview = document.querySelector("#importPreview");
+const confirmImportButton = document.querySelector("#confirmImportButton");
+const cancelImportButton = document.querySelector("#cancelImportButton");
+const closeImportModalButton = document.querySelector("#closeImportModal");
 
 const config = window.ClosePilotConfig || {};
 const hasSupabaseConfig = Boolean(config.supabaseUrl && config.supabaseAnonKey);
@@ -188,6 +194,9 @@ dismissOnboardingButton.addEventListener("click", dismissOnboarding);
 exportLeadsButton.addEventListener("click", exportLeadsCsv);
 importLeadsButton.addEventListener("click", () => importLeadsInput.click());
 importLeadsInput.addEventListener("change", importLeadsCsv);
+confirmImportButton.addEventListener("click", confirmLeadsImport);
+cancelImportButton.addEventListener("click", closeImportModal);
+closeImportModalButton.addEventListener("click", closeImportModal);
 
 document.querySelectorAll("[data-pipeline-view]").forEach((button) => {
   button.addEventListener("click", () => {
@@ -829,45 +838,125 @@ async function importLeadsCsv(event) {
   if (!file) return;
 
   const text = await file.text();
-  const importedLeads = parseLeadsCsv(text);
-  if (importedLeads.length) {
-    const created = await store.createLeads(importedLeads);
-    await Promise.all(
-      created.map((lead) =>
-        store.createActivity({
-          leadId: lead.id,
-          type: "imported",
-          message: `Lead imported from CSV for ${lead.company}.`,
-        }),
-      ),
-    );
-    state.selectedLeadId = created[0]?.id || state.selectedLeadId;
-    await reloadState();
-  }
+  pendingImport = parseLeadsCsv(text);
+  renderImportPreview();
+  openImportModal();
   event.target.value = "";
+}
+
+function openImportModal() {
+  importModal.hidden = false;
+}
+
+function closeImportModal() {
+  pendingImport = null;
+  importModal.hidden = true;
+}
+
+function renderImportPreview() {
+  const leads = pendingImport?.leads || [];
+  const errors = pendingImport?.errors || [];
+  confirmImportButton.disabled = leads.length === 0;
+  confirmImportButton.textContent = leads.length === 1 ? "Import 1 lead" : `Import ${leads.length} leads`;
+
+  importPreview.innerHTML = `
+    <div class="import-summary">
+      <article>
+        <span>Ready</span>
+        <strong>${leads.length}</strong>
+      </article>
+      <article>
+        <span>Needs review</span>
+        <strong>${errors.length}</strong>
+      </article>
+    </div>
+    <div class="import-preview-list">
+      ${
+        leads.length
+          ? leads
+              .slice(0, 5)
+              .map(
+                (lead) => `
+          <article>
+            <div>
+              <strong>${escapeHtml(lead.name)}</strong>
+              <span>${escapeHtml(lead.company)}</span>
+            </div>
+            <span>${stageLabel(lead.stage)}</span>
+            <span>${formatter.format(lead.value)}</span>
+          </article>
+        `,
+              )
+              .join("")
+          : "<p>No valid leads found.</p>"
+      }
+    </div>
+    ${
+      errors.length
+        ? `<div class="import-errors">
+            <p class="eyebrow">Skipped rows</p>
+            ${errors.map((error) => `<p>Row ${error.row}: ${escapeHtml(error.message)}</p>`).join("")}
+          </div>`
+        : ""
+    }
+  `;
+}
+
+async function confirmLeadsImport() {
+  const importedLeads = pendingImport?.leads || [];
+  if (!importedLeads.length) return;
+
+  confirmImportButton.disabled = true;
+  confirmImportButton.textContent = "Importing...";
+  const created = await store.createLeads(importedLeads);
+  await Promise.all(
+    created.map((lead) =>
+      store.createActivity({
+        leadId: lead.id,
+        type: "imported",
+        message: `Lead imported from CSV for ${lead.company}.`,
+      }),
+    ),
+  );
+  state.selectedLeadId = created[0]?.id || state.selectedLeadId;
+  closeImportModal();
+  await reloadState();
 }
 
 function parseLeadsCsv(text) {
   const rows = parseCsvRows(text).filter((row) => row.some((cell) => cell.trim()));
-  if (rows.length < 2) return [];
+  if (rows.length < 2) {
+    return { leads: [], errors: [{ row: 1, message: "CSV needs a header row and at least one lead." }] };
+  }
 
   const headers = rows[0].map((header) => header.trim());
-  return rows.slice(1).map((row) => {
+  const leads = [];
+  const errors = [];
+
+  rows.slice(1).forEach((row, index) => {
     const record = Object.fromEntries(headers.map((header, index) => [header, row[index] || ""]));
+    const rowNumber = index + 2;
+    if (!record.name?.trim() || !record.company?.trim()) {
+      errors.push({ row: rowNumber, message: "Name and company are required." });
+      return;
+    }
+
     const stage = stages.some((item) => item.id === record.stage) ? record.stage : "new";
     const value = Number(record.value || 0);
     const notes = record.notes || "Imported from CSV.";
-    return {
-      name: record.name || "Imported lead",
-      company: record.company || "Unknown company",
+    leads.push({
+      name: record.name.trim(),
+      company: record.company.trim(),
       stage,
-      value,
+      value: Number.isFinite(value) ? value : 0,
       score: Number(record.score) || calculateLeadScore({ value, stage, notes }),
       source: record.source || "CSV import",
       nextAction: record.nextAction || nextActionForStage(stage),
       notes,
-    };
+    });
   });
+
+  return { leads, errors };
 }
 
 function parseCsvRows(text) {
