@@ -504,14 +504,16 @@ button.insight-card:hover {
   padding: 0 10px;
 }
 
-.contact-summary {
+.contact-summary,
+.task-summary {
   display: grid;
   gap: 8px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   margin-bottom: 12px;
 }
 
-.contact-summary article {
+.contact-summary article,
+.task-summary article {
   background: #f8faf8;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -520,12 +522,14 @@ button.insight-card:hover {
   padding: 10px;
 }
 
-.contact-summary span {
+.contact-summary span,
+.task-summary span {
   color: var(--muted);
   font-size: 0.76rem;
 }
 
-.contact-summary strong {
+.contact-summary strong,
+.task-summary strong {
   font-size: 1rem;
 }
 
@@ -1287,6 +1291,7 @@ button.insight-card:hover {
 
   .metrics,
   .contact-summary,
+  .task-summary,
   .right-rail {
     grid-template-columns: 1fr 1fr;
   }
@@ -1321,6 +1326,7 @@ button.insight-card:hover {
 
   .metrics,
   .contact-summary,
+  .task-summary,
   .right-rail,
   .contact-row,
   .activity-feed-item,

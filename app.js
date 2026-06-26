@@ -143,6 +143,7 @@ const contactTable = document.querySelector("#contactTable");
 const contactSummary = document.querySelector("#contactSummary");
 const contactSortInput = document.querySelector("#contactSort");
 const taskList = document.querySelector("#taskList");
+const taskSummary = document.querySelector("#taskSummary");
 const clearDoneTasksButton = document.querySelector("#clearDoneTasks");
 const automationList = document.querySelector("#automationList");
 const activityFeed = document.querySelector("#activityFeed");
@@ -1254,15 +1255,41 @@ function filteredTasks() {
 function renderTaskFilterCounts() {
   const openTasks = state.tasks.filter((task) => !task.done);
   const doneTasks = state.tasks.filter((task) => task.done);
-  document.querySelector("#taskCountToday").textContent = openTasks.filter(
-    (task) => task.due === "today",
-  ).length;
-  document.querySelector("#taskCountUpcoming").textContent = openTasks.filter(
-    (task) => task.due !== "today",
-  ).length;
+  const todayTasks = openTasks.filter((task) => task.due === "today");
+  const upcomingTasks = openTasks.filter((task) => task.due !== "today");
+
+  document.querySelector("#taskCountToday").textContent = todayTasks.length;
+  document.querySelector("#taskCountUpcoming").textContent = upcomingTasks.length;
   document.querySelector("#taskCountDone").textContent = doneTasks.length;
   document.querySelector("#taskCountAll").textContent = state.tasks.length;
   clearDoneTasksButton.disabled = doneTasks.length === 0;
+  renderTaskSummary({
+    today: todayTasks.length,
+    upcoming: upcomingTasks.length,
+    done: doneTasks.length,
+    total: state.tasks.length,
+  });
+}
+
+function renderTaskSummary(summary) {
+  taskSummary.innerHTML = `
+    <article>
+      <span>Due today</span>
+      <strong>${summary.today}</strong>
+    </article>
+    <article>
+      <span>Upcoming</span>
+      <strong>${summary.upcoming}</strong>
+    </article>
+    <article>
+      <span>Completed</span>
+      <strong>${summary.done}</strong>
+    </article>
+    <article>
+      <span>Total tasks</span>
+      <strong>${summary.total}</strong>
+    </article>
+  `;
 }
 
 async function seedStarterWorkspace() {

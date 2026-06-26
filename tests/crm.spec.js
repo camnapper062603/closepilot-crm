@@ -251,6 +251,8 @@ test('filters tasks by today, upcoming, done, and all', async ({ page }) => {
 test('clears completed tasks', async ({ page }) => {
   const taskFilters = page.getByRole('group', { name: 'Task filter' });
 
+  await expect(page.locator('#taskSummary')).toContainText('Completed');
+  await expect(page.locator('#taskSummary')).toContainText('3');
   await taskFilters.getByRole('button', { name: /Done/ }).click();
   await expect(page.locator('#taskList')).toContainText('Send onboarding checklist to Stone & Finch');
 
@@ -258,6 +260,8 @@ test('clears completed tasks', async ({ page }) => {
 
   await expect(page.locator('#taskList')).toContainText('No tasks in this view.');
   await expect(taskFilters.getByRole('button', { name: /Done/ })).toContainText('0');
+  await expect(page.locator('#taskSummary')).toContainText('2');
+  await expect(page.locator('#taskSummary')).toContainText('0');
   await expect(page.getByRole('button', { name: 'Clear done' })).toBeDisabled();
 });
 
