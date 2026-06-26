@@ -379,6 +379,10 @@ test('sorts contacts by value and company', async ({ page }) => {
   await page.getByLabel('Sort contacts').selectOption('value-desc');
   await expect(contactRows.first()).toContainText('Harbor Fitness');
 
+  await page.getByLabel('Sort contacts').selectOption('score-desc');
+  await expect(contactRows.first()).toContainText('Northstar Roofing');
+  await expect(contactRows.first().locator('.contact-score')).toHaveText('92');
+
   await page.getByLabel('Sort contacts').selectOption('company');
   await expect(contactRows.first()).toContainText('Harbor Fitness');
   await expect(contactRows.nth(1)).toContainText('Northstar Roofing');

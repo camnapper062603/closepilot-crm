@@ -913,7 +913,15 @@ button.insight-card:hover {
 }
 
 .contact-row {
-  grid-template-columns: 1.35fr 0.85fr 0.7fr 0.7fr auto;
+  grid-template-columns: 1.35fr 0.85fr 0.7fr 0.45fr 0.7fr auto;
+}
+
+.contact-score {
+  background: #e6efeb;
+  color: var(--teal-dark);
+  display: inline-block;
+  min-width: 34px;
+  text-align: center;
 }
 
 .contact-actions {

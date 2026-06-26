@@ -1052,6 +1052,7 @@ function renderContacts() {
         <p><strong>${escapeHtml(lead.name)}</strong><span>${escapeHtml(lead.company)}</span></p>
         <p>${escapeHtml(lead.source)}</p>
         <p>${stageLabel(lead.stage)}</p>
+        <p><span class="score-pill contact-score">${lead.score}</span></p>
         <p>${formatter.format(lead.value)}</p>
         <div class="contact-actions">
           <button class="secondary-button" data-contact-select="${lead.id}" type="button">View</button>
