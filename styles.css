@@ -794,14 +794,16 @@ button.insight-card:hover {
 
 .automation-list,
 .task-list,
-.contact-table {
+.contact-table,
+.activity-feed {
   display: grid;
   gap: 10px;
 }
 
 .automation-row,
 .task-item,
-.contact-row {
+.contact-row,
+.activity-feed-item {
   align-items: center;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -818,6 +820,31 @@ button.insight-card:hover {
 .task-item p,
 .contact-row p {
   margin: 0;
+}
+
+.activity-feed-item {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.activity-feed-item div {
+  display: grid;
+  gap: 3px;
+}
+
+.activity-feed-item span,
+.activity-feed-item time {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.activity-feed-item strong {
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.activity-feed-item button {
+  min-height: 34px;
+  padding: 0 10px;
 }
 
 .status-pill.on {
@@ -1218,6 +1245,7 @@ button.insight-card:hover {
   .metrics,
   .right-rail,
   .contact-row,
+  .activity-feed-item,
   .detail-grid,
   .import-preview-list article,
   .task-form,

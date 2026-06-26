@@ -25,6 +25,23 @@ test('shows actionable pipeline insights', async ({ page }) => {
   await expect(page.locator('#leadBrief')).toContainText('Eli Ramirez');
 });
 
+test('shows a global activity feed and opens related leads', async ({ page }) => {
+  await expect(page.locator('#activityFeed')).toContainText('Northstar Roofing');
+  await expect(page.locator('#activityFeed')).toContainText('Stage set to Qualified.');
+
+  await page.locator('#pipelineBoard').getByText('Harbor Fitness').click();
+  await expect(page.locator('#leadBrief')).toContainText('Nia Brooks');
+
+  await page
+    .locator('#activityFeed .activity-feed-item')
+    .filter({ hasText: 'Northstar Roofing' })
+    .first()
+    .getByRole('button', { name: 'View' })
+    .click();
+
+  await expect(page.locator('#leadBrief')).toContainText('Maya Johnson');
+});
+
 test('sets up a new workspace with starter data', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem(
@@ -78,6 +95,8 @@ test('creates a lead and an automated follow-up task', async ({ page }) => {
   await expect(page.locator('#leadBrief')).toContainText('Trade show');
   await expect(page.locator('#leadBrief')).toContainText('Book discovery call');
   await expect(page.locator('#leadBrief')).toContainText('Lead created from Trade show.');
+  await expect(page.locator('#activityFeed')).toContainText('Plus Growth Studio');
+  await expect(page.locator('#activityFeed')).toContainText('Lead created from Trade show.');
   await expect(page.locator('#pipelineValue')).toContainText('$38,900');
 });
 

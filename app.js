@@ -140,6 +140,7 @@ const leadBrief = document.querySelector("#leadBrief");
 const contactTable = document.querySelector("#contactTable");
 const taskList = document.querySelector("#taskList");
 const automationList = document.querySelector("#automationList");
+const activityFeed = document.querySelector("#activityFeed");
 const searchInput = document.querySelector("#searchInput");
 const leadModal = document.querySelector("#leadModal");
 const leadForm = document.querySelector("#leadForm");
@@ -422,6 +423,7 @@ function render() {
   renderPipeline();
   renderLeadBrief();
   renderAutomations();
+  renderActivityFeed();
   renderContacts();
   renderTasks();
 }
@@ -953,6 +955,42 @@ function renderLeadActivities(leadId) {
     `,
     )
     .join("");
+}
+
+function renderActivityFeed() {
+  const activities = (state.activities || [])
+    .slice()
+    .sort((left, right) => activityTime(right) - activityTime(left))
+    .slice(0, 8);
+
+  if (!activities.length) {
+    activityFeed.innerHTML = "<p class=\"empty-state\">No activity yet.</p>";
+    return;
+  }
+
+  activityFeed.innerHTML = activities
+    .map((activity) => {
+      const lead = state.leads.find((item) => item.id === activity.leadId);
+      const company = lead?.company || "Archived lead";
+      return `
+        <article class="activity-feed-item">
+          <div>
+            <span>${escapeHtml(company)}</span>
+            <strong>${escapeHtml(activity.message)}</strong>
+            <time>${formatActivityDate(activity.createdAt)}</time>
+          </div>
+          ${lead ? `<button class="secondary-button" data-activity-lead="${lead.id}" type="button">View</button>` : ""}
+        </article>
+      `;
+    })
+    .join("");
+
+  activityFeed.querySelectorAll("[data-activity-lead]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.selectedLeadId = button.dataset.activityLead;
+      render();
+    });
+  });
 }
 
 function renderContacts() {
