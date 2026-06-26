@@ -5,6 +5,13 @@ const stages = [
   { id: "won", label: "Won" },
 ];
 
+const stageProbabilities = {
+  new: 0.15,
+  qualified: 0.4,
+  proposal: 0.7,
+  won: 1,
+};
+
 const defaultAutomations = [
   {
     key: "next-step-tasks",
@@ -110,6 +117,7 @@ let store;
 let currentUser = null;
 let supabaseClient = null;
 let editingLeadId = null;
+let pipelineView = "board";
 
 const formatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -180,6 +188,13 @@ dismissOnboardingButton.addEventListener("click", dismissOnboarding);
 exportLeadsButton.addEventListener("click", exportLeadsCsv);
 importLeadsButton.addEventListener("click", () => importLeadsInput.click());
 importLeadsInput.addEventListener("change", importLeadsCsv);
+
+document.querySelectorAll("[data-pipeline-view]").forEach((button) => {
+  button.addEventListener("click", () => {
+    pipelineView = button.dataset.pipelineView;
+    renderPipeline();
+  });
+});
 
 async function boot() {
   if (!hasSupabaseConfig) {
@@ -396,6 +411,15 @@ function renderMetrics() {
 
 function renderPipeline() {
   const leads = filteredLeads();
+  document.querySelectorAll("[data-pipeline-view]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.pipelineView === pipelineView);
+  });
+
+  if (pipelineView === "forecast") {
+    renderForecast(leads);
+    return;
+  }
+
   board.innerHTML = stages
     .map((stage) => {
       const stageLeads = leads.filter((lead) => lead.stage === stage.id);
@@ -424,6 +448,80 @@ function renderPipeline() {
       moveLead(button.dataset.leadId, Number(button.dataset.move));
     });
   });
+}
+
+function renderForecast(leads) {
+  const totalValue = leads.reduce((sum, lead) => sum + lead.value, 0);
+  const weightedValue = leads.reduce((sum, lead) => sum + weightedLeadValue(lead), 0);
+  const closeRate = totalValue ? Math.round((weightedValue / totalValue) * 100) : 0;
+  const bestLead = [...leads].sort((left, right) => weightedLeadValue(right) - weightedLeadValue(left))[0];
+
+  board.innerHTML = `
+    <div class="forecast-view">
+      <div class="forecast-summary">
+        <article>
+          <span>Weighted forecast</span>
+          <strong>${formatter.format(weightedValue)}</strong>
+        </article>
+        <article>
+          <span>Open pipeline</span>
+          <strong>${formatter.format(totalValue)}</strong>
+        </article>
+        <article>
+          <span>Projected close</span>
+          <strong>${closeRate}%</strong>
+        </article>
+        <article>
+          <span>Best next deal</span>
+          <strong>${bestLead ? escapeHtml(bestLead.company) : "No leads"}</strong>
+        </article>
+      </div>
+      <div class="forecast-table">
+        ${stages.map((stage) => renderForecastRow(stage, leads)).join("")}
+      </div>
+    </div>
+  `;
+
+  board.querySelectorAll("[data-select-lead]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.selectedLeadId = button.dataset.selectLead;
+      render();
+    });
+  });
+}
+
+function renderForecastRow(stage, leads) {
+  const stageLeads = leads.filter((lead) => lead.stage === stage.id);
+  const stageValue = stageLeads.reduce((sum, lead) => sum + lead.value, 0);
+  const weightedValue = stageLeads.reduce((sum, lead) => sum + weightedLeadValue(lead), 0);
+  const probability = Math.round(stageProbabilities[stage.id] * 100);
+  const topLead = [...stageLeads].sort((left, right) => weightedLeadValue(right) - weightedLeadValue(left))[0];
+
+  return `
+    <article class="forecast-row">
+      <div>
+        <strong>${stage.label}</strong>
+        <span>${stageLeads.length} ${stageLeads.length === 1 ? "deal" : "deals"}</span>
+      </div>
+      <div>
+        <span>Value</span>
+        <strong>${formatter.format(stageValue)}</strong>
+      </div>
+      <div>
+        <span>Weighted</span>
+        <strong>${formatter.format(weightedValue)}</strong>
+      </div>
+      <div>
+        <span>Close odds</span>
+        <strong>${probability}%</strong>
+      </div>
+      ${
+        topLead
+          ? `<button class="secondary-button" data-select-lead="${topLead.id}" type="button">${escapeHtml(topLead.company)}</button>`
+          : "<span class=\"empty-state\">No deal</span>"
+      }
+    </article>
+  `;
 }
 
 function renderDealCard(lead) {
@@ -1243,6 +1341,10 @@ function calculateLeadScore(lead) {
   const valueScore = Math.min(34, Math.floor(Number(lead.value || 0) / 500));
   const notesScore = lead.notes?.length > 30 ? 12 : 4;
   return Math.min(99, 35 + (stageScores[lead.stage] || 0) + valueScore + notesScore);
+}
+
+function weightedLeadValue(lead) {
+  return lead.value * (stageProbabilities[lead.stage] || 0);
 }
 
 function formatActivityDate(value) {

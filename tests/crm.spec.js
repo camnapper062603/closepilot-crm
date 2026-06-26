@@ -43,6 +43,19 @@ test('moves a lead forward and updates the lead brief', async ({ page }) => {
   await expect(page.locator('#leadBrief')).toContainText('Stage changed to Proposal.');
 });
 
+test('shows a weighted pipeline forecast', async ({ page }) => {
+  await page.getByRole('button', { name: 'Forecast' }).click();
+
+  await expect(page.locator('#pipelineBoard')).toContainText('Weighted forecast');
+  await expect(page.locator('#pipelineBoard')).toContainText('$17,760');
+  await expect(page.locator('#pipelineBoard')).toContainText('Projected close');
+  await expect(page.locator('#pipelineBoard')).toContainText('61%');
+  await expect(page.locator('#pipelineBoard')).toContainText('Harbor Fitness');
+
+  await page.locator('#pipelineBoard').getByRole('button', { name: 'Harbor Fitness' }).click();
+  await expect(page.locator('#leadBrief')).toContainText('Nia Brooks');
+});
+
 test('edits the selected lead', async ({ page }) => {
   await page.locator('#leadBrief').getByRole('button', { name: 'Edit lead' }).click();
   await expect(page.getByRole('dialog', { name: 'Edit lead' })).toBeVisible();

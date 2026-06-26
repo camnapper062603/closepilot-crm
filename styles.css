@@ -475,6 +475,11 @@ h2 {
   color: var(--muted);
 }
 
+.contact-row p span,
+.task-item p span {
+  display: block;
+}
+
 .deal-meta {
   align-items: center;
   display: flex;
@@ -495,6 +500,65 @@ h2 {
   border-radius: 8px;
   color: var(--ink);
   min-height: 34px;
+}
+
+.forecast-view {
+  display: grid;
+  gap: 12px;
+  min-width: 760px;
+}
+
+.forecast-summary {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.forecast-summary article,
+.forecast-row {
+  background: #f8faf8;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.forecast-summary article {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+}
+
+.forecast-summary span,
+.forecast-row span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.forecast-summary strong {
+  font-size: 1.05rem;
+}
+
+.forecast-table {
+  display: grid;
+  gap: 8px;
+}
+
+.forecast-row {
+  align-items: center;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1.1fr 0.8fr 0.8fr 0.7fr minmax(150px, 0.9fr);
+  padding: 12px;
+}
+
+.forecast-row div {
+  display: grid;
+  gap: 3px;
+}
+
+.forecast-row .secondary-button {
+  justify-self: start;
+  min-height: 34px;
+  text-align: left;
 }
 
 .right-rail {
@@ -551,7 +615,7 @@ h2 {
 .sequence-preview article {
   display: grid;
   gap: 3px;
-  grid-template-columns: 72px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .sequence-preview span {
