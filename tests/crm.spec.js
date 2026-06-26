@@ -120,6 +120,30 @@ test('creates a follow-up task from the selected lead', async ({ page }) => {
   await expect(page.locator('#leadBrief')).toContainText('Follow-up task added.');
 });
 
+test('opens a full lead detail workspace', async ({ page }) => {
+  await page.locator('#leadBrief').getByRole('button', { name: 'Open details' }).click();
+
+  const dialog = page.getByRole('dialog', { name: 'Northstar Roofing' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText('Maya Johnson');
+  await expect(dialog).toContainText('Forecast value');
+  await expect(dialog).toContainText('$3,360');
+  await expect(dialog).toContainText('Owner wants a faster quote follow-up flow');
+  await expect(dialog).toContainText('Stage set to Qualified.');
+});
+
+test('runs lead detail quick actions', async ({ page }) => {
+  await page.locator('#leadBrief').getByRole('button', { name: 'Open details' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Northstar Roofing' });
+
+  await dialog.getByRole('button', { name: 'Add follow-up' }).click();
+
+  await expect(page.locator('#taskList')).toContainText(
+    'Send workflow proposal and ask for install calendar. (Northstar Roofing)',
+  );
+  await expect(dialog).toContainText('Follow-up task added.');
+});
+
 test('starts an automated follow-up sequence for the selected lead', async ({ page }) => {
   await expect(page.locator('#leadBrief')).toContainText('Suggested sequence');
   await page.locator('#leadBrief').getByRole('button', { name: 'Start sequence' }).click();

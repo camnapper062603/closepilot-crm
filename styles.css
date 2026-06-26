@@ -793,6 +793,87 @@ h2 {
   max-width: 640px;
 }
 
+.detail-card {
+  max-width: 760px;
+}
+
+.lead-detail-content {
+  display: grid;
+  gap: 14px;
+}
+
+.detail-hero {
+  align-items: start;
+  background: #f8faf8;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+  padding: 14px;
+}
+
+.detail-hero h3 {
+  font-size: 1.45rem;
+  margin: 0 0 4px;
+}
+
+.detail-hero span,
+.detail-section p {
+  color: var(--muted);
+}
+
+.detail-hero > strong {
+  font-size: 1.35rem;
+  white-space: nowrap;
+}
+
+.detail-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.detail-grid article,
+.detail-section {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.detail-grid span {
+  color: var(--muted);
+  display: block;
+  font-size: 0.78rem;
+}
+
+.detail-grid strong {
+  display: block;
+  font-size: 1.12rem;
+  margin-top: 4px;
+}
+
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.detail-section {
+  display: grid;
+  gap: 8px;
+}
+
+.detail-section > strong,
+.detail-section p {
+  margin: 0;
+}
+
+.detail-activity {
+  border-top: 0;
+  padding-top: 0;
+}
+
 .import-preview {
   display: grid;
   gap: 12px;
@@ -966,9 +1047,19 @@ h2 {
 }
 
 @media (max-width: 560px) {
+  .modal-backdrop {
+    align-items: flex-start;
+    overflow-y: auto;
+  }
+
+  .modal-card {
+    max-height: none;
+  }
+
   .metrics,
   .right-rail,
   .contact-row,
+  .detail-grid,
   .import-preview-list article,
   .task-form,
   .auth-actions {
@@ -981,6 +1072,16 @@ h2 {
 
   .modal-actions button {
     flex: 1;
+  }
+
+  .detail-hero,
+  .detail-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .detail-hero > strong {
+    white-space: normal;
   }
 
   .pipeline-board {

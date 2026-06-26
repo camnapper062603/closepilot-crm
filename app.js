@@ -155,6 +155,9 @@ const importPreview = document.querySelector("#importPreview");
 const confirmImportButton = document.querySelector("#confirmImportButton");
 const cancelImportButton = document.querySelector("#cancelImportButton");
 const closeImportModalButton = document.querySelector("#closeImportModal");
+const leadDetailModal = document.querySelector("#leadDetailModal");
+const leadDetailContent = document.querySelector("#leadDetailContent");
+const closeLeadDetailModalButton = document.querySelector("#closeLeadDetailModal");
 
 const config = window.ClosePilotConfig || {};
 const hasSupabaseConfig = Boolean(config.supabaseUrl && config.supabaseAnonKey);
@@ -200,6 +203,7 @@ importLeadsInput.addEventListener("change", importLeadsCsv);
 confirmImportButton.addEventListener("click", confirmLeadsImport);
 cancelImportButton.addEventListener("click", closeImportModal);
 closeImportModalButton.addEventListener("click", closeImportModal);
+closeLeadDetailModalButton.addEventListener("click", closeLeadDetailModal);
 
 document.querySelectorAll("[data-pipeline-view]").forEach((button) => {
   button.addEventListener("click", () => {
@@ -614,6 +618,7 @@ function renderLeadBrief() {
     </div>
     <div class="brief-actions">
       <button class="primary-button" data-follow-up-lead="${lead.id}" type="button">Add follow-up</button>
+      <button class="secondary-button" data-open-lead-detail="${lead.id}" type="button">Open details</button>
       <button class="secondary-button" data-sequence-lead="${lead.id}" type="button">Start sequence</button>
       <button class="secondary-button" data-edit-selected-lead="${lead.id}" type="button">Edit lead</button>
       <button class="danger-button" data-delete-selected-lead="${lead.id}" type="button">Delete lead</button>
@@ -631,6 +636,10 @@ function renderLeadBrief() {
     await createFollowUpFromLead(lead.id);
   });
 
+  leadBrief.querySelector("[data-open-lead-detail]")?.addEventListener("click", () => {
+    openLeadDetailModal(lead.id);
+  });
+
   leadBrief.querySelector("[data-sequence-lead]")?.addEventListener("click", async () => {
     await startFollowUpSequence(lead.id);
   });
@@ -642,6 +651,84 @@ function renderLeadBrief() {
 
   leadBrief.querySelector("[data-delete-selected-lead]")?.addEventListener("click", async () => {
     await deleteLead(lead.id);
+  });
+}
+
+function openLeadDetailModal(leadId = state.selectedLeadId) {
+  const lead = state.leads.find((item) => item.id === leadId);
+  if (!lead) return;
+
+  state.selectedLeadId = lead.id;
+  renderLeadDetail(lead);
+  leadDetailModal.hidden = false;
+}
+
+function closeLeadDetailModal() {
+  leadDetailModal.hidden = true;
+}
+
+function renderLeadDetail(lead) {
+  document.querySelector("#leadDetailHeading").textContent = lead.company;
+  leadDetailContent.innerHTML = `
+    <div class="detail-hero">
+      <div>
+        <p class="eyebrow">${escapeHtml(stageLabel(lead.stage))} deal</p>
+        <h3>${escapeHtml(lead.name)}</h3>
+        <span>${escapeHtml(lead.company)} · ${escapeHtml(lead.source)}</span>
+      </div>
+      <strong>${formatter.format(lead.value)}</strong>
+    </div>
+    <div class="detail-grid">
+      <article>
+        <span>Lead score</span>
+        <strong>${lead.score}/100</strong>
+      </article>
+      <article>
+        <span>Forecast value</span>
+        <strong>${formatter.format(weightedLeadValue(lead))}</strong>
+      </article>
+      <article>
+        <span>Close odds</span>
+        <strong>${Math.round((stageProbabilities[lead.stage] || 0) * 100)}%</strong>
+      </article>
+    </div>
+    <div class="detail-actions">
+      <button class="primary-button" data-detail-follow-up="${lead.id}" type="button">Add follow-up</button>
+      <button class="secondary-button" data-detail-sequence="${lead.id}" type="button">Start sequence</button>
+      <button class="secondary-button" data-detail-edit="${lead.id}" type="button">Edit lead</button>
+    </div>
+    <section class="detail-section">
+      <p class="eyebrow">Next action</p>
+      <strong>${escapeHtml(lead.nextAction)}</strong>
+    </section>
+    <section class="detail-section">
+      <p class="eyebrow">Notes</p>
+      <p>${escapeHtml(lead.notes)}</p>
+    </section>
+    <section class="detail-section">
+      ${renderSequencePreview(lead)}
+    </section>
+    <section class="detail-section">
+      <p class="eyebrow">Activity</p>
+      <div class="activity-timeline detail-activity">
+        ${renderLeadActivities(lead.id)}
+      </div>
+    </section>
+  `;
+
+  leadDetailContent.querySelector("[data-detail-follow-up]")?.addEventListener("click", async () => {
+    await createFollowUpFromLead(lead.id);
+    renderLeadDetail(state.leads.find((item) => item.id === lead.id) || lead);
+  });
+
+  leadDetailContent.querySelector("[data-detail-sequence]")?.addEventListener("click", async () => {
+    await startFollowUpSequence(lead.id);
+    renderLeadDetail(state.leads.find((item) => item.id === lead.id) || lead);
+  });
+
+  leadDetailContent.querySelector("[data-detail-edit]")?.addEventListener("click", () => {
+    closeLeadDetailModal();
+    openLeadModal(lead);
   });
 }
 
