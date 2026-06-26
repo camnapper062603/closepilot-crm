@@ -66,6 +66,31 @@ test('creates a follow-up task from the selected lead', async ({ page }) => {
   );
 });
 
+test('imports leads from CSV', async ({ page }) => {
+  const csv = [
+    'name,company,stage,value,score,source,nextAction,notes',
+    'Jordan Lee,Signal Labs,qualified,7200,83,CSV import,Schedule demo,Imported lead with strong fit',
+  ].join('\n');
+
+  await page.locator('#importLeadsInput').setInputFiles({
+    name: 'leads.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(csv),
+  });
+
+  await expect(page.locator('#pipelineBoard').getByText('Signal Labs')).toBeVisible();
+  await expect(page.locator('#leadBrief')).toContainText('Schedule demo');
+  await expect(page.locator('#pipelineValue')).toContainText('$36,500');
+});
+
+test('exports leads to CSV', async ({ page }) => {
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export CSV' }).click();
+  const download = await downloadPromise;
+
+  expect(download.suggestedFilename()).toBe('closepilot-leads.csv');
+});
+
 test('filters contacts and pipeline by search', async ({ page }) => {
   await page.getByPlaceholder('Search leads, companies, notes').fill('fitness');
 

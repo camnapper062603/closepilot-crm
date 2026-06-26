@@ -119,6 +119,9 @@ const signOutButton = document.querySelector("#signOutButton");
 const onboardingPanel = document.querySelector("#onboardingPanel");
 const seedWorkspaceButton = document.querySelector("#seedWorkspaceButton");
 const dismissOnboardingButton = document.querySelector("#dismissOnboardingButton");
+const exportLeadsButton = document.querySelector("#exportLeadsButton");
+const importLeadsButton = document.querySelector("#importLeadsButton");
+const importLeadsInput = document.querySelector("#importLeadsInput");
 
 const config = window.ClosePilotConfig || {};
 const hasSupabaseConfig = Boolean(config.supabaseUrl && config.supabaseAnonKey);
@@ -158,6 +161,9 @@ document.querySelector("#signUpButton").addEventListener("click", signUp);
 signOutButton.addEventListener("click", signOut);
 seedWorkspaceButton.addEventListener("click", seedStarterWorkspace);
 dismissOnboardingButton.addEventListener("click", dismissOnboarding);
+exportLeadsButton.addEventListener("click", exportLeadsCsv);
+importLeadsButton.addEventListener("click", () => importLeadsInput.click());
+importLeadsInput.addEventListener("change", importLeadsCsv);
 
 async function boot() {
   if (!hasSupabaseConfig) {
@@ -452,13 +458,13 @@ function renderLeadBrief() {
       <div><span>Source</span><strong>${escapeHtml(lead.source)}</strong></div>
       <div><span>Status</span><strong>${lead.score >= 80 ? "Hot" : "Nurture"}</strong></div>
     </div>
-    <p>${escapeHtml(lead.notes)}</p>
-    <strong>${escapeHtml(lead.nextAction)}</strong>
     <div class="brief-actions">
       <button class="primary-button" data-follow-up-lead="${lead.id}" type="button">Add follow-up</button>
       <button class="secondary-button" data-edit-selected-lead="${lead.id}" type="button">Edit lead</button>
       <button class="danger-button" data-delete-selected-lead="${lead.id}" type="button">Delete lead</button>
     </div>
+    <p>${escapeHtml(lead.notes)}</p>
+    <strong>${escapeHtml(lead.nextAction)}</strong>
   `;
 
   leadBrief.querySelector("[data-follow-up-lead]")?.addEventListener("click", async () => {
@@ -590,6 +596,95 @@ async function deleteLead(leadId) {
   await reloadState();
 }
 
+function exportLeadsCsv() {
+  const headers = ["name", "company", "stage", "value", "score", "source", "nextAction", "notes"];
+  const rows = state.leads.map((lead) => headers.map((header) => csvEscape(lead[header])).join(","));
+  const csv = [headers.join(","), ...rows].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "closepilot-leads.csv";
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+async function importLeadsCsv(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  const text = await file.text();
+  const importedLeads = parseLeadsCsv(text);
+  if (importedLeads.length) {
+    const created = await store.createLeads(importedLeads);
+    state.selectedLeadId = created[0]?.id || state.selectedLeadId;
+    await reloadState();
+  }
+  event.target.value = "";
+}
+
+function parseLeadsCsv(text) {
+  const rows = parseCsvRows(text).filter((row) => row.some((cell) => cell.trim()));
+  if (rows.length < 2) return [];
+
+  const headers = rows[0].map((header) => header.trim());
+  return rows.slice(1).map((row) => {
+    const record = Object.fromEntries(headers.map((header, index) => [header, row[index] || ""]));
+    const stage = stages.some((item) => item.id === record.stage) ? record.stage : "new";
+    const value = Number(record.value || 0);
+    const notes = record.notes || "Imported from CSV.";
+    return {
+      name: record.name || "Imported lead",
+      company: record.company || "Unknown company",
+      stage,
+      value,
+      score: Number(record.score) || calculateLeadScore({ value, stage, notes }),
+      source: record.source || "CSV import",
+      nextAction: record.nextAction || nextActionForStage(stage),
+      notes,
+    };
+  });
+}
+
+function parseCsvRows(text) {
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let quoted = false;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    const next = text[index + 1];
+
+    if (quoted && char === '"' && next === '"') {
+      cell += '"';
+      index += 1;
+    } else if (char === '"') {
+      quoted = !quoted;
+    } else if (!quoted && char === ",") {
+      row.push(cell);
+      cell = "";
+    } else if (!quoted && (char === "\n" || char === "\r")) {
+      if (char === "\r" && next === "\n") index += 1;
+      row.push(cell);
+      rows.push(row);
+      row = [];
+      cell = "";
+    } else {
+      cell += char;
+    }
+  }
+
+  row.push(cell);
+  rows.push(row);
+  return rows;
+}
+
+function csvEscape(value) {
+  const text = String(value ?? "");
+  return /[",\n\r]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+}
+
 function createLocalStore() {
   return {
     async load() {
@@ -608,6 +703,13 @@ function createLocalStore() {
       const created = { id: crypto.randomUUID(), ...lead };
       state.leads.unshift(created);
       state.selectedLeadId = created.id;
+      this.save(state);
+      return created;
+    },
+    async createLeads(leads) {
+      const created = leads.map((lead) => ({ id: crypto.randomUUID(), ...lead }));
+      state.leads = [...created, ...state.leads];
+      state.selectedLeadId = created[0]?.id || state.selectedLeadId;
       this.save(state);
       return created;
     },
@@ -749,6 +851,15 @@ function createSupabaseStore(client, user) {
         .single();
       throwIf(error);
       return fromLeadRow(data);
+    },
+    async createLeads(leads) {
+      const { data, error } = await client
+        .from("leads")
+        .insert(leads.map((lead) => toLeadRow({ ...lead, workspaceId })))
+        .select("*")
+        .order("created_at", { ascending: false });
+      throwIf(error);
+      return data.map(fromLeadRow);
     },
     async updateLead(lead) {
       const { data, error } = await client
