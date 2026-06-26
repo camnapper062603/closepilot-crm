@@ -90,6 +90,32 @@ test('moves a lead forward and updates the lead brief', async ({ page }) => {
   await expect(page.locator('#leadBrief')).toContainText('Stage changed to Proposal.');
 });
 
+test('marks the selected lead won and queues onboarding', async ({ page }) => {
+  await page.locator('#leadBrief').getByRole('button', { name: 'Mark won' }).click();
+
+  await expect(page.locator('#leadBrief')).toContainText('Won');
+  await expect(page.locator('#leadBrief')).toContainText('Deal marked Won.');
+  await expect(page.locator('#leadBrief')).toContainText('Send onboarding checklist and request kickoff details.');
+  await expect(page.locator('#taskList')).toContainText('Send onboarding checklist to Northstar Roofing');
+  await expect(page.locator('[data-stage="won"]')).toContainText('Northstar Roofing');
+  await expect(page.locator('#leadBrief').getByRole('button', { name: 'Reopen deal' })).toBeVisible();
+});
+
+test('reopens a won lead from the detail workspace', async ({ page }) => {
+  await page.locator('#pipelineBoard').getByText('Stone & Finch Realty').click();
+  await page.locator('#leadBrief').getByRole('button', { name: 'Open details' }).click();
+
+  const dialog = page.getByRole('dialog', { name: 'Stone & Finch Realty' });
+  await dialog.getByRole('button', { name: 'Reopen deal' }).click();
+
+  await expect(dialog).toContainText('Proposal deal');
+  await expect(dialog).toContainText('Deal reopened to Proposal.');
+  await expect(dialog).toContainText('Reconfirm timeline and pricing with Caleb Stone.');
+  await expect(page.locator('#taskList')).toContainText(
+    'Reconfirm next steps with Caleb Stone at Stone & Finch Realty',
+  );
+});
+
 test('shows a weighted pipeline forecast', async ({ page }) => {
   await page.getByRole('button', { name: 'Forecast' }).click();
 

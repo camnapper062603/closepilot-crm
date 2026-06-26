@@ -724,6 +724,7 @@ function renderLeadBrief() {
       <button class="primary-button" data-follow-up-lead="${lead.id}" type="button">Add follow-up</button>
       <button class="secondary-button" data-open-lead-detail="${lead.id}" type="button">Open details</button>
       <button class="secondary-button" data-sequence-lead="${lead.id}" type="button">Start sequence</button>
+      <button class="secondary-button" data-outcome-lead="${lead.id}" data-outcome="${lead.stage === "won" ? "reopen" : "won"}" type="button">${lead.stage === "won" ? "Reopen deal" : "Mark won"}</button>
       <button class="secondary-button" data-edit-selected-lead="${lead.id}" type="button">Edit lead</button>
       <button class="danger-button" data-delete-selected-lead="${lead.id}" type="button">Delete lead</button>
     </div>
@@ -751,6 +752,10 @@ function renderLeadBrief() {
 
   leadBrief.querySelector("[data-apply-assistant]")?.addEventListener("click", async () => {
     await applyAssistantSuggestion(lead.id);
+  });
+
+  leadBrief.querySelector("[data-outcome-lead]")?.addEventListener("click", async (event) => {
+    await updateLeadOutcome(lead.id, event.currentTarget.dataset.outcome);
   });
 
   leadBrief.querySelector("[data-edit-selected-lead]")?.addEventListener("click", () => {
@@ -804,6 +809,7 @@ function renderLeadDetail(lead) {
     <div class="detail-actions">
       <button class="primary-button" data-detail-follow-up="${lead.id}" type="button">Add follow-up</button>
       <button class="secondary-button" data-detail-sequence="${lead.id}" type="button">Start sequence</button>
+      <button class="secondary-button" data-detail-outcome="${lead.id}" data-outcome="${lead.stage === "won" ? "reopen" : "won"}" type="button">${lead.stage === "won" ? "Reopen deal" : "Mark won"}</button>
       <button class="secondary-button" data-detail-edit="${lead.id}" type="button">Edit lead</button>
     </div>
     ${renderAssistantCard(lead, "detail")}
@@ -842,6 +848,11 @@ function renderLeadDetail(lead) {
 
   leadDetailContent.querySelector("[data-apply-assistant]")?.addEventListener("click", async () => {
     await applyAssistantSuggestion(lead.id);
+    renderLeadDetail(state.leads.find((item) => item.id === lead.id) || lead);
+  });
+
+  leadDetailContent.querySelector("[data-detail-outcome]")?.addEventListener("click", async (event) => {
+    await updateLeadOutcome(lead.id, event.currentTarget.dataset.outcome);
     renderLeadDetail(state.leads.find((item) => item.id === lead.id) || lead);
   });
 
@@ -1207,6 +1218,37 @@ async function applyAssistantSuggestion(leadId) {
     leadId,
     type: "assistant",
     message: "Sales assistant suggestion applied.",
+  });
+  state.selectedLeadId = lead.id;
+  await reloadState();
+}
+
+async function updateLeadOutcome(leadId, outcome) {
+  const lead = state.leads.find((item) => item.id === leadId);
+  if (!lead) return;
+
+  const won = outcome === "won";
+  const updatedLead = {
+    ...lead,
+    stage: won ? "won" : "proposal",
+    score: won ? 99 : Math.max(70, lead.score - 8),
+    nextAction: won
+      ? "Send onboarding checklist and request kickoff details."
+      : `Reconfirm timeline and pricing with ${lead.name}.`,
+  };
+
+  await store.updateLead(updatedLead);
+  await store.createActivity({
+    leadId,
+    type: "outcome",
+    message: won ? "Deal marked Won." : "Deal reopened to Proposal.",
+  });
+  await store.createTask({
+    text: won
+      ? `Send onboarding checklist to ${lead.company}`
+      : `Reconfirm next steps with ${lead.name} at ${lead.company}`,
+    done: false,
+    due: "today",
   });
   state.selectedLeadId = lead.id;
   await reloadState();
