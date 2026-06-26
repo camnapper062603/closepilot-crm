@@ -120,6 +120,21 @@ test('creates a follow-up task from the selected lead', async ({ page }) => {
   await expect(page.locator('#leadBrief')).toContainText('Follow-up task added.');
 });
 
+test('shows and applies sales assistant recommendations', async ({ page }) => {
+  await expect(page.locator('#leadBrief')).toContainText('Sales assistant');
+  await expect(page.locator('#leadBrief')).toContainText('Convert interest into a decision path');
+
+  await page.locator('#leadBrief').getByRole('button', { name: 'Open details' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Northstar Roofing' });
+  await dialog.getByRole('button', { name: 'Apply suggestion' }).click();
+
+  await expect(page.locator('#taskList')).toContainText(
+    'Send Northstar Roofing a proposal recap and ask for the decision timeline. (Northstar Roofing)',
+  );
+  await expect(dialog).toContainText('Sales assistant suggestion applied.');
+  await expect(dialog).toContainText('Send Northstar Roofing a proposal recap and ask for the decision timeline.');
+});
+
 test('opens a full lead detail workspace', async ({ page }) => {
   await page.locator('#leadBrief').getByRole('button', { name: 'Open details' }).click();
 

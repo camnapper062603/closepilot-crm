@@ -623,6 +623,7 @@ function renderLeadBrief() {
       <button class="secondary-button" data-edit-selected-lead="${lead.id}" type="button">Edit lead</button>
       <button class="danger-button" data-delete-selected-lead="${lead.id}" type="button">Delete lead</button>
     </div>
+    ${renderAssistantCard(lead, "compact")}
     ${renderSequencePreview(lead)}
     <p>${escapeHtml(lead.notes)}</p>
     <strong>${escapeHtml(lead.nextAction)}</strong>
@@ -642,6 +643,10 @@ function renderLeadBrief() {
 
   leadBrief.querySelector("[data-sequence-lead]")?.addEventListener("click", async () => {
     await startFollowUpSequence(lead.id);
+  });
+
+  leadBrief.querySelector("[data-apply-assistant]")?.addEventListener("click", async () => {
+    await applyAssistantSuggestion(lead.id);
   });
 
   leadBrief.querySelector("[data-edit-selected-lead]")?.addEventListener("click", () => {
@@ -697,6 +702,7 @@ function renderLeadDetail(lead) {
       <button class="secondary-button" data-detail-sequence="${lead.id}" type="button">Start sequence</button>
       <button class="secondary-button" data-detail-edit="${lead.id}" type="button">Edit lead</button>
     </div>
+    ${renderAssistantCard(lead, "detail")}
     <section class="detail-section">
       <p class="eyebrow">Next action</p>
       <strong>${escapeHtml(lead.nextAction)}</strong>
@@ -726,10 +732,33 @@ function renderLeadDetail(lead) {
     renderLeadDetail(state.leads.find((item) => item.id === lead.id) || lead);
   });
 
+  leadDetailContent.querySelector("[data-apply-assistant]")?.addEventListener("click", async () => {
+    await applyAssistantSuggestion(lead.id);
+    renderLeadDetail(state.leads.find((item) => item.id === lead.id) || lead);
+  });
+
   leadDetailContent.querySelector("[data-detail-edit]")?.addEventListener("click", () => {
     closeLeadDetailModal();
     openLeadModal(lead);
   });
+}
+
+function renderAssistantCard(lead, variant = "compact") {
+  const insight = salesAssistantForLead(lead);
+  const reasons = variant === "detail" ? insight.reasons : insight.reasons.slice(0, 2);
+  return `
+    <section class="assistant-card ${variant === "detail" ? "detail-section" : ""}">
+      <div>
+        <p class="eyebrow">Sales assistant</p>
+        <strong>${escapeHtml(insight.title)}</strong>
+      </div>
+      <p>${escapeHtml(insight.action)}</p>
+      <ul>
+        ${reasons.map((reason) => `<li>${escapeHtml(reason)}</li>`).join("")}
+      </ul>
+      <button class="secondary-button" data-apply-assistant="${lead.id}" type="button">Apply suggestion</button>
+    </section>
+  `;
 }
 
 function renderSequencePreview(lead) {
@@ -941,6 +970,29 @@ async function startFollowUpSequence(leadId) {
     type: "sequence",
     message: `${steps.length}-step follow-up sequence started.`,
   });
+  await reloadState();
+}
+
+async function applyAssistantSuggestion(leadId) {
+  const lead = state.leads.find((item) => item.id === leadId);
+  if (!lead) return;
+
+  const insight = salesAssistantForLead(lead);
+  await store.updateLead({
+    ...lead,
+    nextAction: insight.action,
+  });
+  await store.createTask({
+    text: `${insight.action} (${lead.company})`,
+    done: false,
+    due: insight.due,
+  });
+  await store.createActivity({
+    leadId,
+    type: "assistant",
+    message: "Sales assistant suggestion applied.",
+  });
+  state.selectedLeadId = lead.id;
   await reloadState();
 }
 
@@ -1595,6 +1647,45 @@ function sequenceStepsForLead(lead) {
     due,
     text: text.includes(lead.company) ? text : `${text} (${lead.company})`,
   }));
+}
+
+function salesAssistantForLead(lead) {
+  const reasons = [];
+  if (lead.score >= 85) reasons.push("High lead score signals strong fit or urgency.");
+  if (lead.value >= 8000) reasons.push("Deal value is meaningful enough to prioritize today.");
+  if (lead.stage === "proposal") reasons.push("Proposal-stage deals benefit from a clear decision date.");
+  if (lead.stage === "qualified") reasons.push("Qualified leads need a proposal recap and next commitment.");
+  if (lead.source === "Website") reasons.push("Website leads are often warmer because they initiated contact.");
+  if (lead.notes.length > 55) reasons.push("Detailed notes show a specific need to anchor follow-up.");
+  if (!reasons.length) reasons.push("Lead has enough context for a structured next step.");
+
+  const actions = {
+    new: {
+      title: "Qualify this lead before it cools",
+      action: `Call ${lead.name} to confirm budget, fit, and timeline.`,
+      due: "today",
+    },
+    qualified: {
+      title: "Convert interest into a decision path",
+      action: `Send ${lead.company} a proposal recap and ask for the decision timeline.`,
+      due: "today",
+    },
+    proposal: {
+      title: "Push the proposal toward a close date",
+      action: `Ask ${lead.name} for a yes/no decision date and final objection list.`,
+      due: "today",
+    },
+    won: {
+      title: "Turn the win into expansion",
+      action: `Ask ${lead.name} for onboarding goals and one referral opportunity.`,
+      due: "tomorrow",
+    },
+  };
+
+  return {
+    ...actions[lead.stage],
+    reasons,
+  };
 }
 
 function calculateLeadScore(lead) {
