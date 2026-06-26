@@ -957,8 +957,18 @@ button.insight-card:hover {
   grid-template-columns: minmax(0, 1fr) minmax(130px, auto) auto;
 }
 
+.task-search {
+  color: var(--muted);
+  display: grid;
+  font-size: 0.82rem;
+  font-weight: 800;
+  gap: 6px;
+  grid-column: 1 / -1;
+}
+
 .task-form input,
 .task-form select,
+.task-search input,
 .task-edit-form input,
 .task-edit-form select {
   border: 1px solid var(--line);

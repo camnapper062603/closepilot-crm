@@ -265,6 +265,18 @@ test('clears completed tasks', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Clear done' })).toBeDisabled();
 });
 
+test('searches tasks by text', async ({ page }) => {
+  const taskFilters = page.getByRole('group', { name: 'Task filter' });
+
+  await page.getByPlaceholder('Search task text').fill('Harbor');
+
+  await expect(page.locator('#taskList')).toContainText('Draft Harbor Fitness proposal recap');
+  await expect(page.locator('#taskList')).not.toContainText('Call Maya before 3 PM');
+  await expect(taskFilters.getByRole('button', { name: /Today/ })).toContainText('1');
+  await expect(taskFilters.getByRole('button', { name: /All/ })).toContainText('1');
+  await expect(page.locator('#taskSummary')).toContainText('1');
+});
+
 test('creates manual tasks with custom due dates', async ({ page }) => {
   await page.getByPlaceholder('Add a follow-up or reminder').fill('Prepare quarterly pipeline review');
   await page.getByLabel('Task due date').selectOption('next week');

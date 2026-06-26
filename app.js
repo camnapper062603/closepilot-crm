@@ -144,6 +144,7 @@ const contactSummary = document.querySelector("#contactSummary");
 const contactSortInput = document.querySelector("#contactSort");
 const taskList = document.querySelector("#taskList");
 const taskSummary = document.querySelector("#taskSummary");
+const taskSearchInput = document.querySelector("#taskSearch");
 const clearDoneTasksButton = document.querySelector("#clearDoneTasks");
 const automationList = document.querySelector("#automationList");
 const activityFeed = document.querySelector("#activityFeed");
@@ -205,6 +206,7 @@ taskForm.addEventListener("submit", async (event) => {
 });
 
 clearDoneTasksButton.addEventListener("click", clearDoneTasks);
+taskSearchInput.addEventListener("input", renderTasks);
 
 searchInput.addEventListener("input", render);
 
@@ -1246,28 +1248,35 @@ function renderTaskDueOptions(selectedDue) {
 }
 
 function filteredTasks() {
-  if (taskFilter === "all") return state.tasks;
-  if (taskFilter === "done") return state.tasks.filter((task) => task.done);
-  if (taskFilter === "upcoming") return state.tasks.filter((task) => !task.done && task.due !== "today");
-  return state.tasks.filter((task) => !task.done && task.due === "today");
+  const tasks = state.tasks.filter(taskSearchMatches);
+  if (taskFilter === "all") return tasks;
+  if (taskFilter === "done") return tasks.filter((task) => task.done);
+  if (taskFilter === "upcoming") return tasks.filter((task) => !task.done && task.due !== "today");
+  return tasks.filter((task) => !task.done && task.due === "today");
+}
+
+function taskSearchMatches(task) {
+  const query = taskSearchInput.value.trim().toLowerCase();
+  return !query || task.text.toLowerCase().includes(query);
 }
 
 function renderTaskFilterCounts() {
-  const openTasks = state.tasks.filter((task) => !task.done);
-  const doneTasks = state.tasks.filter((task) => task.done);
+  const searchableTasks = state.tasks.filter(taskSearchMatches);
+  const openTasks = searchableTasks.filter((task) => !task.done);
+  const doneTasks = searchableTasks.filter((task) => task.done);
   const todayTasks = openTasks.filter((task) => task.due === "today");
   const upcomingTasks = openTasks.filter((task) => task.due !== "today");
 
   document.querySelector("#taskCountToday").textContent = todayTasks.length;
   document.querySelector("#taskCountUpcoming").textContent = upcomingTasks.length;
   document.querySelector("#taskCountDone").textContent = doneTasks.length;
-  document.querySelector("#taskCountAll").textContent = state.tasks.length;
-  clearDoneTasksButton.disabled = doneTasks.length === 0;
+  document.querySelector("#taskCountAll").textContent = searchableTasks.length;
+  clearDoneTasksButton.disabled = state.tasks.filter((task) => task.done).length === 0;
   renderTaskSummary({
     today: todayTasks.length,
     upcoming: upcomingTasks.length,
     done: doneTasks.length,
-    total: state.tasks.length,
+    total: searchableTasks.length,
   });
 }
 
