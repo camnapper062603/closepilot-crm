@@ -193,6 +193,12 @@
                 <p class="eyebrow">Daily motion</p>
                 <h2 id="tasksHeading">Tasks</h2>
               </div>
+              <div class="segmented-control task-filters" role="group" aria-label="Task filter">
+                <button class="active" data-task-filter="today" type="button">Today <span id="taskCountToday">0</span></button>
+                <button data-task-filter="upcoming" type="button">Upcoming <span id="taskCountUpcoming">0</span></button>
+                <button data-task-filter="done" type="button">Done <span id="taskCountDone">0</span></button>
+                <button data-task-filter="all" type="button">All <span id="taskCountAll">0</span></button>
+              </div>
             </div>
             <form class="task-form" id="taskForm">
               <input id="taskInput" type="text" placeholder="Add a follow-up or reminder" required />

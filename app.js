@@ -119,6 +119,7 @@ let supabaseClient = null;
 let editingLeadId = null;
 let pipelineView = "board";
 let pendingImport = null;
+let taskFilter = "today";
 
 const formatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -209,6 +210,13 @@ document.querySelectorAll("[data-pipeline-view]").forEach((button) => {
   button.addEventListener("click", () => {
     pipelineView = button.dataset.pipelineView;
     renderPipeline();
+  });
+});
+
+document.querySelectorAll("[data-task-filter]").forEach((button) => {
+  button.addEventListener("click", () => {
+    taskFilter = button.dataset.taskFilter;
+    renderTasks();
   });
 });
 
@@ -857,7 +865,10 @@ function renderContacts() {
 }
 
 function renderTasks() {
-  taskList.innerHTML = state.tasks
+  renderTaskFilterCounts();
+  const tasks = filteredTasks();
+  taskList.innerHTML = tasks.length
+    ? tasks
     .map(
       (task) => `
       <article class="task-item ${task.done ? "done" : ""}">
@@ -867,7 +878,12 @@ function renderTasks() {
       </article>
     `,
     )
-    .join("");
+    .join("")
+    : "<p class=\"empty-state\">No tasks in this view.</p>";
+
+  document.querySelectorAll("[data-task-filter]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.taskFilter === taskFilter);
+  });
 
   taskList.querySelectorAll("[data-task-done]").forEach((checkbox) => {
     checkbox.addEventListener("change", async () => {
@@ -883,6 +899,25 @@ function renderTasks() {
       await reloadState();
     });
   });
+}
+
+function filteredTasks() {
+  if (taskFilter === "all") return state.tasks;
+  if (taskFilter === "done") return state.tasks.filter((task) => task.done);
+  if (taskFilter === "upcoming") return state.tasks.filter((task) => !task.done && task.due !== "today");
+  return state.tasks.filter((task) => !task.done && task.due === "today");
+}
+
+function renderTaskFilterCounts() {
+  const openTasks = state.tasks.filter((task) => !task.done);
+  document.querySelector("#taskCountToday").textContent = openTasks.filter(
+    (task) => task.due === "today",
+  ).length;
+  document.querySelector("#taskCountUpcoming").textContent = openTasks.filter(
+    (task) => task.due !== "today",
+  ).length;
+  document.querySelector("#taskCountDone").textContent = state.tasks.filter((task) => task.done).length;
+  document.querySelector("#taskCountAll").textContent = state.tasks.length;
 }
 
 async function seedStarterWorkspace() {

@@ -170,6 +170,26 @@ test('logs manual notes in the lead detail workspace', async ({ page }) => {
   await expect(page.locator('#leadBrief')).toContainText('Note: Customer asked for a Friday install window.');
 });
 
+test('filters tasks by today, upcoming, done, and all', async ({ page }) => {
+  await expect(page.locator('#taskList')).toContainText('Call Maya before 3 PM');
+  await expect(page.locator('#taskList')).not.toContainText('Send onboarding checklist to Stone & Finch');
+
+  await page.getByRole('button', { name: /Done/ }).click();
+  await expect(page.locator('#taskList')).toContainText('Send onboarding checklist to Stone & Finch');
+  await expect(page.locator('#taskList')).not.toContainText('Call Maya before 3 PM');
+
+  await page.locator('#leadBrief').getByRole('button', { name: 'Start sequence' }).click();
+  await page.getByRole('button', { name: /Upcoming/ }).click();
+  await expect(page.locator('#taskList')).toContainText('Send Northstar Roofing a short proposal recap.');
+  await expect(page.locator('#taskList')).toContainText(
+    'Ask Maya Johnson for timeline, blockers, and decision owner. (Northstar Roofing)',
+  );
+
+  await page.getByRole('button', { name: /All/ }).click();
+  await expect(page.locator('#taskList')).toContainText('Call Maya before 3 PM');
+  await expect(page.locator('#taskList')).toContainText('Send onboarding checklist to Stone & Finch');
+});
+
 test('starts an automated follow-up sequence for the selected lead', async ({ page }) => {
   await expect(page.locator('#leadBrief')).toContainText('Suggested sequence');
   await page.locator('#leadBrief').getByRole('button', { name: 'Start sequence' }).click();
@@ -177,6 +197,7 @@ test('starts an automated follow-up sequence for the selected lead', async ({ pa
   await expect(page.locator('#taskList')).toContainText(
     'Send workflow proposal and ask for install calendar. (Northstar Roofing)',
   );
+  await page.getByRole('button', { name: /Upcoming/ }).click();
   await expect(page.locator('#taskList')).toContainText(
     'Send Northstar Roofing a short proposal recap.',
   );
