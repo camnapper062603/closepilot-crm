@@ -416,6 +416,18 @@ test('creates follow-up tasks from the contact list', async ({ page }) => {
   await expect(page.locator('#leadBrief')).toContainText('Follow-up task added.');
 });
 
+test('marks contacts won from the contact list', async ({ page }) => {
+  const harborRow = page.locator('#contactTable .contact-row').filter({ hasText: 'Harbor Fitness' });
+
+  await harborRow.getByRole('button', { name: 'Won' }).click();
+
+  await expect(page.locator('#leadBrief')).toContainText('Nia Brooks');
+  await expect(page.locator('#leadBrief')).toContainText('Won');
+  await expect(page.locator('#leadBrief')).toContainText('Deal marked Won.');
+  await expect(page.locator('#taskList')).toContainText('Send onboarding checklist to Harbor Fitness');
+  await expect(page.locator('[data-stage="won"]')).toContainText('Harbor Fitness');
+});
+
 test('moves leads forward from the contact list', async ({ page }) => {
   const summitRow = page.locator('#contactTable .contact-row').filter({ hasText: 'Summit Auto Detail' });
 

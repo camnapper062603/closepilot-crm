@@ -1052,6 +1052,7 @@ function renderContacts() {
         <div class="contact-actions">
           <button class="secondary-button" data-contact-select="${lead.id}" type="button">View</button>
           <button class="secondary-button" data-contact-task="${lead.id}" type="button">Task</button>
+          <button class="secondary-button" data-contact-outcome="${lead.id}" data-outcome="${lead.stage === "won" ? "reopen" : "won"}" type="button">${lead.stage === "won" ? "Reopen" : "Won"}</button>
           <button class="secondary-button" data-contact-next="${lead.id}" type="button">Next stage</button>
           <button class="primary-button" data-contact-detail="${lead.id}" type="button">Details</button>
         </div>
@@ -1077,6 +1078,12 @@ function renderContacts() {
   contactTable.querySelectorAll("[data-contact-task]").forEach((button) => {
     button.addEventListener("click", async () => {
       await createFollowUpFromLead(button.dataset.contactTask);
+    });
+  });
+
+  contactTable.querySelectorAll("[data-contact-outcome]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      await updateLeadOutcome(button.dataset.contactOutcome, button.dataset.outcome);
     });
   });
 
@@ -1373,6 +1380,7 @@ async function updateLeadOutcome(leadId, outcome) {
   if (!lead) return;
 
   const won = outcome === "won";
+  state.selectedLeadId = lead.id;
   const updatedLead = {
     ...lead,
     stage: won ? "won" : "proposal",
@@ -1395,7 +1403,6 @@ async function updateLeadOutcome(leadId, outcome) {
     done: false,
     due: "today",
   });
-  state.selectedLeadId = lead.id;
   await reloadState();
 }
 
