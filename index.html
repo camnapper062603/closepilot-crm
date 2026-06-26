@@ -241,16 +241,19 @@
                 <button data-task-filter="all" type="button">All <span id="taskCountAll">0</span></button>
               </div>
             </div>
-            <form class="task-form" id="taskForm">
-              <input id="taskInput" type="text" placeholder="Add a follow-up or reminder" required />
-              <select id="taskDue" aria-label="Task due date">
-                <option value="today">Today</option>
-                <option value="tomorrow">Tomorrow</option>
-                <option value="in 3 days">In 3 days</option>
-                <option value="next week">Next week</option>
-              </select>
-              <button type="submit">Add</button>
-            </form>
+            <div class="task-controls">
+              <form class="task-form" id="taskForm">
+                <input id="taskInput" type="text" placeholder="Add a follow-up or reminder" required />
+                <select id="taskDue" aria-label="Task due date">
+                  <option value="today">Today</option>
+                  <option value="tomorrow">Tomorrow</option>
+                  <option value="in 3 days">In 3 days</option>
+                  <option value="next week">Next week</option>
+                </select>
+                <button type="submit">Add</button>
+              </form>
+              <button class="secondary-button" id="clearDoneTasks" type="button">Clear done</button>
+            </div>
             <div class="task-list" id="taskList"></div>
           </section>
         </section>

@@ -939,11 +939,18 @@ button.insight-card:hover {
   white-space: nowrap;
 }
 
+.task-controls {
+  align-items: start;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  margin-bottom: 12px;
+}
+
 .task-form {
   display: grid;
   gap: 10px;
   grid-template-columns: minmax(0, 1fr) minmax(130px, auto) auto;
-  margin-bottom: 12px;
 }
 
 .task-form input,
@@ -1319,6 +1326,7 @@ button.insight-card:hover {
   .activity-feed-item,
   .detail-grid,
   .import-preview-list article,
+  .task-controls,
   .task-form,
   .task-edit-form,
   .auth-actions {

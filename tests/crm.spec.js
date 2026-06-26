@@ -248,6 +248,19 @@ test('filters tasks by today, upcoming, done, and all', async ({ page }) => {
   await expect(page.locator('#taskList')).toContainText('Send onboarding checklist to Stone & Finch');
 });
 
+test('clears completed tasks', async ({ page }) => {
+  const taskFilters = page.getByRole('group', { name: 'Task filter' });
+
+  await taskFilters.getByRole('button', { name: /Done/ }).click();
+  await expect(page.locator('#taskList')).toContainText('Send onboarding checklist to Stone & Finch');
+
+  await page.getByRole('button', { name: 'Clear done' }).click();
+
+  await expect(page.locator('#taskList')).toContainText('No tasks in this view.');
+  await expect(taskFilters.getByRole('button', { name: /Done/ })).toContainText('0');
+  await expect(page.getByRole('button', { name: 'Clear done' })).toBeDisabled();
+});
+
 test('creates manual tasks with custom due dates', async ({ page }) => {
   await page.getByPlaceholder('Add a follow-up or reminder').fill('Prepare quarterly pipeline review');
   await page.getByLabel('Task due date').selectOption('next week');

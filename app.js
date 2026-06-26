@@ -143,6 +143,7 @@ const contactTable = document.querySelector("#contactTable");
 const contactSummary = document.querySelector("#contactSummary");
 const contactSortInput = document.querySelector("#contactSort");
 const taskList = document.querySelector("#taskList");
+const clearDoneTasksButton = document.querySelector("#clearDoneTasks");
 const automationList = document.querySelector("#automationList");
 const activityFeed = document.querySelector("#activityFeed");
 const searchInput = document.querySelector("#searchInput");
@@ -201,6 +202,8 @@ taskForm.addEventListener("submit", async (event) => {
   dueInput.value = "today";
   await reloadState();
 });
+
+clearDoneTasksButton.addEventListener("click", clearDoneTasks);
 
 searchInput.addEventListener("input", render);
 
@@ -1192,6 +1195,14 @@ function renderTasks() {
   });
 }
 
+async function clearDoneTasks() {
+  const doneTasks = state.tasks.filter((task) => task.done);
+  if (!doneTasks.length) return;
+
+  await Promise.all(doneTasks.map((task) => store.deleteTask(task.id)));
+  await reloadState();
+}
+
 function renderTaskEditForm(taskId) {
   const task = state.tasks.find((item) => item.id === taskId);
   const taskRow = taskList.querySelector(`[data-task-row="${taskId}"]`);
@@ -1242,14 +1253,16 @@ function filteredTasks() {
 
 function renderTaskFilterCounts() {
   const openTasks = state.tasks.filter((task) => !task.done);
+  const doneTasks = state.tasks.filter((task) => task.done);
   document.querySelector("#taskCountToday").textContent = openTasks.filter(
     (task) => task.due === "today",
   ).length;
   document.querySelector("#taskCountUpcoming").textContent = openTasks.filter(
     (task) => task.due !== "today",
   ).length;
-  document.querySelector("#taskCountDone").textContent = state.tasks.filter((task) => task.done).length;
+  document.querySelector("#taskCountDone").textContent = doneTasks.length;
   document.querySelector("#taskCountAll").textContent = state.tasks.length;
+  clearDoneTasksButton.disabled = doneTasks.length === 0;
 }
 
 async function seedStarterWorkspace() {
