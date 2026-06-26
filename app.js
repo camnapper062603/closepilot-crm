@@ -1051,6 +1051,7 @@ function renderContacts() {
         <p>${formatter.format(lead.value)}</p>
         <div class="contact-actions">
           <button class="secondary-button" data-contact-select="${lead.id}" type="button">View</button>
+          <button class="secondary-button" data-contact-task="${lead.id}" type="button">Task</button>
           <button class="secondary-button" data-contact-next="${lead.id}" type="button">Next stage</button>
           <button class="primary-button" data-contact-detail="${lead.id}" type="button">Details</button>
         </div>
@@ -1070,6 +1071,12 @@ function renderContacts() {
   contactTable.querySelectorAll("[data-contact-detail]").forEach((button) => {
     button.addEventListener("click", () => {
       openLeadDetailModal(button.dataset.contactDetail);
+    });
+  });
+
+  contactTable.querySelectorAll("[data-contact-task]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      await createFollowUpFromLead(button.dataset.contactTask);
     });
   });
 
@@ -1302,6 +1309,7 @@ async function createFollowUpFromLead(leadId) {
   const lead = state.leads.find((item) => item.id === leadId);
   if (!lead) return;
 
+  state.selectedLeadId = leadId;
   await store.createTask({
     text: `${lead.nextAction} (${lead.company})`,
     done: false,

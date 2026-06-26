@@ -404,6 +404,18 @@ test('selects and opens leads from the contact list', async ({ page }) => {
   await expect(page.getByRole('dialog', { name: 'Harbor Fitness' })).toContainText('Review proposal pricing');
 });
 
+test('creates follow-up tasks from the contact list', async ({ page }) => {
+  const harborRow = page.locator('#contactTable .contact-row').filter({ hasText: 'Harbor Fitness' });
+
+  await harborRow.getByRole('button', { name: 'Task' }).click();
+
+  await expect(page.locator('#taskList')).toContainText(
+    'Review proposal pricing and implementation timeline. (Harbor Fitness)',
+  );
+  await expect(page.locator('#leadBrief')).toContainText('Nia Brooks');
+  await expect(page.locator('#leadBrief')).toContainText('Follow-up task added.');
+});
+
 test('moves leads forward from the contact list', async ({ page }) => {
   const summitRow = page.locator('#contactTable .contact-row').filter({ hasText: 'Summit Auto Detail' });
 
