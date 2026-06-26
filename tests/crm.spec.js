@@ -26,9 +26,29 @@ test('shows actionable pipeline insights', async ({ page }) => {
 });
 
 test('shows a global activity feed and opens related leads', async ({ page }) => {
+  const activityFilters = page.getByRole('group', { name: 'Activity filter' });
+
   await expect(page.locator('#activityFeed')).toContainText('Northstar Roofing');
   await expect(page.locator('#activityFeed')).toContainText('Stage set to Qualified.');
 
+  await page.locator('#leadBrief').getByRole('button', { name: 'Add follow-up' }).click();
+  await activityFilters.getByRole('button', { name: 'Tasks' }).click();
+  await expect(page.locator('#activityFeed')).toContainText('Follow-up task added.');
+  await expect(page.locator('#activityFeed')).not.toContainText('Stage set to Qualified.');
+
+  await page.locator('#leadBrief').getByRole('button', { name: 'Open details' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Northstar Roofing' });
+  await dialog.getByPlaceholder('Log a call, objection, or update').fill('Customer asked for Tuesday scheduling.');
+  await dialog.getByRole('button', { name: 'Add note' }).click();
+  await page.getByRole('button', { name: 'Close' }).click();
+  await activityFilters.getByRole('button', { name: 'Notes' }).click();
+  await expect(page.locator('#activityFeed')).toContainText('Note: Customer asked for Tuesday scheduling.');
+  await expect(page.locator('#activityFeed')).not.toContainText('Follow-up task added.');
+
+  await activityFilters.getByRole('button', { name: 'Deals' }).click();
+  await expect(page.locator('#activityFeed')).toContainText('No activity yet.');
+
+  await activityFilters.getByRole('button', { name: 'All' }).click();
   await page.locator('#pipelineBoard').getByText('Harbor Fitness').click();
   await expect(page.locator('#leadBrief')).toContainText('Nia Brooks');
 

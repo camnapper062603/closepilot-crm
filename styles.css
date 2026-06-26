@@ -887,6 +887,11 @@ button.insight-card:hover {
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
+.activity-filters {
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
 .activity-feed-item div {
   display: grid;
   gap: 3px;

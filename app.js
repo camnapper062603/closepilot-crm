@@ -121,6 +121,7 @@ let pipelineView = "board";
 let pendingImport = null;
 let taskFilter = "today";
 let taskSort = "recent";
+let activityFilter = "all";
 let contactFilter = "all";
 let contactSort = "recent";
 
@@ -246,6 +247,13 @@ document.querySelectorAll("[data-task-filter]").forEach((button) => {
   button.addEventListener("click", () => {
     taskFilter = button.dataset.taskFilter;
     renderTasks();
+  });
+});
+
+document.querySelectorAll("[data-activity-filter]").forEach((button) => {
+  button.addEventListener("click", () => {
+    activityFilter = button.dataset.activityFilter;
+    renderActivityFeed();
   });
 });
 
@@ -1009,9 +1017,14 @@ function renderLeadActivities(leadId) {
 
 function renderActivityFeed() {
   const activities = (state.activities || [])
+    .filter((activity) => activityFilter === "all" || activity.type === activityFilter)
     .slice()
     .sort((left, right) => activityTime(right) - activityTime(left))
     .slice(0, 8);
+
+  document.querySelectorAll("[data-activity-filter]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.activityFilter === activityFilter);
+  });
 
   if (!activities.length) {
     activityFeed.innerHTML = "<p class=\"empty-state\">No activity yet.</p>";
