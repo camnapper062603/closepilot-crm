@@ -423,15 +423,9 @@ async function reloadState() {
 }
 
 function filteredLeads() {
-  const query = searchInput.value.trim().toLowerCase();
   return state.leads.filter((lead) => {
     const matchesStage = contactFilter === "all" || lead.stage === contactFilter;
-    const matchesSearch =
-      !query ||
-      [lead.name, lead.company, lead.notes, lead.source].some((field) =>
-        field.toLowerCase().includes(query),
-      );
-    return matchesStage && matchesSearch;
+    return matchesStage && contactSearchMatches(lead);
   });
 }
 
@@ -1038,6 +1032,7 @@ function renderActivityFeed() {
 function renderContacts() {
   const filtered = filteredLeads();
   const leads = sortedContactLeads(filtered);
+  renderContactFilterCounts();
   document.querySelectorAll("[data-contact-filter]").forEach((button) => {
     button.classList.toggle("active", button.dataset.contactFilter === contactFilter);
   });
@@ -1083,6 +1078,33 @@ function renderContacts() {
       await moveLead(button.dataset.contactNext, 1);
     });
   });
+}
+
+function contactSearchMatches(lead) {
+  const query = searchInput.value.trim().toLowerCase();
+  return (
+    !query ||
+    [lead.name, lead.company, lead.notes, lead.source].some((field) =>
+      field.toLowerCase().includes(query),
+    )
+  );
+}
+
+function renderContactFilterCounts() {
+  const searchableLeads = state.leads.filter(contactSearchMatches);
+  document.querySelector("#contactCountAll").textContent = searchableLeads.length;
+  document.querySelector("#contactCountNew").textContent = searchableLeads.filter(
+    (lead) => lead.stage === "new",
+  ).length;
+  document.querySelector("#contactCountQualified").textContent = searchableLeads.filter(
+    (lead) => lead.stage === "qualified",
+  ).length;
+  document.querySelector("#contactCountProposal").textContent = searchableLeads.filter(
+    (lead) => lead.stage === "proposal",
+  ).length;
+  document.querySelector("#contactCountWon").textContent = searchableLeads.filter(
+    (lead) => lead.stage === "won",
+  ).length;
 }
 
 function renderContactSummary(leads) {

@@ -529,13 +529,15 @@ button.insight-card:hover {
   font-size: 1rem;
 }
 
-.task-filters button {
+.task-filters button,
+.contact-filters button {
   align-items: center;
   display: inline-flex;
   gap: 6px;
 }
 
-.task-filters span {
+.task-filters span,
+.contact-filters span {
   background: #d9f1ed;
   border-radius: 999px;
   color: var(--teal-dark);
