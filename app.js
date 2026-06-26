@@ -128,6 +128,7 @@ const formatter = new Intl.NumberFormat("en-US", {
 });
 
 const board = document.querySelector("#pipelineBoard");
+const insightList = document.querySelector("#insightList");
 const leadBrief = document.querySelector("#leadBrief");
 const contactTable = document.querySelector("#contactTable");
 const taskList = document.querySelector("#taskList");
@@ -408,6 +409,7 @@ function render() {
   renderWorkspaceIdentity();
   renderMetrics();
   renderOnboarding();
+  renderInsights();
   renderPipeline();
   renderLeadBrief();
   renderAutomations();
@@ -444,6 +446,91 @@ function renderMetrics() {
   document.querySelector("#hotLeadCount").textContent = hotLeads;
   document.querySelector("#automationSaved").textContent = `${saved}h`;
   document.querySelector("#dueToday").textContent = dueToday;
+}
+
+function renderInsights() {
+  if (!state.leads.length) {
+    insightList.innerHTML = "<p class=\"empty-state\">Add leads to unlock pipeline insights.</p>";
+    return;
+  }
+
+  const sourceInsight = sourcePerformanceInsight();
+  const hotLead = [...state.leads].sort((left, right) => right.score - left.score)[0];
+  const atRiskLead = [...state.leads]
+    .filter((lead) => lead.stage !== "won")
+    .sort((left, right) => left.score - right.score || right.value - left.value)[0];
+  const weighted = state.leads.reduce((sum, lead) => sum + weightedLeadValue(lead), 0);
+  const total = state.leads.reduce((sum, lead) => sum + lead.value, 0);
+  const gap = Math.max(0, total - weighted);
+
+  insightList.innerHTML = `
+    ${renderInsightCard({
+      eyebrow: "Best source",
+      title: sourceInsight.source,
+      value: formatter.format(sourceInsight.value),
+      detail: `${sourceInsight.count} ${sourceInsight.count === 1 ? "deal" : "deals"} in pipeline`,
+      leadId: sourceInsight.lead?.id,
+    })}
+    ${renderInsightCard({
+      eyebrow: "Hot focus",
+      title: hotLead.company,
+      value: `${hotLead.score}/100`,
+      detail: `${stageLabel(hotLead.stage)} - ${formatter.format(hotLead.value)}`,
+      leadId: hotLead.id,
+    })}
+    ${renderInsightCard({
+      eyebrow: "Needs attention",
+      title: atRiskLead.company,
+      value: `${atRiskLead.score}/100`,
+      detail: atRiskLead.nextAction,
+      leadId: atRiskLead.id,
+    })}
+    ${renderInsightCard({
+      eyebrow: "Forecast gap",
+      title: formatter.format(gap),
+      value: `${total ? Math.round((weighted / total) * 100) : 0}% weighted`,
+      detail: "Unweighted revenue still needs conversion work",
+    })}
+  `;
+
+  insightList.querySelectorAll("[data-insight-lead]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.selectedLeadId = button.dataset.insightLead;
+      render();
+    });
+  });
+}
+
+function renderInsightCard(insight) {
+  const content = `
+    <span>${escapeHtml(insight.eyebrow)}</span>
+    <strong>${escapeHtml(insight.title)}</strong>
+    <b>${escapeHtml(insight.value)}</b>
+    <p>${escapeHtml(insight.detail)}</p>
+  `;
+
+  if (!insight.leadId) {
+    return `<article class="insight-card">${content}</article>`;
+  }
+
+  return `
+    <button class="insight-card" data-insight-lead="${insight.leadId}" type="button">
+      ${content}
+    </button>
+  `;
+}
+
+function sourcePerformanceInsight() {
+  const sourceMap = new Map();
+  state.leads.forEach((lead) => {
+    const current = sourceMap.get(lead.source) || { source: lead.source, value: 0, count: 0, lead: lead };
+    current.value += lead.value;
+    current.count += 1;
+    if (lead.value > current.lead.value) current.lead = lead;
+    sourceMap.set(lead.source, current);
+  });
+
+  return [...sourceMap.values()].sort((left, right) => right.value - left.value || right.count - left.count)[0];
 }
 
 function renderPipeline() {

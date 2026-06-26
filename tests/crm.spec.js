@@ -14,6 +14,17 @@ test('renders the CRM dashboard MVP', async ({ page }) => {
   await expect(page.getByText('Create next-step tasks')).toBeVisible();
 });
 
+test('shows actionable pipeline insights', async ({ page }) => {
+  await expect(page.locator('#insightsPanel')).toContainText('Pipeline insights');
+  await expect(page.locator('#insightsPanel')).toContainText('LinkedIn');
+  await expect(page.locator('#insightsPanel')).toContainText('$12,600');
+  await expect(page.locator('#insightsPanel')).toContainText('Northstar Roofing');
+  await expect(page.locator('#insightsPanel')).toContainText('Summit Auto Detail');
+
+  await page.locator('#insightsPanel').getByRole('button', { name: /Summit Auto Detail/ }).click();
+  await expect(page.locator('#leadBrief')).toContainText('Eli Ramirez');
+});
+
 test('sets up a new workspace with starter data', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem(

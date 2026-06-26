@@ -366,6 +366,56 @@ h2 {
   grid-template-columns: minmax(0, 1fr) 340px;
 }
 
+.insights-panel {
+  display: grid;
+  gap: 4px;
+}
+
+.insight-list {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.insight-card {
+  background: #f8faf8;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--blue);
+  border-radius: 8px;
+  color: var(--ink);
+  display: grid;
+  gap: 5px;
+  min-height: 132px;
+  padding: 12px;
+  text-align: left;
+}
+
+button.insight-card:hover {
+  background: #eef4f1;
+}
+
+.insight-card span {
+  color: var(--teal);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.insight-card strong {
+  font-size: 1rem;
+}
+
+.insight-card b {
+  font-size: 1.2rem;
+}
+
+.insight-card p {
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.3;
+  margin: 0;
+}
+
 .lower-grid {
   display: grid;
   gap: 22px;
@@ -1055,6 +1105,10 @@ h2 {
     grid-template-columns: 1fr;
   }
 
+  .insight-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .right-rail {
     grid-template-columns: 1fr 1fr;
   }
@@ -1156,6 +1210,10 @@ h2 {
 
   .pipeline-board {
     grid-template-columns: repeat(4, 82vw);
+  }
+
+  .insight-list {
+    grid-template-columns: 1fr;
   }
 
   h1 {
