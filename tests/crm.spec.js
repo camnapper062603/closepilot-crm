@@ -277,6 +277,18 @@ test('searches tasks by text', async ({ page }) => {
   await expect(page.locator('#taskSummary')).toContainText('1');
 });
 
+test('completes all visible tasks', async ({ page }) => {
+  const taskFilters = page.getByRole('group', { name: 'Task filter' });
+
+  await expect(page.locator('#taskList')).toContainText('Call Maya before 3 PM');
+  await page.getByRole('button', { name: 'Complete visible' }).click();
+
+  await expect(page.locator('#taskList')).toContainText('No tasks in this view.');
+  await expect(taskFilters.getByRole('button', { name: /Today/ })).toContainText('0');
+  await expect(taskFilters.getByRole('button', { name: /Done/ })).toContainText('3');
+  await expect(page.getByRole('button', { name: 'Complete visible' })).toBeDisabled();
+});
+
 test('creates manual tasks with custom due dates', async ({ page }) => {
   await page.getByPlaceholder('Add a follow-up or reminder').fill('Prepare quarterly pipeline review');
   await page.getByLabel('Task due date').selectOption('next week');

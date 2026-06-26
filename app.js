@@ -145,6 +145,7 @@ const contactSortInput = document.querySelector("#contactSort");
 const taskList = document.querySelector("#taskList");
 const taskSummary = document.querySelector("#taskSummary");
 const taskSearchInput = document.querySelector("#taskSearch");
+const completeVisibleTasksButton = document.querySelector("#completeVisibleTasks");
 const clearDoneTasksButton = document.querySelector("#clearDoneTasks");
 const automationList = document.querySelector("#automationList");
 const activityFeed = document.querySelector("#activityFeed");
@@ -205,6 +206,7 @@ taskForm.addEventListener("submit", async (event) => {
   await reloadState();
 });
 
+completeVisibleTasksButton.addEventListener("click", completeVisibleTasks);
 clearDoneTasksButton.addEventListener("click", clearDoneTasks);
 taskSearchInput.addEventListener("input", renderTasks);
 
@@ -1155,6 +1157,7 @@ function renderContactSummary(leads) {
 function renderTasks() {
   renderTaskFilterCounts();
   const tasks = filteredTasks();
+  completeVisibleTasksButton.disabled = !tasks.some((task) => !task.done);
   taskList.innerHTML = tasks.length
     ? tasks
     .map(
@@ -1203,6 +1206,14 @@ async function clearDoneTasks() {
   if (!doneTasks.length) return;
 
   await Promise.all(doneTasks.map((task) => store.deleteTask(task.id)));
+  await reloadState();
+}
+
+async function completeVisibleTasks() {
+  const openTasks = filteredTasks().filter((task) => !task.done);
+  if (!openTasks.length) return;
+
+  await Promise.all(openTasks.map((task) => store.updateTask({ ...task, done: true })));
   await reloadState();
 }
 
