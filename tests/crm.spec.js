@@ -212,6 +212,20 @@ test('creates manual tasks with custom due dates', async ({ page }) => {
   await expect(page.locator('#taskList')).toContainText('next week');
 });
 
+test('edits task text and due date inline', async ({ page }) => {
+  const taskRow = page.locator('#taskList .task-item').filter({ hasText: 'Call Maya before 3 PM' });
+
+  await taskRow.getByRole('button', { name: 'Edit' }).click();
+  await page.getByLabel('Task text').fill('Call Maya with install calendar');
+  await page.getByLabel('Edit task due date').selectOption('tomorrow');
+  await page.getByRole('button', { name: 'Save' }).click();
+
+  await expect(page.locator('#taskList')).not.toContainText('Call Maya with install calendar');
+  await page.getByRole('button', { name: /Upcoming/ }).click();
+  await expect(page.locator('#taskList')).toContainText('Call Maya with install calendar');
+  await expect(page.locator('#taskList')).toContainText('tomorrow');
+});
+
 test('starts an automated follow-up sequence for the selected lead', async ({ page }) => {
   await expect(page.locator('#leadBrief')).toContainText('Suggested sequence');
   await page.locator('#leadBrief').getByRole('button', { name: 'Start sequence' }).click();

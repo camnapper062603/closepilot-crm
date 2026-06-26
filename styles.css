@@ -855,7 +855,9 @@ button.insight-card:hover {
 }
 
 .task-form input,
-.task-form select {
+.task-form select,
+.task-edit-form input,
+.task-edit-form select {
   border: 1px solid var(--line);
   border-radius: 8px;
   color: var(--ink);
@@ -867,9 +869,27 @@ button.insight-card:hover {
   grid-template-columns: auto 1fr auto;
 }
 
-.task-item input {
+.task-item > input {
   height: 18px;
   width: 18px;
+}
+
+.task-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.task-edit-form {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) minmax(130px, auto) auto auto;
+  width: 100%;
+}
+
+.task-item.editing {
+  grid-template-columns: 1fr;
 }
 
 .task-item.done p {
@@ -1201,6 +1221,7 @@ button.insight-card:hover {
   .detail-grid,
   .import-preview-list article,
   .task-form,
+  .task-edit-form,
   .auth-actions {
     grid-template-columns: 1fr;
   }

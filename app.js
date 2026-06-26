@@ -127,6 +127,13 @@ const formatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 0,
 });
 
+const taskDueChoices = [
+  { value: "today", label: "Today" },
+  { value: "tomorrow", label: "Tomorrow" },
+  { value: "in 3 days", label: "In 3 days" },
+  { value: "next week", label: "Next week" },
+];
+
 const board = document.querySelector("#pipelineBoard");
 const insightList = document.querySelector("#insightList");
 const leadBrief = document.querySelector("#leadBrief");
@@ -984,10 +991,13 @@ function renderTasks() {
     ? tasks
     .map(
       (task) => `
-      <article class="task-item ${task.done ? "done" : ""}">
+      <article class="task-item ${task.done ? "done" : ""}" data-task-row="${task.id}">
         <input data-task-done="${task.id}" type="checkbox" ${task.done ? "checked" : ""} aria-label="Mark task complete" />
         <p>${escapeHtml(task.text)}<span>${task.due}</span></p>
-        <button data-delete-task="${task.id}" type="button">Delete</button>
+        <div class="task-actions">
+          <button data-edit-task="${task.id}" type="button">Edit</button>
+          <button data-delete-task="${task.id}" type="button">Delete</button>
+        </div>
       </article>
     `,
     )
@@ -1012,6 +1022,53 @@ function renderTasks() {
       await reloadState();
     });
   });
+
+  taskList.querySelectorAll("[data-edit-task]").forEach((button) => {
+    button.addEventListener("click", () => {
+      renderTaskEditForm(button.dataset.editTask);
+    });
+  });
+}
+
+function renderTaskEditForm(taskId) {
+  const task = state.tasks.find((item) => item.id === taskId);
+  const taskRow = taskList.querySelector(`[data-task-row="${taskId}"]`);
+  if (!task || !taskRow) return;
+
+  taskRow.className = "task-item editing";
+  taskRow.innerHTML = `
+    <form class="task-edit-form" data-task-edit-form="${task.id}">
+      <input data-task-edit-text="${task.id}" type="text" value="${escapeHtml(task.text)}" aria-label="Task text" required />
+      <select data-task-edit-due="${task.id}" aria-label="Edit task due date">
+        ${renderTaskDueOptions(task.due)}
+      </select>
+      <button class="primary-button" type="submit">Save</button>
+      <button class="secondary-button" data-cancel-task-edit="${task.id}" type="button">Cancel</button>
+    </form>
+  `;
+
+  const editForm = taskRow.querySelector("[data-task-edit-form]");
+  editForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const text = taskRow.querySelector("[data-task-edit-text]").value.trim();
+    const due = taskRow.querySelector("[data-task-edit-due]").value;
+    if (!text) return;
+
+    await store.updateTask({ ...task, text, due });
+    await reloadState();
+  });
+
+  taskRow.querySelector("[data-cancel-task-edit]").addEventListener("click", renderTasks);
+}
+
+function renderTaskDueOptions(selectedDue) {
+  return taskDueChoices
+    .map(
+      (choice) => `
+        <option value="${choice.value}" ${choice.value === selectedDue ? "selected" : ""}>${choice.label}</option>
+      `,
+    )
+    .join("");
 }
 
 function filteredTasks() {
