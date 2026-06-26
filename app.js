@@ -491,9 +491,11 @@ function renderLeadBrief() {
     </div>
     <div class="brief-actions">
       <button class="primary-button" data-follow-up-lead="${lead.id}" type="button">Add follow-up</button>
+      <button class="secondary-button" data-sequence-lead="${lead.id}" type="button">Start sequence</button>
       <button class="secondary-button" data-edit-selected-lead="${lead.id}" type="button">Edit lead</button>
       <button class="danger-button" data-delete-selected-lead="${lead.id}" type="button">Delete lead</button>
     </div>
+    ${renderSequencePreview(lead)}
     <p>${escapeHtml(lead.notes)}</p>
     <strong>${escapeHtml(lead.nextAction)}</strong>
     <div class="activity-timeline">
@@ -506,6 +508,10 @@ function renderLeadBrief() {
     await createFollowUpFromLead(lead.id);
   });
 
+  leadBrief.querySelector("[data-sequence-lead]")?.addEventListener("click", async () => {
+    await startFollowUpSequence(lead.id);
+  });
+
   leadBrief.querySelector("[data-edit-selected-lead]")?.addEventListener("click", () => {
     const selectedLead = state.leads.find((item) => item.id === lead.id);
     openLeadModal(selectedLead);
@@ -514,6 +520,25 @@ function renderLeadBrief() {
   leadBrief.querySelector("[data-delete-selected-lead]")?.addEventListener("click", async () => {
     await deleteLead(lead.id);
   });
+}
+
+function renderSequencePreview(lead) {
+  const steps = sequenceStepsForLead(lead);
+  return `
+    <div class="sequence-preview">
+      <p class="eyebrow">Suggested sequence</p>
+      ${steps
+        .map(
+          (step) => `
+          <article>
+            <span>${escapeHtml(step.due)}</span>
+            <strong>${escapeHtml(step.text)}</strong>
+          </article>
+        `,
+        )
+        .join("")}
+    </div>
+  `;
 }
 
 function renderAutomations() {
@@ -648,6 +673,28 @@ async function createFollowUpFromLead(leadId) {
     leadId,
     type: "task",
     message: "Follow-up task added.",
+  });
+  await reloadState();
+}
+
+async function startFollowUpSequence(leadId) {
+  const lead = state.leads.find((item) => item.id === leadId);
+  if (!lead) return;
+
+  const steps = sequenceStepsForLead(lead);
+  await Promise.all(
+    steps.map((step) =>
+      store.createTask({
+        text: step.text,
+        done: false,
+        due: step.due,
+      }),
+    ),
+  );
+  await store.createActivity({
+    leadId,
+    type: "sequence",
+    message: `${steps.length}-step follow-up sequence started.`,
   });
   await reloadState();
 }
@@ -1159,6 +1206,36 @@ function nextActionForStage(stageId) {
     won: "Schedule onboarding and collect setup details.",
   };
   return actions[stageId] || "Choose the next best follow-up.";
+}
+
+function sequenceStepsForLead(lead) {
+  const plans = {
+    new: [
+      ["today", `Call ${lead.name} to qualify budget, fit, and timing.`],
+      ["tomorrow", `Send ${lead.company} a quick value recap and booking link.`],
+      ["in 3 days", `Check whether ${lead.name} is still evaluating a CRM workflow.`],
+    ],
+    qualified: [
+      ["today", lead.nextAction],
+      ["tomorrow", `Send ${lead.company} a short proposal recap.`],
+      ["in 3 days", `Ask ${lead.name} for timeline, blockers, and decision owner.`],
+    ],
+    proposal: [
+      ["today", `Follow up on proposal questions with ${lead.name}.`],
+      ["tomorrow", `Send ${lead.company} a close-plan checklist.`],
+      ["in 2 days", `Ask ${lead.name} for a yes/no decision date.`],
+    ],
+    won: [
+      ["today", `Send onboarding checklist to ${lead.company}.`],
+      ["tomorrow", `Schedule kickoff with ${lead.name}.`],
+      ["in 7 days", `Ask ${lead.name} for expansion or referral opportunities.`],
+    ],
+  };
+
+  return (plans[lead.stage] || plans.new).map(([due, text]) => ({
+    due,
+    text: text.includes(lead.company) ? text : `${text} (${lead.company})`,
+  }));
 }
 
 function calculateLeadScore(lead) {

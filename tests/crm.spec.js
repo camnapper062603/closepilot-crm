@@ -71,6 +71,22 @@ test('creates a follow-up task from the selected lead', async ({ page }) => {
   await expect(page.locator('#leadBrief')).toContainText('Follow-up task added.');
 });
 
+test('starts an automated follow-up sequence for the selected lead', async ({ page }) => {
+  await expect(page.locator('#leadBrief')).toContainText('Suggested sequence');
+  await page.locator('#leadBrief').getByRole('button', { name: 'Start sequence' }).click();
+
+  await expect(page.locator('#taskList')).toContainText(
+    'Send workflow proposal and ask for install calendar. (Northstar Roofing)',
+  );
+  await expect(page.locator('#taskList')).toContainText(
+    'Send Northstar Roofing a short proposal recap.',
+  );
+  await expect(page.locator('#taskList')).toContainText(
+    'Ask Maya Johnson for timeline, blockers, and decision owner. (Northstar Roofing)',
+  );
+  await expect(page.locator('#leadBrief')).toContainText('3-step follow-up sequence started.');
+});
+
 test('imports leads from CSV', async ({ page }) => {
   const csv = [
     'name,company,stage,value,score,source,nextAction,notes',
