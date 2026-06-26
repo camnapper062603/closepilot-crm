@@ -300,3 +300,14 @@ test('selects and opens leads from the contact list', async ({ page }) => {
   await expect(page.getByRole('dialog', { name: 'Harbor Fitness' })).toBeVisible();
   await expect(page.getByRole('dialog', { name: 'Harbor Fitness' })).toContainText('Review proposal pricing');
 });
+
+test('moves leads forward from the contact list', async ({ page }) => {
+  const summitRow = page.locator('#contactTable .contact-row').filter({ hasText: 'Summit Auto Detail' });
+
+  await summitRow.getByRole('button', { name: 'Next stage' }).click();
+
+  await expect(page.locator('#leadBrief')).toContainText('Eli Ramirez');
+  await expect(page.locator('#leadBrief')).toContainText('Qualified');
+  await expect(page.locator('#leadBrief')).toContainText('Stage changed to Qualified.');
+  await expect(page.locator('#taskList')).toContainText('Follow up with Eli Ramirez after moving to Qualified');
+});

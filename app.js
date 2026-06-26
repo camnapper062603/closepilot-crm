@@ -684,6 +684,7 @@ async function moveLead(leadId, direction) {
     score: Math.min(99, Math.max(0, lead.score + (direction > 0 ? 4 : -2))),
   };
 
+  state.selectedLeadId = lead.id;
   await store.updateLead(updatedLead);
   await store.createActivity({
     leadId,
@@ -691,7 +692,6 @@ async function moveLead(leadId, direction) {
     message: `Stage changed to ${nextStage.label}.`,
   });
   await addAutomatedTask(`Follow up with ${lead.name} after moving to ${nextStage.label}`);
-  state.selectedLeadId = lead.id;
   await reloadState();
 }
 
@@ -949,6 +949,7 @@ function renderContacts() {
         <p>${formatter.format(lead.value)}</p>
         <div class="contact-actions">
           <button class="secondary-button" data-contact-select="${lead.id}" type="button">View</button>
+          <button class="secondary-button" data-contact-next="${lead.id}" type="button">Next stage</button>
           <button class="primary-button" data-contact-detail="${lead.id}" type="button">Details</button>
         </div>
       </article>
@@ -966,6 +967,12 @@ function renderContacts() {
   contactTable.querySelectorAll("[data-contact-detail]").forEach((button) => {
     button.addEventListener("click", () => {
       openLeadDetailModal(button.dataset.contactDetail);
+    });
+  });
+
+  contactTable.querySelectorAll("[data-contact-next]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      await moveLead(button.dataset.contactNext, 1);
     });
   });
 }

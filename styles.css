@@ -844,6 +844,7 @@ button.insight-card:hover {
 .contact-actions button {
   min-height: 34px;
   padding: 0 10px;
+  white-space: nowrap;
 }
 
 .task-form {
