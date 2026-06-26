@@ -144,6 +144,9 @@ const signOutButton = document.querySelector("#signOutButton");
 const onboardingPanel = document.querySelector("#onboardingPanel");
 const seedWorkspaceButton = document.querySelector("#seedWorkspaceButton");
 const dismissOnboardingButton = document.querySelector("#dismissOnboardingButton");
+const setupBusinessName = document.querySelector("#setupBusinessName");
+const setupWorkspaceType = document.querySelector("#setupWorkspaceType");
+const setupSalesGoal = document.querySelector("#setupSalesGoal");
 const exportLeadsButton = document.querySelector("#exportLeadsButton");
 const importLeadsButton = document.querySelector("#importLeadsButton");
 const importLeadsInput = document.querySelector("#importLeadsInput");
@@ -390,6 +393,7 @@ function filteredLeads() {
 }
 
 function render() {
+  renderWorkspaceIdentity();
   renderMetrics();
   renderOnboarding();
   renderPipeline();
@@ -402,6 +406,18 @@ function render() {
 function renderOnboarding() {
   const dismissed = localStorage.getItem(onboardingDismissalKey()) === "true";
   onboardingPanel.hidden = dismissed || state.leads.length > 0;
+  if (!onboardingPanel.hidden) {
+    const settings = workspaceSetupSettings();
+    setupBusinessName.value = settings.name;
+    setupWorkspaceType.value = settings.type;
+    setupSalesGoal.value = settings.goal;
+  }
+}
+
+function renderWorkspaceIdentity() {
+  const settings = workspaceSetupSettings();
+  document.querySelector("#workspaceNameLabel").textContent = settings.name;
+  document.querySelector("#workspaceModeLabel").textContent = `${settings.type} workspace - ${settings.goal}.`;
 }
 
 function renderMetrics() {
@@ -745,6 +761,7 @@ function renderTasks() {
 async function seedStarterWorkspace() {
   seedWorkspaceButton.disabled = true;
   seedWorkspaceButton.textContent = "Loading...";
+  await saveWorkspaceSetup();
   await store.seedStarterData();
   localStorage.removeItem(onboardingDismissalKey());
   await reloadState();
@@ -752,13 +769,47 @@ async function seedStarterWorkspace() {
   seedWorkspaceButton.textContent = "Load starter pipeline";
 }
 
-function dismissOnboarding() {
+async function dismissOnboarding() {
+  await saveWorkspaceSetup();
+  if (state.leads.length === 0) {
+    await store.clearWorkspaceData();
+    state.selectedLeadId = null;
+  }
   localStorage.setItem(onboardingDismissalKey(), "true");
-  renderOnboarding();
+  await reloadState();
 }
 
 function onboardingDismissalKey() {
   return currentUser ? `closepilot-onboarding-dismissed-${currentUser.id}` : "closepilot-onboarding-dismissed-demo";
+}
+
+function workspaceSetupKey() {
+  return currentUser ? `closepilot-workspace-setup-${currentUser.id}` : "closepilot-workspace-setup-demo";
+}
+
+function workspaceSetupSettings() {
+  const fallback = {
+    name: state.workspaceName || "Personal workspace",
+    type: "Personal",
+    goal: "Close more follow-ups",
+  };
+  const saved = localStorage.getItem(workspaceSetupKey());
+  if (!saved) return fallback;
+  try {
+    return { ...fallback, ...JSON.parse(saved) };
+  } catch {
+    return fallback;
+  }
+}
+
+async function saveWorkspaceSetup() {
+  const settings = {
+    name: setupBusinessName.value.trim() || "Personal workspace",
+    type: setupWorkspaceType.value,
+    goal: setupSalesGoal.value,
+  };
+  localStorage.setItem(workspaceSetupKey(), JSON.stringify(settings));
+  await store.updateWorkspaceSettings(settings);
 }
 
 async function addAutomatedTask(text) {
@@ -1070,6 +1121,18 @@ function createLocalStore() {
       this.save(state);
       return automation;
     },
+    async updateWorkspaceSettings(settings) {
+      state.workspaceName = settings.name;
+      this.save(state);
+      return settings;
+    },
+    async clearWorkspaceData() {
+      state.leads = [];
+      state.tasks = [];
+      state.activities = [];
+      state.selectedLeadId = null;
+      this.save(state);
+    },
     async seedStarterData() {
       state.leads = structuredClone(seedState.leads);
       state.tasks = structuredClone(seedState.tasks);
@@ -1274,6 +1337,28 @@ function createSupabaseStore(client, user) {
         .single();
       throwIf(error);
       return fromAutomationRow(data);
+    },
+    async updateWorkspaceSettings(settings) {
+      workspaceName = settings.name;
+      const { error } = await client
+        .from("workspaces")
+        .update({ name: settings.name })
+        .eq("id", workspaceId);
+      throwIf(error);
+      return settings;
+    },
+    async clearWorkspaceData() {
+      const [{ error: taskError }, { error: leadError }] = await Promise.all([
+        client.from("tasks").delete().eq("workspace_id", workspaceId),
+        client.from("leads").delete().eq("workspace_id", workspaceId),
+      ]);
+      throwIf(taskError);
+      throwIf(leadError);
+      const { error: activityError } = await client
+        .from("activities")
+        .delete()
+        .eq("workspace_id", workspaceId);
+      if (!isMissingActivitiesTable(activityError)) throwIf(activityError);
     },
     async seedStarterData() {
       const { count, error } = await client

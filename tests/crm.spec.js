@@ -14,6 +14,42 @@ test('renders the CRM dashboard MVP', async ({ page }) => {
   await expect(page.getByText('Create next-step tasks')).toBeVisible();
 });
 
+test('sets up a new workspace with starter data', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'closepilot-state',
+      JSON.stringify({
+        selectedLeadId: null,
+        workspaceName: 'Personal workspace',
+        leads: [],
+        tasks: [],
+        activities: [],
+        automations: [
+          {
+            id: 'auto-1',
+            key: 'next-step-tasks',
+            title: 'Create next-step tasks',
+            detail: 'Every lead gets a follow-up task when it changes stage.',
+            enabled: true,
+            savedHours: 4,
+          },
+        ],
+      }),
+    );
+  });
+  await page.goto('/?setup-workspace', { waitUntil: 'domcontentloaded' });
+
+  await expect(page.getByRole('heading', { name: 'Start your sales workspace' })).toBeVisible();
+  await page.getByLabel('Business name').fill('Cameron Consulting');
+  await page.getByLabel('Workspace type').selectOption('Team');
+  await page.getByLabel('Sales goal').selectOption('Forecast revenue');
+  await page.getByRole('button', { name: 'Load starter pipeline' }).click();
+
+  await expect(page.locator('#workspaceNameLabel')).toContainText('Cameron Consulting');
+  await expect(page.locator('#workspaceModeLabel')).toContainText('Team workspace - Forecast revenue.');
+  await expect(page.locator('#pipelineBoard').getByText('Northstar Roofing')).toBeVisible();
+});
+
 test('creates a lead and an automated follow-up task', async ({ page }) => {
   await page.getByRole('button', { name: '+ Lead' }).click();
   await expect(page.getByRole('dialog', { name: 'Add lead' })).toBeVisible();

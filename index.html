@@ -58,8 +58,8 @@
         <div class="workspace-card">
           <img src="assets/crm-workspace.png" alt="CRM workspace preview on a laptop" />
           <div>
-            <strong>Personal workspace</strong>
-            <span>Ready to become a team SaaS workspace.</span>
+            <strong id="workspaceNameLabel">Personal workspace</strong>
+            <span id="workspaceModeLabel">Ready to become a team SaaS workspace.</span>
           </div>
         </div>
       </aside>
@@ -104,8 +104,29 @@
           <div>
             <p class="eyebrow">First run</p>
             <h2>Start your sales workspace</h2>
-            <p>Add a starter pipeline with sample leads and tasks, or begin by creating your first real lead.</p>
+            <p>Name the workspace, choose how you sell, then start with sample leads or a blank CRM.</p>
           </div>
+          <form class="setup-form" id="setupForm">
+            <label>
+              Business name
+              <input id="setupBusinessName" type="text" value="Personal workspace" required />
+            </label>
+            <label>
+              Workspace type
+              <select id="setupWorkspaceType">
+                <option value="Personal">Personal</option>
+                <option value="Team">Team</option>
+              </select>
+            </label>
+            <label>
+              Sales goal
+              <select id="setupSalesGoal">
+                <option value="Close more follow-ups">Close more follow-ups</option>
+                <option value="Track every lead">Track every lead</option>
+                <option value="Forecast revenue">Forecast revenue</option>
+              </select>
+            </label>
+          </form>
           <div class="onboarding-actions">
             <button class="primary-button" id="seedWorkspaceButton" type="button">Load starter pipeline</button>
             <button class="secondary-button" id="dismissOnboardingButton" type="button">Start blank</button>

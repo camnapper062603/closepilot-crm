@@ -336,6 +336,30 @@ h2 {
   justify-content: flex-end;
 }
 
+.setup-form {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(150px, 1fr));
+  min-width: min(100%, 620px);
+}
+
+.setup-form label {
+  color: var(--muted);
+  display: grid;
+  font-size: 0.85rem;
+  font-weight: 800;
+  gap: 6px;
+}
+
+.setup-form input,
+.setup-form select {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  min-height: 40px;
+  padding: 0 10px;
+}
+
 .workspace-grid {
   display: grid;
   gap: 22px;
@@ -926,6 +950,10 @@ h2 {
   .onboarding-panel {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .setup-form {
+    grid-template-columns: 1fr;
   }
 
   .onboarding-actions {
