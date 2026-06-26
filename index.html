@@ -258,6 +258,15 @@
                 Search tasks
                 <input id="taskSearch" type="search" placeholder="Search task text" />
               </label>
+              <label class="task-sort">
+                Sort tasks
+                <select id="taskSort">
+                  <option value="recent">Recent</option>
+                  <option value="due">Due date</option>
+                  <option value="text">Alphabetical</option>
+                  <option value="status">Status</option>
+                </select>
+              </label>
             </div>
             <div class="task-summary" id="taskSummary" aria-label="Task summary"></div>
             <div class="task-list" id="taskList"></div>

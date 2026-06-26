@@ -277,6 +277,17 @@ test('searches tasks by text', async ({ page }) => {
   await expect(page.locator('#taskSummary')).toContainText('1');
 });
 
+test('sorts tasks by text', async ({ page }) => {
+  const taskFilters = page.getByRole('group', { name: 'Task filter' });
+  const taskRows = page.locator('#taskList .task-item');
+
+  await taskFilters.getByRole('button', { name: /All/ }).click();
+  await page.getByLabel('Sort tasks').selectOption('text');
+
+  await expect(taskRows.first()).toContainText('Call Maya before 3 PM');
+  await expect(taskRows.nth(1)).toContainText('Draft Harbor Fitness proposal recap');
+});
+
 test('completes all visible tasks', async ({ page }) => {
   const taskFilters = page.getByRole('group', { name: 'Task filter' });
 

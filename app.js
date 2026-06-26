@@ -120,6 +120,7 @@ let editingLeadId = null;
 let pipelineView = "board";
 let pendingImport = null;
 let taskFilter = "today";
+let taskSort = "recent";
 let contactFilter = "all";
 let contactSort = "recent";
 
@@ -145,6 +146,7 @@ const contactSortInput = document.querySelector("#contactSort");
 const taskList = document.querySelector("#taskList");
 const taskSummary = document.querySelector("#taskSummary");
 const taskSearchInput = document.querySelector("#taskSearch");
+const taskSortInput = document.querySelector("#taskSort");
 const completeVisibleTasksButton = document.querySelector("#completeVisibleTasks");
 const clearDoneTasksButton = document.querySelector("#clearDoneTasks");
 const automationList = document.querySelector("#automationList");
@@ -209,6 +211,10 @@ taskForm.addEventListener("submit", async (event) => {
 completeVisibleTasksButton.addEventListener("click", completeVisibleTasks);
 clearDoneTasksButton.addEventListener("click", clearDoneTasks);
 taskSearchInput.addEventListener("input", renderTasks);
+taskSortInput.addEventListener("change", () => {
+  taskSort = taskSortInput.value;
+  renderTasks();
+});
 
 searchInput.addEventListener("input", render);
 
@@ -1156,7 +1162,8 @@ function renderContactSummary(leads) {
 
 function renderTasks() {
   renderTaskFilterCounts();
-  const tasks = filteredTasks();
+  const tasks = sortedTasks(filteredTasks());
+  taskSortInput.value = taskSort;
   completeVisibleTasksButton.disabled = !tasks.some((task) => !task.done);
   taskList.innerHTML = tasks.length
     ? tasks
@@ -1264,6 +1271,26 @@ function filteredTasks() {
   if (taskFilter === "done") return tasks.filter((task) => task.done);
   if (taskFilter === "upcoming") return tasks.filter((task) => !task.done && task.due !== "today");
   return tasks.filter((task) => !task.done && task.due === "today");
+}
+
+function sortedTasks(tasks) {
+  const sortable = [...tasks];
+  const dueOrder = new Map(taskDueChoices.map((choice, index) => [choice.value, index]));
+  if (taskSort === "due") {
+    return sortable.sort(
+      (left, right) =>
+        (dueOrder.get(left.due) ?? taskDueChoices.length) -
+          (dueOrder.get(right.due) ?? taskDueChoices.length) ||
+        left.text.localeCompare(right.text),
+    );
+  }
+  if (taskSort === "text") {
+    return sortable.sort((left, right) => left.text.localeCompare(right.text));
+  }
+  if (taskSort === "status") {
+    return sortable.sort((left, right) => Number(left.done) - Number(right.done) || left.text.localeCompare(right.text));
+  }
+  return sortable;
 }
 
 function taskSearchMatches(task) {

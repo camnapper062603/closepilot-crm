@@ -963,18 +963,27 @@ button.insight-card:hover {
   width: 100%;
 }
 
-.task-search {
+.task-search,
+.task-sort {
   color: var(--muted);
   display: grid;
   font-size: 0.82rem;
   font-weight: 800;
   gap: 6px;
-  grid-column: 1 / -1;
+}
+
+.task-search {
+  grid-column: 1 / 2;
+}
+
+.task-sort {
+  grid-column: 2 / 3;
 }
 
 .task-form input,
 .task-form select,
 .task-search input,
+.task-sort select,
 .task-edit-form input,
 .task-edit-form select {
   border: 1px solid var(--line);
