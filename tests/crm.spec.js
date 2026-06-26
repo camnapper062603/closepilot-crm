@@ -325,6 +325,17 @@ test('edits task text and due date inline', async ({ page }) => {
   await expect(page.locator('#taskList')).toContainText('tomorrow');
 });
 
+test('duplicates tasks from the task list', async ({ page }) => {
+  const taskFilters = page.getByRole('group', { name: 'Task filter' });
+  const mayaTasks = page.locator('#taskList .task-item').filter({ hasText: 'Call Maya before 3 PM' });
+
+  await expect(mayaTasks).toHaveCount(1);
+  await mayaTasks.first().getByRole('button', { name: 'Duplicate' }).click();
+
+  await expect(mayaTasks).toHaveCount(2);
+  await expect(taskFilters.getByRole('button', { name: /Today/ })).toContainText('3');
+});
+
 test('starts an automated follow-up sequence for the selected lead', async ({ page }) => {
   await expect(page.locator('#leadBrief')).toContainText('Suggested sequence');
   await page.locator('#leadBrief').getByRole('button', { name: 'Start sequence' }).click();

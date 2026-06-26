@@ -1174,6 +1174,7 @@ function renderTasks() {
         <p>${escapeHtml(task.text)}<span>${task.due}</span></p>
         <div class="task-actions">
           <button data-edit-task="${task.id}" type="button">Edit</button>
+          <button data-duplicate-task="${task.id}" type="button">Duplicate</button>
           <button data-delete-task="${task.id}" type="button">Delete</button>
         </div>
       </article>
@@ -1201,6 +1202,12 @@ function renderTasks() {
     });
   });
 
+  taskList.querySelectorAll("[data-duplicate-task]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      await duplicateTask(button.dataset.duplicateTask);
+    });
+  });
+
   taskList.querySelectorAll("[data-edit-task]").forEach((button) => {
     button.addEventListener("click", () => {
       renderTaskEditForm(button.dataset.editTask);
@@ -1221,6 +1228,14 @@ async function completeVisibleTasks() {
   if (!openTasks.length) return;
 
   await Promise.all(openTasks.map((task) => store.updateTask({ ...task, done: true })));
+  await reloadState();
+}
+
+async function duplicateTask(taskId) {
+  const task = state.tasks.find((item) => item.id === taskId);
+  if (!task) return;
+
+  await store.createTask({ text: task.text, done: false, due: task.due });
   await reloadState();
 }
 
