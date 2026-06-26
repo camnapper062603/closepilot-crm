@@ -180,11 +180,13 @@ document.querySelector("#createLeadButton").addEventListener("click", createLead
 taskForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const input = document.querySelector("#taskInput");
+  const dueInput = document.querySelector("#taskDue");
   const text = input.value.trim();
   if (!text) return;
 
-  await store.createTask({ text, done: false, due: "today" });
+  await store.createTask({ text, done: false, due: dueInput.value });
   input.value = "";
+  dueInput.value = "today";
   await reloadState();
 });
 

@@ -837,13 +837,15 @@ button.insight-card:hover {
 .task-form {
   display: grid;
   gap: 10px;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(130px, auto) auto;
   margin-bottom: 12px;
 }
 
-.task-form input {
+.task-form input,
+.task-form select {
   border: 1px solid var(--line);
   border-radius: 8px;
+  color: var(--ink);
   min-height: 42px;
   padding: 0 12px;
 }

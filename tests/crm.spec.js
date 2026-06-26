@@ -201,6 +201,17 @@ test('filters tasks by today, upcoming, done, and all', async ({ page }) => {
   await expect(page.locator('#taskList')).toContainText('Send onboarding checklist to Stone & Finch');
 });
 
+test('creates manual tasks with custom due dates', async ({ page }) => {
+  await page.getByPlaceholder('Add a follow-up or reminder').fill('Prepare quarterly pipeline review');
+  await page.getByLabel('Task due date').selectOption('next week');
+  await page.locator('#taskForm').getByRole('button', { name: 'Add' }).click();
+
+  await expect(page.locator('#taskList')).not.toContainText('Prepare quarterly pipeline review');
+  await page.getByRole('button', { name: /Upcoming/ }).click();
+  await expect(page.locator('#taskList')).toContainText('Prepare quarterly pipeline review');
+  await expect(page.locator('#taskList')).toContainText('next week');
+});
+
 test('starts an automated follow-up sequence for the selected lead', async ({ page }) => {
   await expect(page.locator('#leadBrief')).toContainText('Suggested sequence');
   await page.locator('#leadBrief').getByRole('button', { name: 'Start sequence' }).click();
