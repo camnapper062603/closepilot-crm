@@ -149,6 +149,7 @@ const contactSortInput = document.querySelector("#contactSort");
 const selectVisibleContactsButton = document.querySelector("#selectVisibleContacts");
 const clearSelectedContactsButton = document.querySelector("#clearSelectedContacts");
 const contactSelectionStatus = document.querySelector("#contactSelectionStatus");
+const exportSelectedContactsButton = document.querySelector("#exportSelectedContacts");
 const bulkContactTaskButton = document.querySelector("#bulkContactTask");
 const bulkContactWonButton = document.querySelector("#bulkContactWon");
 const bulkContactNextButton = document.querySelector("#bulkContactNext");
@@ -230,6 +231,7 @@ taskSortInput.addEventListener("change", () => {
 activitySearchInput.addEventListener("input", renderActivityFeed);
 selectVisibleContactsButton.addEventListener("click", selectVisibleContacts);
 clearSelectedContactsButton.addEventListener("click", clearSelectedContacts);
+exportSelectedContactsButton.addEventListener("click", exportSelectedContactsCsv);
 bulkContactTaskButton.addEventListener("click", createTasksForSelectedContacts);
 bulkContactWonButton.addEventListener("click", markSelectedContactsWon);
 bulkContactNextButton.addEventListener("click", moveSelectedContactsNext);
@@ -1223,6 +1225,8 @@ function updateBulkContactTaskButton() {
   const hasSelection = count > 0;
   clearSelectedContactsButton.disabled = !hasSelection;
   contactSelectionStatus.textContent = `${count} selected`;
+  exportSelectedContactsButton.disabled = !hasSelection;
+  exportSelectedContactsButton.textContent = `Export selected (${count})`;
   bulkContactTaskButton.disabled = count === 0;
   bulkContactTaskButton.textContent = `Task selected (${count})`;
   bulkContactWonButton.disabled = count === 0;
@@ -1712,14 +1716,30 @@ async function deleteLead(leadId) {
 }
 
 function exportLeadsCsv() {
+  downloadLeadsCsv(state.leads, "closepilot-leads.csv");
+}
+
+function exportSelectedContactsCsv() {
+  const leads = selectedContactLeads();
+  if (!leads.length) return;
+  downloadLeadsCsv(leads, "closepilot-selected-leads.csv");
+}
+
+function selectedContactLeads() {
+  return [...selectedContactIds]
+    .map((leadId) => state.leads.find((lead) => lead.id === leadId))
+    .filter(Boolean);
+}
+
+function downloadLeadsCsv(leads, filename) {
   const headers = ["name", "company", "stage", "value", "score", "source", "nextAction", "notes"];
-  const rows = state.leads.map((lead) => headers.map((header) => csvEscape(lead[header])).join(","));
+  const rows = leads.map((lead) => headers.map((header) => csvEscape(lead[header])).join(","));
   const csv = [headers.join(","), ...rows].join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = "closepilot-leads.csv";
+  link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
 }

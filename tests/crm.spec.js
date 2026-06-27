@@ -1,4 +1,5 @@
 // @ts-check
+import { readFile } from 'node:fs/promises';
 import { test, expect } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
@@ -481,8 +482,11 @@ test('exports leads to CSV', async ({ page }) => {
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export CSV' }).click();
   const download = await downloadPromise;
+  const csv = await readFile(await download.path(), 'utf8');
 
   expect(download.suggestedFilename()).toBe('closepilot-leads.csv');
+  expect(csv).toContain('Northstar Roofing');
+  expect(csv).toContain('Harbor Fitness');
 });
 
 test('filters contacts and pipeline by search', async ({ page }) => {
@@ -566,15 +570,18 @@ test('creates follow-up tasks for selected contacts', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Task selected (0)' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Mark won selected (0)' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Next stage selected (0)' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Export selected (0)' })).toBeDisabled();
   await northstarRow.getByLabel('Select Northstar Roofing').check();
   await harborRow.getByLabel('Select Harbor Fitness').check();
   await expect(page.locator('#contactSelectionStatus')).toHaveText('2 selected');
+  await expect(page.getByRole('button', { name: 'Export selected (2)' })).toBeEnabled();
   await page.getByRole('button', { name: 'Task selected (2)' }).click();
 
   await expect(page.locator('#contactSelectionStatus')).toHaveText('0 selected');
   await expect(page.getByRole('button', { name: 'Task selected (0)' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Mark won selected (0)' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Next stage selected (0)' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Export selected (0)' })).toBeDisabled();
   await expect(page.locator('#taskList')).toContainText(
     'Send workflow proposal and ask for install calendar. (Northstar Roofing)',
   );
@@ -599,6 +606,24 @@ test('selects and clears visible contacts in bulk', async ({ page }) => {
   await expect(page.locator('#contactSelectionStatus')).toHaveText('0 selected');
   await expect(page.getByRole('button', { name: 'Task selected (0)' })).toBeDisabled();
   await expect(page.locator('#contactTable .contact-row').filter({ hasText: 'Harbor Fitness' }).getByLabel('Select Harbor Fitness')).not.toBeChecked();
+});
+
+test('exports selected contacts to CSV', async ({ page }) => {
+  const northstarRow = page.locator('#contactTable .contact-row').filter({ hasText: 'Northstar Roofing' });
+  const harborRow = page.locator('#contactTable .contact-row').filter({ hasText: 'Harbor Fitness' });
+
+  await northstarRow.getByLabel('Select Northstar Roofing').check();
+  await harborRow.getByLabel('Select Harbor Fitness').check();
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export selected (2)' }).click();
+  const download = await downloadPromise;
+  const csv = await readFile(await download.path(), 'utf8');
+
+  expect(download.suggestedFilename()).toBe('closepilot-selected-leads.csv');
+  expect(csv).toContain('Northstar Roofing');
+  expect(csv).toContain('Harbor Fitness');
+  expect(csv).not.toContain('Summit Auto Detail');
 });
 
 test('marks selected contacts won in bulk', async ({ page }) => {
