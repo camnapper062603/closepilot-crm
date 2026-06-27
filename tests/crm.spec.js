@@ -181,6 +181,77 @@ test('sets up a new workspace with starter data', async ({ page }) => {
   await expect(page.locator('#pipelineBoard').getByText('Northstar Roofing')).toBeVisible();
 });
 
+test('exports and imports a workspace backup', async ({ page }) => {
+  await expect(page.locator('#backupSummary')).toContainText('4');
+  await expect(page.locator('#backupSummary')).toContainText('3');
+  await expect(page.locator('#backupSummary')).toContainText('2');
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export backup' }).click();
+  const download = await downloadPromise;
+  const backup = JSON.parse(await readFile(await download.path(), 'utf8'));
+
+  expect(download.suggestedFilename()).toMatch(/^closepilot-backup-\d{4}-\d{2}-\d{2}\.json$/);
+  expect(backup.app).toBe('ClosePilot CRM');
+  expect(backup.data.leads).toHaveLength(4);
+  expect(backup.data.tasks).toHaveLength(3);
+  await expect(page.locator('#backupMessage')).toHaveText('Backup exported.');
+
+  await page.locator('#importWorkspaceBackupInput').setInputFiles({
+    name: 'closepilot-backup.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(
+      JSON.stringify({
+        app: 'ClosePilot CRM',
+        version: 1,
+        workspace: {
+          name: 'Cameron Backup Co',
+          type: 'Team',
+          goal: 'Track every lead',
+        },
+        data: {
+          leads: [
+            {
+              id: 'backup-lead-1',
+              name: 'Riley Stone',
+              company: 'Backup Bakery',
+              stage: 'proposal',
+              value: 9100,
+              score: 87,
+              source: 'Backup file',
+              nextAction: 'Send restored proposal',
+              notes: 'Imported from a full workspace backup.',
+            },
+          ],
+          tasks: [{ text: 'Call restored lead', done: false, due: 'today' }],
+          automations: [
+            { key: 'next-step-tasks', enabled: true },
+            { key: 'lead-scoring', enabled: true },
+            { key: 'win-back-reminders', enabled: true },
+          ],
+          activities: [
+            {
+              leadId: 'backup-lead-1',
+              type: 'note',
+              message: 'Backup note restored.',
+            },
+          ],
+        },
+      }),
+    ),
+  });
+
+  await expect(page.locator('#workspaceNameLabel')).toContainText('Cameron Backup Co');
+  await expect(page.locator('#workspaceModeLabel')).toContainText('Team workspace - Track every lead.');
+  await expect(page.locator('#pipelineBoard')).toContainText('Backup Bakery');
+  await expect(page.locator('#pipelineBoard')).not.toContainText('Northstar Roofing');
+  await expect(page.locator('#taskList')).toContainText('Call restored lead');
+  await expect(page.locator('#activityFeed')).toContainText('Backup note restored.');
+  await expect(page.locator('#automationSummary')).toContainText('3/3');
+  await expect(page.locator('#backupSummary')).toContainText('1');
+  await expect(page.locator('#backupMessage')).toContainText('Imported 1 leads, 1 tasks, and 1 activities.');
+});
+
 test('creates a lead and an automated follow-up task', async ({ page }) => {
   await page.getByRole('button', { name: '+ Lead' }).click();
   await expect(page.getByRole('dialog', { name: 'Add lead' })).toBeVisible();

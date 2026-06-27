@@ -319,6 +319,22 @@
             <div class="task-list" id="taskList"></div>
           </section>
         </section>
+
+        <section class="panel backup-panel" id="workspaceBackup" aria-labelledby="backupHeading">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Workspace control</p>
+              <h2 id="backupHeading">Backup center</h2>
+            </div>
+            <div class="panel-actions">
+              <button class="secondary-button" id="exportWorkspaceBackup" type="button">Export backup</button>
+              <button class="secondary-button" id="importWorkspaceBackup" type="button">Import backup</button>
+              <input id="importWorkspaceBackupInput" type="file" accept=".json,application/json" hidden />
+            </div>
+          </div>
+          <div class="backup-summary" id="backupSummary" aria-label="Backup summary"></div>
+          <p class="backup-message" id="backupMessage" role="status"></p>
+        </section>
       </main>
     </div>
 

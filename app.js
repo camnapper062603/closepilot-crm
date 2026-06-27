@@ -204,6 +204,11 @@ const importPreview = document.querySelector("#importPreview");
 const confirmImportButton = document.querySelector("#confirmImportButton");
 const cancelImportButton = document.querySelector("#cancelImportButton");
 const closeImportModalButton = document.querySelector("#closeImportModal");
+const exportWorkspaceBackupButton = document.querySelector("#exportWorkspaceBackup");
+const importWorkspaceBackupButton = document.querySelector("#importWorkspaceBackup");
+const importWorkspaceBackupInput = document.querySelector("#importWorkspaceBackupInput");
+const backupSummary = document.querySelector("#backupSummary");
+const backupMessage = document.querySelector("#backupMessage");
 const leadDetailModal = document.querySelector("#leadDetailModal");
 const leadDetailContent = document.querySelector("#leadDetailContent");
 const closeLeadDetailModalButton = document.querySelector("#closeLeadDetailModal");
@@ -279,6 +284,9 @@ dismissOnboardingButton.addEventListener("click", dismissOnboarding);
 exportLeadsButton.addEventListener("click", exportLeadsCsv);
 importLeadsButton.addEventListener("click", () => importLeadsInput.click());
 importLeadsInput.addEventListener("change", importLeadsCsv);
+exportWorkspaceBackupButton.addEventListener("click", exportWorkspaceBackup);
+importWorkspaceBackupButton.addEventListener("click", () => importWorkspaceBackupInput.click());
+importWorkspaceBackupInput.addEventListener("change", importWorkspaceBackup);
 confirmImportButton.addEventListener("click", confirmLeadsImport);
 cancelImportButton.addEventListener("click", closeImportModal);
 closeImportModalButton.addEventListener("click", closeImportModal);
@@ -532,6 +540,7 @@ function render() {
   renderActivityFeed();
   renderContacts();
   renderTasks();
+  renderWorkspaceBackup();
 }
 
 function renderOnboarding() {
@@ -563,6 +572,27 @@ function renderMetrics() {
   document.querySelector("#hotLeadCount").textContent = hotLeads;
   document.querySelector("#automationSaved").textContent = `${saved}h`;
   document.querySelector("#dueToday").textContent = dueToday;
+}
+
+function renderWorkspaceBackup() {
+  backupSummary.innerHTML = `
+    <article>
+      <span>Leads</span>
+      <strong>${state.leads.length}</strong>
+    </article>
+    <article>
+      <span>Tasks</span>
+      <strong>${state.tasks.length}</strong>
+    </article>
+    <article>
+      <span>Activity</span>
+      <strong>${(state.activities || []).length}</strong>
+    </article>
+    <article>
+      <span>Automations</span>
+      <strong>${state.automations.length}</strong>
+    </article>
+  `;
 }
 
 function renderInsights() {
@@ -1956,6 +1986,156 @@ function exportSelectedContactsCsv() {
   downloadLeadsCsv(leads, "closepilot-selected-leads.csv");
 }
 
+function exportWorkspaceBackup() {
+  const payload = {
+    app: "ClosePilot CRM",
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    workspace: workspaceSetupSettings(),
+    data: {
+      leads: state.leads,
+      tasks: state.tasks,
+      automations: state.automations,
+      activities: state.activities || [],
+    },
+  };
+
+  downloadJson(payload, `closepilot-backup-${new Date().toISOString().slice(0, 10)}.json`);
+  backupMessage.textContent = "Backup exported.";
+}
+
+async function importWorkspaceBackup(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  importWorkspaceBackupButton.disabled = true;
+  backupMessage.textContent = "Importing backup...";
+
+  try {
+    const backup = normalizeWorkspaceBackup(JSON.parse(await file.text()));
+    await restoreWorkspaceBackup(backup);
+    backupMessage.textContent = `Imported ${backup.leads.length} leads, ${backup.tasks.length} tasks, and ${backup.activities.length} activities.`;
+  } catch (error) {
+    console.error(error);
+    backupMessage.textContent = "Backup import failed. Check that the file came from ClosePilot.";
+  } finally {
+    importWorkspaceBackupInput.value = "";
+    importWorkspaceBackupButton.disabled = false;
+  }
+}
+
+async function restoreWorkspaceBackup(backup) {
+  await store.clearWorkspaceData();
+  setupBusinessName.value = backup.workspace.name;
+  setupWorkspaceType.value = backup.workspace.type;
+  setupSalesGoal.value = backup.workspace.goal;
+  await saveWorkspaceSetup();
+
+  const leadIdMap = new Map();
+  for (const lead of backup.leads) {
+    const created = await store.createLead(withoutId(lead));
+    if (lead.id) leadIdMap.set(lead.id, created.id);
+  }
+
+  for (const task of backup.tasks) {
+    await store.createTask(withoutId(task));
+  }
+
+  const defaultsByKey = new Map(defaultAutomations.map((automation) => [automation.key, automation]));
+  for (const automation of state.automations) {
+    const imported = backup.automations.find((item) => item.key === automation.key);
+    const defaults = defaultsByKey.get(automation.key);
+    await store.updateAutomation({
+      ...automation,
+      enabled: imported ? imported.enabled : Boolean(defaults?.enabled),
+    });
+  }
+
+  for (const activity of backup.activities) {
+    await store.createActivity({
+      leadId: leadIdMap.get(activity.leadId) || null,
+      type: activity.type,
+      message: activity.message,
+    });
+  }
+
+  localStorage.removeItem(onboardingDismissalKey());
+  await reloadState();
+}
+
+function normalizeWorkspaceBackup(payload) {
+  const data = payload?.data || {};
+  const workspace = payload?.workspace || {};
+  const leads = Array.isArray(data.leads) ? data.leads.map(normalizeBackupLead).filter(Boolean) : [];
+  const tasks = Array.isArray(data.tasks) ? data.tasks.map(normalizeBackupTask).filter(Boolean) : [];
+  const automations = Array.isArray(data.automations)
+    ? data.automations.map(normalizeBackupAutomation).filter(Boolean)
+    : [];
+  const activities = Array.isArray(data.activities)
+    ? data.activities.map(normalizeBackupActivity).filter(Boolean)
+    : [];
+
+  if (!leads.length && !tasks.length && !activities.length) {
+    throw new Error("Backup file has no workspace data.");
+  }
+
+  return {
+    workspace: {
+      name: String(workspace.name || state.workspaceName || "Personal workspace").trim() || "Personal workspace",
+      type: workspace.type === "Team" ? "Team" : "Personal",
+      goal: String(workspace.goal || "Close more follow-ups").trim() || "Close more follow-ups",
+    },
+    leads,
+    tasks,
+    automations,
+    activities,
+  };
+}
+
+function normalizeBackupLead(lead) {
+  if (!lead?.name || !lead?.company) return null;
+  const stage = stages.some((item) => item.id === lead.stage) ? lead.stage : "new";
+  const value = Number(lead.value || 0);
+  const notes = String(lead.notes || "");
+  return {
+    id: lead.id,
+    name: String(lead.name).trim(),
+    company: String(lead.company).trim(),
+    stage,
+    value: Number.isFinite(value) ? value : 0,
+    score: clampScore(Number(lead.score) || calculateLeadScore({ value, stage, notes })),
+    source: String(lead.source || "Backup import"),
+    nextAction: String(lead.nextAction || nextActionForStage(stage)),
+    notes,
+  };
+}
+
+function normalizeBackupTask(task) {
+  if (!task?.text) return null;
+  return {
+    text: String(task.text),
+    done: Boolean(task.done),
+    due: String(task.due || "today"),
+  };
+}
+
+function normalizeBackupAutomation(automation) {
+  if (!automation?.key) return null;
+  return {
+    key: String(automation.key),
+    enabled: Boolean(automation.enabled),
+  };
+}
+
+function normalizeBackupActivity(activity) {
+  if (!activity?.message) return null;
+  return {
+    leadId: activity.leadId || null,
+    type: String(activity.type || "note"),
+    message: String(activity.message),
+  };
+}
+
 function selectedContactLeads() {
   return [...selectedContactIds]
     .map((leadId) => state.leads.find((lead) => lead.id === leadId))
@@ -1967,6 +2147,16 @@ function downloadLeadsCsv(leads, filename) {
   const rows = leads.map((lead) => headers.map((header) => csvEscape(lead[header])).join(","));
   const csv = [headers.join(","), ...rows].join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function downloadJson(payload, filename) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -2645,6 +2835,15 @@ function calculateLeadScore(lead) {
   const valueScore = Math.min(34, Math.floor(Number(lead.value || 0) / 500));
   const notesScore = lead.notes?.length > 30 ? 12 : 4;
   return Math.min(99, 35 + (stageScores[lead.stage] || 0) + valueScore + notesScore);
+}
+
+function clampScore(score) {
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
+function withoutId(record) {
+  const { id, ...rest } = record;
+  return rest;
 }
 
 function weightedLeadValue(lead) {

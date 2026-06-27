@@ -422,6 +422,44 @@ button.insight-card:hover {
   grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
 }
 
+.backup-panel {
+  margin-top: 22px;
+}
+
+.backup-summary {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.backup-summary article {
+  background: #f8faf8;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+}
+
+.backup-summary span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.backup-summary strong {
+  font-size: 1.35rem;
+}
+
+.backup-message {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin: 12px 0 0;
+  min-height: 1.25rem;
+}
+
 .panel {
   min-width: 0;
   padding: 18px;
@@ -1416,6 +1454,10 @@ button.insight-card:hover {
   .workspace-grid,
   .lower-grid {
     grid-template-columns: 1fr;
+  }
+
+  .backup-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .insight-list {
