@@ -1042,13 +1042,15 @@ button.insight-card:hover {
 #exportSelectedTasks,
 #completeSelectedTasks,
 #snoozeSelectedTasks,
+#applySelectedTaskDue,
 #duplicateSelectedTasks,
 #deleteSelectedTasks {
   width: 100%;
 }
 
 .task-search,
-.task-sort {
+.task-sort,
+.task-bulk-due {
   color: var(--muted);
   display: grid;
   font-size: 0.82rem;
@@ -1068,6 +1070,7 @@ button.insight-card:hover {
 .task-form select,
 .task-search input,
 .task-sort select,
+.task-bulk-due select,
 .task-edit-form input,
 .task-edit-form select {
   border: 1px solid var(--line);

@@ -168,6 +168,8 @@ const taskSelectionStatus = document.querySelector("#taskSelectionStatus");
 const exportSelectedTasksButton = document.querySelector("#exportSelectedTasks");
 const completeSelectedTasksButton = document.querySelector("#completeSelectedTasks");
 const snoozeSelectedTasksButton = document.querySelector("#snoozeSelectedTasks");
+const selectedTaskDueInput = document.querySelector("#selectedTaskDue");
+const applySelectedTaskDueButton = document.querySelector("#applySelectedTaskDue");
 const duplicateSelectedTasksButton = document.querySelector("#duplicateSelectedTasks");
 const deleteSelectedTasksButton = document.querySelector("#deleteSelectedTasks");
 const automationList = document.querySelector("#automationList");
@@ -239,6 +241,7 @@ clearSelectedTasksButton.addEventListener("click", clearSelectedTasks);
 exportSelectedTasksButton.addEventListener("click", exportSelectedTasksCsv);
 completeSelectedTasksButton.addEventListener("click", completeSelectedTasks);
 snoozeSelectedTasksButton.addEventListener("click", snoozeSelectedTasks);
+applySelectedTaskDueButton.addEventListener("click", applySelectedTaskDue);
 duplicateSelectedTasksButton.addEventListener("click", duplicateSelectedTasks);
 deleteSelectedTasksButton.addEventListener("click", deleteSelectedTasks);
 taskSearchInput.addEventListener("input", renderTasks);
@@ -1400,12 +1403,15 @@ function updateTaskSelectionControls() {
   exportSelectedTasksButton.disabled = !hasSelection;
   completeSelectedTasksButton.disabled = !hasOpenSelection;
   snoozeSelectedTasksButton.disabled = !hasSnoozableSelection;
+  selectedTaskDueInput.disabled = !hasSelection;
+  applySelectedTaskDueButton.disabled = !hasSelection;
   duplicateSelectedTasksButton.disabled = !hasSelection;
   deleteSelectedTasksButton.disabled = !hasSelection;
   taskSelectionStatus.textContent = `${count} selected`;
   exportSelectedTasksButton.textContent = `Export selected tasks (${count})`;
   completeSelectedTasksButton.textContent = `Complete selected (${count})`;
   snoozeSelectedTasksButton.textContent = `Snooze selected (${count})`;
+  applySelectedTaskDueButton.textContent = `Apply due date (${count})`;
   duplicateSelectedTasksButton.textContent = `Duplicate selected (${count})`;
   deleteSelectedTasksButton.textContent = `Delete selected (${count})`;
 }
@@ -1450,6 +1456,15 @@ async function snoozeSelectedTasks() {
   if (!tasks.length) return;
 
   await Promise.all(tasks.map((task) => store.updateTask({ ...task, due: "tomorrow" })));
+  selectedTaskIds.clear();
+  await reloadState();
+}
+
+async function applySelectedTaskDue() {
+  const tasks = selectedTasks();
+  if (!tasks.length) return;
+
+  await Promise.all(tasks.map((task) => store.updateTask({ ...task, due: selectedTaskDueInput.value })));
   selectedTaskIds.clear();
   await reloadState();
 }

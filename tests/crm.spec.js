@@ -421,6 +421,7 @@ test('selects and clears visible tasks in bulk', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Export selected tasks (0)' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Complete selected (0)' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Snooze selected (0)' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Apply due date (0)' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Duplicate selected (0)' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Delete selected (0)' })).toBeDisabled();
 
@@ -432,6 +433,7 @@ test('selects and clears visible tasks in bulk', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Complete selected (2)' })).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Snooze selected (2)' })).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Export selected tasks (2)' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Apply due date (2)' })).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Duplicate selected (2)' })).toBeEnabled();
 
   await page.getByRole('button', { name: 'Clear selected tasks' }).click();
@@ -440,7 +442,26 @@ test('selects and clears visible tasks in bulk', async ({ page }) => {
   await expect(page.getByLabel('Select task Call Maya before 3 PM')).not.toBeChecked();
   await expect(page.getByRole('button', { name: 'Export selected tasks (0)' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Complete selected (0)' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Apply due date (0)' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Delete selected (0)' })).toBeDisabled();
+});
+
+test('sets selected task due dates in bulk', async ({ page }) => {
+  const taskFilters = page.getByRole('group', { name: 'Task filter' });
+
+  await page.getByRole('button', { name: 'Select visible tasks' }).click();
+  await page.getByLabel('Set selected due').selectOption('next week');
+  await page.getByRole('button', { name: 'Apply due date (2)' }).click();
+
+  await expect(page.locator('#taskSelectionStatus')).toHaveText('0 selected');
+  await expect(page.locator('#taskList')).toContainText('No tasks in this view.');
+  await expect(taskFilters.getByRole('button', { name: /Today/ })).toContainText('0');
+  await expect(taskFilters.getByRole('button', { name: /Upcoming/ })).toContainText('2');
+
+  await taskFilters.getByRole('button', { name: /Upcoming/ }).click();
+  await expect(page.locator('#taskList')).toContainText('Call Maya before 3 PM');
+  await expect(page.locator('#taskList')).toContainText('Draft Harbor Fitness proposal recap');
+  await expect(page.locator('#taskList')).toContainText('next week');
 });
 
 test('exports visible and selected tasks to CSV', async ({ page }) => {
