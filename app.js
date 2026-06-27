@@ -620,11 +620,15 @@ function renderPipeline() {
   board.innerHTML = stages
     .map((stage) => {
       const stageLeads = leads.filter((lead) => lead.stage === stage.id);
+      const stageValue = stageLeads.reduce((sum, lead) => sum + lead.value, 0);
       const cards = stageLeads.map(renderDealCard).join("");
       return `
         <div class="stage-column" data-stage="${stage.id}">
           <div class="stage-heading">
-            <strong>${stage.label}</strong>
+            <div>
+              <strong>${stage.label}</strong>
+              <span class="stage-value">${formatter.format(stageValue)}</span>
+            </div>
             <span class="count-pill">${stageLeads.length}</span>
           </div>
           ${cards || "<p class=\"empty-state\">No leads yet</p>"}

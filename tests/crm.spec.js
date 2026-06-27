@@ -25,6 +25,21 @@ test('shows actionable pipeline insights', async ({ page }) => {
   await expect(page.locator('#leadBrief')).toContainText('Eli Ramirez');
 });
 
+test('shows pipeline stage totals and updates them when deals move', async ({ page }) => {
+  const qualifiedHeading = page.locator('[data-stage="qualified"] .stage-heading');
+  const proposalHeading = page.locator('[data-stage="proposal"] .stage-heading');
+
+  await expect(page.locator('[data-stage="new"] .stage-heading')).toContainText('$3,200');
+  await expect(qualifiedHeading).toContainText('$8,400');
+  await expect(proposalHeading).toContainText('$12,600');
+  await expect(page.locator('[data-stage="won"] .stage-heading')).toContainText('$5,100');
+
+  await page.locator('article.deal-card').filter({ hasText: 'Northstar Roofing' }).getByRole('button', { name: 'Next' }).click();
+
+  await expect(qualifiedHeading).toContainText('$0');
+  await expect(proposalHeading).toContainText('$21,000');
+});
+
 test('shows a global activity feed and opens related leads', async ({ page }) => {
   const activityFilters = page.getByRole('group', { name: 'Activity filter' });
 

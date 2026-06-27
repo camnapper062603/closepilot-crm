@@ -569,12 +569,25 @@ button.insight-card:hover {
 .stage-heading {
   align-items: center;
   display: flex;
+  gap: 10px;
   justify-content: space-between;
   margin-bottom: 10px;
 }
 
+.stage-heading div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
 .stage-heading strong {
   font-size: 0.95rem;
+}
+
+.stage-value {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
 }
 
 .count-pill,
