@@ -124,6 +124,7 @@ let taskSort = "recent";
 let activityFilter = "all";
 let contactFilter = "all";
 let contactSort = "recent";
+let selectedContactIds = new Set();
 
 const formatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -145,6 +146,7 @@ const leadBrief = document.querySelector("#leadBrief");
 const contactTable = document.querySelector("#contactTable");
 const contactSummary = document.querySelector("#contactSummary");
 const contactSortInput = document.querySelector("#contactSort");
+const bulkContactTaskButton = document.querySelector("#bulkContactTask");
 const taskList = document.querySelector("#taskList");
 const taskSummary = document.querySelector("#taskSummary");
 const taskSearchInput = document.querySelector("#taskSearch");
@@ -221,6 +223,7 @@ taskSortInput.addEventListener("change", () => {
   renderTasks();
 });
 activitySearchInput.addEventListener("input", renderActivityFeed);
+bulkContactTaskButton.addEventListener("click", createTasksForSelectedContacts);
 
 searchInput.addEventListener("input", render);
 
@@ -1115,12 +1118,17 @@ function renderContacts() {
   });
   contactSortInput.value = contactSort;
   renderContactSummary(filtered);
+  syncSelectedContacts(leads);
+  updateBulkContactTaskButton();
 
   contactTable.innerHTML = leads.length
     ? leads
       .map(
         (lead) => `
       <article class="contact-row" data-contact-row="${lead.id}">
+        <label class="contact-select">
+          <input data-contact-checkbox="${lead.id}" type="checkbox" ${selectedContactIds.has(lead.id) ? "checked" : ""} aria-label="Select ${escapeHtml(lead.company)}" />
+        </label>
         <p><strong>${escapeHtml(lead.name)}</strong><span>${escapeHtml(lead.company)}</span></p>
         <p>${escapeHtml(lead.source)}</p>
         <p>${stageLabel(lead.stage)}</p>
@@ -1138,6 +1146,17 @@ function renderContacts() {
       )
       .join("")
     : "<p class=\"empty-state\">No contacts in this view.</p>";
+
+  contactTable.querySelectorAll("[data-contact-checkbox]").forEach((checkbox) => {
+    checkbox.addEventListener("change", () => {
+      if (checkbox.checked) {
+        selectedContactIds.add(checkbox.dataset.contactCheckbox);
+      } else {
+        selectedContactIds.delete(checkbox.dataset.contactCheckbox);
+      }
+      updateBulkContactTaskButton();
+    });
+  });
 
   contactTable.querySelectorAll("[data-contact-select]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -1169,6 +1188,17 @@ function renderContacts() {
       await moveLead(button.dataset.contactNext, 1);
     });
   });
+}
+
+function syncSelectedContacts(leads) {
+  const visibleIds = new Set(leads.map((lead) => lead.id));
+  selectedContactIds = new Set([...selectedContactIds].filter((id) => visibleIds.has(id)));
+}
+
+function updateBulkContactTaskButton() {
+  const count = selectedContactIds.size;
+  bulkContactTaskButton.disabled = count === 0;
+  bulkContactTaskButton.textContent = `Task selected (${count})`;
 }
 
 function contactSearchMatches(lead) {
@@ -1491,17 +1521,33 @@ async function createFollowUpFromLead(leadId) {
   if (!lead) return;
 
   state.selectedLeadId = leadId;
+  await createFollowUpTaskForLead(lead);
+  await reloadState();
+}
+
+async function createTasksForSelectedContacts() {
+  const selectedLeads = [...selectedContactIds]
+    .map((leadId) => state.leads.find((lead) => lead.id === leadId))
+    .filter(Boolean);
+  if (!selectedLeads.length) return;
+
+  state.selectedLeadId = selectedLeads[selectedLeads.length - 1].id;
+  await Promise.all(selectedLeads.map(createFollowUpTaskForLead));
+  selectedContactIds.clear();
+  await reloadState();
+}
+
+async function createFollowUpTaskForLead(lead) {
   await store.createTask({
     text: `${lead.nextAction} (${lead.company})`,
     done: false,
     due: "today",
   });
   await store.createActivity({
-    leadId,
+    leadId: lead.id,
     type: "task",
     message: "Follow-up task added.",
   });
-  await reloadState();
 }
 
 async function startFollowUpSequence(leadId) {

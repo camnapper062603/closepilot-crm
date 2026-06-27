@@ -558,6 +558,25 @@ test('creates follow-up tasks from the contact list', async ({ page }) => {
   await expect(page.locator('#leadBrief')).toContainText('Follow-up task added.');
 });
 
+test('creates follow-up tasks for selected contacts', async ({ page }) => {
+  const northstarRow = page.locator('#contactTable .contact-row').filter({ hasText: 'Northstar Roofing' });
+  const harborRow = page.locator('#contactTable .contact-row').filter({ hasText: 'Harbor Fitness' });
+
+  await expect(page.getByRole('button', { name: 'Task selected (0)' })).toBeDisabled();
+  await northstarRow.getByLabel('Select Northstar Roofing').check();
+  await harborRow.getByLabel('Select Harbor Fitness').check();
+  await page.getByRole('button', { name: 'Task selected (2)' }).click();
+
+  await expect(page.getByRole('button', { name: 'Task selected (0)' })).toBeDisabled();
+  await expect(page.locator('#taskList')).toContainText(
+    'Send workflow proposal and ask for install calendar. (Northstar Roofing)',
+  );
+  await expect(page.locator('#taskList')).toContainText(
+    'Review proposal pricing and implementation timeline. (Harbor Fitness)',
+  );
+  await expect(page.locator('#leadBrief')).toContainText('Nia Brooks');
+});
+
 test('marks contacts won from the contact list', async ({ page }) => {
   const harborRow = page.locator('#contactTable .contact-row').filter({ hasText: 'Harbor Fitness' });
 

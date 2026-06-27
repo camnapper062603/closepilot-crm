@@ -504,6 +504,10 @@ button.insight-card:hover {
   padding: 0 10px;
 }
 
+#bulkContactTask {
+  min-height: 38px;
+}
+
 .contact-summary,
 .task-summary,
 .pipeline-health {
@@ -966,7 +970,19 @@ button.insight-card:hover {
 }
 
 .contact-row {
-  grid-template-columns: 1.35fr 0.85fr 0.7fr 0.45fr 0.7fr auto;
+  grid-template-columns: auto 1.35fr 0.85fr 0.7fr 0.45fr 0.7fr auto;
+}
+
+.contact-select {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+}
+
+.contact-select input {
+  accent-color: var(--teal);
+  height: 18px;
+  width: 18px;
 }
 
 .contact-score {
