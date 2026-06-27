@@ -79,6 +79,14 @@ create table if not exists public.workspace_invitations (
   unique (workspace_id, email)
 );
 
+create table if not exists public.workspace_audit_events (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  action text not null,
+  detail text not null default '',
+  created_at timestamptz not null default now()
+);
+
 alter table public.workspaces enable row level security;
 alter table public.workspace_members enable row level security;
 alter table public.leads enable row level security;
@@ -87,6 +95,7 @@ alter table public.automations enable row level security;
 alter table public.activities enable row level security;
 alter table public.workspace_subscriptions enable row level security;
 alter table public.workspace_invitations enable row level security;
+alter table public.workspace_audit_events enable row level security;
 
 create or replace function public.is_workspace_member(target_workspace_id uuid)
 returns boolean
@@ -153,6 +162,7 @@ drop policy if exists "Members can manage automations" on public.automations;
 drop policy if exists "Members can manage activities" on public.activities;
 drop policy if exists "Members can manage subscriptions" on public.workspace_subscriptions;
 drop policy if exists "Members can manage invitations" on public.workspace_invitations;
+drop policy if exists "Members can manage audit events" on public.workspace_audit_events;
 
 create policy "Users can see their workspaces"
   on public.workspaces for select
@@ -218,5 +228,10 @@ create policy "Members can manage subscriptions"
 
 create policy "Members can manage invitations"
   on public.workspace_invitations for all
+  using (public.is_workspace_member(workspace_id))
+  with check (public.is_workspace_member(workspace_id));
+
+create policy "Members can manage audit events"
+  on public.workspace_audit_events for all
   using (public.is_workspace_member(workspace_id))
   with check (public.is_workspace_member(workspace_id));

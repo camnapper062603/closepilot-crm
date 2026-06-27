@@ -382,6 +382,11 @@ test('manages SaaS workspace plan, seats, and invites', async ({ page }) => {
   await expect(admin.locator('#planSummary')).toContainText('1/3');
   await expect(admin.locator('#teamSummary')).toContainText('Active members');
   await expect(admin.locator('#teamSummary')).toContainText('1');
+  await expect(admin.locator('#launchChecklist')).toContainText('Cloud database');
+  await expect(admin.locator('#launchChecklist')).toContainText('Add SUPABASE_URL and SUPABASE_ANON_KEY.');
+  await expect(admin.locator('#launchChecklist')).toContainText('Add STRIPE_CHECKOUT_URL.');
+  await expect(admin.locator('#launchChecklist')).toContainText('support@closepilot.local is set.');
+  await expect(admin.locator('#auditList')).toContainText('Workspace created');
 
   await admin.getByRole('button', { name: 'Growth $79/mo' }).click();
 
@@ -389,6 +394,12 @@ test('manages SaaS workspace plan, seats, and invites', async ({ page }) => {
   await expect(admin.locator('#planSummary')).toContainText('Growth');
   await expect(admin.locator('#planSummary')).toContainText('1/10');
   await expect(admin.locator('#adminMessage')).toContainText('Growth plan selected');
+  await expect(admin.locator('#auditList')).toContainText('Plan changed');
+
+  await admin.getByRole('button', { name: 'Open checkout' }).click();
+  await expect(admin.locator('#adminMessage')).toContainText('Add STRIPE_CHECKOUT_URL');
+  await admin.getByRole('button', { name: 'Billing portal' }).click();
+  await expect(admin.locator('#adminMessage')).toContainText('Add STRIPE_PORTAL_URL');
 
   await admin.locator('#inviteEmail').fill('sales@example.com');
   await admin.getByLabel('Invite role').selectOption('admin');
@@ -396,10 +407,15 @@ test('manages SaaS workspace plan, seats, and invites', async ({ page }) => {
 
   await expect(admin.locator('#teamList')).toContainText('sales@example.com');
   await expect(admin.locator('#teamList')).toContainText('admin');
-  await expect(admin.locator('#teamList')).toContainText('Pending');
+  await expect(admin.locator('#teamList')).toContainText('Send email');
   await expect(admin.locator('#teamSummary')).toContainText('1');
   await expect(admin.locator('#planSummary')).toContainText('2/10');
   await expect(admin.locator('#adminMessage')).toContainText('Invite staged for sales@example.com');
+  await expect(admin.locator('#auditList')).toContainText('Invite staged');
+
+  await admin.getByRole('button', { name: 'Send email' }).click();
+  await expect(admin.locator('#adminMessage')).toContainText('Email draft opened for sales@example.com');
+  await expect(admin.locator('#auditList')).toContainText('Invite email prepared');
 
   await admin.locator('#adminBusinessName').fill('ClosePilot Agency');
   await admin.locator('#adminWorkspaceType').selectOption('Team');

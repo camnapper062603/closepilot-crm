@@ -697,16 +697,22 @@ button.insight-card:hover {
   color: var(--teal-dark);
 }
 
-.team-card {
+.team-card,
+.launch-card,
+.audit-card {
   align-content: start;
 }
 
-.team-list {
+.team-list,
+.launch-checklist,
+.audit-list {
   display: grid;
   gap: 8px;
 }
 
-.team-row {
+.team-row,
+.launch-check,
+.audit-row {
   align-items: center;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -716,15 +722,47 @@ button.insight-card:hover {
   padding: 10px;
 }
 
-.team-row div {
+.team-row div,
+.launch-check div,
+.audit-row div {
   display: grid;
   gap: 2px;
   min-width: 0;
 }
 
-.team-row span {
+.team-row span,
+.audit-row span,
+.audit-row time,
+.launch-check small {
   color: var(--muted);
   font-size: 0.82rem;
+}
+
+.launch-check > span {
+  background: #fff8ef;
+  border-radius: 999px;
+  color: #8b5d17;
+  flex: 0 0 auto;
+  font-size: 0.74rem;
+  font-weight: 900;
+  padding: 5px 9px;
+  text-transform: uppercase;
+}
+
+.launch-check.ready > span {
+  background: #e7f4ef;
+  color: var(--teal-dark);
+}
+
+.audit-row time {
+  flex: 0 0 auto;
+  font-weight: 800;
+}
+
+.billing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .status-pill {

@@ -1,4 +1,8 @@
 window.ClosePilotConfig = {
   "supabaseUrl": "",
-  "supabaseAnonKey": ""
+  "supabaseAnonKey": "",
+  "stripeCheckoutUrl": "",
+  "stripePortalUrl": "",
+  "supportEmail": "support@closepilot.local",
+  "productUrl": ""
 };

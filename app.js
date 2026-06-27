@@ -131,6 +131,14 @@ const seedState = {
       },
     ],
     invites: [],
+    auditEvents: [
+      {
+        id: "audit-seed",
+        action: "Workspace created",
+        detail: "Starter SaaS workspace initialized.",
+        createdAt: "2026-06-20T15:00:00.000Z",
+      },
+    ],
   },
   activities: [
     {
@@ -261,10 +269,14 @@ const adminWorkspaceType = document.querySelector("#adminWorkspaceType");
 const adminSalesGoal = document.querySelector("#adminSalesGoal");
 const planSummary = document.querySelector("#planSummary");
 const teamSummary = document.querySelector("#teamSummary");
+const openCheckoutButton = document.querySelector("#openCheckout");
+const openBillingPortalButton = document.querySelector("#openBillingPortal");
 const inviteForm = document.querySelector("#inviteForm");
 const inviteEmail = document.querySelector("#inviteEmail");
 const inviteRole = document.querySelector("#inviteRole");
 const teamList = document.querySelector("#teamList");
+const launchChecklist = document.querySelector("#launchChecklist");
+const auditList = document.querySelector("#auditList");
 const adminMessage = document.querySelector("#adminMessage");
 const leadDetailModal = document.querySelector("#leadDetailModal");
 const leadDetailContent = document.querySelector("#leadDetailContent");
@@ -348,6 +360,8 @@ importWorkspaceBackupButton.addEventListener("click", () => importWorkspaceBacku
 importWorkspaceBackupInput.addEventListener("change", importWorkspaceBackup);
 workspaceAdminForm.addEventListener("submit", saveAdminWorkspaceSettings);
 inviteForm.addEventListener("submit", inviteTeamMember);
+openCheckoutButton.addEventListener("click", openCheckout);
+openBillingPortalButton.addEventListener("click", openBillingPortal);
 confirmImportButton.addEventListener("click", confirmLeadsImport);
 cancelImportButton.addEventListener("click", closeImportModal);
 closeImportModalButton.addEventListener("click", closeImportModal);
@@ -761,6 +775,28 @@ function renderSaasAdmin() {
     ...activeMembers.map(renderTeamMember),
     ...pendingInvites.map(renderTeamInvite),
   ].join("");
+
+  teamList.querySelectorAll("[data-send-invite]").forEach((button) => {
+    button.addEventListener("click", () => sendInviteEmail(button.dataset.sendInvite));
+  });
+
+  launchChecklist.innerHTML = launchChecks().map(renderLaunchCheck).join("");
+  auditList.innerHTML = account.auditEvents.length
+    ? account.auditEvents
+        .slice(0, 6)
+        .map(
+          (event) => `
+            <article class="audit-row">
+              <div>
+                <strong>${escapeHtml(event.action)}</strong>
+                <span>${escapeHtml(event.detail)}</span>
+              </div>
+              <time>${formatShortDate(event.createdAt)}</time>
+            </article>
+          `,
+        )
+        .join("")
+    : "<p class=\"empty-state\">No admin activity yet.</p>";
 }
 
 function renderTeamMember(member) {
@@ -782,9 +818,46 @@ function renderTeamInvite(invite) {
         <strong>${escapeHtml(invite.email)}</strong>
         <span>${escapeHtml(invite.role)} · invited ${formatShortDate(invite.createdAt)}</span>
       </div>
-      <span class="status-pill pending">Pending</span>
+      <button class="secondary-button" data-send-invite="${invite.id}" type="button">Send email</button>
     </article>
   `;
+}
+
+function renderLaunchCheck(check) {
+  return `
+    <article class="launch-check ${check.ready ? "ready" : ""}">
+      <span>${check.ready ? "Ready" : "Setup"}</span>
+      <div>
+        <strong>${escapeHtml(check.title)}</strong>
+        <small>${escapeHtml(check.detail)}</small>
+      </div>
+    </article>
+  `;
+}
+
+function launchChecks() {
+  return [
+    {
+      title: "Cloud database",
+      detail: hasSupabaseConfig ? "Supabase is configured." : "Add SUPABASE_URL and SUPABASE_ANON_KEY.",
+      ready: hasSupabaseConfig,
+    },
+    {
+      title: "Stripe checkout",
+      detail: config.stripeCheckoutUrl ? "Checkout URL is configured." : "Add STRIPE_CHECKOUT_URL.",
+      ready: Boolean(config.stripeCheckoutUrl),
+    },
+    {
+      title: "Billing portal",
+      detail: config.stripePortalUrl ? "Customer portal URL is configured." : "Add STRIPE_PORTAL_URL.",
+      ready: Boolean(config.stripePortalUrl),
+    },
+    {
+      title: "Support inbox",
+      detail: config.supportEmail ? `${config.supportEmail} is set.` : "Add SUPPORT_EMAIL.",
+      ready: Boolean(config.supportEmail),
+    },
+  ];
 }
 
 function renderInsights() {
@@ -2079,6 +2152,7 @@ async function saveAdminWorkspaceSettings(event) {
   setupWorkspaceType.value = adminWorkspaceType.value;
   setupSalesGoal.value = adminSalesGoal.value;
   await saveWorkspaceSetup();
+  await logAuditEvent("Workspace updated", `${setupBusinessName.value} settings saved.`);
   adminMessage.textContent = "Workspace settings saved.";
   await reloadState();
 }
@@ -2097,8 +2171,33 @@ async function changeSubscriptionPlan(planId) {
       seatLimit: plan.seatLimit,
     },
   });
+  await logAuditEvent("Plan changed", `${plan.label} plan selected.`);
   adminMessage.textContent = `${plan.label} plan selected. Connect Stripe before charging customers.`;
   await reloadState();
+}
+
+async function openCheckout() {
+  if (config.stripeCheckoutUrl) {
+    window.open(config.stripeCheckoutUrl, "_blank", "noopener");
+    adminMessage.textContent = "Stripe checkout opened.";
+    await logAuditEvent("Checkout opened", "Billing checkout link opened.");
+    await reloadState();
+    return;
+  }
+
+  adminMessage.textContent = "Add STRIPE_CHECKOUT_URL to enable live checkout.";
+}
+
+async function openBillingPortal() {
+  if (config.stripePortalUrl) {
+    window.open(config.stripePortalUrl, "_blank", "noopener");
+    adminMessage.textContent = "Billing portal opened.";
+    await logAuditEvent("Billing portal opened", "Customer portal link opened.");
+    await reloadState();
+    return;
+  }
+
+  adminMessage.textContent = "Add STRIPE_PORTAL_URL to enable the customer portal.";
 }
 
 async function inviteTeamMember(event) {
@@ -2120,10 +2219,33 @@ async function inviteTeamMember(event) {
     role: inviteRole.value,
     status: "pending",
   });
+  await logAuditEvent("Invite staged", `${email} invited as ${inviteRole.value}.`);
   inviteEmail.value = "";
   inviteRole.value = "member";
   adminMessage.textContent = `Invite staged for ${email}. Connect email delivery before sending live invites.`;
   await reloadState();
+}
+
+async function sendInviteEmail(inviteId) {
+  const invite = accountState().invites.find((item) => item.id === inviteId);
+  if (!invite) return;
+
+  const subject = encodeURIComponent("You're invited to ClosePilot CRM");
+  const body = encodeURIComponent(
+    `You've been invited as a ${invite.role} in ClosePilot CRM.\n\nOpen the app and create your account to join the workspace.`,
+  );
+  const mailto = `mailto:${invite.email}?subject=${subject}&body=${body}`;
+  window.location.href = mailto;
+  await logAuditEvent("Invite email prepared", `${invite.email} mail link opened.`);
+  adminMessage.textContent = `Email draft opened for ${invite.email}.`;
+  await reloadState();
+}
+
+async function logAuditEvent(action, detail) {
+  await store.createAuditEvent({
+    action,
+    detail,
+  });
 }
 
 function saveRevenueTarget(event) {
@@ -2784,6 +2906,17 @@ function createLocalStore() {
       this.save(state);
       return created;
     },
+    async createAuditEvent(event) {
+      const created = {
+        id: crypto.randomUUID(),
+        createdAt: new Date().toISOString(),
+        ...event,
+      };
+      state.account = accountState();
+      state.account.auditEvents = [created, ...(state.account.auditEvents || [])].slice(0, 25);
+      this.save(state);
+      return created;
+    },
     async clearWorkspaceData() {
       state.leads = [];
       state.tasks = [];
@@ -2908,17 +3041,24 @@ function createSupabaseStore(client, user) {
           localStorage.removeItem(cloudSaasAccountKey(workspaceId));
         }
       }
-      const [{ data: subscription, error: subscriptionError }, { data: members, error: memberError }, { data: invites, error: inviteError }] =
+      const [
+        { data: subscription, error: subscriptionError },
+        { data: members, error: memberError },
+        { data: invites, error: inviteError },
+        { data: auditEvents, error: auditError },
+      ] =
         await Promise.all([
           client.from("workspace_subscriptions").select("*").eq("workspace_id", workspaceId).maybeSingle(),
           client.from("workspace_members").select("user_id, role").eq("workspace_id", workspaceId),
           client.from("workspace_invitations").select("*").eq("workspace_id", workspaceId).order("created_at", { ascending: false }),
+          client.from("workspace_audit_events").select("*").eq("workspace_id", workspaceId).order("created_at", { ascending: false }).limit(25),
         ]);
 
-      if (isMissingSaasTable(subscriptionError) || isMissingSaasTable(inviteError)) return fallback;
+      if (isMissingSaasTable(subscriptionError) || isMissingSaasTable(inviteError) || isMissingSaasTable(auditError)) return fallback;
       throwIf(subscriptionError);
       throwIf(memberError);
       throwIf(inviteError);
+      throwIf(auditError);
 
       return normalizedAccount({
         subscription: subscription
@@ -2936,6 +3076,7 @@ function createSupabaseStore(client, user) {
           status: "active",
         })),
         invites: (invites || []).map(fromInviteRow),
+        auditEvents: (auditEvents || []).map(fromAuditRow),
       });
     },
     async loadActivities() {
@@ -3101,6 +3242,31 @@ function createSupabaseStore(client, user) {
       throwIf(error);
       return fromInviteRow(data);
     },
+    async createAuditEvent(event) {
+      const { data, error } = await client
+        .from("workspace_audit_events")
+        .insert({
+          workspace_id: workspaceId,
+          action: event.action,
+          detail: event.detail,
+        })
+        .select("*")
+        .single();
+      if (isMissingSaasTable(error)) {
+        const account = normalizedAccount(state.account);
+        const created = {
+          id: crypto.randomUUID(),
+          createdAt: new Date().toISOString(),
+          ...event,
+        };
+        account.auditEvents = [created, ...(account.auditEvents || [])].slice(0, 25);
+        state.account = account;
+        localStorage.setItem(cloudSaasAccountKey(workspaceId), JSON.stringify(account));
+        return created;
+      }
+      throwIf(error);
+      return fromAuditRow(data);
+    },
     async clearWorkspaceData() {
       const [{ error: taskError }, { error: leadError }] = await Promise.all([
         client.from("tasks").delete().eq("workspace_id", workspaceId),
@@ -3222,6 +3388,15 @@ function fromInviteRow(row) {
   };
 }
 
+function fromAuditRow(row) {
+  return {
+    id: row.id,
+    action: row.action,
+    detail: row.detail,
+    createdAt: row.created_at,
+  };
+}
+
 function normalizeLoadedState() {
   state.leads ||= [];
   state.tasks ||= [];
@@ -3257,8 +3432,9 @@ function normalizedAccount(account = {}) {
             role: "owner",
             status: "active",
           },
-        ],
+    ],
     invites: Array.isArray(account.invites) ? account.invites : [],
+    auditEvents: Array.isArray(account.auditEvents) ? account.auditEvents : [],
   };
 }
 
@@ -3267,7 +3443,12 @@ function isMissingActivitiesTable(error) {
 }
 
 function isMissingSaasTable(error) {
-  return error?.code === "42P01" || error?.message?.includes("workspace_subscriptions") || error?.message?.includes("workspace_invitations");
+  return (
+    error?.code === "42P01" ||
+    error?.message?.includes("workspace_subscriptions") ||
+    error?.message?.includes("workspace_invitations") ||
+    error?.message?.includes("workspace_audit_events")
+  );
 }
 
 function throwIf(error) {

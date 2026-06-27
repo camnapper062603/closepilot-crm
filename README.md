@@ -49,6 +49,10 @@ npm test
 5. In Netlify, add environment variables:
    - `SUPABASE_URL`
    - `SUPABASE_ANON_KEY`
+   - `STRIPE_CHECKOUT_URL`
+   - `STRIPE_PORTAL_URL`
+   - `SUPPORT_EMAIL`
+   - `PRODUCT_URL`
 6. Redeploy the site.
 7. In Supabase Auth URL Configuration, set:
    - Site URL: your Netlify URL
@@ -79,6 +83,8 @@ This build includes:
 - Workspace/account setup
 - Team members and staged invitations
 - Plan/seat management for Starter, Growth, and Scale
+- Stripe checkout/customer portal URL hooks
+- Launch readiness checklist and admin audit trail
 - Supabase schema and RLS policies for CRM data, subscriptions, and invitations
 - CRM pipeline, contacts, tasks, automations, activity, CSV import/export, backups, revenue goals, and channel reporting
 

@@ -419,6 +419,10 @@
                 <button class="secondary-button" data-plan-choice="growth" type="button">Growth</button>
                 <button class="secondary-button" data-plan-choice="scale" type="button">Scale</button>
               </div>
+              <div class="billing-actions">
+                <button class="primary-button" id="openCheckout" type="button">Open checkout</button>
+                <button class="secondary-button" id="openBillingPortal" type="button">Billing portal</button>
+              </div>
             </section>
 
             <section class="admin-card team-card" aria-labelledby="teamHeading">
@@ -436,6 +440,22 @@
               </form>
               <div class="team-summary" id="teamSummary" aria-label="Team summary"></div>
               <div class="team-list" id="teamList"></div>
+            </section>
+
+            <section class="admin-card launch-card" aria-labelledby="launchHeading">
+              <div>
+                <p class="eyebrow">Launch</p>
+                <h3 id="launchHeading">Production readiness</h3>
+              </div>
+              <div class="launch-checklist" id="launchChecklist" aria-label="Launch checklist"></div>
+            </section>
+
+            <section class="admin-card audit-card" aria-labelledby="auditHeading">
+              <div>
+                <p class="eyebrow">Security</p>
+                <h3 id="auditHeading">Audit trail</h3>
+              </div>
+              <div class="audit-list" id="auditList" aria-label="Audit trail"></div>
             </section>
           </div>
           <p class="admin-message" id="adminMessage" role="status"></p>

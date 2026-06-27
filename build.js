@@ -3,6 +3,10 @@ import { writeFileSync } from "node:fs";
 const config = {
   supabaseUrl: process.env.SUPABASE_URL || "",
   supabaseAnonKey: normalizeJwt(process.env.SUPABASE_ANON_KEY || ""),
+  stripeCheckoutUrl: process.env.STRIPE_CHECKOUT_URL || "",
+  stripePortalUrl: process.env.STRIPE_PORTAL_URL || "",
+  supportEmail: process.env.SUPPORT_EMAIL || "support@closepilot.local",
+  productUrl: process.env.PRODUCT_URL || "",
 };
 
 writeFileSync(
