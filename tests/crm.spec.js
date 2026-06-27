@@ -562,13 +562,16 @@ test('creates follow-up tasks for selected contacts', async ({ page }) => {
   const northstarRow = page.locator('#contactTable .contact-row').filter({ hasText: 'Northstar Roofing' });
   const harborRow = page.locator('#contactTable .contact-row').filter({ hasText: 'Harbor Fitness' });
 
+  await expect(page.locator('#contactSelectionStatus')).toHaveText('0 selected');
   await expect(page.getByRole('button', { name: 'Task selected (0)' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Mark won selected (0)' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Next stage selected (0)' })).toBeDisabled();
   await northstarRow.getByLabel('Select Northstar Roofing').check();
   await harborRow.getByLabel('Select Harbor Fitness').check();
+  await expect(page.locator('#contactSelectionStatus')).toHaveText('2 selected');
   await page.getByRole('button', { name: 'Task selected (2)' }).click();
 
+  await expect(page.locator('#contactSelectionStatus')).toHaveText('0 selected');
   await expect(page.getByRole('button', { name: 'Task selected (0)' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Mark won selected (0)' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Next stage selected (0)' })).toBeDisabled();
@@ -579,6 +582,23 @@ test('creates follow-up tasks for selected contacts', async ({ page }) => {
     'Review proposal pricing and implementation timeline. (Harbor Fitness)',
   );
   await expect(page.locator('#leadBrief')).toContainText('Nia Brooks');
+});
+
+test('selects and clears visible contacts in bulk', async ({ page }) => {
+  const contactFilters = page.getByRole('group', { name: 'Contact filter' });
+
+  await contactFilters.getByRole('button', { name: /Proposal/ }).click();
+  await page.getByRole('button', { name: 'Select visible' }).click();
+
+  await expect(page.locator('#contactSelectionStatus')).toHaveText('1 selected');
+  await expect(page.getByRole('button', { name: 'Task selected (1)' })).toBeEnabled();
+  await expect(page.locator('#contactTable .contact-row').filter({ hasText: 'Harbor Fitness' }).getByLabel('Select Harbor Fitness')).toBeChecked();
+
+  await page.getByRole('button', { name: 'Clear selection' }).click();
+
+  await expect(page.locator('#contactSelectionStatus')).toHaveText('0 selected');
+  await expect(page.getByRole('button', { name: 'Task selected (0)' })).toBeDisabled();
+  await expect(page.locator('#contactTable .contact-row').filter({ hasText: 'Harbor Fitness' }).getByLabel('Select Harbor Fitness')).not.toBeChecked();
 });
 
 test('marks selected contacts won in bulk', async ({ page }) => {

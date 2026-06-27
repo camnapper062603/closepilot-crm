@@ -504,10 +504,19 @@ button.insight-card:hover {
   padding: 0 10px;
 }
 
+#selectVisibleContacts,
+#clearSelectedContacts,
 #bulkContactTask,
 #bulkContactWon,
 #bulkContactNext {
   min-height: 38px;
+}
+
+.selection-status {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .contact-summary,

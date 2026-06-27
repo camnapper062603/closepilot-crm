@@ -146,6 +146,9 @@ const leadBrief = document.querySelector("#leadBrief");
 const contactTable = document.querySelector("#contactTable");
 const contactSummary = document.querySelector("#contactSummary");
 const contactSortInput = document.querySelector("#contactSort");
+const selectVisibleContactsButton = document.querySelector("#selectVisibleContacts");
+const clearSelectedContactsButton = document.querySelector("#clearSelectedContacts");
+const contactSelectionStatus = document.querySelector("#contactSelectionStatus");
 const bulkContactTaskButton = document.querySelector("#bulkContactTask");
 const bulkContactWonButton = document.querySelector("#bulkContactWon");
 const bulkContactNextButton = document.querySelector("#bulkContactNext");
@@ -225,6 +228,8 @@ taskSortInput.addEventListener("change", () => {
   renderTasks();
 });
 activitySearchInput.addEventListener("input", renderActivityFeed);
+selectVisibleContactsButton.addEventListener("click", selectVisibleContacts);
+clearSelectedContactsButton.addEventListener("click", clearSelectedContacts);
 bulkContactTaskButton.addEventListener("click", createTasksForSelectedContacts);
 bulkContactWonButton.addEventListener("click", markSelectedContactsWon);
 bulkContactNextButton.addEventListener("click", moveSelectedContactsNext);
@@ -1203,8 +1208,21 @@ function syncSelectedContacts(leads) {
   selectedContactIds = new Set([...selectedContactIds].filter((id) => visibleIds.has(id)));
 }
 
+function selectVisibleContacts() {
+  sortedContactLeads(filteredLeads()).forEach((lead) => selectedContactIds.add(lead.id));
+  renderContacts();
+}
+
+function clearSelectedContacts() {
+  selectedContactIds.clear();
+  renderContacts();
+}
+
 function updateBulkContactTaskButton() {
   const count = selectedContactIds.size;
+  const hasSelection = count > 0;
+  clearSelectedContactsButton.disabled = !hasSelection;
+  contactSelectionStatus.textContent = `${count} selected`;
   bulkContactTaskButton.disabled = count === 0;
   bulkContactTaskButton.textContent = `Task selected (${count})`;
   bulkContactWonButton.disabled = count === 0;
