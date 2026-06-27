@@ -505,7 +505,8 @@ button.insight-card:hover {
 }
 
 #bulkContactTask,
-#bulkContactWon {
+#bulkContactWon,
+#bulkContactNext {
   min-height: 38px;
 }
 

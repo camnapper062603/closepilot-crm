@@ -564,12 +564,14 @@ test('creates follow-up tasks for selected contacts', async ({ page }) => {
 
   await expect(page.getByRole('button', { name: 'Task selected (0)' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Mark won selected (0)' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Next stage selected (0)' })).toBeDisabled();
   await northstarRow.getByLabel('Select Northstar Roofing').check();
   await harborRow.getByLabel('Select Harbor Fitness').check();
   await page.getByRole('button', { name: 'Task selected (2)' }).click();
 
   await expect(page.getByRole('button', { name: 'Task selected (0)' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Mark won selected (0)' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Next stage selected (0)' })).toBeDisabled();
   await expect(page.locator('#taskList')).toContainText(
     'Send workflow proposal and ask for install calendar. (Northstar Roofing)',
   );
@@ -595,6 +597,25 @@ test('marks selected contacts won in bulk', async ({ page }) => {
   await expect(page.locator('#taskList')).toContainText('Send onboarding checklist to Harbor Fitness');
   await expect(page.locator('#leadBrief')).toContainText('Nia Brooks');
   await expect(contactFilters.getByRole('button', { name: /Won/ })).toContainText('3');
+});
+
+test('moves selected contacts to the next stage in bulk', async ({ page }) => {
+  const contactFilters = page.getByRole('group', { name: 'Contact filter' });
+  const summitRow = page.locator('#contactTable .contact-row').filter({ hasText: 'Summit Auto Detail' });
+  const northstarRow = page.locator('#contactTable .contact-row').filter({ hasText: 'Northstar Roofing' });
+
+  await summitRow.getByLabel('Select Summit Auto Detail').check();
+  await northstarRow.getByLabel('Select Northstar Roofing').check();
+  await page.getByRole('button', { name: 'Next stage selected (2)' }).click();
+
+  await expect(page.getByRole('button', { name: 'Next stage selected (0)' })).toBeDisabled();
+  await expect(page.locator('[data-stage="qualified"]')).toContainText('Summit Auto Detail');
+  await expect(page.locator('[data-stage="proposal"]')).toContainText('Northstar Roofing');
+  await expect(page.locator('#taskList')).toContainText('Follow up with Eli Ramirez after moving to Qualified');
+  await expect(page.locator('#taskList')).toContainText('Follow up with Maya Johnson after moving to Proposal');
+  await expect(page.locator('#leadBrief')).toContainText('Maya Johnson');
+  await expect(contactFilters.getByRole('button', { name: /Qualified/ })).toContainText('1');
+  await expect(contactFilters.getByRole('button', { name: /Proposal/ })).toContainText('2');
 });
 
 test('marks contacts won from the contact list', async ({ page }) => {

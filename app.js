@@ -148,6 +148,7 @@ const contactSummary = document.querySelector("#contactSummary");
 const contactSortInput = document.querySelector("#contactSort");
 const bulkContactTaskButton = document.querySelector("#bulkContactTask");
 const bulkContactWonButton = document.querySelector("#bulkContactWon");
+const bulkContactNextButton = document.querySelector("#bulkContactNext");
 const taskList = document.querySelector("#taskList");
 const taskSummary = document.querySelector("#taskSummary");
 const taskSearchInput = document.querySelector("#taskSearch");
@@ -226,6 +227,7 @@ taskSortInput.addEventListener("change", () => {
 activitySearchInput.addEventListener("input", renderActivityFeed);
 bulkContactTaskButton.addEventListener("click", createTasksForSelectedContacts);
 bulkContactWonButton.addEventListener("click", markSelectedContactsWon);
+bulkContactNextButton.addEventListener("click", moveSelectedContactsNext);
 
 searchInput.addEventListener("input", render);
 
@@ -785,6 +787,12 @@ async function moveLead(leadId, direction) {
   const lead = state.leads.find((item) => item.id === leadId);
   if (!lead) return;
 
+  state.selectedLeadId = lead.id;
+  await applyStageMove(lead, direction);
+  await reloadState();
+}
+
+async function applyStageMove(lead, direction) {
   const index = stages.findIndex((stage) => stage.id === lead.stage);
   const nextStage = stages[Math.min(stages.length - 1, Math.max(0, index + direction))];
   if (lead.stage === nextStage.id) return;
@@ -795,15 +803,13 @@ async function moveLead(leadId, direction) {
     score: Math.min(99, Math.max(0, lead.score + (direction > 0 ? 4 : -2))),
   };
 
-  state.selectedLeadId = lead.id;
   await store.updateLead(updatedLead);
   await store.createActivity({
-    leadId,
+    leadId: lead.id,
     type: "stage",
     message: `Stage changed to ${nextStage.label}.`,
   });
   await addAutomatedTask(`Follow up with ${lead.name} after moving to ${nextStage.label}`);
-  await reloadState();
 }
 
 function renderLeadBrief() {
@@ -1203,6 +1209,8 @@ function updateBulkContactTaskButton() {
   bulkContactTaskButton.textContent = `Task selected (${count})`;
   bulkContactWonButton.disabled = count === 0;
   bulkContactWonButton.textContent = `Mark won selected (${count})`;
+  bulkContactNextButton.disabled = count === 0;
+  bulkContactNextButton.textContent = `Next stage selected (${count})`;
 }
 
 function contactSearchMatches(lead) {
@@ -1549,6 +1557,18 @@ async function markSelectedContactsWon() {
 
   state.selectedLeadId = selectedLeads[selectedLeads.length - 1].id;
   await Promise.all(selectedLeads.map((lead) => applyLeadOutcome(lead, "won")));
+  selectedContactIds.clear();
+  await reloadState();
+}
+
+async function moveSelectedContactsNext() {
+  const selectedLeads = [...selectedContactIds]
+    .map((leadId) => state.leads.find((lead) => lead.id === leadId))
+    .filter(Boolean);
+  if (!selectedLeads.length) return;
+
+  state.selectedLeadId = selectedLeads[selectedLeads.length - 1].id;
+  await Promise.all(selectedLeads.map((lead) => applyStageMove(lead, 1)));
   selectedContactIds.clear();
   await reloadState();
 }
