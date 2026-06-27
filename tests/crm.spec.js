@@ -30,9 +30,13 @@ test('shows pipeline stage totals and updates them when deals move', async ({ pa
   const proposalHeading = page.locator('[data-stage="proposal"] .stage-heading');
 
   await expect(page.locator('[data-stage="new"] .stage-heading')).toContainText('$3,200');
+  await expect(page.locator('[data-stage="new"] .stage-heading')).toContainText('15% close odds');
   await expect(qualifiedHeading).toContainText('$8,400');
+  await expect(qualifiedHeading).toContainText('40% close odds');
   await expect(proposalHeading).toContainText('$12,600');
+  await expect(proposalHeading).toContainText('70% close odds');
   await expect(page.locator('[data-stage="won"] .stage-heading')).toContainText('$5,100');
+  await expect(page.locator('[data-stage="won"] .stage-heading')).toContainText('100% close odds');
 
   await page.locator('article.deal-card').filter({ hasText: 'Northstar Roofing' }).getByRole('button', { name: 'Next' }).click();
 

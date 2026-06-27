@@ -629,7 +629,7 @@ function renderPipeline() {
           <div class="stage-heading">
             <div>
               <strong>${stage.label}</strong>
-              <span class="stage-value">${formatter.format(stageValue)}</span>
+              <span class="stage-value">${formatter.format(stageValue)} · ${Math.round(stageProbabilities[stage.id] * 100)}% close odds</span>
             </div>
             <span class="count-pill">${stageLeads.length}</span>
           </div>
