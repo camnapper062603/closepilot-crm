@@ -143,6 +143,8 @@ const taskDueChoices = [
 const board = document.querySelector("#pipelineBoard");
 const pipelineHealth = document.querySelector("#pipelineHealth");
 const insightList = document.querySelector("#insightList");
+const sourceReportGrid = document.querySelector("#sourceReportGrid");
+const exportSourceReportButton = document.querySelector("#exportSourceReport");
 const leadBrief = document.querySelector("#leadBrief");
 const contactTable = document.querySelector("#contactTable");
 const contactSummary = document.querySelector("#contactSummary");
@@ -276,6 +278,7 @@ bulkContactWonButton.addEventListener("click", markSelectedContactsWon);
 bulkContactNextButton.addEventListener("click", moveSelectedContactsNext);
 
 searchInput.addEventListener("input", render);
+exportSourceReportButton.addEventListener("click", exportSourceReportCsv);
 revenueGoalForm.addEventListener("submit", saveRevenueTarget);
 
 authForm.addEventListener("submit", async (event) => {
@@ -541,6 +544,7 @@ function render() {
   renderRevenueGoal();
   renderOnboarding();
   renderInsights();
+  renderSourceReport();
   renderPipeline();
   renderLeadBrief();
   renderAutomations();
@@ -720,6 +724,69 @@ function sourcePerformanceInsight() {
   });
 
   return [...sourceMap.values()].sort((left, right) => right.value - left.value || right.count - left.count)[0];
+}
+
+function renderSourceReport() {
+  const rows = sourcePerformanceRows();
+  exportSourceReportButton.disabled = rows.length === 0;
+
+  if (!rows.length) {
+    sourceReportGrid.innerHTML = "<p class=\"empty-state\">Add leads to compare sources.</p>";
+    return;
+  }
+
+  sourceReportGrid.innerHTML = rows
+    .map(
+      (row) => `
+        <article class="source-card">
+          <button class="source-card-main" data-source-lead="${row.topLead.id}" type="button">
+            <span>${escapeHtml(row.source)}</span>
+            <strong>${formatter.format(row.value)}</strong>
+            <small>${row.count} ${row.count === 1 ? "lead" : "leads"} · ${formatter.format(row.weighted)} weighted</small>
+          </button>
+          <div class="source-card-meta">
+            <span>Avg score <strong>${row.averageScore}</strong></span>
+            <span>Top lead <strong>${escapeHtml(row.topLead.company)}</strong></span>
+          </div>
+        </article>
+      `,
+    )
+    .join("");
+
+  sourceReportGrid.querySelectorAll("[data-source-lead]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.selectedLeadId = button.dataset.sourceLead;
+      render();
+    });
+  });
+}
+
+function sourcePerformanceRows() {
+  const sourceMap = new Map();
+  state.leads.forEach((lead) => {
+    const source = lead.source || "Unknown";
+    const current = sourceMap.get(source) || {
+      source,
+      count: 0,
+      value: 0,
+      weighted: 0,
+      scoreTotal: 0,
+      topLead: lead,
+    };
+    current.count += 1;
+    current.value += lead.value;
+    current.weighted += weightedLeadValue(lead);
+    current.scoreTotal += lead.score;
+    if (lead.value > current.topLead.value) current.topLead = lead;
+    sourceMap.set(source, current);
+  });
+
+  return [...sourceMap.values()]
+    .map((row) => ({
+      ...row,
+      averageScore: Math.round(row.scoreTotal / row.count),
+    }))
+    .sort((left, right) => right.value - left.value || right.weighted - left.weighted || left.source.localeCompare(right.source));
 }
 
 function renderPipeline() {
@@ -2044,6 +2111,33 @@ function exportSelectedContactsCsv() {
   const leads = selectedContactLeads();
   if (!leads.length) return;
   downloadLeadsCsv(leads, "closepilot-selected-leads.csv");
+}
+
+function exportSourceReportCsv() {
+  const rows = sourcePerformanceRows();
+  if (!rows.length) return;
+
+  const headers = ["source", "leads", "value", "weighted", "averageScore", "topLead"];
+  const csvRows = rows.map((row) =>
+    [
+      row.source,
+      row.count,
+      row.value,
+      Math.round(row.weighted),
+      row.averageScore,
+      row.topLead.company,
+    ]
+      .map(csvEscape)
+      .join(","),
+  );
+  const csv = [headers.join(","), ...csvRows].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "closepilot-source-report.csv";
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 function exportWorkspaceBackup() {

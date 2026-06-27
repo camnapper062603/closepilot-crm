@@ -26,6 +26,30 @@ test('shows actionable pipeline insights', async ({ page }) => {
   await expect(page.locator('#leadBrief')).toContainText('Eli Ramirez');
 });
 
+test('shows and exports lead source performance', async ({ page }) => {
+  await expect(page.locator('#sourceReport')).toContainText('Channel report');
+  await expect(page.locator('#sourceReport')).toContainText('LinkedIn');
+  await expect(page.locator('#sourceReport')).toContainText('$12,600');
+  await expect(page.locator('#sourceReport')).toContainText('$8,820 weighted');
+  await expect(page.locator('#sourceReport')).toContainText('Avg score');
+  await expect(page.locator('#sourceReport')).toContainText('Harbor Fitness');
+  await expect(page.locator('#sourceReport')).toContainText('Website');
+  await expect(page.locator('#sourceReport')).toContainText('$8,400');
+
+  await page.locator('#sourceReport').getByRole('button', { name: /LinkedIn/ }).click();
+  await expect(page.locator('#leadBrief')).toContainText('Nia Brooks');
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export source report' }).click();
+  const download = await downloadPromise;
+  const csv = await readFile(await download.path(), 'utf8');
+
+  expect(download.suggestedFilename()).toBe('closepilot-source-report.csv');
+  expect(csv).toContain('source,leads,value,weighted,averageScore,topLead');
+  expect(csv).toContain('LinkedIn,1,12600,8820,88,Harbor Fitness');
+  expect(csv).toContain('Website,1,8400,3360,92,Northstar Roofing');
+});
+
 test('manages automation status in bulk', async ({ page }) => {
   await expect(page.locator('#automationSummary')).toContainText('2/3');
   await expect(page.locator('#automationSummary')).toContainText('7h');
