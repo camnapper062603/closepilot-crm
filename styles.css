@@ -1038,6 +1038,8 @@ button.insight-card:hover {
 #clearDoneTasks,
 #selectVisibleTasks,
 #clearSelectedTasks,
+#completeSelectedTasks,
+#snoozeSelectedTasks,
 #duplicateSelectedTasks,
 #deleteSelectedTasks {
   width: 100%;

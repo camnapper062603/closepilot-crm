@@ -164,6 +164,8 @@ const clearDoneTasksButton = document.querySelector("#clearDoneTasks");
 const selectVisibleTasksButton = document.querySelector("#selectVisibleTasks");
 const clearSelectedTasksButton = document.querySelector("#clearSelectedTasks");
 const taskSelectionStatus = document.querySelector("#taskSelectionStatus");
+const completeSelectedTasksButton = document.querySelector("#completeSelectedTasks");
+const snoozeSelectedTasksButton = document.querySelector("#snoozeSelectedTasks");
 const duplicateSelectedTasksButton = document.querySelector("#duplicateSelectedTasks");
 const deleteSelectedTasksButton = document.querySelector("#deleteSelectedTasks");
 const automationList = document.querySelector("#automationList");
@@ -231,6 +233,8 @@ snoozeVisibleTasksButton.addEventListener("click", snoozeVisibleTasks);
 clearDoneTasksButton.addEventListener("click", clearDoneTasks);
 selectVisibleTasksButton.addEventListener("click", selectVisibleTasks);
 clearSelectedTasksButton.addEventListener("click", clearSelectedTasks);
+completeSelectedTasksButton.addEventListener("click", completeSelectedTasks);
+snoozeSelectedTasksButton.addEventListener("click", snoozeSelectedTasks);
 duplicateSelectedTasksButton.addEventListener("click", duplicateSelectedTasks);
 deleteSelectedTasksButton.addEventListener("click", deleteSelectedTasks);
 taskSearchInput.addEventListener("input", renderTasks);
@@ -1385,10 +1389,17 @@ function syncSelectedTasks(tasks) {
 function updateTaskSelectionControls() {
   const count = selectedTaskIds.size;
   const hasSelection = count > 0;
+  const tasks = selectedTasks();
+  const hasOpenSelection = tasks.some((task) => !task.done);
+  const hasSnoozableSelection = tasks.some((task) => !task.done && task.due !== "tomorrow");
   clearSelectedTasksButton.disabled = !hasSelection;
+  completeSelectedTasksButton.disabled = !hasOpenSelection;
+  snoozeSelectedTasksButton.disabled = !hasSnoozableSelection;
   duplicateSelectedTasksButton.disabled = !hasSelection;
   deleteSelectedTasksButton.disabled = !hasSelection;
   taskSelectionStatus.textContent = `${count} selected`;
+  completeSelectedTasksButton.textContent = `Complete selected (${count})`;
+  snoozeSelectedTasksButton.textContent = `Snooze selected (${count})`;
   duplicateSelectedTasksButton.textContent = `Duplicate selected (${count})`;
   deleteSelectedTasksButton.textContent = `Delete selected (${count})`;
 }
@@ -1416,6 +1427,24 @@ async function snoozeVisibleTasks() {
   if (!openTasks.length) return;
 
   await Promise.all(openTasks.map((task) => store.updateTask({ ...task, due: "tomorrow" })));
+  await reloadState();
+}
+
+async function completeSelectedTasks() {
+  const tasks = selectedTasks().filter((task) => !task.done);
+  if (!tasks.length) return;
+
+  await Promise.all(tasks.map((task) => store.updateTask({ ...task, done: true })));
+  selectedTaskIds.clear();
+  await reloadState();
+}
+
+async function snoozeSelectedTasks() {
+  const tasks = selectedTasks().filter((task) => !task.done && task.due !== "tomorrow");
+  if (!tasks.length) return;
+
+  await Promise.all(tasks.map((task) => store.updateTask({ ...task, due: "tomorrow" })));
+  selectedTaskIds.clear();
   await reloadState();
 }
 
