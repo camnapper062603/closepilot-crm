@@ -173,6 +173,9 @@ const applySelectedTaskDueButton = document.querySelector("#applySelectedTaskDue
 const duplicateSelectedTasksButton = document.querySelector("#duplicateSelectedTasks");
 const deleteSelectedTasksButton = document.querySelector("#deleteSelectedTasks");
 const automationList = document.querySelector("#automationList");
+const automationSummary = document.querySelector("#automationSummary");
+const enableAllAutomationsButton = document.querySelector("#enableAllAutomations");
+const resetAutomationsButton = document.querySelector("#resetAutomations");
 const activityFeed = document.querySelector("#activityFeed");
 const activitySummary = document.querySelector("#activitySummary");
 const activitySearchInput = document.querySelector("#activitySearch");
@@ -246,6 +249,8 @@ snoozeSelectedTasksButton.addEventListener("click", snoozeSelectedTasks);
 applySelectedTaskDueButton.addEventListener("click", applySelectedTaskDue);
 duplicateSelectedTasksButton.addEventListener("click", duplicateSelectedTasks);
 deleteSelectedTasksButton.addEventListener("click", deleteSelectedTasks);
+enableAllAutomationsButton.addEventListener("click", enableAllAutomations);
+resetAutomationsButton.addEventListener("click", resetAutomationsToDefaults);
 taskSearchInput.addEventListener("input", renderTasks);
 taskSortInput.addEventListener("change", () => {
   taskSort = taskSortInput.value;
@@ -1048,6 +1053,7 @@ function renderSequencePreview(lead) {
 }
 
 function renderAutomations() {
+  renderAutomationSummary();
   automationList.innerHTML = state.automations
     .map((automation) => {
       const status = automation.enabled ? "on" : "off";
@@ -1072,6 +1078,49 @@ function renderAutomations() {
       await reloadState();
     });
   });
+}
+
+function renderAutomationSummary() {
+  const active = state.automations.filter((automation) => automation.enabled);
+  const savedHours = active.reduce((sum, automation) => sum + automation.savedHours, 0);
+  const paused = state.automations.length - active.length;
+
+  automationSummary.innerHTML = `
+    <article>
+      <span>Active</span>
+      <strong>${active.length}/${state.automations.length}</strong>
+    </article>
+    <article>
+      <span>Saved</span>
+      <strong>${savedHours}h</strong>
+    </article>
+    <article>
+      <span>Paused</span>
+      <strong>${paused}</strong>
+    </article>
+  `;
+}
+
+async function enableAllAutomations() {
+  const disabled = state.automations.filter((automation) => !automation.enabled);
+  if (!disabled.length) return;
+
+  await Promise.all(disabled.map((automation) => store.updateAutomation({ ...automation, enabled: true })));
+  await reloadState();
+}
+
+async function resetAutomationsToDefaults() {
+  const defaultsByKey = new Map(defaultAutomations.map((automation) => [automation.key, automation]));
+  await Promise.all(
+    state.automations.map((automation) => {
+      const defaults = defaultsByKey.get(automation.key);
+      return store.updateAutomation({
+        ...automation,
+        enabled: defaults ? defaults.enabled : automation.enabled,
+      });
+    }),
+  );
+  await reloadState();
 }
 
 function renderLeadActivities(leadId) {

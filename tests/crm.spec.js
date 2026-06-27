@@ -26,6 +26,28 @@ test('shows actionable pipeline insights', async ({ page }) => {
   await expect(page.locator('#leadBrief')).toContainText('Eli Ramirez');
 });
 
+test('manages automation status in bulk', async ({ page }) => {
+  await expect(page.locator('#automationSummary')).toContainText('2/3');
+  await expect(page.locator('#automationSummary')).toContainText('7h');
+  await expect(page.locator('#automationSummary')).toContainText('1');
+  await expect(page.locator('#automationList')).toContainText('Win-back reminders');
+  await expect(page.locator('#automationSaved')).toContainText('7h');
+
+  await page.getByRole('button', { name: 'Enable all' }).click();
+
+  await expect(page.locator('#automationSummary')).toContainText('3/3');
+  await expect(page.locator('#automationSummary')).toContainText('9h');
+  await expect(page.locator('#automationSummary')).toContainText('0');
+  await expect(page.locator('#automationSaved')).toContainText('9h');
+
+  await page.getByRole('button', { name: 'Reset defaults' }).click();
+
+  await expect(page.locator('#automationSummary')).toContainText('2/3');
+  await expect(page.locator('#automationSummary')).toContainText('7h');
+  await expect(page.locator('#automationSummary')).toContainText('1');
+  await expect(page.locator('#automationSaved')).toContainText('7h');
+});
+
 test('shows pipeline stage totals and updates them when deals move', async ({ page }) => {
   const qualifiedHeading = page.locator('[data-stage="qualified"] .stage-heading');
   const proposalHeading = page.locator('[data-stage="proposal"] .stage-heading');

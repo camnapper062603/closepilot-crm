@@ -917,6 +917,44 @@ button.insight-card:hover {
   grid-template-columns: 1fr auto;
 }
 
+.automation-summary {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 10px;
+}
+
+.automation-summary article {
+  background: #f8faf8;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+}
+
+.automation-summary span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.automation-summary strong {
+  font-size: 1rem;
+}
+
+.automation-actions {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 10px;
+}
+
+.automation-actions button {
+  min-height: 38px;
+}
+
 .automation-row p,
 .task-item p,
 .contact-row p {
