@@ -147,6 +147,7 @@ const contactTable = document.querySelector("#contactTable");
 const contactSummary = document.querySelector("#contactSummary");
 const contactSortInput = document.querySelector("#contactSort");
 const bulkContactTaskButton = document.querySelector("#bulkContactTask");
+const bulkContactWonButton = document.querySelector("#bulkContactWon");
 const taskList = document.querySelector("#taskList");
 const taskSummary = document.querySelector("#taskSummary");
 const taskSearchInput = document.querySelector("#taskSearch");
@@ -224,6 +225,7 @@ taskSortInput.addEventListener("change", () => {
 });
 activitySearchInput.addEventListener("input", renderActivityFeed);
 bulkContactTaskButton.addEventListener("click", createTasksForSelectedContacts);
+bulkContactWonButton.addEventListener("click", markSelectedContactsWon);
 
 searchInput.addEventListener("input", render);
 
@@ -1199,6 +1201,8 @@ function updateBulkContactTaskButton() {
   const count = selectedContactIds.size;
   bulkContactTaskButton.disabled = count === 0;
   bulkContactTaskButton.textContent = `Task selected (${count})`;
+  bulkContactWonButton.disabled = count === 0;
+  bulkContactWonButton.textContent = `Mark won selected (${count})`;
 }
 
 function contactSearchMatches(lead) {
@@ -1537,6 +1541,18 @@ async function createTasksForSelectedContacts() {
   await reloadState();
 }
 
+async function markSelectedContactsWon() {
+  const selectedLeads = [...selectedContactIds]
+    .map((leadId) => state.leads.find((lead) => lead.id === leadId))
+    .filter(Boolean);
+  if (!selectedLeads.length) return;
+
+  state.selectedLeadId = selectedLeads[selectedLeads.length - 1].id;
+  await Promise.all(selectedLeads.map((lead) => applyLeadOutcome(lead, "won")));
+  selectedContactIds.clear();
+  await reloadState();
+}
+
 async function createFollowUpTaskForLead(lead) {
   await store.createTask({
     text: `${lead.nextAction} (${lead.company})`,
@@ -1599,8 +1615,13 @@ async function updateLeadOutcome(leadId, outcome) {
   const lead = state.leads.find((item) => item.id === leadId);
   if (!lead) return;
 
-  const won = outcome === "won";
   state.selectedLeadId = lead.id;
+  await applyLeadOutcome(lead, outcome);
+  await reloadState();
+}
+
+async function applyLeadOutcome(lead, outcome) {
+  const won = outcome === "won";
   const updatedLead = {
     ...lead,
     stage: won ? "won" : "proposal",
@@ -1612,7 +1633,7 @@ async function updateLeadOutcome(leadId, outcome) {
 
   await store.updateLead(updatedLead);
   await store.createActivity({
-    leadId,
+    leadId: lead.id,
     type: "outcome",
     message: won ? "Deal marked Won." : "Deal reopened to Proposal.",
   });
@@ -1623,7 +1644,6 @@ async function updateLeadOutcome(leadId, outcome) {
     done: false,
     due: "today",
   });
-  await reloadState();
 }
 
 async function addLeadNote(leadId, note) {

@@ -563,11 +563,13 @@ test('creates follow-up tasks for selected contacts', async ({ page }) => {
   const harborRow = page.locator('#contactTable .contact-row').filter({ hasText: 'Harbor Fitness' });
 
   await expect(page.getByRole('button', { name: 'Task selected (0)' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Mark won selected (0)' })).toBeDisabled();
   await northstarRow.getByLabel('Select Northstar Roofing').check();
   await harborRow.getByLabel('Select Harbor Fitness').check();
   await page.getByRole('button', { name: 'Task selected (2)' }).click();
 
   await expect(page.getByRole('button', { name: 'Task selected (0)' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Mark won selected (0)' })).toBeDisabled();
   await expect(page.locator('#taskList')).toContainText(
     'Send workflow proposal and ask for install calendar. (Northstar Roofing)',
   );
@@ -575,6 +577,24 @@ test('creates follow-up tasks for selected contacts', async ({ page }) => {
     'Review proposal pricing and implementation timeline. (Harbor Fitness)',
   );
   await expect(page.locator('#leadBrief')).toContainText('Nia Brooks');
+});
+
+test('marks selected contacts won in bulk', async ({ page }) => {
+  const contactFilters = page.getByRole('group', { name: 'Contact filter' });
+  const summitRow = page.locator('#contactTable .contact-row').filter({ hasText: 'Summit Auto Detail' });
+  const harborRow = page.locator('#contactTable .contact-row').filter({ hasText: 'Harbor Fitness' });
+
+  await summitRow.getByLabel('Select Summit Auto Detail').check();
+  await harborRow.getByLabel('Select Harbor Fitness').check();
+  await page.getByRole('button', { name: 'Mark won selected (2)' }).click();
+
+  await expect(page.getByRole('button', { name: 'Mark won selected (0)' })).toBeDisabled();
+  await expect(page.locator('[data-stage="won"]')).toContainText('Summit Auto Detail');
+  await expect(page.locator('[data-stage="won"]')).toContainText('Harbor Fitness');
+  await expect(page.locator('#taskList')).toContainText('Send onboarding checklist to Summit Auto Detail');
+  await expect(page.locator('#taskList')).toContainText('Send onboarding checklist to Harbor Fitness');
+  await expect(page.locator('#leadBrief')).toContainText('Nia Brooks');
+  await expect(contactFilters.getByRole('button', { name: /Won/ })).toContainText('3');
 });
 
 test('marks contacts won from the contact list', async ({ page }) => {
