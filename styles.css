@@ -932,6 +932,19 @@ button.insight-card:hover {
   margin-bottom: 12px;
 }
 
+.activity-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.activity-actions button {
+  min-height: 38px;
+}
+
 .activity-search {
   color: var(--muted);
   display: grid;

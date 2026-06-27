@@ -174,7 +174,9 @@ const duplicateSelectedTasksButton = document.querySelector("#duplicateSelectedT
 const deleteSelectedTasksButton = document.querySelector("#deleteSelectedTasks");
 const automationList = document.querySelector("#automationList");
 const activityFeed = document.querySelector("#activityFeed");
+const activitySummary = document.querySelector("#activitySummary");
 const activitySearchInput = document.querySelector("#activitySearch");
+const exportVisibleActivityButton = document.querySelector("#exportVisibleActivity");
 const searchInput = document.querySelector("#searchInput");
 const leadModal = document.querySelector("#leadModal");
 const leadForm = document.querySelector("#leadForm");
@@ -250,6 +252,7 @@ taskSortInput.addEventListener("change", () => {
   renderTasks();
 });
 activitySearchInput.addEventListener("input", renderActivityFeed);
+exportVisibleActivityButton.addEventListener("click", exportVisibleActivityCsv);
 selectVisibleContactsButton.addEventListener("click", selectVisibleContacts);
 clearSelectedContactsButton.addEventListener("click", clearSelectedContacts);
 exportSelectedContactsButton.addEventListener("click", exportSelectedContactsCsv);
@@ -1094,15 +1097,13 @@ function renderLeadActivities(leadId) {
 }
 
 function renderActivityFeed() {
-  const activities = (state.activities || [])
-    .filter((activity) => (activityFilter === "all" || activity.type === activityFilter) && activityMatchesSearch(activity))
-    .slice()
-    .sort((left, right) => activityTime(right) - activityTime(left))
-    .slice(0, 8);
+  const activities = visibleActivities();
 
   document.querySelectorAll("[data-activity-filter]").forEach((button) => {
     button.classList.toggle("active", button.dataset.activityFilter === activityFilter);
   });
+  activitySummary.textContent = `${activities.length} ${activities.length === 1 ? "activity" : "activities"} shown`;
+  exportVisibleActivityButton.disabled = activities.length === 0;
 
   if (!activities.length) {
     activityFeed.innerHTML = "<p class=\"empty-state\">No activity yet.</p>";
@@ -1134,6 +1135,14 @@ function renderActivityFeed() {
   });
 }
 
+function visibleActivities() {
+  return (state.activities || [])
+    .filter((activity) => (activityFilter === "all" || activity.type === activityFilter) && activityMatchesSearch(activity))
+    .slice()
+    .sort((left, right) => activityTime(right) - activityTime(left))
+    .slice(0, 8);
+}
+
 function activityMatchesSearch(activity) {
   const query = activitySearchInput.value.trim().toLowerCase();
   if (!query) return true;
@@ -1143,6 +1152,28 @@ function activityMatchesSearch(activity) {
   return [activity.message, activity.type, company].some((field) =>
     String(field || "").toLowerCase().includes(query),
   );
+}
+
+function exportVisibleActivityCsv() {
+  const activities = visibleActivities();
+  if (!activities.length) return;
+
+  const headers = ["company", "type", "message", "createdAt"];
+  const rows = activities.map((activity) => {
+    const lead = state.leads.find((item) => item.id === activity.leadId);
+    const company = lead?.company || "Archived lead";
+    return [company, activity.type, activity.message, activity.createdAt]
+      .map(csvEscape)
+      .join(",");
+  });
+  const csv = [headers.join(","), ...rows].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "closepilot-visible-activity.csv";
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 function renderContacts() {

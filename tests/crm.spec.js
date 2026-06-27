@@ -68,11 +68,13 @@ test('shows a global activity feed and opens related leads', async ({ page }) =>
 
   await expect(page.locator('#activityFeed')).toContainText('Northstar Roofing');
   await expect(page.locator('#activityFeed')).toContainText('Stage set to Qualified.');
+  await expect(page.locator('#activitySummary')).toHaveText('2 activities shown');
 
   await page.locator('#leadBrief').getByRole('button', { name: 'Add follow-up' }).click();
   await activityFilters.getByRole('button', { name: 'Tasks' }).click();
   await expect(page.locator('#activityFeed')).toContainText('Follow-up task added.');
   await expect(page.locator('#activityFeed')).not.toContainText('Stage set to Qualified.');
+  await expect(page.locator('#activitySummary')).toHaveText('1 activity shown');
 
   await page.locator('#leadBrief').getByRole('button', { name: 'Open details' }).click();
   const dialog = page.getByRole('dialog', { name: 'Northstar Roofing' });
@@ -85,13 +87,27 @@ test('shows a global activity feed and opens related leads', async ({ page }) =>
 
   await activityFilters.getByRole('button', { name: 'Deals' }).click();
   await expect(page.locator('#activityFeed')).toContainText('No activity yet.');
+  await expect(page.locator('#activitySummary')).toHaveText('0 activities shown');
+  await expect(page.getByRole('button', { name: 'Export visible activity' })).toBeDisabled();
 
   await activityFilters.getByRole('button', { name: 'All' }).click();
   await page.getByPlaceholder('Search activity').fill('Tuesday');
   await expect(page.locator('#activityFeed')).toContainText('Note: Customer asked for Tuesday scheduling.');
   await expect(page.locator('#activityFeed')).not.toContainText('Stage set to Qualified.');
+  await expect(page.locator('#activitySummary')).toHaveText('1 activity shown');
   await page.getByPlaceholder('Search activity').fill('Northstar');
   await expect(page.locator('#activityFeed')).toContainText('Stage set to Qualified.');
+  await expect(page.locator('#activitySummary')).toHaveText('4 activities shown');
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export visible activity' }).click();
+  const download = await downloadPromise;
+  const csv = await readFile(await download.path(), 'utf8');
+
+  expect(download.suggestedFilename()).toBe('closepilot-visible-activity.csv');
+  expect(csv).toContain('Northstar Roofing');
+  expect(csv).toContain('Follow-up task added.');
+  expect(csv).not.toContain('Harbor Fitness');
   await page.getByPlaceholder('Search activity').fill('');
 
   await page.locator('#pipelineBoard').getByText('Harbor Fitness').click();
