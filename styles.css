@@ -982,6 +982,7 @@ button.insight-card:hover {
 }
 
 #completeVisibleTasks,
+#snoozeVisibleTasks,
 #clearDoneTasks {
   width: 100%;
 }

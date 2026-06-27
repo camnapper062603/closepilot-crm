@@ -327,6 +327,21 @@ test('completes all visible tasks', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Complete visible' })).toBeDisabled();
 });
 
+test('snoozes visible open tasks to tomorrow', async ({ page }) => {
+  const taskFilters = page.getByRole('group', { name: 'Task filter' });
+
+  await expect(page.locator('#taskList')).toContainText('Call Maya before 3 PM');
+  await page.getByRole('button', { name: 'Snooze visible' }).click();
+
+  await expect(page.locator('#taskList')).toContainText('No tasks in this view.');
+  await expect(taskFilters.getByRole('button', { name: /Today/ })).toContainText('0');
+  await expect(taskFilters.getByRole('button', { name: /Upcoming/ })).toContainText('2');
+
+  await taskFilters.getByRole('button', { name: /Upcoming/ }).click();
+  await expect(page.locator('#taskList')).toContainText('Call Maya before 3 PM');
+  await expect(page.locator('#taskList')).toContainText('tomorrow');
+});
+
 test('creates manual tasks with custom due dates', async ({ page }) => {
   await page.getByPlaceholder('Add a follow-up or reminder').fill('Prepare quarterly pipeline review');
   await page.getByLabel('Task due date').selectOption('next week');

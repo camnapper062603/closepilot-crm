@@ -149,6 +149,7 @@ const taskSummary = document.querySelector("#taskSummary");
 const taskSearchInput = document.querySelector("#taskSearch");
 const taskSortInput = document.querySelector("#taskSort");
 const completeVisibleTasksButton = document.querySelector("#completeVisibleTasks");
+const snoozeVisibleTasksButton = document.querySelector("#snoozeVisibleTasks");
 const clearDoneTasksButton = document.querySelector("#clearDoneTasks");
 const automationList = document.querySelector("#automationList");
 const activityFeed = document.querySelector("#activityFeed");
@@ -211,6 +212,7 @@ taskForm.addEventListener("submit", async (event) => {
 });
 
 completeVisibleTasksButton.addEventListener("click", completeVisibleTasks);
+snoozeVisibleTasksButton.addEventListener("click", snoozeVisibleTasks);
 clearDoneTasksButton.addEventListener("click", clearDoneTasks);
 taskSearchInput.addEventListener("input", renderTasks);
 taskSortInput.addEventListener("change", () => {
@@ -1191,6 +1193,7 @@ function renderTasks() {
   const tasks = sortedTasks(filteredTasks());
   taskSortInput.value = taskSort;
   completeVisibleTasksButton.disabled = !tasks.some((task) => !task.done);
+  snoozeVisibleTasksButton.disabled = !tasks.some((task) => !task.done && task.due !== "tomorrow");
   taskList.innerHTML = tasks.length
     ? tasks
     .map(
@@ -1254,6 +1257,14 @@ async function completeVisibleTasks() {
   if (!openTasks.length) return;
 
   await Promise.all(openTasks.map((task) => store.updateTask({ ...task, done: true })));
+  await reloadState();
+}
+
+async function snoozeVisibleTasks() {
+  const openTasks = filteredTasks().filter((task) => !task.done && task.due !== "tomorrow");
+  if (!openTasks.length) return;
+
+  await Promise.all(openTasks.map((task) => store.updateTask({ ...task, due: "tomorrow" })));
   await reloadState();
 }
 
