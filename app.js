@@ -139,6 +139,7 @@ const taskDueChoices = [
 ];
 
 const board = document.querySelector("#pipelineBoard");
+const pipelineHealth = document.querySelector("#pipelineHealth");
 const insightList = document.querySelector("#insightList");
 const leadBrief = document.querySelector("#leadBrief");
 const contactTable = document.querySelector("#contactTable");
@@ -608,6 +609,7 @@ function sourcePerformanceInsight() {
 
 function renderPipeline() {
   const leads = filteredLeads();
+  renderPipelineHealth(leads);
   document.querySelectorAll("[data-pipeline-view]").forEach((button) => {
     button.classList.toggle("active", button.dataset.pipelineView === pipelineView);
   });
@@ -649,6 +651,35 @@ function renderPipeline() {
       moveLead(button.dataset.leadId, Number(button.dataset.move));
     });
   });
+}
+
+function renderPipelineHealth(leads) {
+  const openLeads = leads.filter((lead) => lead.stage !== "won");
+  const wonLeads = leads.filter((lead) => lead.stage === "won");
+  const openValue = openLeads.reduce((sum, lead) => sum + lead.value, 0);
+  const wonValue = wonLeads.reduce((sum, lead) => sum + lead.value, 0);
+  const weightedOpen = openLeads.reduce((sum, lead) => sum + weightedLeadValue(lead), 0);
+  const totalValue = openValue + wonValue;
+  const closeMix = totalValue ? Math.round((wonValue / totalValue) * 100) : 0;
+
+  pipelineHealth.innerHTML = `
+    <article>
+      <span>Open value</span>
+      <strong>${formatter.format(openValue)}</strong>
+    </article>
+    <article>
+      <span>Weighted open</span>
+      <strong>${formatter.format(weightedOpen)}</strong>
+    </article>
+    <article>
+      <span>Won value</span>
+      <strong>${formatter.format(wonValue)}</strong>
+    </article>
+    <article>
+      <span>Close mix</span>
+      <strong>${closeMix}%</strong>
+    </article>
+  `;
 }
 
 function renderForecast(leads) {

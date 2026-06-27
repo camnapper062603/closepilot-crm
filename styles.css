@@ -505,7 +505,8 @@ button.insight-card:hover {
 }
 
 .contact-summary,
-.task-summary {
+.task-summary,
+.pipeline-health {
   display: grid;
   gap: 8px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -513,7 +514,8 @@ button.insight-card:hover {
 }
 
 .contact-summary article,
-.task-summary article {
+.task-summary article,
+.pipeline-health article {
   background: #f8faf8;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -523,14 +525,21 @@ button.insight-card:hover {
 }
 
 .contact-summary span,
-.task-summary span {
+.task-summary span,
+.pipeline-health span {
   color: var(--muted);
   font-size: 0.76rem;
 }
 
 .contact-summary strong,
-.task-summary strong {
+.task-summary strong,
+.pipeline-health strong {
   font-size: 1rem;
+}
+
+.pipeline-health span {
+  font-weight: 800;
+  text-transform: uppercase;
 }
 
 .task-filters button,
@@ -1353,6 +1362,7 @@ button.insight-card:hover {
 
   .metrics,
   .contact-summary,
+  .pipeline-health,
   .task-summary,
   .right-rail {
     grid-template-columns: 1fr 1fr;
@@ -1388,6 +1398,7 @@ button.insight-card:hover {
 
   .metrics,
   .contact-summary,
+  .pipeline-health,
   .task-summary,
   .right-rail,
   .contact-row,

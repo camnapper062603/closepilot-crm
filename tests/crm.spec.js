@@ -40,6 +40,24 @@ test('shows pipeline stage totals and updates them when deals move', async ({ pa
   await expect(proposalHeading).toContainText('$21,000');
 });
 
+test('shows pipeline health metrics for visible deals', async ({ page }) => {
+  await expect(page.locator('#pipelineHealth')).toContainText('Open value');
+  await expect(page.locator('#pipelineHealth')).toContainText('$24,200');
+  await expect(page.locator('#pipelineHealth')).toContainText('Weighted open');
+  await expect(page.locator('#pipelineHealth')).toContainText('$12,660');
+  await expect(page.locator('#pipelineHealth')).toContainText('Won value');
+  await expect(page.locator('#pipelineHealth')).toContainText('$5,100');
+  await expect(page.locator('#pipelineHealth')).toContainText('Close mix');
+  await expect(page.locator('#pipelineHealth')).toContainText('17%');
+
+  await page.getByPlaceholder('Search leads, companies, notes').fill('Harbor');
+
+  await expect(page.locator('#pipelineHealth')).toContainText('$12,600');
+  await expect(page.locator('#pipelineHealth')).toContainText('$8,820');
+  await expect(page.locator('#pipelineHealth')).toContainText('$0');
+  await expect(page.locator('#pipelineHealth')).toContainText('0%');
+});
+
 test('shows a global activity feed and opens related leads', async ({ page }) => {
   const activityFilters = page.getByRole('group', { name: 'Activity filter' });
 
