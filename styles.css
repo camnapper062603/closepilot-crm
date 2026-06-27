@@ -1035,7 +1035,11 @@ button.insight-card:hover {
 
 #completeVisibleTasks,
 #snoozeVisibleTasks,
-#clearDoneTasks {
+#clearDoneTasks,
+#selectVisibleTasks,
+#clearSelectedTasks,
+#duplicateSelectedTasks,
+#deleteSelectedTasks {
   width: 100%;
 }
 
@@ -1070,10 +1074,22 @@ button.insight-card:hover {
 }
 
 .task-item {
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto auto 1fr auto;
 }
 
 .task-item > input {
+  height: 18px;
+  width: 18px;
+}
+
+.task-select {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+}
+
+.task-select input {
+  accent-color: var(--teal);
   height: 18px;
   width: 18px;
 }

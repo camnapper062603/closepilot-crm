@@ -234,8 +234,8 @@
                   <option value="company">Account name</option>
                 </select>
               </label>
-              <button class="secondary-button" id="selectVisibleContacts" type="button">Select visible</button>
-              <button class="secondary-button" id="clearSelectedContacts" type="button" disabled>Clear selection</button>
+              <button class="secondary-button" id="selectVisibleContacts" type="button">Select visible contacts</button>
+              <button class="secondary-button" id="clearSelectedContacts" type="button" disabled>Clear contact selection</button>
               <span class="selection-status" id="contactSelectionStatus" aria-live="polite">0 selected</span>
               <button class="secondary-button" id="exportSelectedContacts" type="button" disabled>Export selected (0)</button>
               <button class="secondary-button" id="bulkContactTask" type="button" disabled>Task selected (0)</button>
@@ -273,6 +273,11 @@
               <button class="secondary-button" id="completeVisibleTasks" type="button">Complete visible</button>
               <button class="secondary-button" id="snoozeVisibleTasks" type="button">Snooze visible</button>
               <button class="secondary-button" id="clearDoneTasks" type="button">Clear done</button>
+              <button class="secondary-button" id="selectVisibleTasks" type="button">Select visible tasks</button>
+              <button class="secondary-button" id="clearSelectedTasks" type="button" disabled>Clear selected tasks</button>
+              <span class="selection-status" id="taskSelectionStatus" aria-live="polite">0 selected</span>
+              <button class="secondary-button" id="duplicateSelectedTasks" type="button" disabled>Duplicate selected (0)</button>
+              <button class="secondary-button" id="deleteSelectedTasks" type="button" disabled>Delete selected (0)</button>
               <label class="task-search">
                 Search tasks
                 <input id="taskSearch" type="search" placeholder="Search task text" />

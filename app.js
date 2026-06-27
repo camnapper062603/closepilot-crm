@@ -125,6 +125,7 @@ let activityFilter = "all";
 let contactFilter = "all";
 let contactSort = "recent";
 let selectedContactIds = new Set();
+let selectedTaskIds = new Set();
 
 const formatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -160,6 +161,11 @@ const taskSortInput = document.querySelector("#taskSort");
 const completeVisibleTasksButton = document.querySelector("#completeVisibleTasks");
 const snoozeVisibleTasksButton = document.querySelector("#snoozeVisibleTasks");
 const clearDoneTasksButton = document.querySelector("#clearDoneTasks");
+const selectVisibleTasksButton = document.querySelector("#selectVisibleTasks");
+const clearSelectedTasksButton = document.querySelector("#clearSelectedTasks");
+const taskSelectionStatus = document.querySelector("#taskSelectionStatus");
+const duplicateSelectedTasksButton = document.querySelector("#duplicateSelectedTasks");
+const deleteSelectedTasksButton = document.querySelector("#deleteSelectedTasks");
 const automationList = document.querySelector("#automationList");
 const activityFeed = document.querySelector("#activityFeed");
 const activitySearchInput = document.querySelector("#activitySearch");
@@ -223,6 +229,10 @@ taskForm.addEventListener("submit", async (event) => {
 completeVisibleTasksButton.addEventListener("click", completeVisibleTasks);
 snoozeVisibleTasksButton.addEventListener("click", snoozeVisibleTasks);
 clearDoneTasksButton.addEventListener("click", clearDoneTasks);
+selectVisibleTasksButton.addEventListener("click", selectVisibleTasks);
+clearSelectedTasksButton.addEventListener("click", clearSelectedTasks);
+duplicateSelectedTasksButton.addEventListener("click", duplicateSelectedTasks);
+deleteSelectedTasksButton.addEventListener("click", deleteSelectedTasks);
 taskSearchInput.addEventListener("input", renderTasks);
 taskSortInput.addEventListener("change", () => {
   taskSort = taskSortInput.value;
@@ -1290,6 +1300,8 @@ function renderContactSummary(leads) {
 function renderTasks() {
   renderTaskFilterCounts();
   const tasks = sortedTasks(filteredTasks());
+  syncSelectedTasks(tasks);
+  updateTaskSelectionControls();
   taskSortInput.value = taskSort;
   completeVisibleTasksButton.disabled = !tasks.some((task) => !task.done);
   snoozeVisibleTasksButton.disabled = !tasks.some((task) => !task.done && task.due !== "tomorrow");
@@ -1298,6 +1310,9 @@ function renderTasks() {
     .map(
       (task) => `
       <article class="task-item ${task.done ? "done" : ""}" data-task-row="${task.id}">
+        <label class="task-select">
+          <input data-task-select="${task.id}" type="checkbox" ${selectedTaskIds.has(task.id) ? "checked" : ""} aria-label="Select task ${escapeHtml(task.text)}" />
+        </label>
         <input data-task-done="${task.id}" type="checkbox" ${task.done ? "checked" : ""} aria-label="Mark task complete" />
         <p>${escapeHtml(task.text)}<span>${task.due}</span></p>
         <div class="task-actions">
@@ -1313,6 +1328,17 @@ function renderTasks() {
 
   document.querySelectorAll("[data-task-filter]").forEach((button) => {
     button.classList.toggle("active", button.dataset.taskFilter === taskFilter);
+  });
+
+  taskList.querySelectorAll("[data-task-select]").forEach((checkbox) => {
+    checkbox.addEventListener("change", () => {
+      if (checkbox.checked) {
+        selectedTaskIds.add(checkbox.dataset.taskSelect);
+      } else {
+        selectedTaskIds.delete(checkbox.dataset.taskSelect);
+      }
+      updateTaskSelectionControls();
+    });
   });
 
   taskList.querySelectorAll("[data-task-done]").forEach((checkbox) => {
@@ -1351,6 +1377,32 @@ async function clearDoneTasks() {
   await reloadState();
 }
 
+function syncSelectedTasks(tasks) {
+  const visibleIds = new Set(tasks.map((task) => task.id));
+  selectedTaskIds = new Set([...selectedTaskIds].filter((id) => visibleIds.has(id)));
+}
+
+function updateTaskSelectionControls() {
+  const count = selectedTaskIds.size;
+  const hasSelection = count > 0;
+  clearSelectedTasksButton.disabled = !hasSelection;
+  duplicateSelectedTasksButton.disabled = !hasSelection;
+  deleteSelectedTasksButton.disabled = !hasSelection;
+  taskSelectionStatus.textContent = `${count} selected`;
+  duplicateSelectedTasksButton.textContent = `Duplicate selected (${count})`;
+  deleteSelectedTasksButton.textContent = `Delete selected (${count})`;
+}
+
+function selectVisibleTasks() {
+  sortedTasks(filteredTasks()).forEach((task) => selectedTaskIds.add(task.id));
+  renderTasks();
+}
+
+function clearSelectedTasks() {
+  selectedTaskIds.clear();
+  renderTasks();
+}
+
 async function completeVisibleTasks() {
   const openTasks = filteredTasks().filter((task) => !task.done);
   if (!openTasks.length) return;
@@ -1373,6 +1425,30 @@ async function duplicateTask(taskId) {
 
   await store.createTask({ text: task.text, done: false, due: task.due });
   await reloadState();
+}
+
+async function duplicateSelectedTasks() {
+  const tasks = selectedTasks();
+  if (!tasks.length) return;
+
+  await Promise.all(tasks.map((task) => store.createTask({ text: task.text, done: false, due: task.due })));
+  selectedTaskIds.clear();
+  await reloadState();
+}
+
+async function deleteSelectedTasks() {
+  const tasks = selectedTasks();
+  if (!tasks.length) return;
+
+  await Promise.all(tasks.map((task) => store.deleteTask(task.id)));
+  selectedTaskIds.clear();
+  await reloadState();
+}
+
+function selectedTasks() {
+  return [...selectedTaskIds]
+    .map((taskId) => state.tasks.find((task) => task.id === taskId))
+    .filter(Boolean);
 }
 
 function renderTaskEditForm(taskId) {

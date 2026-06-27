@@ -416,6 +416,46 @@ test('duplicates tasks from the task list', async ({ page }) => {
   await expect(taskFilters.getByRole('button', { name: /Today/ })).toContainText('3');
 });
 
+test('selects and clears visible tasks in bulk', async ({ page }) => {
+  await expect(page.locator('#taskSelectionStatus')).toHaveText('0 selected');
+  await expect(page.getByRole('button', { name: 'Duplicate selected (0)' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Delete selected (0)' })).toBeDisabled();
+
+  await page.getByRole('button', { name: 'Select visible tasks' }).click();
+
+  await expect(page.locator('#taskSelectionStatus')).toHaveText('2 selected');
+  await expect(page.getByLabel('Select task Call Maya before 3 PM')).toBeChecked();
+  await expect(page.getByLabel('Select task Draft Harbor Fitness proposal recap')).toBeChecked();
+  await expect(page.getByRole('button', { name: 'Duplicate selected (2)' })).toBeEnabled();
+
+  await page.getByRole('button', { name: 'Clear selected tasks' }).click();
+
+  await expect(page.locator('#taskSelectionStatus')).toHaveText('0 selected');
+  await expect(page.getByLabel('Select task Call Maya before 3 PM')).not.toBeChecked();
+  await expect(page.getByRole('button', { name: 'Delete selected (0)' })).toBeDisabled();
+});
+
+test('duplicates and deletes selected tasks in bulk', async ({ page }) => {
+  const taskFilters = page.getByRole('group', { name: 'Task filter' });
+  const mayaTasks = page.locator('#taskList .task-item').filter({ hasText: 'Call Maya before 3 PM' });
+  const harborTasks = page.locator('#taskList .task-item').filter({ hasText: 'Draft Harbor Fitness proposal recap' });
+
+  await page.getByRole('button', { name: 'Select visible tasks' }).click();
+  await page.getByRole('button', { name: 'Duplicate selected (2)' }).click();
+
+  await expect(page.locator('#taskSelectionStatus')).toHaveText('0 selected');
+  await expect(mayaTasks).toHaveCount(2);
+  await expect(harborTasks).toHaveCount(2);
+  await expect(taskFilters.getByRole('button', { name: /Today/ })).toContainText('4');
+
+  await page.getByRole('button', { name: 'Select visible tasks' }).click();
+  await page.getByRole('button', { name: 'Delete selected (4)' }).click();
+
+  await expect(page.locator('#taskList')).toContainText('No tasks in this view.');
+  await expect(page.locator('#taskSelectionStatus')).toHaveText('0 selected');
+  await expect(taskFilters.getByRole('button', { name: /Today/ })).toContainText('0');
+});
+
 test('starts an automated follow-up sequence for the selected lead', async ({ page }) => {
   await expect(page.locator('#leadBrief')).toContainText('Suggested sequence');
   await page.locator('#leadBrief').getByRole('button', { name: 'Start sequence' }).click();
@@ -595,13 +635,13 @@ test('selects and clears visible contacts in bulk', async ({ page }) => {
   const contactFilters = page.getByRole('group', { name: 'Contact filter' });
 
   await contactFilters.getByRole('button', { name: /Proposal/ }).click();
-  await page.getByRole('button', { name: 'Select visible' }).click();
+  await page.getByRole('button', { name: 'Select visible contacts' }).click();
 
   await expect(page.locator('#contactSelectionStatus')).toHaveText('1 selected');
   await expect(page.getByRole('button', { name: 'Task selected (1)' })).toBeEnabled();
   await expect(page.locator('#contactTable .contact-row').filter({ hasText: 'Harbor Fitness' }).getByLabel('Select Harbor Fitness')).toBeChecked();
 
-  await page.getByRole('button', { name: 'Clear selection' }).click();
+  await page.getByRole('button', { name: 'Clear contact selection' }).click();
 
   await expect(page.locator('#contactSelectionStatus')).toHaveText('0 selected');
   await expect(page.getByRole('button', { name: 'Task selected (0)' })).toBeDisabled();
