@@ -160,10 +160,12 @@ const taskSearchInput = document.querySelector("#taskSearch");
 const taskSortInput = document.querySelector("#taskSort");
 const completeVisibleTasksButton = document.querySelector("#completeVisibleTasks");
 const snoozeVisibleTasksButton = document.querySelector("#snoozeVisibleTasks");
+const exportVisibleTasksButton = document.querySelector("#exportVisibleTasks");
 const clearDoneTasksButton = document.querySelector("#clearDoneTasks");
 const selectVisibleTasksButton = document.querySelector("#selectVisibleTasks");
 const clearSelectedTasksButton = document.querySelector("#clearSelectedTasks");
 const taskSelectionStatus = document.querySelector("#taskSelectionStatus");
+const exportSelectedTasksButton = document.querySelector("#exportSelectedTasks");
 const completeSelectedTasksButton = document.querySelector("#completeSelectedTasks");
 const snoozeSelectedTasksButton = document.querySelector("#snoozeSelectedTasks");
 const duplicateSelectedTasksButton = document.querySelector("#duplicateSelectedTasks");
@@ -230,9 +232,11 @@ taskForm.addEventListener("submit", async (event) => {
 
 completeVisibleTasksButton.addEventListener("click", completeVisibleTasks);
 snoozeVisibleTasksButton.addEventListener("click", snoozeVisibleTasks);
+exportVisibleTasksButton.addEventListener("click", exportVisibleTasksCsv);
 clearDoneTasksButton.addEventListener("click", clearDoneTasks);
 selectVisibleTasksButton.addEventListener("click", selectVisibleTasks);
 clearSelectedTasksButton.addEventListener("click", clearSelectedTasks);
+exportSelectedTasksButton.addEventListener("click", exportSelectedTasksCsv);
 completeSelectedTasksButton.addEventListener("click", completeSelectedTasks);
 snoozeSelectedTasksButton.addEventListener("click", snoozeSelectedTasks);
 duplicateSelectedTasksButton.addEventListener("click", duplicateSelectedTasks);
@@ -1393,11 +1397,13 @@ function updateTaskSelectionControls() {
   const hasOpenSelection = tasks.some((task) => !task.done);
   const hasSnoozableSelection = tasks.some((task) => !task.done && task.due !== "tomorrow");
   clearSelectedTasksButton.disabled = !hasSelection;
+  exportSelectedTasksButton.disabled = !hasSelection;
   completeSelectedTasksButton.disabled = !hasOpenSelection;
   snoozeSelectedTasksButton.disabled = !hasSnoozableSelection;
   duplicateSelectedTasksButton.disabled = !hasSelection;
   deleteSelectedTasksButton.disabled = !hasSelection;
   taskSelectionStatus.textContent = `${count} selected`;
+  exportSelectedTasksButton.textContent = `Export selected tasks (${count})`;
   completeSelectedTasksButton.textContent = `Complete selected (${count})`;
   snoozeSelectedTasksButton.textContent = `Snooze selected (${count})`;
   duplicateSelectedTasksButton.textContent = `Duplicate selected (${count})`;
@@ -1478,6 +1484,31 @@ function selectedTasks() {
   return [...selectedTaskIds]
     .map((taskId) => state.tasks.find((task) => task.id === taskId))
     .filter(Boolean);
+}
+
+function exportVisibleTasksCsv() {
+  const tasks = sortedTasks(filteredTasks());
+  if (!tasks.length) return;
+  downloadTasksCsv(tasks, "closepilot-visible-tasks.csv");
+}
+
+function exportSelectedTasksCsv() {
+  const tasks = selectedTasks();
+  if (!tasks.length) return;
+  downloadTasksCsv(tasks, "closepilot-selected-tasks.csv");
+}
+
+function downloadTasksCsv(tasks, filename) {
+  const headers = ["text", "due", "done"];
+  const rows = tasks.map((task) => headers.map((header) => csvEscape(task[header])).join(","));
+  const csv = [headers.join(","), ...rows].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 function renderTaskEditForm(taskId) {

@@ -418,6 +418,7 @@ test('duplicates tasks from the task list', async ({ page }) => {
 
 test('selects and clears visible tasks in bulk', async ({ page }) => {
   await expect(page.locator('#taskSelectionStatus')).toHaveText('0 selected');
+  await expect(page.getByRole('button', { name: 'Export selected tasks (0)' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Complete selected (0)' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Snooze selected (0)' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Duplicate selected (0)' })).toBeDisabled();
@@ -430,14 +431,38 @@ test('selects and clears visible tasks in bulk', async ({ page }) => {
   await expect(page.getByLabel('Select task Draft Harbor Fitness proposal recap')).toBeChecked();
   await expect(page.getByRole('button', { name: 'Complete selected (2)' })).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Snooze selected (2)' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Export selected tasks (2)' })).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Duplicate selected (2)' })).toBeEnabled();
 
   await page.getByRole('button', { name: 'Clear selected tasks' }).click();
 
   await expect(page.locator('#taskSelectionStatus')).toHaveText('0 selected');
   await expect(page.getByLabel('Select task Call Maya before 3 PM')).not.toBeChecked();
+  await expect(page.getByRole('button', { name: 'Export selected tasks (0)' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Complete selected (0)' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Delete selected (0)' })).toBeDisabled();
+});
+
+test('exports visible and selected tasks to CSV', async ({ page }) => {
+  let downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export visible tasks' }).click();
+  let download = await downloadPromise;
+  let csv = await readFile(await download.path(), 'utf8');
+
+  expect(download.suggestedFilename()).toBe('closepilot-visible-tasks.csv');
+  expect(csv).toContain('Call Maya before 3 PM');
+  expect(csv).toContain('Draft Harbor Fitness proposal recap');
+  expect(csv).not.toContain('Send onboarding checklist to Stone & Finch');
+
+  await page.getByLabel('Select task Call Maya before 3 PM').check();
+  downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export selected tasks (1)' }).click();
+  download = await downloadPromise;
+  csv = await readFile(await download.path(), 'utf8');
+
+  expect(download.suggestedFilename()).toBe('closepilot-selected-tasks.csv');
+  expect(csv).toContain('Call Maya before 3 PM');
+  expect(csv).not.toContain('Draft Harbor Fitness proposal recap');
 });
 
 test('completes and snoozes selected tasks in bulk', async ({ page }) => {

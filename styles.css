@@ -1035,9 +1035,11 @@ button.insight-card:hover {
 
 #completeVisibleTasks,
 #snoozeVisibleTasks,
+#exportVisibleTasks,
 #clearDoneTasks,
 #selectVisibleTasks,
 #clearSelectedTasks,
+#exportSelectedTasks,
 #completeSelectedTasks,
 #snoozeSelectedTasks,
 #duplicateSelectedTasks,
