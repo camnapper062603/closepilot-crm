@@ -54,6 +54,7 @@
           <a href="#automation">Automation</a>
           <a href="#tasks">Tasks</a>
           <a href="#activity">Activity</a>
+          <a href="#saasAdmin">Admin</a>
         </nav>
 
         <div class="workspace-card">
@@ -366,6 +367,78 @@
           </div>
           <div class="backup-summary" id="backupSummary" aria-label="Backup summary"></div>
           <p class="backup-message" id="backupMessage" role="status"></p>
+        </section>
+
+        <section class="panel saas-admin-panel" id="saasAdmin" aria-labelledby="saasAdminHeading">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">SaaS operations</p>
+              <h2 id="saasAdminHeading">Workspace admin</h2>
+            </div>
+            <span class="mode-pill" id="subscriptionStatus">Trial</span>
+          </div>
+
+          <div class="saas-grid">
+            <section class="admin-card" aria-labelledby="workspaceSettingsHeading">
+              <div>
+                <p class="eyebrow">Account</p>
+                <h3 id="workspaceSettingsHeading">Workspace settings</h3>
+              </div>
+              <form class="admin-form" id="workspaceAdminForm">
+                <label>
+                  Account name
+                  <input id="adminBusinessName" type="text" required />
+                </label>
+                <label>
+                  Account mode
+                  <select id="adminWorkspaceType">
+                    <option value="Personal">Personal</option>
+                    <option value="Team">Team</option>
+                  </select>
+                </label>
+                <label>
+                  Goal focus
+                  <select id="adminSalesGoal">
+                    <option value="Close more follow-ups">Close more follow-ups</option>
+                    <option value="Track every lead">Track every lead</option>
+                    <option value="Forecast revenue">Forecast revenue</option>
+                  </select>
+                </label>
+                <button class="secondary-button" type="submit">Update workspace</button>
+              </form>
+            </section>
+
+            <section class="admin-card" aria-labelledby="billingHeading">
+              <div>
+                <p class="eyebrow">Billing</p>
+                <h3 id="billingHeading">Plan and seats</h3>
+              </div>
+              <div class="plan-summary" id="planSummary" aria-label="Plan summary"></div>
+              <div class="plan-options" id="planOptions" aria-label="Plan options">
+                <button class="secondary-button" data-plan-choice="starter" type="button">Starter</button>
+                <button class="secondary-button" data-plan-choice="growth" type="button">Growth</button>
+                <button class="secondary-button" data-plan-choice="scale" type="button">Scale</button>
+              </div>
+            </section>
+
+            <section class="admin-card team-card" aria-labelledby="teamHeading">
+              <div>
+                <p class="eyebrow">Team</p>
+                <h3 id="teamHeading">Members and invites</h3>
+              </div>
+              <form class="invite-form" id="inviteForm">
+                <input id="inviteEmail" type="email" placeholder="teammate@example.com" required />
+                <select id="inviteRole" aria-label="Invite role">
+                  <option value="member">Member</option>
+                  <option value="admin">Admin</option>
+                </select>
+                <button class="primary-button" type="submit">Invite</button>
+              </form>
+              <div class="team-summary" id="teamSummary" aria-label="Team summary"></div>
+              <div class="team-list" id="teamList"></div>
+            </section>
+          </div>
+          <p class="admin-message" id="adminMessage" role="status"></p>
         </section>
       </main>
     </div>

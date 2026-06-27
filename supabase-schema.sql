@@ -60,12 +60,33 @@ create table if not exists public.activities (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.workspace_subscriptions (
+  workspace_id uuid primary key references public.workspaces(id) on delete cascade,
+  plan text not null default 'starter' check (plan in ('starter', 'growth', 'scale')),
+  status text not null default 'trialing' check (status in ('trialing', 'active', 'past_due', 'canceled')),
+  seat_limit integer not null default 3 check (seat_limit > 0),
+  trial_ends_at timestamptz not null default (now() + interval '14 days'),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.workspace_invitations (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  email text not null,
+  role text not null default 'member' check (role in ('admin', 'member')),
+  status text not null default 'pending' check (status in ('pending', 'accepted', 'revoked')),
+  created_at timestamptz not null default now(),
+  unique (workspace_id, email)
+);
+
 alter table public.workspaces enable row level security;
 alter table public.workspace_members enable row level security;
 alter table public.leads enable row level security;
 alter table public.tasks enable row level security;
 alter table public.automations enable row level security;
 alter table public.activities enable row level security;
+alter table public.workspace_subscriptions enable row level security;
+alter table public.workspace_invitations enable row level security;
 
 create or replace function public.is_workspace_member(target_workspace_id uuid)
 returns boolean
@@ -130,6 +151,8 @@ drop policy if exists "Members can delete leads" on public.leads;
 drop policy if exists "Members can manage tasks" on public.tasks;
 drop policy if exists "Members can manage automations" on public.automations;
 drop policy if exists "Members can manage activities" on public.activities;
+drop policy if exists "Members can manage subscriptions" on public.workspace_subscriptions;
+drop policy if exists "Members can manage invitations" on public.workspace_invitations;
 
 create policy "Users can see their workspaces"
   on public.workspaces for select
@@ -185,5 +208,15 @@ create policy "Members can manage automations"
 
 create policy "Members can manage activities"
   on public.activities for all
+  using (public.is_workspace_member(workspace_id))
+  with check (public.is_workspace_member(workspace_id));
+
+create policy "Members can manage subscriptions"
+  on public.workspace_subscriptions for all
+  using (public.is_workspace_member(workspace_id))
+  with check (public.is_workspace_member(workspace_id));
+
+create policy "Members can manage invitations"
+  on public.workspace_invitations for all
   using (public.is_workspace_member(workspace_id))
   with check (public.is_workspace_member(workspace_id));

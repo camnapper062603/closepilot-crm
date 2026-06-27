@@ -372,6 +372,45 @@ test('tracks monthly revenue target progress', async ({ page }) => {
   await expect(page.locator('#revenueGoalSummary')).toContainText('$6,500');
 });
 
+test('manages SaaS workspace plan, seats, and invites', async ({ page }) => {
+  const admin = page.locator('#saasAdmin');
+
+  await expect(admin).toContainText('Workspace admin');
+  await expect(admin.locator('#subscriptionStatus')).toContainText('Starter trial');
+  await expect(admin.locator('#planSummary')).toContainText('Starter');
+  await expect(admin.locator('#planSummary')).toContainText('$29/mo');
+  await expect(admin.locator('#planSummary')).toContainText('1/3');
+  await expect(admin.locator('#teamSummary')).toContainText('Active members');
+  await expect(admin.locator('#teamSummary')).toContainText('1');
+
+  await admin.getByRole('button', { name: 'Growth $79/mo' }).click();
+
+  await expect(admin.locator('#subscriptionStatus')).toContainText('Growth plan');
+  await expect(admin.locator('#planSummary')).toContainText('Growth');
+  await expect(admin.locator('#planSummary')).toContainText('1/10');
+  await expect(admin.locator('#adminMessage')).toContainText('Growth plan selected');
+
+  await admin.locator('#inviteEmail').fill('sales@example.com');
+  await admin.getByLabel('Invite role').selectOption('admin');
+  await admin.getByRole('button', { name: 'Invite' }).click();
+
+  await expect(admin.locator('#teamList')).toContainText('sales@example.com');
+  await expect(admin.locator('#teamList')).toContainText('admin');
+  await expect(admin.locator('#teamList')).toContainText('Pending');
+  await expect(admin.locator('#teamSummary')).toContainText('1');
+  await expect(admin.locator('#planSummary')).toContainText('2/10');
+  await expect(admin.locator('#adminMessage')).toContainText('Invite staged for sales@example.com');
+
+  await admin.locator('#adminBusinessName').fill('ClosePilot Agency');
+  await admin.locator('#adminWorkspaceType').selectOption('Team');
+  await admin.locator('#adminSalesGoal').selectOption('Forecast revenue');
+  await admin.getByRole('button', { name: 'Update workspace' }).click();
+
+  await expect(page.locator('#workspaceNameLabel')).toContainText('ClosePilot Agency');
+  await expect(page.locator('#workspaceModeLabel')).toContainText('Team workspace - Forecast revenue.');
+  await expect(admin.locator('#adminMessage')).toContainText('Workspace settings saved.');
+});
+
 test('edits the selected lead', async ({ page }) => {
   await page.locator('#leadBrief').getByRole('button', { name: 'Edit lead' }).click();
   await expect(page.getByRole('dialog', { name: 'Edit lead' })).toBeVisible();

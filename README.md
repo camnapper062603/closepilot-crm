@@ -4,7 +4,7 @@ ClosePilot is a hosted MVP CRM for a personal sales workflow now and a SaaS prod
 
 ## Run Locally
 
-Open `index.html` directly in Chrome, or use a local static server:
+Use the local static server:
 
 ```bash
 npm start
@@ -14,6 +14,12 @@ Then visit:
 
 ```text
 http://localhost:4173
+```
+
+If that port is already busy, run another port:
+
+```bash
+PORT=4174 npm start
 ```
 
 ## Test
@@ -63,17 +69,17 @@ Without those variables, the app runs in demo mode using browser storage.
 
 ## What This Version Stores
 
-This MVP stores CRM data in the browser with `localStorage`. That makes it fast and easy to host, but the data stays on the device/browser that entered it.
+Without Supabase environment variables, the app runs in demo mode and stores CRM/account data in the browser with `localStorage`. With Supabase configured, leads, tasks, automations, activity, workspace members, subscription state, and invitations can sync to the cloud.
 
-## Next SaaS Milestone
+## SaaS Foundation Included
 
-To turn this from a hosted MVP into a real multi-user SaaS product, add:
+This build includes:
 
-- User signup/login
-- Cloud database
-- Workspaces/accounts
-- Server-side permissions
-- Email/calendar integrations
-- Stripe billing
+- User signup/login through Supabase Auth
+- Workspace/account setup
+- Team members and staged invitations
+- Plan/seat management for Starter, Growth, and Scale
+- Supabase schema and RLS policies for CRM data, subscriptions, and invitations
+- CRM pipeline, contacts, tasks, automations, activity, CSV import/export, backups, revenue goals, and channel reporting
 
-Supabase plus Vercel is the best next stack for this app.
+Production billing still needs a Stripe checkout/customer portal integration, and real invitation delivery still needs an email provider.

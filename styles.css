@@ -604,6 +604,151 @@ button.insight-card:hover {
   min-height: 1.25rem;
 }
 
+.saas-admin-panel {
+  margin-top: 22px;
+}
+
+.saas-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1fr) minmax(320px, 1.05fr);
+}
+
+.admin-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.admin-card h3 {
+  margin: 0;
+}
+
+.admin-form,
+.invite-form {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-form label {
+  color: var(--muted);
+  display: grid;
+  font-size: 0.85rem;
+  font-weight: 800;
+  gap: 6px;
+}
+
+.admin-form input,
+.admin-form select,
+.invite-form input,
+.invite-form select {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  min-height: 40px;
+  padding: 0 10px;
+}
+
+.invite-form {
+  grid-template-columns: minmax(0, 1fr) 120px auto;
+}
+
+.plan-summary,
+.team-summary {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.plan-summary article,
+.team-summary article {
+  background: #f8faf8;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+}
+
+.plan-summary span,
+.plan-summary small,
+.team-summary span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.plan-summary span,
+.team-summary span {
+  text-transform: uppercase;
+}
+
+.plan-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.plan-options .active {
+  background: #e7f4ef;
+  border-color: rgba(15, 118, 110, 0.35);
+  color: var(--teal-dark);
+}
+
+.team-card {
+  align-content: start;
+}
+
+.team-list {
+  display: grid;
+  gap: 8px;
+}
+
+.team-row {
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  padding: 10px;
+}
+
+.team-row div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.team-row span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.status-pill {
+  background: #e7f4ef;
+  border-radius: 999px;
+  color: var(--teal-dark) !important;
+  flex: 0 0 auto;
+  font-weight: 800;
+  padding: 5px 9px;
+}
+
+.status-pill.pending {
+  background: #fff8ef;
+  color: #8b5d17 !important;
+}
+
+.admin-message {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin: 12px 0 0;
+  min-height: 1.25rem;
+}
+
 .panel {
   min-width: 0;
   padding: 18px;
@@ -1596,7 +1741,8 @@ button.insight-card:hover {
   }
 
   .workspace-grid,
-  .lower-grid {
+  .lower-grid,
+  .saas-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1666,6 +1812,8 @@ button.insight-card:hover {
   .contact-summary,
   .pipeline-health,
   .task-summary,
+  .plan-summary,
+  .team-summary,
   .right-rail {
     grid-template-columns: 1fr 1fr;
   }
@@ -1711,6 +1859,9 @@ button.insight-card:hover {
   .task-controls,
   .task-form,
   .task-edit-form,
+  .invite-form,
+  .plan-summary,
+  .team-summary,
   .auth-actions {
     grid-template-columns: 1fr;
   }

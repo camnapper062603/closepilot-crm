@@ -12,6 +12,27 @@ const stageProbabilities = {
   won: 1,
 };
 
+const planCatalog = {
+  starter: {
+    label: "Starter",
+    price: 29,
+    seatLimit: 3,
+    detail: "Solo workflow, core CRM, exports, and backups.",
+  },
+  growth: {
+    label: "Growth",
+    price: 79,
+    seatLimit: 10,
+    detail: "Team seats, source reporting, automations, and forecasting.",
+  },
+  scale: {
+    label: "Scale",
+    price: 199,
+    seatLimit: 25,
+    detail: "Higher seat limits, admin controls, and priority rollout support.",
+  },
+};
+
 const defaultAutomations = [
   {
     key: "next-step-tasks",
@@ -94,6 +115,23 @@ const seedState = {
     id: `auto-${index + 1}`,
     ...automation,
   })),
+  account: {
+    subscription: {
+      plan: "starter",
+      status: "trialing",
+      seatLimit: 3,
+      trialEndsAt: "2026-07-11T00:00:00.000Z",
+    },
+    members: [
+      {
+        id: "member-owner",
+        email: "owner@closepilot.local",
+        role: "owner",
+        status: "active",
+      },
+    ],
+    invites: [],
+  },
   activities: [
     {
       id: "activity-1",
@@ -216,6 +254,18 @@ const importWorkspaceBackupButton = document.querySelector("#importWorkspaceBack
 const importWorkspaceBackupInput = document.querySelector("#importWorkspaceBackupInput");
 const backupSummary = document.querySelector("#backupSummary");
 const backupMessage = document.querySelector("#backupMessage");
+const subscriptionStatus = document.querySelector("#subscriptionStatus");
+const workspaceAdminForm = document.querySelector("#workspaceAdminForm");
+const adminBusinessName = document.querySelector("#adminBusinessName");
+const adminWorkspaceType = document.querySelector("#adminWorkspaceType");
+const adminSalesGoal = document.querySelector("#adminSalesGoal");
+const planSummary = document.querySelector("#planSummary");
+const teamSummary = document.querySelector("#teamSummary");
+const inviteForm = document.querySelector("#inviteForm");
+const inviteEmail = document.querySelector("#inviteEmail");
+const inviteRole = document.querySelector("#inviteRole");
+const teamList = document.querySelector("#teamList");
+const adminMessage = document.querySelector("#adminMessage");
 const leadDetailModal = document.querySelector("#leadDetailModal");
 const leadDetailContent = document.querySelector("#leadDetailContent");
 const closeLeadDetailModalButton = document.querySelector("#closeLeadDetailModal");
@@ -296,6 +346,8 @@ importLeadsInput.addEventListener("change", importLeadsCsv);
 exportWorkspaceBackupButton.addEventListener("click", exportWorkspaceBackup);
 importWorkspaceBackupButton.addEventListener("click", () => importWorkspaceBackupInput.click());
 importWorkspaceBackupInput.addEventListener("change", importWorkspaceBackup);
+workspaceAdminForm.addEventListener("submit", saveAdminWorkspaceSettings);
+inviteForm.addEventListener("submit", inviteTeamMember);
 confirmImportButton.addEventListener("click", confirmLeadsImport);
 cancelImportButton.addEventListener("click", closeImportModal);
 closeImportModalButton.addEventListener("click", closeImportModal);
@@ -335,10 +387,17 @@ contactSortInput.addEventListener("change", () => {
   renderContacts();
 });
 
+document.querySelectorAll("[data-plan-choice]").forEach((button) => {
+  button.addEventListener("click", () => {
+    changeSubscriptionPlan(button.dataset.planChoice);
+  });
+});
+
 async function boot() {
   if (!hasSupabaseConfig) {
     store = createLocalStore();
     state = await store.load();
+    normalizeLoadedState();
     setCloudMode(false);
     render();
     return;
@@ -369,6 +428,7 @@ async function boot() {
     console.error(error);
     store = createLocalStore();
     state = await store.load();
+    normalizeLoadedState();
     setCloudMode(false, "Demo mode - cloud unavailable");
     render();
   }
@@ -506,6 +566,7 @@ function closeLeadModal() {
 
 async function reloadState() {
   state = await store.load();
+  normalizeLoadedState();
   render();
 }
 
@@ -552,6 +613,7 @@ function render() {
   renderContacts();
   renderTasks();
   renderWorkspaceBackup();
+  renderSaasAdmin();
 }
 
 function renderOnboarding() {
@@ -637,6 +699,90 @@ function renderWorkspaceBackup() {
     <article>
       <span>Automations</span>
       <strong>${state.automations.length}</strong>
+    </article>
+  `;
+}
+
+function renderSaasAdmin() {
+  const account = accountState();
+  const settings = workspaceSetupSettings();
+  const subscription = account.subscription;
+  const plan = planCatalog[subscription.plan] || planCatalog.starter;
+  const activeMembers = account.members.filter((member) => member.status === "active");
+  const pendingInvites = account.invites.filter((invite) => invite.status === "pending");
+  const usedSeats = activeMembers.length + pendingInvites.length;
+
+  adminBusinessName.value = settings.name;
+  adminWorkspaceType.value = settings.type;
+  adminSalesGoal.value = settings.goal;
+  subscriptionStatus.textContent = `${plan.label} ${subscription.status === "trialing" ? "trial" : "plan"}`;
+
+  planSummary.innerHTML = `
+    <article>
+      <span>Plan</span>
+      <strong>${plan.label}</strong>
+      <small>${formatter.format(plan.price)}/mo</small>
+    </article>
+    <article>
+      <span>Seats</span>
+      <strong>${usedSeats}/${subscription.seatLimit}</strong>
+      <small>${pendingInvites.length} pending</small>
+    </article>
+    <article>
+      <span>Trial ends</span>
+      <strong>${formatShortDate(subscription.trialEndsAt)}</strong>
+      <small>${plan.detail}</small>
+    </article>
+  `;
+
+  document.querySelectorAll("[data-plan-choice]").forEach((button) => {
+    const planId = button.dataset.planChoice;
+    const option = planCatalog[planId];
+    button.classList.toggle("active", planId === subscription.plan);
+    button.textContent = `${option.label} ${formatter.format(option.price)}/mo`;
+  });
+
+  teamSummary.innerHTML = `
+    <article>
+      <span>Active members</span>
+      <strong>${activeMembers.length}</strong>
+    </article>
+    <article>
+      <span>Pending invites</span>
+      <strong>${pendingInvites.length}</strong>
+    </article>
+    <article>
+      <span>Seats left</span>
+      <strong>${Math.max(0, subscription.seatLimit - usedSeats)}</strong>
+    </article>
+  `;
+
+  teamList.innerHTML = [
+    ...activeMembers.map(renderTeamMember),
+    ...pendingInvites.map(renderTeamInvite),
+  ].join("");
+}
+
+function renderTeamMember(member) {
+  return `
+    <article class="team-row">
+      <div>
+        <strong>${escapeHtml(member.email)}</strong>
+        <span>${escapeHtml(member.role)} · active</span>
+      </div>
+      <span class="status-pill">Member</span>
+    </article>
+  `;
+}
+
+function renderTeamInvite(invite) {
+  return `
+    <article class="team-row">
+      <div>
+        <strong>${escapeHtml(invite.email)}</strong>
+        <span>${escapeHtml(invite.role)} · invited ${formatShortDate(invite.createdAt)}</span>
+      </div>
+      <span class="status-pill pending">Pending</span>
     </article>
   `;
 }
@@ -1893,6 +2039,10 @@ function revenueTargetKey() {
   return currentUser ? `closepilot-revenue-target-${currentUser.id}` : "closepilot-revenue-target-demo";
 }
 
+function cloudSaasAccountKey(workspaceId) {
+  return `closepilot-saas-account-${workspaceId}`;
+}
+
 function revenueTarget() {
   const saved = Number(localStorage.getItem(revenueTargetKey()));
   return Number.isFinite(saved) && saved > 0 ? saved : 30000;
@@ -1921,6 +2071,59 @@ async function saveWorkspaceSetup() {
   };
   localStorage.setItem(workspaceSetupKey(), JSON.stringify(settings));
   await store.updateWorkspaceSettings(settings);
+}
+
+async function saveAdminWorkspaceSettings(event) {
+  event.preventDefault();
+  setupBusinessName.value = adminBusinessName.value.trim() || "Personal workspace";
+  setupWorkspaceType.value = adminWorkspaceType.value;
+  setupSalesGoal.value = adminSalesGoal.value;
+  await saveWorkspaceSetup();
+  adminMessage.textContent = "Workspace settings saved.";
+  await reloadState();
+}
+
+async function changeSubscriptionPlan(planId) {
+  const plan = planCatalog[planId];
+  if (!plan) return;
+
+  const account = accountState();
+  await store.updateSaasAccount({
+    ...account,
+    subscription: {
+      ...account.subscription,
+      plan: planId,
+      status: "active",
+      seatLimit: plan.seatLimit,
+    },
+  });
+  adminMessage.textContent = `${plan.label} plan selected. Connect Stripe before charging customers.`;
+  await reloadState();
+}
+
+async function inviteTeamMember(event) {
+  event.preventDefault();
+  const email = inviteEmail.value.trim().toLowerCase();
+  if (!email) return;
+
+  const account = accountState();
+  const usedSeats =
+    account.members.filter((member) => member.status === "active").length +
+    account.invites.filter((invite) => invite.status === "pending").length;
+  if (usedSeats >= account.subscription.seatLimit) {
+    adminMessage.textContent = "Seat limit reached. Upgrade the plan before inviting more people.";
+    return;
+  }
+
+  await store.createTeamInvite({
+    email,
+    role: inviteRole.value,
+    status: "pending",
+  });
+  inviteEmail.value = "";
+  inviteRole.value = "member";
+  adminMessage.textContent = `Invite staged for ${email}. Connect email delivery before sending live invites.`;
+  await reloadState();
 }
 
 function saveRevenueTarget(event) {
@@ -2151,6 +2354,7 @@ function exportWorkspaceBackup() {
       tasks: state.tasks,
       automations: state.automations,
       activities: state.activities || [],
+      account: accountState(),
     },
   };
 
@@ -2213,6 +2417,7 @@ async function restoreWorkspaceBackup(backup) {
     });
   }
 
+  await store.updateSaasAccount(backup.account);
   localStorage.removeItem(onboardingDismissalKey());
   await reloadState();
 }
@@ -2228,6 +2433,7 @@ function normalizeWorkspaceBackup(payload) {
   const activities = Array.isArray(data.activities)
     ? data.activities.map(normalizeBackupActivity).filter(Boolean)
     : [];
+  const account = normalizedAccount(data.account);
 
   if (!leads.length && !tasks.length && !activities.length) {
     throw new Error("Backup file has no workspace data.");
@@ -2243,6 +2449,7 @@ function normalizeWorkspaceBackup(payload) {
     tasks,
     automations,
     activities,
+    account,
   };
 }
 
@@ -2561,6 +2768,22 @@ function createLocalStore() {
       this.save(state);
       return settings;
     },
+    async updateSaasAccount(account) {
+      state.account = normalizedAccount(account);
+      this.save(state);
+      return state.account;
+    },
+    async createTeamInvite(invite) {
+      const created = {
+        id: crypto.randomUUID(),
+        createdAt: new Date().toISOString(),
+        ...invite,
+      };
+      state.account = accountState();
+      state.account.invites = [created, ...state.account.invites];
+      this.save(state);
+      return created;
+    },
     async clearWorkspaceData() {
       state.leads = [];
       state.tasks = [];
@@ -2573,6 +2796,7 @@ function createLocalStore() {
       state.tasks = structuredClone(seedState.tasks);
       state.activities = structuredClone(seedState.activities);
       state.selectedLeadId = seedState.selectedLeadId;
+      state.account = normalizedAccount(state.account);
       this.save(state);
     },
   };
@@ -2642,6 +2866,7 @@ function createSupabaseStore(client, user) {
         { data: tasks, error: taskError },
         automations,
         activities,
+        account,
       ] = await Promise.all([
         client.from("leads").select("*").eq("workspace_id", workspaceId).order("created_at"),
         client.from("tasks").select("*").eq("workspace_id", workspaceId).order("created_at", {
@@ -2649,6 +2874,7 @@ function createSupabaseStore(client, user) {
         }),
         this.loadAutomations(),
         this.loadActivities(),
+        this.loadSaasAccount(),
       ]);
       throwIf(leadError);
       throwIf(taskError);
@@ -2660,7 +2886,57 @@ function createSupabaseStore(client, user) {
         tasks: tasks.map(fromTaskRow),
         automations,
         activities,
+        account,
       };
+    },
+    async loadSaasAccount() {
+      const fallback = normalizedAccount({
+        members: [
+          {
+            id: user.id,
+            email: user.email || "owner@closepilot.local",
+            role: "owner",
+            status: "active",
+          },
+        ],
+      });
+      const savedFallback = localStorage.getItem(cloudSaasAccountKey(workspaceId));
+      if (savedFallback) {
+        try {
+          return normalizedAccount(JSON.parse(savedFallback));
+        } catch {
+          localStorage.removeItem(cloudSaasAccountKey(workspaceId));
+        }
+      }
+      const [{ data: subscription, error: subscriptionError }, { data: members, error: memberError }, { data: invites, error: inviteError }] =
+        await Promise.all([
+          client.from("workspace_subscriptions").select("*").eq("workspace_id", workspaceId).maybeSingle(),
+          client.from("workspace_members").select("user_id, role").eq("workspace_id", workspaceId),
+          client.from("workspace_invitations").select("*").eq("workspace_id", workspaceId).order("created_at", { ascending: false }),
+        ]);
+
+      if (isMissingSaasTable(subscriptionError) || isMissingSaasTable(inviteError)) return fallback;
+      throwIf(subscriptionError);
+      throwIf(memberError);
+      throwIf(inviteError);
+
+      return normalizedAccount({
+        subscription: subscription
+          ? {
+              plan: subscription.plan,
+              status: subscription.status,
+              seatLimit: subscription.seat_limit,
+              trialEndsAt: subscription.trial_ends_at,
+            }
+          : fallback.subscription,
+        members: (members || []).map((member) => ({
+          id: member.user_id,
+          email: member.user_id === user.id ? user.email || "Current user" : `member-${member.user_id.slice(0, 8)}@workspace.local`,
+          role: member.role,
+          status: "active",
+        })),
+        invites: (invites || []).map(fromInviteRow),
+      });
     },
     async loadActivities() {
       const { data, error } = await client
@@ -2782,6 +3058,49 @@ function createSupabaseStore(client, user) {
       throwIf(error);
       return settings;
     },
+    async updateSaasAccount(account) {
+      const normalized = normalizedAccount(account);
+      const { error } = await client.from("workspace_subscriptions").upsert({
+        workspace_id: workspaceId,
+        plan: normalized.subscription.plan,
+        status: normalized.subscription.status,
+        seat_limit: normalized.subscription.seatLimit,
+        trial_ends_at: normalized.subscription.trialEndsAt,
+      });
+      if (isMissingSaasTable(error)) {
+        state.account = normalized;
+        localStorage.setItem(cloudSaasAccountKey(workspaceId), JSON.stringify(normalized));
+        return normalized;
+      }
+      throwIf(error);
+      return normalized;
+    },
+    async createTeamInvite(invite) {
+      const { data, error } = await client
+        .from("workspace_invitations")
+        .insert({
+          workspace_id: workspaceId,
+          email: invite.email,
+          role: invite.role,
+          status: invite.status,
+        })
+        .select("*")
+        .single();
+      if (isMissingSaasTable(error)) {
+        const account = normalizedAccount(state.account);
+        const created = {
+          id: crypto.randomUUID(),
+          createdAt: new Date().toISOString(),
+          ...invite,
+        };
+        account.invites = [created, ...account.invites];
+        state.account = account;
+        localStorage.setItem(cloudSaasAccountKey(workspaceId), JSON.stringify(account));
+        return created;
+      }
+      throwIf(error);
+      return fromInviteRow(data);
+    },
     async clearWorkspaceData() {
       const [{ error: taskError }, { error: leadError }] = await Promise.all([
         client.from("tasks").delete().eq("workspace_id", workspaceId),
@@ -2893,8 +3212,62 @@ function fromActivityRow(row) {
   };
 }
 
+function fromInviteRow(row) {
+  return {
+    id: row.id,
+    email: row.email,
+    role: row.role,
+    status: row.status,
+    createdAt: row.created_at,
+  };
+}
+
+function normalizeLoadedState() {
+  state.leads ||= [];
+  state.tasks ||= [];
+  state.automations ||= defaultAutomations.map((automation, index) => ({
+    id: `auto-${index + 1}`,
+    ...automation,
+  }));
+  state.activities ||= [];
+  state.account = normalizedAccount(state.account);
+}
+
+function accountState() {
+  state.account = normalizedAccount(state.account);
+  return state.account;
+}
+
+function normalizedAccount(account = {}) {
+  const plan = planCatalog[account.subscription?.plan] ? account.subscription.plan : "starter";
+  const ownerEmail = currentUser?.email || account.members?.[0]?.email || "owner@closepilot.local";
+  return {
+    subscription: {
+      plan,
+      status: account.subscription?.status || "trialing",
+      seatLimit: Number(account.subscription?.seatLimit) || planCatalog[plan].seatLimit,
+      trialEndsAt: account.subscription?.trialEndsAt || "2026-07-11T00:00:00.000Z",
+    },
+    members: Array.isArray(account.members) && account.members.length
+      ? account.members
+      : [
+          {
+            id: "member-owner",
+            email: ownerEmail,
+            role: "owner",
+            status: "active",
+          },
+        ],
+    invites: Array.isArray(account.invites) ? account.invites : [],
+  };
+}
+
 function isMissingActivitiesTable(error) {
   return error?.code === "42P01" || error?.message?.includes("activities");
+}
+
+function isMissingSaasTable(error) {
+  return error?.code === "42P01" || error?.message?.includes("workspace_subscriptions") || error?.message?.includes("workspace_invitations");
 }
 
 function throwIf(error) {
@@ -3010,6 +3383,13 @@ function formatActivityDate(value) {
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function formatShortDate(value) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
   }).format(new Date(value));
 }
 
