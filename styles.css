@@ -315,6 +315,91 @@ h2 {
   margin-top: 6px;
 }
 
+.revenue-goal-panel {
+  margin-bottom: 22px;
+}
+
+.goal-form {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.goal-form label {
+  color: var(--muted);
+  display: grid;
+  font-size: 0.82rem;
+  font-weight: 800;
+  gap: 4px;
+  text-transform: uppercase;
+}
+
+.goal-form input {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  min-height: 38px;
+  padding: 0 10px;
+  width: 140px;
+}
+
+.goal-progress {
+  background: #e8eee9;
+  border-radius: 999px;
+  height: 12px;
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+
+.goal-progress span {
+  background: linear-gradient(90deg, var(--teal), var(--blue));
+  border-radius: inherit;
+  display: block;
+  height: 100%;
+  min-width: 6px;
+  transition: width 0.2s ease;
+}
+
+.goal-summary {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.goal-summary article {
+  background: #f8faf8;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+}
+
+.goal-summary span,
+.goal-summary small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.goal-summary span {
+  text-transform: uppercase;
+}
+
+.goal-summary strong {
+  font-size: 1.28rem;
+}
+
+.goal-message {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin: 12px 0 0;
+  min-height: 1.25rem;
+}
+
 .onboarding-panel {
   align-items: center;
   display: flex;
@@ -1464,6 +1549,10 @@ button.insight-card:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .goal-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .right-rail {
     grid-template-columns: 1fr 1fr;
   }
@@ -1491,6 +1580,10 @@ button.insight-card:hover {
   }
 
   .panel-actions {
+    justify-content: flex-start;
+  }
+
+  .goal-form {
     justify-content: flex-start;
   }
 
@@ -1550,6 +1643,7 @@ button.insight-card:hover {
   .contact-row,
   .activity-feed-item,
   .detail-grid,
+  .goal-summary,
   .import-preview-list article,
   .task-controls,
   .task-form,

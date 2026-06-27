@@ -190,6 +190,11 @@ const authMessage = document.querySelector("#authMessage");
 const modePill = document.querySelector("#modePill");
 const appShell = document.querySelector(".app-shell");
 const signOutButton = document.querySelector("#signOutButton");
+const revenueGoalForm = document.querySelector("#revenueGoalForm");
+const revenueTargetInput = document.querySelector("#revenueTargetInput");
+const revenueProgressBar = document.querySelector("#revenueProgressBar");
+const revenueGoalSummary = document.querySelector("#revenueGoalSummary");
+const revenueGoalMessage = document.querySelector("#revenueGoalMessage");
 const onboardingPanel = document.querySelector("#onboardingPanel");
 const seedWorkspaceButton = document.querySelector("#seedWorkspaceButton");
 const dismissOnboardingButton = document.querySelector("#dismissOnboardingButton");
@@ -271,6 +276,7 @@ bulkContactWonButton.addEventListener("click", markSelectedContactsWon);
 bulkContactNextButton.addEventListener("click", moveSelectedContactsNext);
 
 searchInput.addEventListener("input", render);
+revenueGoalForm.addEventListener("submit", saveRevenueTarget);
 
 authForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -532,6 +538,7 @@ function sortedContactLeads(leads) {
 function render() {
   renderWorkspaceIdentity();
   renderMetrics();
+  renderRevenueGoal();
   renderOnboarding();
   renderInsights();
   renderPipeline();
@@ -572,6 +579,41 @@ function renderMetrics() {
   document.querySelector("#hotLeadCount").textContent = hotLeads;
   document.querySelector("#automationSaved").textContent = `${saved}h`;
   document.querySelector("#dueToday").textContent = dueToday;
+}
+
+function renderRevenueGoal() {
+  const target = revenueTarget();
+  const wonValue = state.leads
+    .filter((lead) => lead.stage === "won")
+    .reduce((sum, lead) => sum + lead.value, 0);
+  const openWeighted = state.leads
+    .filter((lead) => lead.stage !== "won")
+    .reduce((sum, lead) => sum + weightedLeadValue(lead), 0);
+  const projected = wonValue + openWeighted;
+  const remaining = Math.max(0, target - wonValue);
+  const wonProgress = target ? Math.min(100, Math.round((wonValue / target) * 100)) : 0;
+  const projectedProgress = target ? Math.min(100, Math.round((projected / target) * 100)) : 0;
+
+  revenueTargetInput.value = target;
+  revenueProgressBar.style.width = `${projectedProgress}%`;
+  revenueProgressBar.dataset.progress = `${projectedProgress}%`;
+  revenueGoalSummary.innerHTML = `
+    <article>
+      <span>Closed</span>
+      <strong>${formatter.format(wonValue)}</strong>
+      <small>${wonProgress}% booked</small>
+    </article>
+    <article>
+      <span>Projected</span>
+      <strong>${formatter.format(projected)}</strong>
+      <small>${projectedProgress}% weighted</small>
+    </article>
+    <article>
+      <span>Gap</span>
+      <strong>${formatter.format(remaining)}</strong>
+      <small>${formatter.format(target)} target</small>
+    </article>
+  `;
 }
 
 function renderWorkspaceBackup() {
@@ -1780,6 +1822,15 @@ function workspaceSetupKey() {
   return currentUser ? `closepilot-workspace-setup-${currentUser.id}` : "closepilot-workspace-setup-demo";
 }
 
+function revenueTargetKey() {
+  return currentUser ? `closepilot-revenue-target-${currentUser.id}` : "closepilot-revenue-target-demo";
+}
+
+function revenueTarget() {
+  const saved = Number(localStorage.getItem(revenueTargetKey()));
+  return Number.isFinite(saved) && saved > 0 ? saved : 30000;
+}
+
 function workspaceSetupSettings() {
   const fallback = {
     name: state.workspaceName || "Personal workspace",
@@ -1803,6 +1854,15 @@ async function saveWorkspaceSetup() {
   };
   localStorage.setItem(workspaceSetupKey(), JSON.stringify(settings));
   await store.updateWorkspaceSettings(settings);
+}
+
+function saveRevenueTarget(event) {
+  event.preventDefault();
+  const value = Math.max(0, Number(revenueTargetInput.value || 0));
+  const target = Number.isFinite(value) && value > 0 ? Math.round(value) : 30000;
+  localStorage.setItem(revenueTargetKey(), String(target));
+  revenueGoalMessage.textContent = `Monthly target saved at ${formatter.format(target)}.`;
+  renderRevenueGoal();
 }
 
 async function addAutomatedTask(text) {

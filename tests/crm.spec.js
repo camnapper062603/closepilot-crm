@@ -322,6 +322,32 @@ test('shows a weighted pipeline forecast', async ({ page }) => {
   await expect(page.locator('#leadBrief')).toContainText('Nia Brooks');
 });
 
+test('tracks monthly revenue target progress', async ({ page }) => {
+  await expect(page.locator('#revenueGoalSummary')).toContainText('Closed');
+  await expect(page.locator('#revenueGoalSummary')).toContainText('$5,100');
+  await expect(page.locator('#revenueGoalSummary')).toContainText('17% booked');
+  await expect(page.locator('#revenueGoalSummary')).toContainText('Projected');
+  await expect(page.locator('#revenueGoalSummary')).toContainText('$17,760');
+  await expect(page.locator('#revenueGoalSummary')).toContainText('59% weighted');
+  await expect(page.locator('#revenueGoalSummary')).toContainText('$24,900');
+  await expect(page.locator('#revenueProgressBar')).toHaveAttribute('data-progress', '59%');
+
+  await page.locator('#revenueTargetInput').fill('20000');
+  await page.getByRole('button', { name: 'Set target' }).click();
+
+  await expect(page.locator('#revenueGoalMessage')).toHaveText('Monthly target saved at $20,000.');
+  await expect(page.locator('#revenueGoalSummary')).toContainText('26% booked');
+  await expect(page.locator('#revenueGoalSummary')).toContainText('89% weighted');
+  await expect(page.locator('#revenueGoalSummary')).toContainText('$14,900');
+  await expect(page.locator('#revenueProgressBar')).toHaveAttribute('data-progress', '89%');
+
+  await page.locator('#leadBrief').getByRole('button', { name: 'Mark won' }).click();
+
+  await expect(page.locator('#revenueGoalSummary')).toContainText('$13,500');
+  await expect(page.locator('#revenueGoalSummary')).toContainText('68% booked');
+  await expect(page.locator('#revenueGoalSummary')).toContainText('$6,500');
+});
+
 test('edits the selected lead', async ({ page }) => {
   await page.locator('#leadBrief').getByRole('button', { name: 'Edit lead' }).click();
   await expect(page.getByRole('dialog', { name: 'Edit lead' })).toBeVisible();

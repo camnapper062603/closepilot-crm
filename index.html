@@ -101,6 +101,27 @@
           </article>
         </section>
 
+        <section class="panel revenue-goal-panel" id="revenueGoal" aria-labelledby="revenueGoalHeading">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Revenue plan</p>
+              <h2 id="revenueGoalHeading">Monthly target</h2>
+            </div>
+            <form class="goal-form" id="revenueGoalForm">
+              <label>
+                Target
+                <input id="revenueTargetInput" type="number" min="0" step="500" value="30000" />
+              </label>
+              <button class="secondary-button" id="saveRevenueTarget" type="submit">Set target</button>
+            </form>
+          </div>
+          <div class="goal-progress" aria-label="Revenue target progress">
+            <span id="revenueProgressBar"></span>
+          </div>
+          <div class="goal-summary" id="revenueGoalSummary" aria-label="Revenue goal summary"></div>
+          <p class="goal-message" id="revenueGoalMessage" role="status"></p>
+        </section>
+
         <section class="onboarding-panel" id="onboardingPanel" hidden>
           <div>
             <p class="eyebrow">First run</p>
