@@ -49,12 +49,12 @@
         </div>
 
         <nav class="nav-links" aria-label="Primary">
-          <a class="active" href="#pipeline">Pipeline</a>
-          <a href="#contacts">Contacts</a>
-          <a href="#automation">Automation</a>
-          <a href="#tasks">Tasks</a>
-          <a href="#activity">Activity</a>
-          <a href="#saasAdmin">Admin</a>
+          <a class="active" data-nav-page="pipeline" href="#pipeline">Pipeline</a>
+          <a data-nav-page="contacts" href="#contacts">Contacts</a>
+          <a data-nav-page="automation" href="#automation">Automation</a>
+          <a data-nav-page="tasks" href="#tasks">Tasks</a>
+          <a data-nav-page="activity" href="#activity">Activity</a>
+          <a data-nav-page="admin" href="#admin">Admin</a>
         </nav>
 
         <div class="workspace-card">
@@ -83,7 +83,7 @@
           </div>
         </header>
 
-        <section class="metrics" aria-label="CRM summary">
+        <section class="metrics" data-page="pipeline" aria-label="CRM summary">
           <article>
             <span>Pipeline value</span>
             <strong id="pipelineValue">$0</strong>
@@ -102,7 +102,7 @@
           </article>
         </section>
 
-        <section class="panel revenue-goal-panel" id="revenueGoal" aria-labelledby="revenueGoalHeading">
+        <section class="panel revenue-goal-panel" id="revenueGoal" data-page="pipeline" aria-labelledby="revenueGoalHeading">
           <div class="panel-heading">
             <div>
               <p class="eyebrow">Revenue plan</p>
@@ -123,7 +123,7 @@
           <p class="goal-message" id="revenueGoalMessage" role="status"></p>
         </section>
 
-        <section class="onboarding-panel" id="onboardingPanel" hidden>
+        <section class="onboarding-panel" id="onboardingPanel" data-page="pipeline" hidden>
           <div>
             <p class="eyebrow">First run</p>
             <h2>Start your sales workspace</h2>
@@ -156,7 +156,7 @@
           </div>
         </section>
 
-        <section class="panel insights-panel" id="insightsPanel" aria-labelledby="insightsHeading">
+        <section class="panel insights-panel" id="insightsPanel" data-page="pipeline" aria-labelledby="insightsHeading">
           <div class="panel-heading compact">
             <div>
               <p class="eyebrow">Pipeline intelligence</p>
@@ -166,7 +166,7 @@
           <div id="insightList" class="insight-list"></div>
         </section>
 
-        <section class="panel source-report-panel" id="sourceReport" aria-labelledby="sourceReportHeading">
+        <section class="panel source-report-panel" id="sourceReport" data-page="pipeline" aria-labelledby="sourceReportHeading">
           <div class="panel-heading">
             <div>
               <p class="eyebrow">Acquisition</p>
@@ -177,8 +177,8 @@
           <div class="source-report-grid" id="sourceReportGrid" aria-label="Lead channel report"></div>
         </section>
 
-        <section class="workspace-grid">
-          <section class="panel pipeline-panel" id="pipeline" aria-labelledby="pipelineHeading">
+        <section class="workspace-grid" data-page-group="pipeline automation activity">
+          <section class="panel pipeline-panel" id="pipeline" data-page="pipeline" aria-labelledby="pipelineHeading">
             <div class="panel-heading">
               <div>
                 <p class="eyebrow">Live deals</p>
@@ -194,7 +194,7 @@
           </section>
 
           <aside class="right-rail">
-            <section class="panel selected-panel" aria-labelledby="selectedHeading">
+            <section class="panel selected-panel" data-page="pipeline" aria-labelledby="selectedHeading">
               <div class="panel-heading compact">
                 <div>
                   <p class="eyebrow">Next best action</p>
@@ -204,7 +204,7 @@
               <div id="leadBrief" class="lead-brief"></div>
             </section>
 
-            <section class="panel" id="automation" aria-labelledby="automationHeading">
+            <section class="panel" id="automation" data-page="automation" aria-labelledby="automationHeading">
               <div class="panel-heading compact">
                 <div>
                   <p class="eyebrow">Hands-free CRM</p>
@@ -219,7 +219,7 @@
               <div id="automationList" class="automation-list"></div>
             </section>
 
-            <section class="panel" id="activity" aria-labelledby="activityHeading">
+            <section class="panel" id="activity" data-page="activity" aria-labelledby="activityHeading">
               <div class="panel-heading compact">
                 <div>
                   <p class="eyebrow">Workspace pulse</p>
@@ -245,8 +245,8 @@
           </aside>
         </section>
 
-        <section class="lower-grid">
-          <section class="panel" id="contacts" aria-labelledby="contactsHeading">
+        <section class="lower-grid" data-page-group="contacts tasks">
+          <section class="panel" id="contacts" data-page="contacts" aria-labelledby="contactsHeading">
             <div class="panel-heading">
               <div>
                 <p class="eyebrow">Accounts</p>
@@ -288,7 +288,7 @@
             <div class="contact-table" id="contactTable"></div>
           </section>
 
-          <section class="panel" id="tasks" aria-labelledby="tasksHeading">
+          <section class="panel" id="tasks" data-page="tasks" aria-labelledby="tasksHeading">
             <div class="panel-heading">
               <div>
                 <p class="eyebrow">Daily motion</p>
@@ -353,7 +353,7 @@
           </section>
         </section>
 
-        <section class="panel backup-panel" id="workspaceBackup" aria-labelledby="backupHeading">
+        <section class="panel backup-panel" id="workspaceBackup" data-page="admin" aria-labelledby="backupHeading">
           <div class="panel-heading">
             <div>
               <p class="eyebrow">Workspace control</p>
@@ -369,7 +369,7 @@
           <p class="backup-message" id="backupMessage" role="status"></p>
         </section>
 
-        <section class="panel saas-admin-panel" id="saasAdmin" aria-labelledby="saasAdminHeading">
+        <section class="panel saas-admin-panel" id="saasAdmin" data-page="admin" aria-labelledby="saasAdminHeading">
           <div class="panel-heading">
             <div>
               <p class="eyebrow">SaaS operations</p>

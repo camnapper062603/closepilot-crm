@@ -172,6 +172,7 @@ let contactFilter = "all";
 let contactSort = "recent";
 let selectedContactIds = new Set();
 let selectedTaskIds = new Set();
+let activePage = "pipeline";
 
 const formatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -187,6 +188,7 @@ const taskDueChoices = [
 ];
 
 const board = document.querySelector("#pipelineBoard");
+const pageTitle = document.querySelector(".topbar h1");
 const pipelineHealth = document.querySelector("#pipelineHealth");
 const insightList = document.querySelector("#insightList");
 const sourceReportGrid = document.querySelector("#sourceReportGrid");
@@ -284,6 +286,14 @@ const closeLeadDetailModalButton = document.querySelector("#closeLeadDetailModal
 
 const config = window.ClosePilotConfig || {};
 const hasSupabaseConfig = Boolean(config.supabaseUrl && config.supabaseAnonKey);
+const pageTitles = {
+  pipeline: "Pipeline command center",
+  contacts: "Contacts",
+  automation: "Automation",
+  tasks: "Tasks",
+  activity: "Activity",
+  admin: "Workspace admin",
+};
 
 document.querySelector("#openLeadModal").addEventListener("click", () => {
   openLeadModal();
@@ -407,11 +417,17 @@ document.querySelectorAll("[data-plan-choice]").forEach((button) => {
   });
 });
 
+window.addEventListener("hashchange", () => {
+  routeFromHash();
+  renderRoute();
+});
+
 async function boot() {
   if (!hasSupabaseConfig) {
     store = createLocalStore();
     state = await store.load();
     normalizeLoadedState();
+    routeFromHash();
     setCloudMode(false);
     render();
     return;
@@ -443,6 +459,7 @@ async function boot() {
     store = createLocalStore();
     state = await store.load();
     normalizeLoadedState();
+    routeFromHash();
     setCloudMode(false, "Demo mode - cloud unavailable");
     render();
   }
@@ -453,6 +470,7 @@ async function startCloudWorkspace() {
   setCloudMode(true);
   store = createSupabaseStore(supabaseClient, currentUser);
   await store.ensureWorkspace();
+  routeFromHash();
   await reloadState();
 }
 
@@ -555,6 +573,7 @@ async function createLeadFromForm() {
 
   leadForm.reset();
   closeLeadModal();
+  setActivePage("pipeline");
   await reloadState();
 }
 
@@ -628,6 +647,40 @@ function render() {
   renderTasks();
   renderWorkspaceBackup();
   renderSaasAdmin();
+  renderRoute();
+}
+
+function routeFromHash() {
+  const requested = window.location.hash.replace("#", "");
+  activePage = pageTitles[requested] ? requested : "pipeline";
+}
+
+function renderRoute() {
+  document.querySelectorAll("[data-page]").forEach((section) => {
+    const visible = section.dataset.page === activePage;
+    section.hidden = !visible;
+  });
+
+  document.querySelectorAll("[data-page-group]").forEach((group) => {
+    const pages = group.dataset.pageGroup.split(" ");
+    group.hidden = !pages.includes(activePage);
+  });
+
+  document.querySelectorAll("[data-nav-page]").forEach((link) => {
+    link.classList.toggle("active", link.dataset.navPage === activePage);
+  });
+
+  pageTitle.textContent = pageTitles[activePage] || pageTitles.pipeline;
+  if (window.location.hash !== `#${activePage}`) {
+    history.replaceState(null, "", `#${activePage}`);
+  }
+}
+
+function setActivePage(page) {
+  activePage = pageTitles[page] ? page : "pipeline";
+  if (window.location.hash !== `#${activePage}`) {
+    history.replaceState(null, "", `#${activePage}`);
+  }
 }
 
 function renderOnboarding() {
@@ -908,6 +961,7 @@ function renderInsights() {
   insightList.querySelectorAll("[data-insight-lead]").forEach((button) => {
     button.addEventListener("click", () => {
       state.selectedLeadId = button.dataset.insightLead;
+      setActivePage("pipeline");
       render();
     });
   });
@@ -975,6 +1029,7 @@ function renderSourceReport() {
   sourceReportGrid.querySelectorAll("[data-source-lead]").forEach((button) => {
     button.addEventListener("click", () => {
       state.selectedLeadId = button.dataset.sourceLead;
+      setActivePage("pipeline");
       render();
     });
   });
@@ -1043,6 +1098,7 @@ function renderPipeline() {
   board.querySelectorAll("[data-select-lead]").forEach((button) => {
     button.addEventListener("click", () => {
       state.selectedLeadId = button.dataset.selectLead;
+      setActivePage("pipeline");
       render();
     });
   });
@@ -1118,6 +1174,7 @@ function renderForecast(leads) {
   board.querySelectorAll("[data-select-lead]").forEach((button) => {
     button.addEventListener("click", () => {
       state.selectedLeadId = button.dataset.selectLead;
+      setActivePage("pipeline");
       render();
     });
   });
@@ -1182,6 +1239,7 @@ async function moveLead(leadId, direction) {
   if (!lead) return;
 
   state.selectedLeadId = lead.id;
+  setActivePage("pipeline");
   await applyStageMove(lead, direction);
   await reloadState();
 }
@@ -1537,6 +1595,7 @@ function renderActivityFeed() {
   activityFeed.querySelectorAll("[data-activity-lead]").forEach((button) => {
     button.addEventListener("click", () => {
       state.selectedLeadId = button.dataset.activityLead;
+      setActivePage("pipeline");
       render();
     });
   });
@@ -1635,6 +1694,7 @@ function renderContacts() {
   contactTable.querySelectorAll("[data-contact-select]").forEach((button) => {
     button.addEventListener("click", () => {
       state.selectedLeadId = button.dataset.contactSelect;
+      setActivePage("pipeline");
       render();
     });
   });
@@ -2268,6 +2328,7 @@ async function createFollowUpFromLead(leadId) {
   if (!lead) return;
 
   state.selectedLeadId = leadId;
+  setActivePage("pipeline");
   await createFollowUpTaskForLead(lead);
   await reloadState();
 }
@@ -2279,6 +2340,7 @@ async function createTasksForSelectedContacts() {
   if (!selectedLeads.length) return;
 
   state.selectedLeadId = selectedLeads[selectedLeads.length - 1].id;
+  setActivePage("pipeline");
   await Promise.all(selectedLeads.map(createFollowUpTaskForLead));
   selectedContactIds.clear();
   await reloadState();
@@ -2291,6 +2353,7 @@ async function markSelectedContactsWon() {
   if (!selectedLeads.length) return;
 
   state.selectedLeadId = selectedLeads[selectedLeads.length - 1].id;
+  setActivePage("pipeline");
   await Promise.all(selectedLeads.map((lead) => applyLeadOutcome(lead, "won")));
   selectedContactIds.clear();
   await reloadState();
@@ -2303,6 +2366,7 @@ async function moveSelectedContactsNext() {
   if (!selectedLeads.length) return;
 
   state.selectedLeadId = selectedLeads[selectedLeads.length - 1].id;
+  setActivePage("pipeline");
   await Promise.all(selectedLeads.map((lead) => applyStageMove(lead, 1)));
   selectedContactIds.clear();
   await reloadState();
@@ -2371,6 +2435,7 @@ async function updateLeadOutcome(leadId, outcome) {
   if (!lead) return;
 
   state.selectedLeadId = lead.id;
+  setActivePage("pipeline");
   await applyLeadOutcome(lead, outcome);
   await reloadState();
 }
@@ -2734,6 +2799,7 @@ async function confirmLeadsImport() {
     ),
   );
   state.selectedLeadId = created[0]?.id || state.selectedLeadId;
+  setActivePage("pipeline");
   closeImportModal();
   await reloadState();
 }

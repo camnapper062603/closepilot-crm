@@ -8,11 +8,48 @@ test.beforeEach(async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Pipeline command center' })).toBeVisible();
 });
 
+async function navigateTo(page, label, hash) {
+  const headings = {
+    Admin: 'Workspace admin',
+    Pipeline: 'Pipeline command center',
+  };
+  await page.getByRole('link', { name: label }).click();
+  await expect(page).toHaveURL(new RegExp(`#${hash}`));
+  await expect(page.locator('.topbar h1')).toHaveText(headings[label] || label);
+}
+
 test('renders the CRM dashboard MVP', async ({ page }) => {
   await expect(page).toHaveTitle(/ClosePilot CRM/);
   await expect(page.getByRole('heading', { name: 'Pipeline command center' })).toBeVisible();
   await expect(page.locator('#pipelineBoard').getByText('Northstar Roofing')).toBeVisible();
+
+  await navigateTo(page, 'Automation', 'automation');
   await expect(page.getByText('Create next-step tasks')).toBeVisible();
+});
+
+test('opens primary sidebar items as separate app pages', async ({ page }) => {
+  await expect(page.locator('#pipeline')).toBeVisible();
+  await expect(page.locator('#contacts')).toBeHidden();
+
+  await navigateTo(page, 'Contacts', 'contacts');
+  await expect(page.locator('#contacts')).toBeVisible();
+  await expect(page.locator('#pipeline')).toBeHidden();
+
+  await navigateTo(page, 'Automation', 'automation');
+  await expect(page.locator('#automation')).toBeVisible();
+  await expect(page.locator('#contacts')).toBeHidden();
+
+  await navigateTo(page, 'Tasks', 'tasks');
+  await expect(page.locator('#tasks')).toBeVisible();
+  await expect(page.locator('#automation')).toBeHidden();
+
+  await navigateTo(page, 'Activity', 'activity');
+  await expect(page.locator('#activity')).toBeVisible();
+  await expect(page.locator('#tasks')).toBeHidden();
+
+  await navigateTo(page, 'Admin', 'admin');
+  await expect(page.locator('#saasAdmin')).toBeVisible();
+  await expect(page.locator('#activity')).toBeHidden();
 });
 
 test('shows actionable pipeline insights', async ({ page }) => {
@@ -51,6 +88,8 @@ test('shows and exports lead source performance', async ({ page }) => {
 });
 
 test('manages automation status in bulk', async ({ page }) => {
+  await navigateTo(page, 'Automation', 'automation');
+
   await expect(page.locator('#automationSummary')).toContainText('2/3');
   await expect(page.locator('#automationSummary')).toContainText('7h');
   await expect(page.locator('#automationSummary')).toContainText('1');
@@ -112,21 +151,26 @@ test('shows pipeline health metrics for visible deals', async ({ page }) => {
 test('shows a global activity feed and opens related leads', async ({ page }) => {
   const activityFilters = page.getByRole('group', { name: 'Activity filter' });
 
+  await navigateTo(page, 'Activity', 'activity');
   await expect(page.locator('#activityFeed')).toContainText('Northstar Roofing');
   await expect(page.locator('#activityFeed')).toContainText('Stage set to Qualified.');
   await expect(page.locator('#activitySummary')).toHaveText('2 activities shown');
 
+  await navigateTo(page, 'Pipeline', 'pipeline');
   await page.locator('#leadBrief').getByRole('button', { name: 'Add follow-up' }).click();
+  await navigateTo(page, 'Activity', 'activity');
   await activityFilters.getByRole('button', { name: 'Tasks' }).click();
   await expect(page.locator('#activityFeed')).toContainText('Follow-up task added.');
   await expect(page.locator('#activityFeed')).not.toContainText('Stage set to Qualified.');
   await expect(page.locator('#activitySummary')).toHaveText('1 activity shown');
 
+  await navigateTo(page, 'Pipeline', 'pipeline');
   await page.locator('#leadBrief').getByRole('button', { name: 'Open details' }).click();
   const dialog = page.getByRole('dialog', { name: 'Northstar Roofing' });
   await dialog.getByPlaceholder('Log a call, objection, or update').fill('Customer asked for Tuesday scheduling.');
   await dialog.getByRole('button', { name: 'Add note' }).click();
   await page.getByRole('button', { name: 'Close' }).click();
+  await navigateTo(page, 'Activity', 'activity');
   await activityFilters.getByRole('button', { name: 'Notes' }).click();
   await expect(page.locator('#activityFeed')).toContainText('Note: Customer asked for Tuesday scheduling.');
   await expect(page.locator('#activityFeed')).not.toContainText('Follow-up task added.');
@@ -156,9 +200,11 @@ test('shows a global activity feed and opens related leads', async ({ page }) =>
   expect(csv).not.toContain('Harbor Fitness');
   await page.getByPlaceholder('Search activity').fill('');
 
+  await navigateTo(page, 'Pipeline', 'pipeline');
   await page.locator('#pipelineBoard').getByText('Harbor Fitness').click();
   await expect(page.locator('#leadBrief')).toContainText('Nia Brooks');
 
+  await navigateTo(page, 'Activity', 'activity');
   await page
     .locator('#activityFeed .activity-feed-item')
     .filter({ hasText: 'Northstar Roofing' })
@@ -206,6 +252,8 @@ test('sets up a new workspace with starter data', async ({ page }) => {
 });
 
 test('exports and imports a workspace backup', async ({ page }) => {
+  await navigateTo(page, 'Admin', 'admin');
+
   await expect(page.locator('#backupSummary')).toContainText('4');
   await expect(page.locator('#backupSummary')).toContainText('3');
   await expect(page.locator('#backupSummary')).toContainText('2');
@@ -289,22 +337,26 @@ test('creates a lead and an automated follow-up task', async ({ page }) => {
   await page.getByRole('button', { name: 'Create lead' }).click();
 
   await expect(page.locator('#pipelineBoard').getByText('Plus Growth Studio')).toBeVisible();
-  await expect(page.getByText('Follow up with Cameron Ellis at Plus Growth Studio')).toBeVisible();
   await expect(page.locator('#leadBrief')).toContainText('Trade show');
   await expect(page.locator('#leadBrief')).toContainText('Book discovery call');
   await expect(page.locator('#leadBrief')).toContainText('Lead created from Trade show.');
   await expect(page.locator('#activityFeed')).toContainText('Plus Growth Studio');
   await expect(page.locator('#activityFeed')).toContainText('Lead created from Trade show.');
   await expect(page.locator('#pipelineValue')).toContainText('$38,900');
+
+  await navigateTo(page, 'Tasks', 'tasks');
+  await expect(page.getByText('Follow up with Cameron Ellis at Plus Growth Studio')).toBeVisible();
 });
 
 test('moves a lead forward and updates the lead brief', async ({ page }) => {
   const northstarCard = page.locator('article.deal-card').filter({ hasText: 'Northstar Roofing' });
   await northstarCard.getByRole('button', { name: 'Next' }).click();
 
-  await expect(page.getByText('Follow up with Maya Johnson after moving to Proposal')).toBeVisible();
   await expect(page.locator('#leadBrief')).toContainText('Proposal');
   await expect(page.locator('#leadBrief')).toContainText('Stage changed to Proposal.');
+
+  await navigateTo(page, 'Tasks', 'tasks');
+  await expect(page.getByText('Follow up with Maya Johnson after moving to Proposal')).toBeVisible();
 });
 
 test('marks the selected lead won and queues onboarding', async ({ page }) => {
@@ -373,6 +425,7 @@ test('tracks monthly revenue target progress', async ({ page }) => {
 });
 
 test('manages SaaS workspace plan, seats, and invites', async ({ page }) => {
+  await navigateTo(page, 'Admin', 'admin');
   const admin = page.locator('#saasAdmin');
 
   await expect(admin).toContainText('Workspace admin');
@@ -506,6 +559,7 @@ test('logs manual notes in the lead detail workspace', async ({ page }) => {
 });
 
 test('filters tasks by today, upcoming, done, and all', async ({ page }) => {
+  await navigateTo(page, 'Tasks', 'tasks');
   const taskFilters = page.getByRole('group', { name: 'Task filter' });
 
   await expect(page.locator('#taskList')).toContainText('Call Maya before 3 PM');
@@ -515,7 +569,9 @@ test('filters tasks by today, upcoming, done, and all', async ({ page }) => {
   await expect(page.locator('#taskList')).toContainText('Send onboarding checklist to Stone & Finch');
   await expect(page.locator('#taskList')).not.toContainText('Call Maya before 3 PM');
 
+  await navigateTo(page, 'Pipeline', 'pipeline');
   await page.locator('#leadBrief').getByRole('button', { name: 'Start sequence' }).click();
+  await navigateTo(page, 'Tasks', 'tasks');
   await taskFilters.getByRole('button', { name: /Upcoming/ }).click();
   await expect(page.locator('#taskList')).toContainText('Send Northstar Roofing a short proposal recap.');
   await expect(page.locator('#taskList')).toContainText(
@@ -528,6 +584,7 @@ test('filters tasks by today, upcoming, done, and all', async ({ page }) => {
 });
 
 test('clears completed tasks', async ({ page }) => {
+  await navigateTo(page, 'Tasks', 'tasks');
   const taskFilters = page.getByRole('group', { name: 'Task filter' });
 
   await expect(page.locator('#taskSummary')).toContainText('Completed');
@@ -545,6 +602,7 @@ test('clears completed tasks', async ({ page }) => {
 });
 
 test('searches tasks by text', async ({ page }) => {
+  await navigateTo(page, 'Tasks', 'tasks');
   const taskFilters = page.getByRole('group', { name: 'Task filter' });
 
   await page.getByPlaceholder('Search task text').fill('Harbor');
@@ -557,6 +615,7 @@ test('searches tasks by text', async ({ page }) => {
 });
 
 test('sorts tasks by text', async ({ page }) => {
+  await navigateTo(page, 'Tasks', 'tasks');
   const taskFilters = page.getByRole('group', { name: 'Task filter' });
   const taskRows = page.locator('#taskList .task-item');
 
@@ -568,6 +627,7 @@ test('sorts tasks by text', async ({ page }) => {
 });
 
 test('completes all visible tasks', async ({ page }) => {
+  await navigateTo(page, 'Tasks', 'tasks');
   const taskFilters = page.getByRole('group', { name: 'Task filter' });
 
   await expect(page.locator('#taskList')).toContainText('Call Maya before 3 PM');
@@ -580,6 +640,7 @@ test('completes all visible tasks', async ({ page }) => {
 });
 
 test('snoozes visible open tasks to tomorrow', async ({ page }) => {
+  await navigateTo(page, 'Tasks', 'tasks');
   const taskFilters = page.getByRole('group', { name: 'Task filter' });
 
   await expect(page.locator('#taskList')).toContainText('Call Maya before 3 PM');
@@ -595,6 +656,7 @@ test('snoozes visible open tasks to tomorrow', async ({ page }) => {
 });
 
 test('creates manual tasks with custom due dates', async ({ page }) => {
+  await navigateTo(page, 'Tasks', 'tasks');
   await page.getByPlaceholder('Add a follow-up or reminder').fill('Prepare quarterly pipeline review');
   await page.getByLabel('Task due date').selectOption('next week');
   await page.locator('#taskForm').getByRole('button', { name: 'Add' }).click();
@@ -606,6 +668,7 @@ test('creates manual tasks with custom due dates', async ({ page }) => {
 });
 
 test('edits task text and due date inline', async ({ page }) => {
+  await navigateTo(page, 'Tasks', 'tasks');
   const taskRow = page.locator('#taskList .task-item').filter({ hasText: 'Call Maya before 3 PM' });
 
   await taskRow.getByRole('button', { name: 'Edit' }).click();
@@ -620,6 +683,7 @@ test('edits task text and due date inline', async ({ page }) => {
 });
 
 test('duplicates tasks from the task list', async ({ page }) => {
+  await navigateTo(page, 'Tasks', 'tasks');
   const taskFilters = page.getByRole('group', { name: 'Task filter' });
   const mayaTasks = page.locator('#taskList .task-item').filter({ hasText: 'Call Maya before 3 PM' });
 
@@ -631,6 +695,7 @@ test('duplicates tasks from the task list', async ({ page }) => {
 });
 
 test('selects and clears visible tasks in bulk', async ({ page }) => {
+  await navigateTo(page, 'Tasks', 'tasks');
   await expect(page.locator('#taskSelectionStatus')).toHaveText('0 selected');
   await expect(page.getByRole('button', { name: 'Export selected tasks (0)' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Complete selected (0)' })).toBeDisabled();
@@ -661,6 +726,7 @@ test('selects and clears visible tasks in bulk', async ({ page }) => {
 });
 
 test('sets selected task due dates in bulk', async ({ page }) => {
+  await navigateTo(page, 'Tasks', 'tasks');
   const taskFilters = page.getByRole('group', { name: 'Task filter' });
 
   await page.getByRole('button', { name: 'Select visible tasks' }).click();
@@ -679,6 +745,7 @@ test('sets selected task due dates in bulk', async ({ page }) => {
 });
 
 test('exports visible and selected tasks to CSV', async ({ page }) => {
+  await navigateTo(page, 'Tasks', 'tasks');
   let downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export visible tasks' }).click();
   let download = await downloadPromise;
@@ -701,6 +768,7 @@ test('exports visible and selected tasks to CSV', async ({ page }) => {
 });
 
 test('completes and snoozes selected tasks in bulk', async ({ page }) => {
+  await navigateTo(page, 'Tasks', 'tasks');
   const taskFilters = page.getByRole('group', { name: 'Task filter' });
 
   await page.getByLabel('Select task Call Maya before 3 PM').check();
@@ -724,6 +792,7 @@ test('completes and snoozes selected tasks in bulk', async ({ page }) => {
 });
 
 test('duplicates and deletes selected tasks in bulk', async ({ page }) => {
+  await navigateTo(page, 'Tasks', 'tasks');
   const taskFilters = page.getByRole('group', { name: 'Task filter' });
   const mayaTasks = page.locator('#taskList .task-item').filter({ hasText: 'Call Maya before 3 PM' });
   const harborTasks = page.locator('#taskList .task-item').filter({ hasText: 'Draft Harbor Fitness proposal recap' });
@@ -748,6 +817,8 @@ test('starts an automated follow-up sequence for the selected lead', async ({ pa
   await expect(page.locator('#leadBrief')).toContainText('Suggested sequence');
   await page.locator('#leadBrief').getByRole('button', { name: 'Start sequence' }).click();
 
+  await expect(page.locator('#leadBrief')).toContainText('3-step follow-up sequence started.');
+  await navigateTo(page, 'Tasks', 'tasks');
   await expect(page.locator('#taskList')).toContainText(
     'Send workflow proposal and ask for install calendar. (Northstar Roofing)',
   );
@@ -758,10 +829,11 @@ test('starts an automated follow-up sequence for the selected lead', async ({ pa
   await expect(page.locator('#taskList')).toContainText(
     'Ask Maya Johnson for timeline, blockers, and decision owner. (Northstar Roofing)',
   );
-  await expect(page.locator('#leadBrief')).toContainText('3-step follow-up sequence started.');
 });
 
 test('imports leads from CSV', async ({ page }) => {
+  await navigateTo(page, 'Contacts', 'contacts');
+
   const csv = [
     'name,company,stage,value,score,source,nextAction,notes',
     'Jordan Lee,Signal Labs,qualified,7200,83,CSV import,Schedule demo,Imported lead with strong fit',
@@ -784,6 +856,8 @@ test('imports leads from CSV', async ({ page }) => {
 });
 
 test('reviews CSV import errors before saving', async ({ page }) => {
+  await navigateTo(page, 'Contacts', 'contacts');
+
   const csv = [
     'name,company,stage,value,score,source,nextAction,notes',
     'Taylor Kim,Atlas Ops,proposal,4300,79,CSV import,Send pricing,Valid row',
@@ -807,6 +881,8 @@ test('reviews CSV import errors before saving', async ({ page }) => {
 });
 
 test('exports leads to CSV', async ({ page }) => {
+  await navigateTo(page, 'Contacts', 'contacts');
+
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export CSV' }).click();
   const download = await downloadPromise;
@@ -825,6 +901,7 @@ test('filters contacts and pipeline by search', async ({ page }) => {
 });
 
 test('filters contacts and pipeline by stage', async ({ page }) => {
+  await navigateTo(page, 'Contacts', 'contacts');
   const contactFilters = page.getByRole('group', { name: 'Contact filter' });
 
   await expect(page.locator('#contactSummary')).toContainText('Accounts shown');
@@ -836,8 +913,6 @@ test('filters contacts and pipeline by stage', async ({ page }) => {
 
   await expect(page.locator('#contactTable')).toContainText('Harbor Fitness');
   await expect(page.locator('#contactTable')).not.toContainText('Northstar Roofing');
-  await expect(page.locator('#pipelineBoard').getByText('Harbor Fitness')).toBeVisible();
-  await expect(page.locator('#pipelineBoard').getByText('Northstar Roofing')).toHaveCount(0);
   await expect(page.locator('#contactSummary')).toContainText('$12,600');
 
   await page.getByPlaceholder('Search leads, companies, notes').fill('northstar');
@@ -852,6 +927,7 @@ test('filters contacts and pipeline by stage', async ({ page }) => {
 });
 
 test('sorts contacts by value and company', async ({ page }) => {
+  await navigateTo(page, 'Contacts', 'contacts');
   const contactRows = page.locator('#contactTable .contact-row');
 
   await page.getByLabel('Sort contacts').selectOption('value-desc');
@@ -867,18 +943,22 @@ test('sorts contacts by value and company', async ({ page }) => {
 });
 
 test('selects and opens leads from the contact list', async ({ page }) => {
+  await navigateTo(page, 'Contacts', 'contacts');
   const harborRow = page.locator('#contactTable .contact-row').filter({ hasText: 'Harbor Fitness' });
 
   await harborRow.getByRole('button', { name: 'View' }).click();
+  await expect(page).toHaveURL(/#pipeline/);
   await expect(page.locator('#leadBrief')).toContainText('Nia Brooks');
   await expect(page.locator('#leadBrief')).toContainText('Harbor Fitness');
 
+  await navigateTo(page, 'Contacts', 'contacts');
   await harborRow.getByRole('button', { name: 'Details' }).click();
   await expect(page.getByRole('dialog', { name: 'Harbor Fitness' })).toBeVisible();
   await expect(page.getByRole('dialog', { name: 'Harbor Fitness' })).toContainText('Review proposal pricing');
 });
 
 test('creates follow-up tasks from the contact list', async ({ page }) => {
+  await navigateTo(page, 'Contacts', 'contacts');
   const harborRow = page.locator('#contactTable .contact-row').filter({ hasText: 'Harbor Fitness' });
 
   await harborRow.getByRole('button', { name: 'Task' }).click();
@@ -891,6 +971,7 @@ test('creates follow-up tasks from the contact list', async ({ page }) => {
 });
 
 test('creates follow-up tasks for selected contacts', async ({ page }) => {
+  await navigateTo(page, 'Contacts', 'contacts');
   const northstarRow = page.locator('#contactTable .contact-row').filter({ hasText: 'Northstar Roofing' });
   const harborRow = page.locator('#contactTable .contact-row').filter({ hasText: 'Harbor Fitness' });
 
@@ -905,11 +986,7 @@ test('creates follow-up tasks for selected contacts', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Export selected (2)' })).toBeEnabled();
   await page.getByRole('button', { name: 'Task selected (2)' }).click();
 
-  await expect(page.locator('#contactSelectionStatus')).toHaveText('0 selected');
-  await expect(page.getByRole('button', { name: 'Task selected (0)' })).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Mark won selected (0)' })).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Next stage selected (0)' })).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Export selected (0)' })).toBeDisabled();
+  await expect(page).toHaveURL(/#pipeline/);
   await expect(page.locator('#taskList')).toContainText(
     'Send workflow proposal and ask for install calendar. (Northstar Roofing)',
   );
@@ -917,9 +994,17 @@ test('creates follow-up tasks for selected contacts', async ({ page }) => {
     'Review proposal pricing and implementation timeline. (Harbor Fitness)',
   );
   await expect(page.locator('#leadBrief')).toContainText('Nia Brooks');
+
+  await navigateTo(page, 'Contacts', 'contacts');
+  await expect(page.locator('#contactSelectionStatus')).toHaveText('0 selected');
+  await expect(page.getByRole('button', { name: 'Task selected (0)' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Mark won selected (0)' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Next stage selected (0)' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Export selected (0)' })).toBeDisabled();
 });
 
 test('selects and clears visible contacts in bulk', async ({ page }) => {
+  await navigateTo(page, 'Contacts', 'contacts');
   const contactFilters = page.getByRole('group', { name: 'Contact filter' });
 
   await contactFilters.getByRole('button', { name: /Proposal/ }).click();
@@ -937,6 +1022,7 @@ test('selects and clears visible contacts in bulk', async ({ page }) => {
 });
 
 test('exports selected contacts to CSV', async ({ page }) => {
+  await navigateTo(page, 'Contacts', 'contacts');
   const northstarRow = page.locator('#contactTable .contact-row').filter({ hasText: 'Northstar Roofing' });
   const harborRow = page.locator('#contactTable .contact-row').filter({ hasText: 'Harbor Fitness' });
 
@@ -955,6 +1041,7 @@ test('exports selected contacts to CSV', async ({ page }) => {
 });
 
 test('marks selected contacts won in bulk', async ({ page }) => {
+  await navigateTo(page, 'Contacts', 'contacts');
   const contactFilters = page.getByRole('group', { name: 'Contact filter' });
   const summitRow = page.locator('#contactTable .contact-row').filter({ hasText: 'Summit Auto Detail' });
   const harborRow = page.locator('#contactTable .contact-row').filter({ hasText: 'Harbor Fitness' });
@@ -963,16 +1050,20 @@ test('marks selected contacts won in bulk', async ({ page }) => {
   await harborRow.getByLabel('Select Harbor Fitness').check();
   await page.getByRole('button', { name: 'Mark won selected (2)' }).click();
 
-  await expect(page.getByRole('button', { name: 'Mark won selected (0)' })).toBeDisabled();
+  await expect(page).toHaveURL(/#pipeline/);
   await expect(page.locator('[data-stage="won"]')).toContainText('Summit Auto Detail');
   await expect(page.locator('[data-stage="won"]')).toContainText('Harbor Fitness');
   await expect(page.locator('#taskList')).toContainText('Send onboarding checklist to Summit Auto Detail');
   await expect(page.locator('#taskList')).toContainText('Send onboarding checklist to Harbor Fitness');
   await expect(page.locator('#leadBrief')).toContainText('Nia Brooks');
+
+  await navigateTo(page, 'Contacts', 'contacts');
+  await expect(page.getByRole('button', { name: 'Mark won selected (0)' })).toBeDisabled();
   await expect(contactFilters.getByRole('button', { name: /Won/ })).toContainText('3');
 });
 
 test('moves selected contacts to the next stage in bulk', async ({ page }) => {
+  await navigateTo(page, 'Contacts', 'contacts');
   const contactFilters = page.getByRole('group', { name: 'Contact filter' });
   const summitRow = page.locator('#contactTable .contact-row').filter({ hasText: 'Summit Auto Detail' });
   const northstarRow = page.locator('#contactTable .contact-row').filter({ hasText: 'Northstar Roofing' });
@@ -981,17 +1072,21 @@ test('moves selected contacts to the next stage in bulk', async ({ page }) => {
   await northstarRow.getByLabel('Select Northstar Roofing').check();
   await page.getByRole('button', { name: 'Next stage selected (2)' }).click();
 
-  await expect(page.getByRole('button', { name: 'Next stage selected (0)' })).toBeDisabled();
+  await expect(page).toHaveURL(/#pipeline/);
   await expect(page.locator('[data-stage="qualified"]')).toContainText('Summit Auto Detail');
   await expect(page.locator('[data-stage="proposal"]')).toContainText('Northstar Roofing');
   await expect(page.locator('#taskList')).toContainText('Follow up with Eli Ramirez after moving to Qualified');
   await expect(page.locator('#taskList')).toContainText('Follow up with Maya Johnson after moving to Proposal');
   await expect(page.locator('#leadBrief')).toContainText('Maya Johnson');
+
+  await navigateTo(page, 'Contacts', 'contacts');
+  await expect(page.getByRole('button', { name: 'Next stage selected (0)' })).toBeDisabled();
   await expect(contactFilters.getByRole('button', { name: /Qualified/ })).toContainText('1');
   await expect(contactFilters.getByRole('button', { name: /Proposal/ })).toContainText('2');
 });
 
 test('marks contacts won from the contact list', async ({ page }) => {
+  await navigateTo(page, 'Contacts', 'contacts');
   const harborRow = page.locator('#contactTable .contact-row').filter({ hasText: 'Harbor Fitness' });
 
   await harborRow.getByRole('button', { name: 'Won' }).click();
@@ -1004,6 +1099,7 @@ test('marks contacts won from the contact list', async ({ page }) => {
 });
 
 test('moves leads forward from the contact list', async ({ page }) => {
+  await navigateTo(page, 'Contacts', 'contacts');
   const summitRow = page.locator('#contactTable .contact-row').filter({ hasText: 'Summit Auto Detail' });
 
   await summitRow.getByRole('button', { name: 'Next stage' }).click();
