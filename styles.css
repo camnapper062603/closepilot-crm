@@ -1340,7 +1340,8 @@ button.insight-card:hover {
 }
 
 .automation-builder,
-.automation-template-section {
+.automation-template-section,
+.automation-run-section {
   border-top: 1px solid var(--line);
   display: grid;
   gap: 12px;
@@ -1349,7 +1350,8 @@ button.insight-card:hover {
 }
 
 .automation-builder h3,
-.automation-template-section h3 {
+.automation-template-section h3,
+.automation-run-section h3 {
   font-size: 1rem;
   margin: 0;
 }
@@ -1434,12 +1436,38 @@ button.insight-card:hover {
   min-height: 1.25rem;
 }
 
-.automation-template-card {
+.automation-run-list {
+  display: grid;
+  gap: 8px;
+}
+
+.automation-template-card,
+.automation-run-row {
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
   gap: 10px;
   padding: 12px;
+}
+
+.automation-run-row {
+  align-items: center;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.automation-run-row div {
+  display: grid;
+  gap: 3px;
+}
+
+.automation-run-row span,
+.automation-run-row time {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.automation-run-row div:last-child {
+  text-align: right;
 }
 
 .automation-template-card.paused {

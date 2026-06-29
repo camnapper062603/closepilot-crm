@@ -164,6 +164,68 @@ test('edits, pauses, and deletes automation templates', async ({ page }) => {
   await expect(builder.locator('#automationTemplateList')).not.toContainText('Qualified lead follow-up v2');
 });
 
+test('runs saved automation templates from lead triggers', async ({ page }) => {
+  await page.getByRole('button', { name: '+ Lead' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Add lead' });
+  await dialog.getByLabel('Contact name').fill('Avery Price');
+  await dialog.getByLabel('Company').fill('Bright Path Solar');
+  await dialog.getByLabel('Deal value').fill('7200');
+  await dialog.getByLabel('Stage').selectOption('new');
+  await dialog.getByRole('button', { name: 'Create lead' }).click();
+
+  await navigateTo(page, 'Tasks', 'tasks');
+  await expect(page.locator('#taskList')).toContainText('Call Avery Price at Bright Path Solar within 15 minutes.');
+  await expect(page.locator('#taskList')).toContainText('Send Bright Path Solar a quick intro and booking link.');
+
+  await navigateTo(page, 'Automation', 'automation');
+  await expect(page.locator('#automationRunList')).toContainText('Speed-to-lead starter');
+  await expect(page.locator('#automationRunList')).toContainText('Bright Path Solar');
+});
+
+test('runs stage and won automation templates without duplicating automatic runs', async ({ page }) => {
+  const northstarCard = page.locator('article.deal-card').filter({ hasText: 'Northstar Roofing' });
+  await northstarCard.getByRole('button', { name: 'Next' }).click();
+
+  await navigateTo(page, 'Tasks', 'tasks');
+  await expect(page.locator('#taskList')).toContainText('Send Northstar Roofing a proposal-stage close plan.');
+  await page.getByRole('button', { name: /Upcoming/ }).click();
+  await expect(page.locator('#taskList')).toContainText('Ask Maya Johnson for final objections and decision timing.');
+
+  await navigateTo(page, 'Pipeline', 'pipeline');
+  await page.locator('#leadBrief').getByRole('button', { name: 'Mark won' }).click();
+  await navigateTo(page, 'Tasks', 'tasks');
+  await page.getByRole('button', { name: /Today/ }).click();
+  await expect(page.locator('#taskList')).toContainText('Send onboarding checklist to Northstar Roofing');
+  await page.getByRole('button', { name: /Upcoming/ }).click();
+  await expect(page.locator('#taskList')).toContainText('Schedule kickoff with Maya Johnson.');
+
+  await navigateTo(page, 'Pipeline', 'pipeline');
+  await page.locator('#leadBrief').getByRole('button', { name: 'Reopen deal' }).click();
+  await page.locator('#leadBrief').getByRole('button', { name: 'Mark won' }).click();
+  await navigateTo(page, 'Automation', 'automation');
+
+  const wonRuns = page.locator('#automationRunList .automation-run-row').filter({ hasText: 'Won deal onboarding' });
+  await expect(wonRuns).toHaveCount(1);
+});
+
+test('scans no-response automations once per open lead', async ({ page }) => {
+  await navigateTo(page, 'Automation', 'automation');
+
+  await page.getByRole('button', { name: 'Run no-response scan' }).click();
+
+  await expect(page.locator('#automationBuilderMessage')).toContainText('No-response scan queued 6 tasks for 3 leads.');
+  await expect(page.locator('#automationRunList')).toContainText('No-response check-in');
+
+  await navigateTo(page, 'Tasks', 'tasks');
+  await expect(page.locator('#taskList')).toContainText('Send Northstar Roofing a no-response check-in.');
+  await page.getByRole('button', { name: /Upcoming/ }).click();
+  await expect(page.locator('#taskList')).toContainText('Ask Maya Johnson if this should stay open or pause.');
+
+  await navigateTo(page, 'Automation', 'automation');
+  await page.getByRole('button', { name: 'Run no-response scan' }).click();
+  await expect(page.locator('#automationBuilderMessage')).toContainText('No-response scan is already up to date.');
+});
+
 test('shows pipeline stage totals and updates them when deals move', async ({ page }) => {
   const qualifiedHeading = page.locator('[data-stage="qualified"] .stage-heading');
   const proposalHeading = page.locator('[data-stage="proposal"] .stage-heading');

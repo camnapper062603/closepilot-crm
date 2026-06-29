@@ -215,6 +215,7 @@
               <div class="automation-actions">
                 <button class="secondary-button" id="enableAllAutomations" type="button">Enable all</button>
                 <button class="secondary-button" id="resetAutomations" type="button">Reset defaults</button>
+                <button class="secondary-button" id="runNoResponseScan" type="button">Run no-response scan</button>
               </div>
               <div id="automationList" class="automation-list"></div>
               <section class="automation-builder" aria-labelledby="automationBuilderHeading">
@@ -296,6 +297,15 @@
                   </div>
                 </div>
                 <div id="automationTemplateList" class="automation-template-list"></div>
+              </section>
+              <section class="automation-run-section" aria-labelledby="automationRunsHeading">
+                <div class="panel-heading compact">
+                  <div>
+                    <p class="eyebrow">Engine log</p>
+                    <h3 id="automationRunsHeading">Automation runs</h3>
+                  </div>
+                </div>
+                <div id="automationRunList" class="automation-run-list"></div>
               </section>
             </section>
 

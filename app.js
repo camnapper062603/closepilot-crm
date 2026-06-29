@@ -67,6 +67,17 @@ const automationTriggerLabels = {
 
 const defaultAutomationTemplates = [
   {
+    id: "template-new-lead-speed",
+    name: "Speed-to-lead starter",
+    trigger: "new-lead",
+    active: true,
+    steps: [
+      { due: "today", text: "Call {{name}} at {{company}} within 15 minutes." },
+      { due: "today", text: "Send {{company}} a quick intro and booking link." },
+      { due: "tomorrow", text: "Follow up with {{name}} on fit, budget, and timing." },
+    ],
+  },
+  {
     id: "template-qualified-follow-up",
     name: "Qualified lead follow-up",
     trigger: "stage-qualified",
@@ -78,6 +89,17 @@ const defaultAutomationTemplates = [
     ],
   },
   {
+    id: "template-proposal-close-plan",
+    name: "Proposal close plan",
+    trigger: "stage-proposal",
+    active: true,
+    steps: [
+      { due: "today", text: "Send {{company}} a proposal-stage close plan." },
+      { due: "tomorrow", text: "Ask {{name}} for final objections and decision timing." },
+      { due: "in 3 days", text: "Confirm the yes/no decision date with {{name}}." },
+    ],
+  },
+  {
     id: "template-won-onboarding",
     name: "Won deal onboarding",
     trigger: "won-deal",
@@ -86,6 +108,16 @@ const defaultAutomationTemplates = [
       { due: "today", text: "Send onboarding checklist to {{company}}." },
       { due: "tomorrow", text: "Schedule kickoff with {{name}}." },
       { due: "next week", text: "Ask {{name}} for referral or expansion opportunities." },
+    ],
+  },
+  {
+    id: "template-no-response-check-in",
+    name: "No-response check-in",
+    trigger: "no-response",
+    active: true,
+    steps: [
+      { due: "today", text: "Send {{company}} a no-response check-in." },
+      { due: "tomorrow", text: "Ask {{name}} if this should stay open or pause." },
     ],
   },
 ];
@@ -149,6 +181,7 @@ const seedState = {
     ...automation,
   })),
   automationTemplates: structuredClone(defaultAutomationTemplates),
+  automationRuns: [],
   account: {
     subscription: {
       plan: "starter",
@@ -262,6 +295,7 @@ const automationList = document.querySelector("#automationList");
 const automationSummary = document.querySelector("#automationSummary");
 const enableAllAutomationsButton = document.querySelector("#enableAllAutomations");
 const resetAutomationsButton = document.querySelector("#resetAutomations");
+const runNoResponseScanButton = document.querySelector("#runNoResponseScan");
 const automationBuilderForm = document.querySelector("#automationBuilderForm");
 const automationTemplateNameInput = document.querySelector("#automationTemplateName");
 const automationTriggerInput = document.querySelector("#automationTrigger");
@@ -275,6 +309,7 @@ const resetAutomationBuilderButton = document.querySelector("#resetAutomationBui
 const automationPreview = document.querySelector("#automationPreview");
 const automationBuilderMessage = document.querySelector("#automationBuilderMessage");
 const automationTemplateList = document.querySelector("#automationTemplateList");
+const automationRunList = document.querySelector("#automationRunList");
 const activityFeed = document.querySelector("#activityFeed");
 const activitySummary = document.querySelector("#activitySummary");
 const activitySearchInput = document.querySelector("#activitySearch");
@@ -389,6 +424,7 @@ duplicateSelectedTasksButton.addEventListener("click", duplicateSelectedTasks);
 deleteSelectedTasksButton.addEventListener("click", deleteSelectedTasks);
 enableAllAutomationsButton.addEventListener("click", enableAllAutomations);
 resetAutomationsButton.addEventListener("click", resetAutomationsToDefaults);
+runNoResponseScanButton.addEventListener("click", runNoResponseScan);
 automationBuilderForm.addEventListener("submit", saveAutomationTemplateFromBuilder);
 resetAutomationBuilderButton.addEventListener("click", resetAutomationBuilder);
 [
@@ -637,6 +673,7 @@ async function createLeadFromForm() {
       message: `Lead created from ${created.source}.`,
     });
     await addAutomatedTask(`Follow up with ${created.name} at ${created.company}`);
+    await runAutomationTrigger("new-lead", created);
     state.selectedLeadId = created.id;
   }
 
@@ -1355,6 +1392,7 @@ async function applyStageMove(lead, direction) {
     message: `Stage changed to ${nextStage.label}.`,
   });
   await addAutomatedTask(`Follow up with ${lead.name} after moving to ${nextStage.label}`);
+  await runAutomationTrigger(triggerForStage(nextStage.id), updatedLead);
 }
 
 function renderLeadBrief() {
@@ -1597,6 +1635,7 @@ function renderAutomations() {
 function renderAutomationBuilder() {
   renderAutomationPreview();
   renderAutomationTemplates();
+  renderAutomationRuns();
 }
 
 function renderAutomationPreview() {
@@ -1674,11 +1713,41 @@ function renderAutomationTemplates() {
   });
 }
 
+function renderAutomationRuns() {
+  const runs = normalizedAutomationRuns(state.automationRuns)
+    .slice()
+    .sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt))
+    .slice(0, 8);
+
+  if (!runs.length) {
+    automationRunList.innerHTML = "<p class=\"empty-state\">Automation runs will appear here when templates fire.</p>";
+    return;
+  }
+
+  automationRunList.innerHTML = runs
+    .map(
+      (run) => `
+        <article class="automation-run-row">
+          <div>
+            <strong>${escapeHtml(run.templateName)}</strong>
+            <span>${escapeHtml(run.leadName)} · ${escapeHtml(automationTriggerLabels[run.trigger] || run.trigger)}</span>
+          </div>
+          <div>
+            <span>${run.stepCount} ${run.stepCount === 1 ? "task" : "tasks"}</span>
+            <time>${formatShortDate(run.createdAt)}</time>
+          </div>
+        </article>
+      `,
+    )
+    .join("");
+}
+
 function renderAutomationSummary() {
   const active = state.automations.filter((automation) => automation.enabled);
   const savedHours = active.reduce((sum, automation) => sum + automation.savedHours, 0);
   const paused = state.automations.length - active.length;
   const activeTemplates = normalizedAutomationTemplates(state.automationTemplates).filter((template) => template.active);
+  const runs = normalizedAutomationRuns(state.automationRuns);
 
   automationSummary.innerHTML = `
     <article>
@@ -1696,6 +1765,10 @@ function renderAutomationSummary() {
     <article>
       <span>Templates</span>
       <strong>${activeTemplates.length}</strong>
+    </article>
+    <article>
+      <span>Runs</span>
+      <strong>${runs.length}</strong>
     </article>
   `;
 }
@@ -1777,7 +1850,32 @@ async function runAutomationTemplate(templateId) {
   const lead = selectedLead();
   if (!template || !lead) return;
 
-  const steps = automationTemplateStepsForLead(template, lead);
+  await runAutomationTemplateForLead(template, lead, { force: true });
+  setActivePage("tasks");
+  await reloadState();
+}
+
+async function runAutomationTrigger(trigger, lead, options = {}) {
+  if (!trigger || !lead) return [];
+  const templates = normalizedAutomationTemplates(state.automationTemplates).filter(
+    (template) => template.active && template.trigger === trigger,
+  );
+
+  const runs = [];
+  for (const template of templates) {
+    const run = await runAutomationTemplateForLead(template, lead, options);
+    if (run) runs.push(run);
+  }
+  return runs;
+}
+
+async function runAutomationTemplateForLead(template, lead, options = {}) {
+  const normalized = normalizedAutomationTemplate(template);
+  if (!options.force && automationRunExists(normalized.id, lead.id, normalized.trigger)) return null;
+
+  const steps = automationTemplateStepsForLead(normalized, lead);
+  if (!steps.length) return null;
+
   await Promise.all(
     steps.map((step) =>
       store.createTask({
@@ -1789,11 +1887,38 @@ async function runAutomationTemplate(templateId) {
   );
   await store.createActivity({
     leadId: lead.id,
-    type: "sequence",
-    message: `${steps.length}-step automation "${template.name}" started.`,
+    type: "automation",
+    message: `${normalized.name} automation ran and created ${steps.length} ${steps.length === 1 ? "task" : "tasks"}.`,
+  });
+  const run = await store.createAutomationRun({
+    templateId: normalized.id,
+    templateName: normalized.name,
+    trigger: normalized.trigger,
+    leadId: lead.id,
+    leadName: lead.company,
+    stepCount: steps.length,
   });
   state.selectedLeadId = lead.id;
-  setActivePage("tasks");
+  return run;
+}
+
+function automationRunExists(templateId, leadId, trigger) {
+  return normalizedAutomationRuns(state.automationRuns).some(
+    (run) => run.templateId === templateId && run.leadId === leadId && run.trigger === trigger,
+  );
+}
+
+async function runNoResponseScan() {
+  const openLeads = state.leads.filter((lead) => lead.stage !== "won");
+  const runs = [];
+  for (const lead of openLeads) {
+    const leadRuns = await runAutomationTrigger("no-response", lead);
+    runs.push(...leadRuns);
+  }
+
+  automationBuilderMessage.textContent = runs.length
+    ? `No-response scan queued ${runs.reduce((sum, run) => sum + run.stepCount, 0)} tasks for ${runs.length} ${runs.length === 1 ? "lead" : "leads"}.`
+    : "No-response scan is already up to date.";
   await reloadState();
 }
 
@@ -1841,6 +1966,14 @@ function automationStepTextInputs() {
 
 function selectedLead() {
   return state.leads.find((item) => item.id === state.selectedLeadId) || state.leads[0] || null;
+}
+
+function triggerForStage(stageId) {
+  const triggers = {
+    qualified: "stage-qualified",
+    proposal: "stage-proposal",
+  };
+  return triggers[stageId] || null;
 }
 
 async function enableAllAutomations() {
@@ -2650,6 +2783,10 @@ function cloudAutomationTemplatesKey(workspaceId) {
   return `closepilot-automation-templates-${workspaceId}`;
 }
 
+function cloudAutomationRunsKey(workspaceId) {
+  return `closepilot-automation-runs-${workspaceId}`;
+}
+
 function revenueTarget() {
   const saved = Number(localStorage.getItem(revenueTargetKey()));
   return Number.isFinite(saved) && saved > 0 ? saved : 30000;
@@ -2959,6 +3096,7 @@ async function applyLeadOutcome(lead, outcome) {
     done: false,
     due: "today",
   });
+  await runAutomationTrigger(won ? "won-deal" : "stage-proposal", updatedLead);
 }
 
 async function addLeadNote(leadId, note) {
@@ -3055,6 +3193,7 @@ function exportWorkspaceBackup() {
       tasks: state.tasks,
       automations: state.automations,
       automationTemplates: state.automationTemplates,
+      automationRuns: state.automationRuns || [],
       activities: state.activities || [],
       account: accountState(),
     },
@@ -3120,6 +3259,12 @@ async function restoreWorkspaceBackup(backup) {
   }
 
   await store.replaceAutomationTemplates(backup.automationTemplates);
+  await store.replaceAutomationRuns(
+    backup.automationRuns.map((run) => ({
+      ...run,
+      leadId: leadIdMap.get(run.leadId) || run.leadId,
+    })),
+  );
 
   await store.updateSaasAccount(backup.account);
   localStorage.removeItem(onboardingDismissalKey());
@@ -3137,6 +3282,9 @@ function normalizeWorkspaceBackup(payload) {
   const automationTemplates = Array.isArray(data.automationTemplates)
     ? normalizedAutomationTemplates(data.automationTemplates)
     : structuredClone(defaultAutomationTemplates);
+  const automationRuns = Array.isArray(data.automationRuns)
+    ? normalizedAutomationRuns(data.automationRuns)
+    : [];
   const activities = Array.isArray(data.activities)
     ? data.activities.map(normalizeBackupActivity).filter(Boolean)
     : [];
@@ -3160,6 +3308,7 @@ function normalizeWorkspaceBackup(payload) {
     tasks,
     automations,
     automationTemplates,
+    automationRuns,
     activities,
     account,
   };
@@ -3323,6 +3472,9 @@ async function confirmLeadsImport() {
       }),
     ),
   );
+  for (const lead of created) {
+    await runAutomationTrigger("new-lead", lead);
+  }
   state.selectedLeadId = created[0]?.id || state.selectedLeadId;
   setActivePage("pipeline");
   closeImportModal();
@@ -3504,6 +3656,21 @@ function createLocalStore() {
       this.save(state);
       return state.automationTemplates;
     },
+    async createAutomationRun(run) {
+      const created = {
+        id: crypto.randomUUID(),
+        createdAt: new Date().toISOString(),
+        ...run,
+      };
+      state.automationRuns = [created, ...normalizedAutomationRuns(state.automationRuns)].slice(0, 100);
+      this.save(state);
+      return created;
+    },
+    async replaceAutomationRuns(runs) {
+      state.automationRuns = normalizedAutomationRuns(runs);
+      this.save(state);
+      return state.automationRuns;
+    },
     async updateWorkspaceSettings(settings) {
       state.workspaceName = settings.name;
       this.save(state);
@@ -3540,6 +3707,7 @@ function createLocalStore() {
       state.leads = [];
       state.tasks = [];
       state.activities = [];
+      state.automationRuns = [];
       state.selectedLeadId = null;
       this.save(state);
     },
@@ -3550,6 +3718,7 @@ function createLocalStore() {
       state.selectedLeadId = seedState.selectedLeadId;
       state.account = normalizedAccount(state.account);
       state.automationTemplates = structuredClone(seedState.automationTemplates);
+      state.automationRuns = [];
       this.save(state);
     },
   };
@@ -3621,6 +3790,7 @@ function createSupabaseStore(client, user) {
         activities,
         account,
         automationTemplates,
+        automationRuns,
       ] = await Promise.all([
         client.from("leads").select("*").eq("workspace_id", workspaceId).order("created_at"),
         client.from("tasks").select("*").eq("workspace_id", workspaceId).order("created_at", {
@@ -3630,6 +3800,7 @@ function createSupabaseStore(client, user) {
         this.loadActivities(),
         this.loadSaasAccount(),
         this.loadAutomationTemplates(),
+        this.loadAutomationRuns(),
       ]);
       throwIf(leadError);
       throwIf(taskError);
@@ -3643,6 +3814,7 @@ function createSupabaseStore(client, user) {
         activities,
         account,
         automationTemplates,
+        automationRuns,
       };
     },
     async loadSaasAccount() {
@@ -3736,6 +3908,22 @@ function createSupabaseStore(client, user) {
       localStorage.setItem(
         cloudAutomationTemplatesKey(workspaceId),
         JSON.stringify(normalizedAutomationTemplates(templates)),
+      );
+    },
+    loadAutomationRuns() {
+      const saved = localStorage.getItem(cloudAutomationRunsKey(workspaceId));
+      if (!saved) return [];
+      try {
+        return normalizedAutomationRuns(JSON.parse(saved));
+      } catch {
+        localStorage.removeItem(cloudAutomationRunsKey(workspaceId));
+        return [];
+      }
+    },
+    saveAutomationRuns(runs) {
+      localStorage.setItem(
+        cloudAutomationRunsKey(workspaceId),
+        JSON.stringify(normalizedAutomationRuns(runs)),
       );
     },
     async createLead(lead) {
@@ -3853,6 +4041,23 @@ function createSupabaseStore(client, user) {
     async replaceAutomationTemplates(templates) {
       const normalized = normalizedAutomationTemplates(templates);
       this.saveAutomationTemplates(normalized);
+      return normalized;
+    },
+    async createAutomationRun(run) {
+      const created = {
+        id: crypto.randomUUID(),
+        createdAt: new Date().toISOString(),
+        ...run,
+      };
+      const runs = [created, ...this.loadAutomationRuns()].slice(0, 100);
+      this.saveAutomationRuns(runs);
+      state.automationRuns = runs;
+      return created;
+    },
+    async replaceAutomationRuns(runs) {
+      const normalized = normalizedAutomationRuns(runs);
+      this.saveAutomationRuns(normalized);
+      state.automationRuns = normalized;
       return normalized;
     },
     async updateWorkspaceSettings(settings) {
@@ -4070,6 +4275,7 @@ function normalizeLoadedState() {
     ...automation,
   }));
   state.automationTemplates = normalizedAutomationTemplates(state.automationTemplates);
+  state.automationRuns = normalizedAutomationRuns(state.automationRuns);
   state.activities ||= [];
   state.account = normalizedAccount(state.account);
 }
@@ -4098,6 +4304,24 @@ function normalizedAutomationTemplate(template = {}) {
     trigger,
     active: template.active !== false,
     steps,
+  };
+}
+
+function normalizedAutomationRuns(runs) {
+  return Array.isArray(runs) ? runs.map(normalizedAutomationRun).filter(Boolean) : [];
+}
+
+function normalizedAutomationRun(run = {}) {
+  if (!run.templateId || !run.leadId) return null;
+  return {
+    id: run.id || crypto.randomUUID(),
+    templateId: String(run.templateId),
+    templateName: String(run.templateName || "Automation template"),
+    trigger: automationTriggerLabels[run.trigger] ? run.trigger : "new-lead",
+    leadId: String(run.leadId),
+    leadName: String(run.leadName || "Lead"),
+    stepCount: Math.max(0, Number(run.stepCount) || 0),
+    createdAt: run.createdAt || new Date().toISOString(),
   };
 }
 
