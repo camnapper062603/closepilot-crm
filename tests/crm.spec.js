@@ -111,6 +111,59 @@ test('manages automation status in bulk', async ({ page }) => {
   await expect(page.locator('#automationSaved')).toContainText('7h');
 });
 
+test('builds and runs a custom automation template', async ({ page }) => {
+  await navigateTo(page, 'Automation', 'automation');
+  const builder = page.locator('#automation');
+
+  await expect(builder.locator('#automationTemplateList')).toContainText('Qualified lead follow-up');
+  await builder.getByLabel('Template name').fill('Proposal rescue');
+  await builder.getByLabel('Trigger').selectOption('stage-proposal');
+  await builder.getByLabel('Step 1 task').fill('Send {{company}} a pricing recap.');
+  await builder.getByLabel('Step 2 task').fill('Ask {{name}} for final blocker list.');
+  await builder.getByLabel('Step 3 task').fill('Book a close-plan review with {{name}}.');
+
+  await expect(builder.locator('#automationPreview')).toContainText('Send Northstar Roofing a pricing recap.');
+  await expect(builder.locator('#automationPreview')).toContainText('Ask Maya Johnson for final blocker list.');
+
+  await builder.getByRole('button', { name: 'Save template' }).click();
+
+  await expect(builder.locator('#automationBuilderMessage')).toContainText('Automation template saved.');
+  const template = builder.locator('.automation-template-card').filter({ hasText: 'Proposal rescue' });
+  await expect(template).toContainText('Moved to Proposal');
+  await expect(template).toContainText('3 steps');
+
+  await template.getByRole('button', { name: 'Run on selected lead' }).click();
+
+  await expect(page).toHaveURL(/#tasks/);
+  await expect(page.locator('#taskList')).toContainText('Send Northstar Roofing a pricing recap.');
+  await page.getByRole('button', { name: /Upcoming/ }).click();
+  await expect(page.locator('#taskList')).toContainText('Ask Maya Johnson for final blocker list.');
+  await expect(page.locator('#taskList')).toContainText('Book a close-plan review with Maya Johnson.');
+});
+
+test('edits, pauses, and deletes automation templates', async ({ page }) => {
+  await navigateTo(page, 'Automation', 'automation');
+  const builder = page.locator('#automation');
+  const qualifiedTemplate = builder.locator('.automation-template-card').filter({ hasText: 'Qualified lead follow-up' });
+
+  await qualifiedTemplate.getByRole('button', { name: 'Edit' }).click();
+  await expect(builder.getByLabel('Template name')).toHaveValue('Qualified lead follow-up');
+  await builder.getByLabel('Template name').fill('Qualified lead follow-up v2');
+  await builder.getByLabel('Step 3 task').fill('Send {{company}} the final implementation checklist.');
+  await builder.getByRole('button', { name: 'Save template' }).click();
+
+  const updatedTemplate = builder.locator('.automation-template-card').filter({ hasText: 'Qualified lead follow-up v2' });
+  await expect(updatedTemplate).toContainText('final implementation checklist');
+
+  await updatedTemplate.getByRole('button', { name: 'Pause' }).click();
+  await expect(builder.locator('#automationBuilderMessage')).toContainText('Qualified lead follow-up v2 paused.');
+  await expect(updatedTemplate).toContainText('Paused');
+
+  await updatedTemplate.getByRole('button', { name: 'Delete' }).click();
+  await expect(builder.locator('#automationBuilderMessage')).toContainText('Qualified lead follow-up v2 deleted.');
+  await expect(builder.locator('#automationTemplateList')).not.toContainText('Qualified lead follow-up v2');
+});
+
 test('shows pipeline stage totals and updates them when deals move', async ({ page }) => {
   const qualifiedHeading = page.locator('[data-stage="qualified"] .stage-heading');
   const proposalHeading = page.locator('[data-stage="proposal"] .stage-heading');

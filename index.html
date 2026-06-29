@@ -217,6 +217,86 @@
                 <button class="secondary-button" id="resetAutomations" type="button">Reset defaults</button>
               </div>
               <div id="automationList" class="automation-list"></div>
+              <section class="automation-builder" aria-labelledby="automationBuilderHeading">
+                <div class="panel-heading compact">
+                  <div>
+                    <p class="eyebrow">Sequence builder</p>
+                    <h3 id="automationBuilderHeading">Automation builder</h3>
+                  </div>
+                </div>
+                <form class="automation-builder-form" id="automationBuilderForm">
+                  <label>
+                    Template name
+                    <input id="automationTemplateName" type="text" value="Proposal rescue sequence" required />
+                  </label>
+                  <label>
+                    Trigger
+                    <select id="automationTrigger">
+                      <option value="new-lead">New lead created</option>
+                      <option value="stage-qualified">Moved to Qualified</option>
+                      <option value="stage-proposal">Moved to Proposal</option>
+                      <option value="won-deal">Deal marked Won</option>
+                      <option value="no-response">No response reminder</option>
+                    </select>
+                  </label>
+                  <div class="automation-step-grid" aria-label="Automation steps">
+                    <label>
+                      Step 1 due
+                      <select id="automationStep1Due">
+                        <option value="today">Today</option>
+                        <option value="tomorrow">Tomorrow</option>
+                        <option value="in 3 days">In 3 days</option>
+                        <option value="next week">Next week</option>
+                      </select>
+                    </label>
+                    <label>
+                      Step 1 task
+                      <input id="automationStep1Text" type="text" value="Send {{company}} a short proposal recap." required />
+                    </label>
+                    <label>
+                      Step 2 due
+                      <select id="automationStep2Due">
+                        <option value="today">Today</option>
+                        <option value="tomorrow" selected>Tomorrow</option>
+                        <option value="in 3 days">In 3 days</option>
+                        <option value="next week">Next week</option>
+                      </select>
+                    </label>
+                    <label>
+                      Step 2 task
+                      <input id="automationStep2Text" type="text" value="Ask {{name}} for blockers and decision timing." />
+                    </label>
+                    <label>
+                      Step 3 due
+                      <select id="automationStep3Due">
+                        <option value="today">Today</option>
+                        <option value="tomorrow">Tomorrow</option>
+                        <option value="in 3 days" selected>In 3 days</option>
+                        <option value="next week">Next week</option>
+                      </select>
+                    </label>
+                    <label>
+                      Step 3 task
+                      <input id="automationStep3Text" type="text" value="Book a close-plan review with {{name}}." />
+                    </label>
+                  </div>
+                  <div class="automation-builder-actions">
+                    <button class="primary-button" type="submit">Save template</button>
+                    <button class="secondary-button" id="resetAutomationBuilder" type="button">New template</button>
+                  </div>
+                </form>
+                <div class="automation-preview" id="automationPreview" aria-label="Automation preview"></div>
+                <p class="automation-builder-message" id="automationBuilderMessage" role="status"></p>
+              </section>
+              <section class="automation-template-section" aria-labelledby="automationTemplatesHeading">
+                <div class="panel-heading compact">
+                  <div>
+                    <p class="eyebrow">Saved playbooks</p>
+                    <h3 id="automationTemplatesHeading">Automation templates</h3>
+                  </div>
+                </div>
+                <div id="automationTemplateList" class="automation-template-list"></div>
+              </section>
             </section>
 
             <section class="panel" id="activity" data-page="activity" aria-labelledby="activityHeading">

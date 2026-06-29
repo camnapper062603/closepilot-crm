@@ -57,6 +57,39 @@ const defaultAutomations = [
   },
 ];
 
+const automationTriggerLabels = {
+  "new-lead": "New lead created",
+  "stage-qualified": "Moved to Qualified",
+  "stage-proposal": "Moved to Proposal",
+  "won-deal": "Deal marked Won",
+  "no-response": "No response reminder",
+};
+
+const defaultAutomationTemplates = [
+  {
+    id: "template-qualified-follow-up",
+    name: "Qualified lead follow-up",
+    trigger: "stage-qualified",
+    active: true,
+    steps: [
+      { due: "today", text: "Send {{company}} a proposal recap and next-step summary." },
+      { due: "tomorrow", text: "Ask {{name}} for timeline, blockers, and decision owner." },
+      { due: "in 3 days", text: "Schedule a close-plan review with {{name}}." },
+    ],
+  },
+  {
+    id: "template-won-onboarding",
+    name: "Won deal onboarding",
+    trigger: "won-deal",
+    active: true,
+    steps: [
+      { due: "today", text: "Send onboarding checklist to {{company}}." },
+      { due: "tomorrow", text: "Schedule kickoff with {{name}}." },
+      { due: "next week", text: "Ask {{name}} for referral or expansion opportunities." },
+    ],
+  },
+];
+
 const seedState = {
   selectedLeadId: "lead-1",
   workspaceName: "Personal workspace",
@@ -115,6 +148,7 @@ const seedState = {
     id: `auto-${index + 1}`,
     ...automation,
   })),
+  automationTemplates: structuredClone(defaultAutomationTemplates),
   account: {
     subscription: {
       plan: "starter",
@@ -173,6 +207,7 @@ let contactSort = "recent";
 let selectedContactIds = new Set();
 let selectedTaskIds = new Set();
 let activePage = "pipeline";
+let editingAutomationTemplateId = null;
 
 const formatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -227,6 +262,19 @@ const automationList = document.querySelector("#automationList");
 const automationSummary = document.querySelector("#automationSummary");
 const enableAllAutomationsButton = document.querySelector("#enableAllAutomations");
 const resetAutomationsButton = document.querySelector("#resetAutomations");
+const automationBuilderForm = document.querySelector("#automationBuilderForm");
+const automationTemplateNameInput = document.querySelector("#automationTemplateName");
+const automationTriggerInput = document.querySelector("#automationTrigger");
+const automationStep1DueInput = document.querySelector("#automationStep1Due");
+const automationStep1TextInput = document.querySelector("#automationStep1Text");
+const automationStep2DueInput = document.querySelector("#automationStep2Due");
+const automationStep2TextInput = document.querySelector("#automationStep2Text");
+const automationStep3DueInput = document.querySelector("#automationStep3Due");
+const automationStep3TextInput = document.querySelector("#automationStep3Text");
+const resetAutomationBuilderButton = document.querySelector("#resetAutomationBuilder");
+const automationPreview = document.querySelector("#automationPreview");
+const automationBuilderMessage = document.querySelector("#automationBuilderMessage");
+const automationTemplateList = document.querySelector("#automationTemplateList");
 const activityFeed = document.querySelector("#activityFeed");
 const activitySummary = document.querySelector("#activitySummary");
 const activitySearchInput = document.querySelector("#activitySearch");
@@ -341,6 +389,21 @@ duplicateSelectedTasksButton.addEventListener("click", duplicateSelectedTasks);
 deleteSelectedTasksButton.addEventListener("click", deleteSelectedTasks);
 enableAllAutomationsButton.addEventListener("click", enableAllAutomations);
 resetAutomationsButton.addEventListener("click", resetAutomationsToDefaults);
+automationBuilderForm.addEventListener("submit", saveAutomationTemplateFromBuilder);
+resetAutomationBuilderButton.addEventListener("click", resetAutomationBuilder);
+[
+  automationTemplateNameInput,
+  automationTriggerInput,
+  automationStep1DueInput,
+  automationStep1TextInput,
+  automationStep2DueInput,
+  automationStep2TextInput,
+  automationStep3DueInput,
+  automationStep3TextInput,
+].forEach((input) => {
+  input.addEventListener("input", renderAutomationPreview);
+  input.addEventListener("change", renderAutomationPreview);
+});
 taskSearchInput.addEventListener("input", renderTasks);
 taskSortInput.addEventListener("change", () => {
   taskSort = taskSortInput.value;
@@ -676,6 +739,7 @@ function renderRoute() {
     link.classList.toggle("active", link.dataset.navPage === activePage);
   });
 
+  document.body.dataset.activePage = activePage;
   pageTitle.textContent = pageTitles[activePage] || pageTitles.pipeline;
   if (window.location.hash !== `#${activePage}`) {
     history.replaceState(null, "", `#${activePage}`);
@@ -1503,6 +1567,7 @@ function renderSequencePreview(lead) {
 
 function renderAutomations() {
   renderAutomationSummary();
+  renderAutomationBuilder();
   automationList.innerHTML = state.automations
     .map((automation) => {
       const status = automation.enabled ? "on" : "off";
@@ -1529,10 +1594,91 @@ function renderAutomations() {
   });
 }
 
+function renderAutomationBuilder() {
+  renderAutomationPreview();
+  renderAutomationTemplates();
+}
+
+function renderAutomationPreview() {
+  const lead = selectedLead();
+  const draft = automationTemplateDraft();
+  const steps = automationTemplateStepsForLead(draft, lead);
+  automationPreview.innerHTML = `
+    <article>
+      <span>Trigger</span>
+      <strong>${escapeHtml(automationTriggerLabels[draft.trigger] || draft.trigger)}</strong>
+    </article>
+    <div>
+      ${steps.length
+        ? steps
+            .map(
+              (step) => `
+                <article>
+                  <span>${escapeHtml(step.due)}</span>
+                  <strong>${escapeHtml(step.text)}</strong>
+                </article>
+              `,
+            )
+            .join("")
+        : "<p class=\"empty-state\">Add at least one task step to preview the sequence.</p>"}
+    </div>
+  `;
+}
+
+function renderAutomationTemplates() {
+  const templates = normalizedAutomationTemplates(state.automationTemplates);
+  if (!templates.length) {
+    automationTemplateList.innerHTML = "<p class=\"empty-state\">No saved automation templates yet.</p>";
+    return;
+  }
+
+  automationTemplateList.innerHTML = templates
+    .map(
+      (template) => `
+        <article class="automation-template-card ${template.active ? "" : "paused"}">
+          <div>
+            <span class="status-pill ${template.active ? "on" : "off"}">${template.active ? "Active" : "Paused"}</span>
+            <strong>${escapeHtml(template.name)}</strong>
+            <p>${escapeHtml(automationTriggerLabels[template.trigger] || template.trigger)} · ${template.steps.length} ${template.steps.length === 1 ? "step" : "steps"}</p>
+          </div>
+          <ol>
+            ${template.steps
+              .map((step) => `<li><span>${escapeHtml(step.due)}</span>${escapeHtml(step.text)}</li>`)
+              .join("")}
+          </ol>
+          <div class="automation-template-actions">
+            <button class="secondary-button" data-edit-template="${template.id}" type="button">Edit</button>
+            <button class="secondary-button" data-toggle-template="${template.id}" type="button">${template.active ? "Pause" : "Enable"}</button>
+            <button class="primary-button" data-run-template="${template.id}" type="button">Run on selected lead</button>
+            <button class="danger-button" data-delete-template="${template.id}" type="button">Delete</button>
+          </div>
+        </article>
+      `,
+    )
+    .join("");
+
+  automationTemplateList.querySelectorAll("[data-edit-template]").forEach((button) => {
+    button.addEventListener("click", () => editAutomationTemplate(button.dataset.editTemplate));
+  });
+
+  automationTemplateList.querySelectorAll("[data-toggle-template]").forEach((button) => {
+    button.addEventListener("click", () => toggleAutomationTemplate(button.dataset.toggleTemplate));
+  });
+
+  automationTemplateList.querySelectorAll("[data-run-template]").forEach((button) => {
+    button.addEventListener("click", () => runAutomationTemplate(button.dataset.runTemplate));
+  });
+
+  automationTemplateList.querySelectorAll("[data-delete-template]").forEach((button) => {
+    button.addEventListener("click", () => deleteAutomationTemplate(button.dataset.deleteTemplate));
+  });
+}
+
 function renderAutomationSummary() {
   const active = state.automations.filter((automation) => automation.enabled);
   const savedHours = active.reduce((sum, automation) => sum + automation.savedHours, 0);
   const paused = state.automations.length - active.length;
+  const activeTemplates = normalizedAutomationTemplates(state.automationTemplates).filter((template) => template.active);
 
   automationSummary.innerHTML = `
     <article>
@@ -1547,7 +1693,154 @@ function renderAutomationSummary() {
       <span>Paused</span>
       <strong>${paused}</strong>
     </article>
+    <article>
+      <span>Templates</span>
+      <strong>${activeTemplates.length}</strong>
+    </article>
   `;
+}
+
+async function saveAutomationTemplateFromBuilder(event) {
+  event.preventDefault();
+  const draft = automationTemplateDraft();
+  if (!draft.name || !draft.steps.length) return;
+
+  if (editingAutomationTemplateId) {
+    await store.updateAutomationTemplate({
+      ...draft,
+      id: editingAutomationTemplateId,
+      active: state.automationTemplates.find((template) => template.id === editingAutomationTemplateId)?.active ?? true,
+    });
+    automationBuilderMessage.textContent = "Automation template updated.";
+  } else {
+    await store.createAutomationTemplate({
+      ...draft,
+      active: true,
+    });
+    automationBuilderMessage.textContent = "Automation template saved.";
+  }
+
+  resetAutomationBuilderFields();
+  await reloadState();
+}
+
+function automationTemplateDraft() {
+  return {
+    name: automationTemplateNameInput.value.trim(),
+    trigger: automationTriggerInput.value,
+    steps: [
+      { due: automationStep1DueInput.value, text: automationStep1TextInput.value.trim() },
+      { due: automationStep2DueInput.value, text: automationStep2TextInput.value.trim() },
+      { due: automationStep3DueInput.value, text: automationStep3TextInput.value.trim() },
+    ].filter((step) => step.text),
+  };
+}
+
+function editAutomationTemplate(templateId) {
+  const template = state.automationTemplates.find((item) => item.id === templateId);
+  if (!template) return;
+
+  editingAutomationTemplateId = template.id;
+  automationTemplateNameInput.value = template.name;
+  automationTriggerInput.value = template.trigger;
+  [0, 1, 2].forEach((index) => {
+    const step = template.steps[index] || { due: taskDueChoices[Math.min(index, taskDueChoices.length - 1)].value, text: "" };
+    automationStepDueInputs()[index].value = step.due;
+    automationStepTextInputs()[index].value = step.text;
+  });
+  automationBuilderMessage.textContent = `Editing ${template.name}.`;
+  renderAutomationPreview();
+  automationTemplateNameInput.focus();
+}
+
+async function toggleAutomationTemplate(templateId) {
+  const template = state.automationTemplates.find((item) => item.id === templateId);
+  if (!template) return;
+
+  await store.updateAutomationTemplate({ ...template, active: !template.active });
+  automationBuilderMessage.textContent = `${template.name} ${template.active ? "paused" : "enabled"}.`;
+  await reloadState();
+}
+
+async function deleteAutomationTemplate(templateId) {
+  const template = state.automationTemplates.find((item) => item.id === templateId);
+  if (!template) return;
+
+  await store.deleteAutomationTemplate(templateId);
+  if (editingAutomationTemplateId === templateId) resetAutomationBuilderFields();
+  automationBuilderMessage.textContent = `${template.name} deleted.`;
+  await reloadState();
+}
+
+async function runAutomationTemplate(templateId) {
+  const template = state.automationTemplates.find((item) => item.id === templateId);
+  const lead = selectedLead();
+  if (!template || !lead) return;
+
+  const steps = automationTemplateStepsForLead(template, lead);
+  await Promise.all(
+    steps.map((step) =>
+      store.createTask({
+        text: step.text,
+        done: false,
+        due: step.due,
+      }),
+    ),
+  );
+  await store.createActivity({
+    leadId: lead.id,
+    type: "sequence",
+    message: `${steps.length}-step automation "${template.name}" started.`,
+  });
+  state.selectedLeadId = lead.id;
+  setActivePage("tasks");
+  await reloadState();
+}
+
+function resetAutomationBuilder() {
+  resetAutomationBuilderFields();
+  automationBuilderMessage.textContent = "Ready for a new automation template.";
+  renderAutomationPreview();
+}
+
+function resetAutomationBuilderFields() {
+  editingAutomationTemplateId = null;
+  automationTemplateNameInput.value = "Proposal rescue sequence";
+  automationTriggerInput.value = "stage-proposal";
+  automationStep1DueInput.value = "today";
+  automationStep1TextInput.value = "Send {{company}} a short proposal recap.";
+  automationStep2DueInput.value = "tomorrow";
+  automationStep2TextInput.value = "Ask {{name}} for blockers and decision timing.";
+  automationStep3DueInput.value = "in 3 days";
+  automationStep3TextInput.value = "Book a close-plan review with {{name}}.";
+}
+
+function automationTemplateStepsForLead(template, lead = selectedLead()) {
+  return normalizedAutomationTemplate(template).steps.map((step) => ({
+    due: step.due,
+    text: personalizeAutomationText(step.text, lead),
+  }));
+}
+
+function personalizeAutomationText(text, lead = selectedLead()) {
+  if (!lead) return text;
+  return text
+    .replaceAll("{{name}}", lead.name)
+    .replaceAll("{{company}}", lead.company)
+    .replaceAll("{{stage}}", stageLabel(lead.stage))
+    .replaceAll("{{nextAction}}", lead.nextAction);
+}
+
+function automationStepDueInputs() {
+  return [automationStep1DueInput, automationStep2DueInput, automationStep3DueInput];
+}
+
+function automationStepTextInputs() {
+  return [automationStep1TextInput, automationStep2TextInput, automationStep3TextInput];
+}
+
+function selectedLead() {
+  return state.leads.find((item) => item.id === state.selectedLeadId) || state.leads[0] || null;
 }
 
 async function enableAllAutomations() {
@@ -2353,6 +2646,10 @@ function cloudSaasAccountKey(workspaceId) {
   return `closepilot-saas-account-${workspaceId}`;
 }
 
+function cloudAutomationTemplatesKey(workspaceId) {
+  return `closepilot-automation-templates-${workspaceId}`;
+}
+
 function revenueTarget() {
   const saved = Number(localStorage.getItem(revenueTargetKey()));
   return Number.isFinite(saved) && saved > 0 ? saved : 30000;
@@ -2757,6 +3054,7 @@ function exportWorkspaceBackup() {
       leads: state.leads,
       tasks: state.tasks,
       automations: state.automations,
+      automationTemplates: state.automationTemplates,
       activities: state.activities || [],
       account: accountState(),
     },
@@ -2821,6 +3119,8 @@ async function restoreWorkspaceBackup(backup) {
     });
   }
 
+  await store.replaceAutomationTemplates(backup.automationTemplates);
+
   await store.updateSaasAccount(backup.account);
   localStorage.removeItem(onboardingDismissalKey());
   await reloadState();
@@ -2834,6 +3134,9 @@ function normalizeWorkspaceBackup(payload) {
   const automations = Array.isArray(data.automations)
     ? data.automations.map(normalizeBackupAutomation).filter(Boolean)
     : [];
+  const automationTemplates = Array.isArray(data.automationTemplates)
+    ? normalizedAutomationTemplates(data.automationTemplates)
+    : structuredClone(defaultAutomationTemplates);
   const activities = Array.isArray(data.activities)
     ? data.activities.map(normalizeBackupActivity).filter(Boolean)
     : [];
@@ -2856,6 +3159,7 @@ function normalizeWorkspaceBackup(payload) {
     leads,
     tasks,
     automations,
+    automationTemplates,
     activities,
     account,
   };
@@ -3172,6 +3476,34 @@ function createLocalStore() {
       this.save(state);
       return automation;
     },
+    async createAutomationTemplate(template) {
+      const created = {
+        ...normalizedAutomationTemplate(template),
+        id: crypto.randomUUID(),
+      };
+      state.automationTemplates = [created, ...normalizedAutomationTemplates(state.automationTemplates)];
+      this.save(state);
+      return created;
+    },
+    async updateAutomationTemplate(template) {
+      const updated = normalizedAutomationTemplate(template);
+      state.automationTemplates = normalizedAutomationTemplates(state.automationTemplates).map((item) =>
+        item.id === updated.id ? updated : item,
+      );
+      this.save(state);
+      return updated;
+    },
+    async deleteAutomationTemplate(templateId) {
+      state.automationTemplates = normalizedAutomationTemplates(state.automationTemplates).filter(
+        (template) => template.id !== templateId,
+      );
+      this.save(state);
+    },
+    async replaceAutomationTemplates(templates) {
+      state.automationTemplates = normalizedAutomationTemplates(templates);
+      this.save(state);
+      return state.automationTemplates;
+    },
     async updateWorkspaceSettings(settings) {
       state.workspaceName = settings.name;
       this.save(state);
@@ -3217,6 +3549,7 @@ function createLocalStore() {
       state.activities = structuredClone(seedState.activities);
       state.selectedLeadId = seedState.selectedLeadId;
       state.account = normalizedAccount(state.account);
+      state.automationTemplates = structuredClone(seedState.automationTemplates);
       this.save(state);
     },
   };
@@ -3287,6 +3620,7 @@ function createSupabaseStore(client, user) {
         automations,
         activities,
         account,
+        automationTemplates,
       ] = await Promise.all([
         client.from("leads").select("*").eq("workspace_id", workspaceId).order("created_at"),
         client.from("tasks").select("*").eq("workspace_id", workspaceId).order("created_at", {
@@ -3295,6 +3629,7 @@ function createSupabaseStore(client, user) {
         this.loadAutomations(),
         this.loadActivities(),
         this.loadSaasAccount(),
+        this.loadAutomationTemplates(),
       ]);
       throwIf(leadError);
       throwIf(taskError);
@@ -3307,6 +3642,7 @@ function createSupabaseStore(client, user) {
         automations,
         activities,
         account,
+        automationTemplates,
       };
     },
     async loadSaasAccount() {
@@ -3385,6 +3721,22 @@ function createSupabaseStore(client, user) {
         .order("created_at");
       throwIf(error);
       return data.map(fromAutomationRow);
+    },
+    loadAutomationTemplates() {
+      const saved = localStorage.getItem(cloudAutomationTemplatesKey(workspaceId));
+      if (!saved) return structuredClone(defaultAutomationTemplates);
+      try {
+        return normalizedAutomationTemplates(JSON.parse(saved));
+      } catch {
+        localStorage.removeItem(cloudAutomationTemplatesKey(workspaceId));
+        return structuredClone(defaultAutomationTemplates);
+      }
+    },
+    saveAutomationTemplates(templates) {
+      localStorage.setItem(
+        cloudAutomationTemplatesKey(workspaceId),
+        JSON.stringify(normalizedAutomationTemplates(templates)),
+      );
     },
     async createLead(lead) {
       const { data, error } = await client
@@ -3476,6 +3828,32 @@ function createSupabaseStore(client, user) {
         .single();
       throwIf(error);
       return fromAutomationRow(data);
+    },
+    async createAutomationTemplate(template) {
+      const created = {
+        ...normalizedAutomationTemplate(template),
+        id: crypto.randomUUID(),
+      };
+      const templates = [created, ...this.loadAutomationTemplates()];
+      this.saveAutomationTemplates(templates);
+      return created;
+    },
+    async updateAutomationTemplate(template) {
+      const updated = normalizedAutomationTemplate(template);
+      const templates = this.loadAutomationTemplates().map((item) =>
+        item.id === updated.id ? updated : item,
+      );
+      this.saveAutomationTemplates(templates);
+      return updated;
+    },
+    async deleteAutomationTemplate(templateId) {
+      const templates = this.loadAutomationTemplates().filter((template) => template.id !== templateId);
+      this.saveAutomationTemplates(templates);
+    },
+    async replaceAutomationTemplates(templates) {
+      const normalized = normalizedAutomationTemplates(templates);
+      this.saveAutomationTemplates(normalized);
+      return normalized;
     },
     async updateWorkspaceSettings(settings) {
       workspaceName = settings.name;
@@ -3691,8 +4069,36 @@ function normalizeLoadedState() {
     id: `auto-${index + 1}`,
     ...automation,
   }));
+  state.automationTemplates = normalizedAutomationTemplates(state.automationTemplates);
   state.activities ||= [];
   state.account = normalizedAccount(state.account);
+}
+
+function normalizedAutomationTemplates(templates) {
+  const source = Array.isArray(templates) && templates.length ? templates : defaultAutomationTemplates;
+  return source.map(normalizedAutomationTemplate).filter((template) => template.steps.length);
+}
+
+function normalizedAutomationTemplate(template = {}) {
+  const trigger = automationTriggerLabels[template.trigger] ? template.trigger : "stage-qualified";
+  const steps = Array.isArray(template.steps)
+    ? template.steps
+        .map((step, index) => ({
+          due: taskDueChoices.some((choice) => choice.value === step?.due)
+            ? step.due
+            : taskDueChoices[Math.min(index, taskDueChoices.length - 1)].value,
+          text: String(step?.text || "").trim(),
+        }))
+        .filter((step) => step.text)
+    : [];
+
+  return {
+    id: template.id || crypto.randomUUID(),
+    name: String(template.name || "Untitled automation").trim() || "Untitled automation",
+    trigger,
+    active: template.active !== false,
+    steps,
+  };
 }
 
 function accountState() {

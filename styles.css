@@ -451,6 +451,11 @@ h2 {
   grid-template-columns: minmax(0, 1fr) 340px;
 }
 
+body[data-active-page="automation"] .workspace-grid,
+body[data-active-page="activity"] .workspace-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .insights-panel {
   display: grid;
   gap: 4px;
@@ -1272,6 +1277,7 @@ button.insight-card:hover {
 }
 
 .automation-list,
+.automation-template-list,
 .task-list,
 .contact-table,
 .activity-feed {
@@ -1331,6 +1337,141 @@ button.insight-card:hover {
 
 .automation-actions button {
   min-height: 38px;
+}
+
+.automation-builder,
+.automation-template-section {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 14px;
+}
+
+.automation-builder h3,
+.automation-template-section h3 {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.automation-builder-form {
+  display: grid;
+  gap: 10px;
+}
+
+.automation-builder-form label {
+  color: var(--muted);
+  display: grid;
+  font-size: 0.82rem;
+  font-weight: 800;
+  gap: 6px;
+}
+
+.automation-builder-form input,
+.automation-builder-form select {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  min-height: 40px;
+  padding: 0 10px;
+}
+
+.automation-step-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(130px, 0.35fr) minmax(220px, 1fr);
+}
+
+.automation-builder-actions,
+.automation-template-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.automation-builder-actions button,
+.automation-template-actions button {
+  min-height: 38px;
+}
+
+.automation-preview {
+  background: #f8faf8;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+}
+
+.automation-preview > article,
+.automation-preview div article {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+}
+
+.automation-preview div {
+  display: grid;
+  gap: 8px;
+}
+
+.automation-preview span,
+.automation-template-card ol span {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.automation-builder-message {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin: 0;
+  min-height: 1.25rem;
+}
+
+.automation-template-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.automation-template-card.paused {
+  background: #fbf8f4;
+}
+
+.automation-template-card > div:first-child {
+  display: grid;
+  gap: 5px;
+}
+
+.automation-template-card > div:first-child p {
+  color: var(--muted);
+  font-size: 0.86rem;
+  margin: 0;
+}
+
+.automation-template-card ol {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 20px;
+}
+
+.automation-template-card li {
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.automation-template-card li span {
+  display: block;
 }
 
 .automation-row p,
