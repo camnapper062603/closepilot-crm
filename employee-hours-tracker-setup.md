@@ -1,6 +1,13 @@
 # Employee Hours Tracker Setup
 
-This is a Google Sheets + Apps Script MVP for employee scheduling, clock in/out, manager approval, and hour summaries.
+This is a Google Sheets + Apps Script MVP for employee-owned scheduling and time tracking.
+
+Employees can create and update their own schedule rows anytime. The system identifies people only by:
+
+- Employee Name
+- Employee Email
+
+No employee IDs are required.
 
 ## Quick Start
 
@@ -8,16 +15,25 @@ This is a Google Sheets + Apps Script MVP for employee scheduling, clock in/out,
 2. Open `Extensions > Apps Script`.
 3. Paste the code from `employee-hours-tracker-appscript.gs`.
 4. Click `Save`.
-5. Run `setupHoursTracker` from the Apps Script editor.
+5. Run `setupHoursTracker`.
 6. Approve the Google permissions prompt.
 7. Reload the Google Sheet.
 8. Use the new `Hours Tracker` menu.
 
 ## Sheet Tabs
 
-The script creates these tabs automatically.
+The script creates these tabs automatically:
 
-### Settings
+- `Settings`
+- `Employees`
+- `Employee Schedule`
+- `Time Clock`
+- `Timesheets`
+- `Summary`
+
+Older approval tabs like `Schedule Requests` and `Approved Schedule` are no longer needed for this version.
+
+## Settings
 
 | Column | Header | Purpose |
 | --- | --- | --- |
@@ -32,112 +48,78 @@ Starter settings:
 | Timezone | Your script timezone |
 | Pay Period Start | First day of the pay period |
 | Pay Period End | Last day of the pay period |
-| Manager Email | Owner or manager email |
-| Require Manager Approval | Yes |
+| Schedule Owner Rule | Name + Email |
 
-### Employees
+## Employees
 
-| Column | Header | Example |
-| --- | --- | --- |
-| A | Employee ID | EMP-001 |
-| B | Name | Cameron Napper |
-| C | Email | employee@gmail.com |
-| D | Role | Sales Rep |
-| E | Hourly Rate | 18.50 |
-| F | Status | Active |
-| G | Manager? | No |
-
-Add every employee here before they submit schedules or clock in/out.
-
-### My Schedule
-
-Employees enter the shifts they want to work here, then use `Hours Tracker > Submit my schedule rows`.
+The employee directory only needs name and email.
 
 | Column | Header | Example |
 | --- | --- | --- |
-| A | Employee Email | employee@gmail.com |
-| B | Date | 7/1/2026 |
-| C | Start Time | 9:00 AM |
-| D | End Time | 5:00 PM |
-| E | Break Minutes | 30 |
-| F | Role/Job | Sales floor |
-| G | Notes | Prefer front desk |
+| A | Employee Name | Cameron Napper |
+| B | Employee Email | employee@gmail.com |
 
-After submission, rows are copied to `Schedule Requests` and cleared from this tab.
+Employees can be added in two ways:
 
-### Schedule Requests
+1. Type them manually on the `Employees` tab.
+2. Use `Hours Tracker > Register/update my name and email`.
 
-Managers review requests here.
+The script also auto-adds an employee when they save a schedule row or clock in/out.
 
-| Column | Header |
-| --- | --- |
-| A | Request ID |
-| B | Submitted At |
-| C | Employee Email |
-| D | Employee Name |
-| E | Date |
-| F | Start Time |
-| G | End Time |
-| H | Break Minutes |
-| I | Role/Job |
-| J | Notes |
-| K | Scheduled Hours |
-| L | Status |
-| M | Manager Note |
-| N | Reviewed At |
+## Employee Schedule
 
-To approve or reject:
+This is the main schedule tab. Employees can edit this anytime.
 
-1. Open `Schedule Requests`.
-2. Select the row or rows.
-3. Use `Hours Tracker > Approve selected schedule requests` or `Reject selected schedule requests`.
+| Column | Header | Example |
+| --- | --- | --- |
+| A | Employee Name | Cameron Napper |
+| B | Employee Email | employee@gmail.com |
+| C | Date | 7/1/2026 |
+| D | Start Time | 9:00 AM |
+| E | End Time | 5:00 PM |
+| F | Break Minutes | 30 |
+| G | Role/Job | Sales floor |
+| H | Notes | Prefer front desk |
+| I | Scheduled Hours | Auto-filled |
+| J | Last Updated | Auto-filled |
 
-Approved rows are copied to `Approved Schedule`.
+Employee workflow:
 
-### Approved Schedule
+1. Add or edit rows on `Employee Schedule`.
+2. Optional: select the rows and use `Hours Tracker > Fill selected rows with my name/email`.
+3. Use `Hours Tracker > Save/update schedule rows`.
+4. The script normalizes the name/email, calculates scheduled hours, updates the employee directory, and refreshes timesheets.
 
-This is the manager-approved schedule that the timesheet uses for scheduled hours.
+Employees can update the same row anytime by changing the date, time, break, role, or notes and running `Save/update schedule rows` again.
 
-| Column | Header |
-| --- | --- |
-| A | Request ID |
-| B | Employee Email |
-| C | Employee Name |
-| D | Date |
-| E | Start Time |
-| F | End Time |
-| G | Break Minutes |
-| H | Role/Job |
-| I | Scheduled Hours |
-| J | Status |
-| K | Updated At |
+## Time Clock
 
-### Time Clock
-
-This is the punch log. Employees use:
+Employees use the menu:
 
 - `Hours Tracker > Clock in`
 - `Hours Tracker > Clock out`
+
+The script asks for name and email, then records the punch.
 
 | Column | Header |
 | --- | --- |
 | A | Entry ID |
 | B | Timestamp |
-| C | Employee Email |
-| D | Employee Name |
+| C | Employee Name |
+| D | Employee Email |
 | E | Action |
 | F | Work Date |
 | G | Clock Time |
 | H | Notes |
 
-### Timesheets
+## Timesheets
 
 Generated by `Hours Tracker > Refresh timesheets and summary`.
 
 | Column | Header |
 | --- | --- |
-| A | Employee Email |
-| B | Employee Name |
+| A | Employee Name |
+| B | Employee Email |
 | C | Date |
 | D | Clock In |
 | E | Clock Out |
@@ -145,48 +127,50 @@ Generated by `Hours Tracker > Refresh timesheets and summary`.
 | G | Worked Hours |
 | H | Scheduled Hours |
 | I | Variance |
-| J | Status |
+| J | Scheduled Shifts |
+| K | Status |
 
 Statuses:
 
 - `Complete`
 - `No Clock In`
 - `No Clock Out`
-- `Open Punch`
 
-### Summary
+## Summary
 
 Generated from the Timesheets tab.
 
 | Column | Header |
 | --- | --- |
-| A | Employee Email |
-| B | Employee Name |
+| A | Employee Name |
+| B | Employee Email |
 | C | Scheduled Hours |
 | D | Worked Hours |
 | E | Variance |
 | F | Open Punches |
-| G | Approved Shifts |
+| G | Scheduled Shifts |
 | H | Pay Period |
 
 ## Recommended Sharing Setup
 
-For a simple MVP:
+For the quickest MVP:
 
 1. Share the Google Sheet with employees as editors.
-2. Tell employees to only use the `My Schedule` tab and the `Hours Tracker` menu.
-3. Protect manager tabs if needed:
+2. Tell employees to use only:
+   - `Employee Schedule`
+   - `Hours Tracker > Fill selected rows with my name/email`
+   - `Hours Tracker > Save/update schedule rows`
+   - `Hours Tracker > Clock in`
+   - `Hours Tracker > Clock out`
+3. Protect these tabs for managers only if you want cleaner records:
    - `Employees`
-   - `Schedule Requests`
-   - `Approved Schedule`
+   - `Time Clock`
    - `Timesheets`
    - `Summary`
 
-For stronger control later, turn this into a small Apps Script web app so employees submit schedules and punch time from a form instead of editing the sheet directly.
-
 ## Important Notes
 
-- Google sometimes hides `Session.getActiveUser().getEmail()` for personal Gmail accounts. If that happens, the script asks for the employee email.
-- Employees must be listed on the `Employees` tab for their name to show automatically.
+- This version is flexible, but a shared Google Sheet cannot strongly prevent one editor from changing another editor's schedule row.
+- For stronger control later, build this into an Apps Script web app where employees only see their own form and their own shifts.
 - Overnight shifts are supported. If the end time is earlier than the start time, the script treats the end time as the next day.
-- Break minutes are subtracted from both scheduled and worked hour calculations.
+- Break minutes are subtracted from scheduled and worked hours.

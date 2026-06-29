@@ -1,30 +1,28 @@
 /**
- * Employee Hours Tracker for Google Sheets.
+ * Employee-Owned Hours Tracker for Google Sheets.
  *
  * Paste this file into Extensions > Apps Script, save it, run setupHoursTracker(),
  * then reload the spreadsheet and use the "Hours Tracker" menu.
+ *
+ * This version lets employees create and update their own schedule rows anytime.
+ * Employees are identified only by Employee Name + Employee Email.
  */
 
 const HOURS_TRACKER = {
   sheets: {
     settings: "Settings",
     employees: "Employees",
-    mySchedule: "My Schedule",
-    requests: "Schedule Requests",
-    approved: "Approved Schedule",
+    schedule: "Employee Schedule",
     timeClock: "Time Clock",
     timesheets: "Timesheets",
     summary: "Summary",
   },
   headers: {
     settings: ["Setting", "Value", "Notes"],
-    employees: ["Employee ID", "Name", "Email", "Role", "Hourly Rate", "Status", "Manager?"],
-    mySchedule: ["Employee Email", "Date", "Start Time", "End Time", "Break Minutes", "Role/Job", "Notes"],
-    requests: [
-      "Request ID",
-      "Submitted At",
-      "Employee Email",
+    employees: ["Employee Name", "Employee Email"],
+    schedule: [
       "Employee Name",
+      "Employee Email",
       "Date",
       "Start Time",
       "End Time",
@@ -32,27 +30,12 @@ const HOURS_TRACKER = {
       "Role/Job",
       "Notes",
       "Scheduled Hours",
-      "Status",
-      "Manager Note",
-      "Reviewed At",
+      "Last Updated",
     ],
-    approved: [
-      "Request ID",
-      "Employee Email",
-      "Employee Name",
-      "Date",
-      "Start Time",
-      "End Time",
-      "Break Minutes",
-      "Role/Job",
-      "Scheduled Hours",
-      "Status",
-      "Updated At",
-    ],
-    timeClock: ["Entry ID", "Timestamp", "Employee Email", "Employee Name", "Action", "Work Date", "Clock Time", "Notes"],
+    timeClock: ["Entry ID", "Timestamp", "Employee Name", "Employee Email", "Action", "Work Date", "Clock Time", "Notes"],
     timesheets: [
-      "Employee Email",
       "Employee Name",
+      "Employee Email",
       "Date",
       "Clock In",
       "Clock Out",
@@ -60,26 +43,23 @@ const HOURS_TRACKER = {
       "Worked Hours",
       "Scheduled Hours",
       "Variance",
+      "Scheduled Shifts",
       "Status",
     ],
     summary: [
-      "Employee Email",
       "Employee Name",
+      "Employee Email",
       "Scheduled Hours",
       "Worked Hours",
       "Variance",
       "Open Punches",
-      "Approved Shifts",
+      "Scheduled Shifts",
       "Pay Period",
     ],
   },
   statuses: {
-    employee: ["Active", "Inactive"],
-    yesNo: ["Yes", "No"],
-    request: ["Pending", "Approved", "Rejected"],
-    approved: ["Approved", "Cancelled"],
     punch: ["Clock In", "Clock Out"],
-    timesheet: ["Complete", "Open Punch", "No Clock In", "No Clock Out"],
+    timesheet: ["Complete", "No Clock In", "No Clock Out"],
   },
 };
 
@@ -88,12 +68,13 @@ function onOpen() {
     .createMenu("Hours Tracker")
     .addItem("Setup or refresh workbook", "setupHoursTracker")
     .addSeparator()
-    .addItem("Submit my schedule rows", "submitMySchedule")
+    .addItem("Register/update my name and email", "registerOrUpdateEmployee")
+    .addItem("Fill selected rows with my name/email", "fillSelectedScheduleIdentity")
+    .addItem("Save/update schedule rows", "saveEmployeeSchedule")
+    .addSeparator()
     .addItem("Clock in", "clockIn")
     .addItem("Clock out", "clockOut")
     .addSeparator()
-    .addItem("Approve selected schedule requests", "approveSelectedRequests")
-    .addItem("Reject selected schedule requests", "rejectSelectedRequests")
     .addItem("Refresh timesheets and summary", "refreshTimesheets")
     .addToUi();
 }
@@ -109,70 +90,93 @@ function setupHoursTracker() {
   seedSettings_();
   formatWorkbook_();
   applyValidations_();
-  SpreadsheetApp.getUi().alert("Hours Tracker is ready. Add employees, then share the sheet with your team.");
+  SpreadsheetApp.getUi().alert(
+    "Hours Tracker is ready. Employees can add or update rows on Employee Schedule anytime.",
+  );
 }
 
-function submitMySchedule() {
+function registerOrUpdateEmployee() {
+  const identity = promptEmployeeIdentity_();
+  upsertEmployee_(identity);
+  SpreadsheetApp.getUi().alert(`Saved ${identity.name} (${identity.email}) to Employees.`);
+}
+
+function fillSelectedScheduleIdentity() {
   const ss = SpreadsheetApp.getActive();
-  const inputSheet = ss.getSheetByName(HOURS_TRACKER.sheets.mySchedule);
-  const requestSheet = ss.getSheetByName(HOURS_TRACKER.sheets.requests);
-  const values = getBodyRows_(inputSheet);
-  const submittedAt = new Date();
-  const employeeFallback = resolveEmployee_();
-  const requests = [];
-  const rowsToClear = [];
+  const sheet = ss.getActiveSheet();
+  const selection = sheet.getActiveRange();
 
-  values.forEach((item) => {
-    const row = item.row;
-    const email = String(row[0] || employeeFallback.email || "").trim().toLowerCase();
-    const date = row[1];
-    const start = row[2];
-    const end = row[3];
-
-    if (!email && !date && !start && !end) return;
-    if (!email || !date || !start || !end) {
-      throw new Error("Each My Schedule row needs Employee Email, Date, Start Time, and End Time.");
-    }
-
-    const employee = findEmployeeByEmail_(email) || { email, name: employeeFallback.name || email };
-    const breakMinutes = Number(row[4] || 0);
-    const scheduledHours = calculateHours_(date, start, end, breakMinutes);
-
-    requests.push([
-      makeId_("REQ"),
-      submittedAt,
-      email,
-      employee.name,
-      normalizeDate_(date),
-      normalizeTime_(start),
-      normalizeTime_(end),
-      breakMinutes,
-      row[5] || "",
-      row[6] || "",
-      scheduledHours,
-      "Pending",
-      "",
-      "",
-    ]);
-    rowsToClear.push(item.index);
-  });
-
-  if (!requests.length) {
-    SpreadsheetApp.getUi().alert("No schedule rows found. Add rows on the My Schedule tab first.");
+  if (sheet.getName() !== HOURS_TRACKER.sheets.schedule || !selection) {
+    SpreadsheetApp.getUi().alert("Select one or more rows on the Employee Schedule tab first.");
     return;
   }
 
-  appendRows_(requestSheet, requests);
-  rowsToClear.forEach((rowIndex) => inputSheet.getRange(rowIndex, 1, 1, HOURS_TRACKER.headers.mySchedule.length).clearContent());
-  SpreadsheetApp.getUi().alert(`${requests.length} schedule request(s) submitted for approval.`);
+  const identity = promptEmployeeIdentity_();
+  const startRow = Math.max(selection.getRow(), 2);
+  const rowCount = selection.getLastRow() - startRow + 1;
+  if (rowCount < 1) {
+    SpreadsheetApp.getUi().alert("Select schedule rows below the header.");
+    return;
+  }
+
+  const values = Array.from({ length: rowCount }, () => [identity.name, identity.email]);
+
+  sheet.getRange(startRow, 1, rowCount, 2).setValues(values);
+  upsertEmployee_(identity);
+  SpreadsheetApp.getUi().alert(`Filled ${rowCount} row(s) with ${identity.name} (${identity.email}).`);
 }
 
-function approveSelectedRequests() {
-  updateSelectedRequests_("Approved");
+function saveEmployeeSchedule() {
+  const ss = SpreadsheetApp.getActive();
+  const scheduleSheet = ss.getSheetByName(HOURS_TRACKER.sheets.schedule);
+  const rows = getBodyRows_(scheduleSheet);
+  const now = new Date();
+  let updated = 0;
+
+  rows.forEach((item) => {
+    const row = item.row;
+    const name = cleanName_(row[0]);
+    const email = cleanEmail_(row[1]);
+    const date = row[2];
+    const start = row[3];
+    const end = row[4];
+
+    if (!name && !email && !date && !start && !end) return;
+    if (!name || !email || !date || !start || !end) {
+      throw new Error(`Row ${item.index} needs Employee Name, Employee Email, Date, Start Time, and End Time.`);
+    }
+
+    const breakMinutes = Number(row[5] || 0);
+    const scheduledHours = calculateHours_(date, start, end, breakMinutes);
+
+    scheduleSheet
+      .getRange(item.index, 1, 1, HOURS_TRACKER.headers.schedule.length)
+      .setValues([
+        [
+          name,
+          email,
+          normalizeDate_(date),
+          normalizeTime_(start),
+          normalizeTime_(end),
+          breakMinutes,
+          row[6] || "",
+          row[7] || "",
+          scheduledHours,
+          now,
+        ],
+      ]);
+
+    upsertEmployee_({ name, email });
+    updated += 1;
+  });
+
+  sortSchedule_();
+  refreshTimesheets(false);
+  SpreadsheetApp.getUi().alert(`${updated} schedule row(s) saved or updated.`);
 }
 
-function rejectSelectedRequests() {
-  updateSelectedRequests_("Rejected");
+function submitMySchedule() {
+  saveEmployeeSchedule();
 }
 
 function clockIn() {
@@ -186,24 +190,36 @@ function clockOut() {
 function refreshTimesheets(showAlert) {
   const shouldAlert = showAlert !== false;
   const ss = SpreadsheetApp.getActive();
-  const approvedSheet = ss.getSheetByName(HOURS_TRACKER.sheets.approved);
+  const scheduleSheet = ss.getSheetByName(HOURS_TRACKER.sheets.schedule);
   const clockSheet = ss.getSheetByName(HOURS_TRACKER.sheets.timeClock);
   const timesheetSheet = ss.getSheetByName(HOURS_TRACKER.sheets.timesheets);
-  const approvedRows = getBodyRows_(approvedSheet).map((item) => item.row).filter((row) => row[9] === "Approved");
+  const scheduleRows = getBodyRows_(scheduleSheet).map((item) => item.row);
   const punchRows = getBodyRows_(clockSheet).map((item) => item.row);
   const groups = {};
 
-  approvedRows.forEach((row) => {
-    const key = groupKey_(row[1], row[3]);
-    if (!groups[key]) groups[key] = makeGroup_(row[1], row[2], row[3]);
-    groups[key].scheduledHours += Number(row[8] || 0);
-    groups[key].breakMinutes += Number(row[6] || 0);
-    groups[key].approvedShifts += 1;
+  scheduleRows.forEach((row) => {
+    const name = cleanName_(row[0]);
+    const email = cleanEmail_(row[1]);
+    const date = row[2];
+    if (!name || !email || !date) return;
+
+    const key = groupKey_(email, date);
+    if (!groups[key]) groups[key] = makeGroup_(name, email, date);
+    groups[key].name = name;
+    groups[key].scheduledHours += Number(row[8] || calculateHours_(date, row[3], row[4], row[5] || 0));
+    groups[key].breakMinutes += Number(row[5] || 0);
+    groups[key].scheduledShifts += 1;
   });
 
   punchRows.forEach((row) => {
-    const key = groupKey_(row[2], row[5]);
-    if (!groups[key]) groups[key] = makeGroup_(row[2], row[3], row[5]);
+    const name = cleanName_(row[2]);
+    const email = cleanEmail_(row[3]);
+    const date = row[5];
+    if (!email || !date) return;
+
+    const key = groupKey_(email, date);
+    if (!groups[key]) groups[key] = makeGroup_(name || email, email, date);
+    if (name) groups[key].name = name;
     groups[key].punches.push({
       timestamp: row[1],
       action: row[4],
@@ -226,8 +242,8 @@ function refreshTimesheets(showAlert) {
       const status = getTimesheetStatus_(clockInEntry, clockOutEntry);
 
       return [
-        group.email,
         group.name,
+        group.email,
         group.date,
         clockInEntry ? normalizeTime_(clockInEntry.time) : "",
         clockOutEntry ? normalizeTime_(clockOutEntry.time) : "",
@@ -235,6 +251,7 @@ function refreshTimesheets(showAlert) {
         workedHours,
         roundHours_(group.scheduledHours),
         roundHours_(workedHours - group.scheduledHours),
+        group.scheduledShifts,
         status,
       ];
     });
@@ -245,44 +262,13 @@ function refreshTimesheets(showAlert) {
   if (shouldAlert) SpreadsheetApp.getUi().alert(`Timesheets refreshed with ${output.length} row(s).`);
 }
 
-function updateSelectedRequests_(status) {
-  const ss = SpreadsheetApp.getActive();
-  const requestSheet = ss.getSheetByName(HOURS_TRACKER.sheets.requests);
-  const approvedSheet = ss.getSheetByName(HOURS_TRACKER.sheets.approved);
-  const selection = requestSheet.getActiveRange();
-
-  if (!selection || requestSheet.getName() !== ss.getActiveSheet().getName()) {
-    SpreadsheetApp.getUi().alert("Select one or more rows on the Schedule Requests tab first.");
-    return;
-  }
-
-  const startRow = Math.max(selection.getRow(), 2);
-  const endRow = selection.getLastRow();
-  const rows = [];
-  const reviewedAt = new Date();
-
-  for (let rowIndex = startRow; rowIndex <= endRow; rowIndex += 1) {
-    const row = requestSheet.getRange(rowIndex, 1, 1, HOURS_TRACKER.headers.requests.length).getValues()[0];
-    if (!row[0] || row[11] !== "Pending") continue;
-
-    requestSheet.getRange(rowIndex, 12).setValue(status);
-    requestSheet.getRange(rowIndex, 14).setValue(reviewedAt);
-
-    if (status === "Approved") {
-      rows.push([row[0], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[10], "Approved", reviewedAt]);
-    }
-  }
-
-  if (rows.length) appendRows_(approvedSheet, rows);
-  SpreadsheetApp.getUi().alert(`${status} ${status === "Approved" ? rows.length : endRow - startRow + 1} request row(s).`);
-}
-
 function addClockEntry_(action) {
-  const employee = resolveEmployee_();
+  const employee = promptEmployeeIdentity_();
   const now = new Date();
   const sheet = SpreadsheetApp.getActive().getSheetByName(HOURS_TRACKER.sheets.timeClock);
 
-  appendRows_(sheet, [[makeId_("CLK"), now, employee.email, employee.name, action, normalizeDate_(now), normalizeTime_(now), ""]]);
+  upsertEmployee_(employee);
+  appendRows_(sheet, [[makeId_("CLK"), now, employee.name, employee.email, action, normalizeDate_(now), normalizeTime_(now), ""]]);
   refreshTimesheets(false);
   SpreadsheetApp.getUi().alert(`${action} recorded for ${employee.name}.`);
 }
@@ -292,26 +278,30 @@ function buildSummary_() {
   const summarySheet = ss.getSheetByName(HOURS_TRACKER.sheets.summary);
   const timesheetRows = getBodyRows_(ss.getSheetByName(HOURS_TRACKER.sheets.timesheets)).map((item) => item.row);
   const settings = getSettings_();
-  const payPeriod = `${settings["Pay Period Start"] || ""} to ${settings["Pay Period End"] || ""}`;
+  const payPeriod = `${formatSettingDate_(settings["Pay Period Start"])} to ${formatSettingDate_(settings["Pay Period End"])}`;
   const groups = {};
 
   timesheetRows.forEach((row) => {
-    const email = row[0];
+    const name = cleanName_(row[0]);
+    const email = cleanEmail_(row[1]);
     if (!email) return;
+
     if (!groups[email]) {
       groups[email] = {
+        name,
         email,
-        name: row[1],
         scheduled: 0,
         worked: 0,
         openPunches: 0,
-        approvedShifts: 0,
+        scheduledShifts: 0,
       };
     }
+
+    if (name) groups[email].name = name;
     groups[email].scheduled += Number(row[7] || 0);
     groups[email].worked += Number(row[6] || 0);
-    if (row[9] === "Open Punch" || row[9] === "No Clock Out") groups[email].openPunches += 1;
-    if (Number(row[7] || 0) > 0) groups[email].approvedShifts += 1;
+    if (row[10] === "No Clock Out") groups[email].openPunches += 1;
+    groups[email].scheduledShifts += Number(row[9] || 0);
   });
 
   const output = Object.keys(groups)
@@ -319,13 +309,13 @@ function buildSummary_() {
     .map((email) => {
       const group = groups[email];
       return [
-        group.email,
         group.name,
+        group.email,
         roundHours_(group.scheduled),
         roundHours_(group.worked),
         roundHours_(group.worked - group.scheduled),
         group.openPunches,
-        group.approvedShifts,
+        group.scheduledShifts,
         payPeriod,
       ];
     });
@@ -346,8 +336,7 @@ function seedSettings_() {
     ["Timezone", Session.getScriptTimeZone(), "Used for date and time formatting."],
     ["Pay Period Start", start, "Change this when you run payroll."],
     ["Pay Period End", end, "Change this when you run payroll."],
-    ["Manager Email", Session.getActiveUser().getEmail(), "Optional. Used for reference."],
-    ["Require Manager Approval", "Yes", "Approved shifts move to the Approved Schedule tab."],
+    ["Schedule Owner Rule", "Name + Email", "Employees are identified only by these two fields."],
   ]);
 }
 
@@ -357,43 +346,41 @@ function formatWorkbook_() {
     const sheet = ss.getSheetByName(HOURS_TRACKER.sheets[key]);
     sheet.setFrozenRows(1);
     sheet.autoResizeColumns(1, HOURS_TRACKER.headers[key].length);
-    sheet.getRange(1, 1, 1, HOURS_TRACKER.headers[key].length).setFontWeight("bold").setBackground("#0f766e").setFontColor("#ffffff");
+    sheet
+      .getRange(1, 1, 1, HOURS_TRACKER.headers[key].length)
+      .setFontWeight("bold")
+      .setBackground("#0f766e")
+      .setFontColor("#ffffff");
     sheet.getDataRange().setVerticalAlignment("middle");
   });
 
-  setDateFormats_(ss.getSheetByName(HOURS_TRACKER.sheets.mySchedule), [2]);
-  setTimeFormats_(ss.getSheetByName(HOURS_TRACKER.sheets.mySchedule), [3, 4]);
-  setDateFormats_(ss.getSheetByName(HOURS_TRACKER.sheets.requests), [2, 5, 14]);
-  setTimeFormats_(ss.getSheetByName(HOURS_TRACKER.sheets.requests), [6, 7]);
-  setDateFormats_(ss.getSheetByName(HOURS_TRACKER.sheets.approved), [4, 11]);
-  setTimeFormats_(ss.getSheetByName(HOURS_TRACKER.sheets.approved), [5, 6]);
-  setDateFormats_(ss.getSheetByName(HOURS_TRACKER.sheets.timeClock), [2, 6]);
+  setDateFormats_(ss.getSheetByName(HOURS_TRACKER.sheets.schedule), [3]);
+  setTimeFormats_(ss.getSheetByName(HOURS_TRACKER.sheets.schedule), [4, 5]);
+  setDateTimeFormats_(ss.getSheetByName(HOURS_TRACKER.sheets.schedule), [10]);
+  setDateFormats_(ss.getSheetByName(HOURS_TRACKER.sheets.timeClock), [6]);
   setTimeFormats_(ss.getSheetByName(HOURS_TRACKER.sheets.timeClock), [7]);
+  setDateTimeFormats_(ss.getSheetByName(HOURS_TRACKER.sheets.timeClock), [2]);
   setDateFormats_(ss.getSheetByName(HOURS_TRACKER.sheets.timesheets), [3]);
   setTimeFormats_(ss.getSheetByName(HOURS_TRACKER.sheets.timesheets), [4, 5]);
 }
 
 function applyValidations_() {
   const ss = SpreadsheetApp.getActive();
-  const employees = ss.getSheetByName(HOURS_TRACKER.sheets.employees);
-  const requests = ss.getSheetByName(HOURS_TRACKER.sheets.requests);
-  const approved = ss.getSheetByName(HOURS_TRACKER.sheets.approved);
   const timeClock = ss.getSheetByName(HOURS_TRACKER.sheets.timeClock);
   const timesheets = ss.getSheetByName(HOURS_TRACKER.sheets.timesheets);
 
-  setListValidation_(employees, 6, HOURS_TRACKER.statuses.employee);
-  setListValidation_(employees, 7, HOURS_TRACKER.statuses.yesNo);
-  setListValidation_(requests, 12, HOURS_TRACKER.statuses.request);
-  setListValidation_(approved, 10, HOURS_TRACKER.statuses.approved);
   setListValidation_(timeClock, 5, HOURS_TRACKER.statuses.punch);
-  setListValidation_(timesheets, 10, HOURS_TRACKER.statuses.timesheet);
+  setListValidation_(timesheets, 11, HOURS_TRACKER.statuses.timesheet);
+}
 
-  const settings = ss.getSheetByName(HOURS_TRACKER.sheets.settings);
-  const approvalSetting = getBodyRows_(settings).find((item) => item.row[0] === "Require Manager Approval");
-  if (approvalSetting) {
-    const rule = SpreadsheetApp.newDataValidation().requireValueInList(["Yes", "No"], true).setAllowInvalid(false).build();
-    settings.getRange(approvalSetting.index, 2).setDataValidation(rule);
-  }
+function sortSchedule_() {
+  const sheet = SpreadsheetApp.getActive().getSheetByName(HOURS_TRACKER.sheets.schedule);
+  if (sheet.getLastRow() < 3) return;
+  sheet.getRange(2, 1, sheet.getLastRow() - 1, HOURS_TRACKER.headers.schedule.length).sort([
+    { column: 3, ascending: true },
+    { column: 1, ascending: true },
+    { column: 4, ascending: true },
+  ]);
 }
 
 function ensureSheet_(ss, name) {
@@ -427,35 +414,53 @@ function clearBody_(sheet) {
   if (lastRow > 1) sheet.getRange(2, 1, lastRow - 1, lastColumn).clearContent();
 }
 
-function resolveEmployee_() {
-  let email = String(Session.getActiveUser().getEmail() || "").trim().toLowerCase();
-  if (!email) {
-    const response = SpreadsheetApp.getUi().prompt(
-      "Employee email",
-      "Google did not provide your email. Enter the employee email for this action.",
-      SpreadsheetApp.getUi().ButtonSet.OK_CANCEL,
-    );
-    if (response.getSelectedButton() !== SpreadsheetApp.getUi().Button.OK) throw new Error("Employee email is required.");
-    email = response.getResponseText().trim().toLowerCase();
+function promptEmployeeIdentity_() {
+  const ui = SpreadsheetApp.getUi();
+  const emailGuess = cleanEmail_(Session.getActiveUser().getEmail());
+  const emailResponse = ui.prompt(
+    "Employee email",
+    "Enter the employee email. This is the main identifier for schedule and hours.",
+    ui.ButtonSet.OK_CANCEL,
+  );
+
+  if (emailResponse.getSelectedButton() !== ui.Button.OK) throw new Error("Employee email is required.");
+  const email = cleanEmail_(emailResponse.getResponseText() || emailGuess);
+  if (!email) throw new Error("Employee email is required.");
+
+  const existing = findEmployeeByEmail_(email);
+  const nameResponse = ui.prompt(
+    "Employee name",
+    "Enter the employee full name.",
+    ui.ButtonSet.OK_CANCEL,
+  );
+
+  if (nameResponse.getSelectedButton() !== ui.Button.OK) throw new Error("Employee name is required.");
+  const name = cleanName_(nameResponse.getResponseText() || (existing && existing.name));
+  if (!name) throw new Error("Employee name is required.");
+
+  return { name, email };
+}
+
+function upsertEmployee_(employee) {
+  const sheet = SpreadsheetApp.getActive().getSheetByName(HOURS_TRACKER.sheets.employees);
+  const rows = getBodyRows_(sheet);
+  const match = rows.find((item) => cleanEmail_(item.row[1]) === employee.email);
+
+  if (match) {
+    sheet.getRange(match.index, 1, 1, 2).setValues([[employee.name, employee.email]]);
+    return;
   }
 
-  const employee = findEmployeeByEmail_(email);
-  if (employee) return employee;
-  return { email, name: email };
+  appendRows_(sheet, [[employee.name, employee.email]]);
 }
 
 function findEmployeeByEmail_(email) {
   const rows = getBodyRows_(SpreadsheetApp.getActive().getSheetByName(HOURS_TRACKER.sheets.employees)).map((item) => item.row);
-  const match = rows.find((row) => String(row[2] || "").trim().toLowerCase() === String(email || "").trim().toLowerCase());
+  const match = rows.find((row) => cleanEmail_(row[1]) === cleanEmail_(email));
   if (!match) return null;
   return {
-    id: match[0],
-    name: match[1],
-    email: String(match[2]).trim().toLowerCase(),
-    role: match[3],
-    hourlyRate: match[4],
-    status: match[5],
-    isManager: match[6] === "Yes",
+    name: cleanName_(match[0]),
+    email: cleanEmail_(match[1]),
   };
 }
 
@@ -505,17 +510,17 @@ function normalizeTime_(value) {
 
 function groupKey_(email, dateValue) {
   const date = normalizeDate_(dateValue);
-  return `${String(email || "").trim().toLowerCase()}|${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+  return `${cleanEmail_(email)}|${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
 }
 
-function makeGroup_(email, name, dateValue) {
+function makeGroup_(name, email, dateValue) {
   return {
-    email: String(email || "").trim().toLowerCase(),
-    name,
+    name: cleanName_(name),
+    email: cleanEmail_(email),
     date: normalizeDate_(dateValue),
     scheduledHours: 0,
     breakMinutes: 0,
-    approvedShifts: 0,
+    scheduledShifts: 0,
     punches: [],
   };
 }
@@ -523,16 +528,30 @@ function makeGroup_(email, name, dateValue) {
 function getTimesheetStatus_(clockInEntry, clockOutEntry) {
   if (clockInEntry && clockOutEntry) return "Complete";
   if (clockInEntry && !clockOutEntry) return "No Clock Out";
-  if (!clockInEntry && clockOutEntry) return "No Clock In";
   return "No Clock In";
+}
+
+function cleanName_(value) {
+  return String(value || "").trim().replace(/\s+/g, " ");
+}
+
+function cleanEmail_(value) {
+  return String(value || "").trim().toLowerCase();
 }
 
 function roundHours_(value) {
   return Math.round(Number(value || 0) * 100) / 100;
 }
 
+function formatSettingDate_(value) {
+  if (!value) return "";
+  return Utilities.formatDate(normalizeDate_(value), Session.getScriptTimeZone(), "M/d/yyyy");
+}
+
 function makeId_(prefix) {
-  return `${prefix}-${Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyyMMdd-HHmmss")}-${Math.floor(Math.random() * 10000)}`;
+  return `${prefix}-${Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyyMMdd-HHmmss")}-${Math.floor(
+    Math.random() * 10000,
+  )}`;
 }
 
 function setListValidation_(sheet, column, values) {
@@ -546,4 +565,8 @@ function setDateFormats_(sheet, columns) {
 
 function setTimeFormats_(sheet, columns) {
   columns.forEach((column) => sheet.getRange(2, column, Math.max(sheet.getMaxRows() - 1, 1), 1).setNumberFormat("h:mm AM/PM"));
+}
+
+function setDateTimeFormats_(sheet, columns) {
+  columns.forEach((column) => sheet.getRange(2, column, Math.max(sheet.getMaxRows() - 1, 1), 1).setNumberFormat("m/d/yyyy h:mm AM/PM"));
 }
