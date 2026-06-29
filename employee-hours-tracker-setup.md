@@ -30,6 +30,7 @@ The script creates these tabs automatically:
 - `Time Clock`
 - `Timesheets`
 - `Summary`
+- `Error Log`
 
 Older approval tabs like `Schedule Requests` and `Approved Schedule` are no longer needed for this version.
 
@@ -151,6 +152,19 @@ Generated from the Timesheets tab.
 | G | Scheduled Shifts |
 | H | Pay Period |
 
+## Error Log
+
+If Apps Script gives a vague error, run the menu action again and check this tab.
+
+| Column | Header |
+| --- | --- |
+| A | Timestamp |
+| B | Action |
+| C | Message |
+| D | Stack |
+
+Most setup issues will show a clear message here, such as a missing sheet, invalid date, invalid time, or a row missing name/email/date/start/end.
+
 ## Recommended Sharing Setup
 
 For the quickest MVP:
@@ -167,6 +181,7 @@ For the quickest MVP:
    - `Time Clock`
    - `Timesheets`
    - `Summary`
+   - `Error Log`
 
 ## Important Notes
 

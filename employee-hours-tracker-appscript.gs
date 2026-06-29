@@ -16,6 +16,7 @@ const HOURS_TRACKER = {
     timeClock: "Time Clock",
     timesheets: "Timesheets",
     summary: "Summary",
+    errorLog: "Error Log",
   },
   headers: {
     settings: ["Setting", "Value", "Notes"],
@@ -56,6 +57,7 @@ const HOURS_TRACKER = {
       "Scheduled Shifts",
       "Pay Period",
     ],
+    errorLog: ["Timestamp", "Action", "Message", "Stack"],
   },
   statuses: {
     punch: ["Clock In", "Clock Out"],
@@ -80,6 +82,38 @@ function onOpen() {
 }
 
 function setupHoursTracker() {
+  return runSafely_("Setup or refresh workbook", setupHoursTracker_);
+}
+
+function registerOrUpdateEmployee() {
+  return runSafely_("Register/update my name and email", registerOrUpdateEmployee_);
+}
+
+function fillSelectedScheduleIdentity() {
+  return runSafely_("Fill selected rows with my name/email", fillSelectedScheduleIdentity_);
+}
+
+function saveEmployeeSchedule() {
+  return runSafely_("Save/update schedule rows", saveEmployeeSchedule_);
+}
+
+function submitMySchedule() {
+  return saveEmployeeSchedule();
+}
+
+function clockIn() {
+  return runSafely_("Clock in", clockIn_);
+}
+
+function clockOut() {
+  return runSafely_("Clock out", clockOut_);
+}
+
+function refreshTimesheets(showAlert) {
+  return runSafely_("Refresh timesheets and summary", () => refreshTimesheets_(showAlert));
+}
+
+function setupHoursTracker_() {
   const ss = SpreadsheetApp.getActive();
 
   Object.keys(HOURS_TRACKER.sheets).forEach((key) => {
@@ -95,13 +129,13 @@ function setupHoursTracker() {
   );
 }
 
-function registerOrUpdateEmployee() {
+function registerOrUpdateEmployee_() {
   const identity = promptEmployeeIdentity_();
   upsertEmployee_(identity);
   SpreadsheetApp.getUi().alert(`Saved ${identity.name} (${identity.email}) to Employees.`);
 }
 
-function fillSelectedScheduleIdentity() {
+function fillSelectedScheduleIdentity_() {
   const ss = SpreadsheetApp.getActive();
   const sheet = ss.getActiveSheet();
   const selection = sheet.getActiveRange();
@@ -126,7 +160,7 @@ function fillSelectedScheduleIdentity() {
   SpreadsheetApp.getUi().alert(`Filled ${rowCount} row(s) with ${identity.name} (${identity.email}).`);
 }
 
-function saveEmployeeSchedule() {
+function saveEmployeeSchedule_() {
   const ss = SpreadsheetApp.getActive();
   const scheduleSheet = ss.getSheetByName(HOURS_TRACKER.sheets.schedule);
   const rows = getBodyRows_(scheduleSheet);
@@ -171,23 +205,19 @@ function saveEmployeeSchedule() {
   });
 
   sortSchedule_();
-  refreshTimesheets(false);
+  refreshTimesheets_(false);
   SpreadsheetApp.getUi().alert(`${updated} schedule row(s) saved or updated.`);
 }
 
-function submitMySchedule() {
-  saveEmployeeSchedule();
-}
-
-function clockIn() {
+function clockIn_() {
   addClockEntry_("Clock In");
 }
 
-function clockOut() {
+function clockOut_() {
   addClockEntry_("Clock Out");
 }
 
-function refreshTimesheets(showAlert) {
+function refreshTimesheets_(showAlert) {
   const shouldAlert = showAlert !== false;
   const ss = SpreadsheetApp.getActive();
   const scheduleSheet = ss.getSheetByName(HOURS_TRACKER.sheets.schedule);
@@ -269,7 +299,7 @@ function addClockEntry_(action) {
 
   upsertEmployee_(employee);
   appendRows_(sheet, [[makeId_("CLK"), now, employee.name, employee.email, action, normalizeDate_(now), normalizeTime_(now), ""]]);
-  refreshTimesheets(false);
+  refreshTimesheets_(false);
   SpreadsheetApp.getUi().alert(`${action} recorded for ${employee.name}.`);
 }
 
@@ -412,6 +442,45 @@ function clearBody_(sheet) {
   const lastRow = sheet.getLastRow();
   const lastColumn = sheet.getLastColumn();
   if (lastRow > 1) sheet.getRange(2, 1, lastRow - 1, lastColumn).clearContent();
+}
+
+function runSafely_(action, callback) {
+  try {
+    return callback();
+  } catch (error) {
+    logError_(action, error);
+    showErrorAlert_(action, error);
+    throw error;
+  }
+}
+
+function logError_(action, error) {
+  const message = error && error.message ? error.message : String(error);
+  const stack = error && error.stack ? error.stack : "";
+
+  try {
+    const ss = SpreadsheetApp.getActive();
+    if (!ss) throw new Error("No active spreadsheet found. Open the Sheet, then use Extensions > Apps Script from that Sheet.");
+    const sheet = ensureSheet_(ss, HOURS_TRACKER.sheets.errorLog);
+    setHeader_(sheet, HOURS_TRACKER.headers.errorLog);
+    appendRows_(sheet, [[new Date(), action, message, stack]]);
+  } catch (loggingError) {
+    Logger.log(`Hours Tracker error during ${action}: ${message}`);
+    Logger.log(stack);
+    Logger.log(`Could not write Error Log tab: ${loggingError.message || loggingError}`);
+  }
+}
+
+function showErrorAlert_(action, error) {
+  const message = error && error.message ? error.message : String(error);
+
+  try {
+    SpreadsheetApp.getUi().alert(
+      `Hours Tracker error while running "${action}":\n\n${message}\n\nCheck the Error Log tab for details.`,
+    );
+  } catch (alertError) {
+    Logger.log(`Could not show error alert: ${alertError.message || alertError}`);
+  }
 }
 
 function promptEmployeeIdentity_() {
