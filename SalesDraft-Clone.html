@@ -1,0 +1,1124 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SalesDraft Clone</title>
+    <style>
+      :root {
+        --bg: #f5f7f4;
+        --surface: #ffffff;
+        --ink: #17211e;
+        --muted: #61716b;
+        --line: #dbe2dd;
+        --teal: #0f766e;
+        --teal-dark: #115e59;
+        --amber: #b7791f;
+        --coral: #c85a54;
+        --blue: #476f95;
+        --shadow: 0 18px 40px rgba(23, 33, 30, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      button,
+      input,
+      select,
+      textarea {
+        font: inherit;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      .app-shell {
+        display: grid;
+        grid-template-columns: 300px minmax(0, 1fr) 360px;
+        min-height: 100vh;
+      }
+
+      .sidebar,
+      .quote-panel {
+        background: var(--surface);
+        border-color: var(--line);
+        border-style: solid;
+        display: grid;
+        gap: 16px;
+        align-content: start;
+        padding: 18px;
+      }
+
+      .sidebar {
+        border-width: 0 1px 0 0;
+      }
+
+      .quote-panel {
+        border-width: 0 0 0 1px;
+      }
+
+      .brand {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .brand-mark {
+        align-items: center;
+        background: #e0f2ef;
+        border-radius: 8px;
+        color: var(--teal-dark);
+        display: inline-flex;
+        font-weight: 900;
+        height: 42px;
+        justify-content: center;
+        width: 42px;
+      }
+
+      .brand strong,
+      .brand span {
+        display: block;
+      }
+
+      .brand span,
+      .muted,
+      label,
+      .customer-card span,
+      .line-item span,
+      .summary-card span,
+      .activity-feed span {
+        color: var(--muted);
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+
+      h1 {
+        font-size: 1.55rem;
+        margin-bottom: 0;
+      }
+
+      h2 {
+        font-size: 1.05rem;
+        margin-bottom: 0;
+      }
+
+      h3 {
+        font-size: 0.98rem;
+        margin-bottom: 0;
+      }
+
+      .eyebrow {
+        color: var(--teal);
+        font-size: 0.72rem;
+        font-weight: 900;
+        letter-spacing: 0;
+        margin: 0 0 4px;
+        text-transform: uppercase;
+      }
+
+      .topbar {
+        align-items: center;
+        display: flex;
+        gap: 14px;
+        justify-content: space-between;
+        padding: 18px 22px 0;
+      }
+
+      .main {
+        display: grid;
+        gap: 16px;
+        min-width: 0;
+      }
+
+      .workspace {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: minmax(0, 1fr) 320px;
+        padding: 0 22px 22px;
+      }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+        min-width: 0;
+        padding: 16px;
+      }
+
+      .panel-heading {
+        align-items: center;
+        display: flex;
+        gap: 12px;
+        justify-content: space-between;
+        margin-bottom: 14px;
+      }
+
+      .customer-list,
+      .activity-feed,
+      .quote-lines,
+      .control-stack,
+      .material-list,
+      .finance-options {
+        display: grid;
+        gap: 10px;
+      }
+
+      .customer-card,
+      .activity-feed article,
+      .line-item,
+      .summary-card,
+      .zone-control,
+      .finance-card {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        display: grid;
+        gap: 6px;
+        padding: 12px;
+      }
+
+      .customer-card {
+        background: #f8faf8;
+        color: var(--ink);
+        text-align: left;
+        width: 100%;
+      }
+
+      .customer-card.active {
+        border-color: rgba(15, 118, 110, 0.45);
+        box-shadow: inset 4px 0 0 var(--teal);
+      }
+
+      .customer-card strong,
+      .customer-card span {
+        display: block;
+      }
+
+      .primary-button,
+      .secondary-button,
+      .danger-button {
+        border-radius: 8px;
+        font-weight: 850;
+        min-height: 40px;
+        padding: 0 14px;
+        white-space: nowrap;
+      }
+
+      .primary-button {
+        background: var(--teal);
+        border: 0;
+        color: #ffffff;
+      }
+
+      .primary-button:hover {
+        background: var(--teal-dark);
+      }
+
+      .secondary-button {
+        background: #edf2ee;
+        border: 1px solid var(--line);
+        color: var(--ink);
+      }
+
+      .danger-button {
+        background: #f4e1df;
+        border: 1px solid #e6bfbc;
+        color: var(--coral);
+      }
+
+      label {
+        display: grid;
+        font-size: 0.82rem;
+        font-weight: 800;
+        gap: 6px;
+      }
+
+      input,
+      select,
+      textarea {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        color: var(--ink);
+        min-height: 40px;
+        padding: 0 10px;
+        width: 100%;
+      }
+
+      textarea {
+        min-height: 82px;
+        padding: 10px;
+        resize: vertical;
+      }
+
+      .house-stage {
+        display: grid;
+        gap: 14px;
+      }
+
+      .house-frame {
+        background:
+          linear-gradient(#dbece9 0 58%, #d8e8d3 58% 100%);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        min-height: 500px;
+        overflow: hidden;
+        position: relative;
+      }
+
+      svg {
+        display: block;
+        height: 100%;
+        min-height: 500px;
+        width: 100%;
+      }
+
+      .house-zone {
+        cursor: pointer;
+        stroke: rgba(23, 33, 30, 0.36);
+        stroke-width: 2;
+        transition:
+          filter 0.15s ease,
+          opacity 0.15s ease,
+          stroke-width 0.15s ease;
+      }
+
+      .house-zone:hover,
+      .house-zone.active {
+        filter: brightness(1.04);
+        stroke: var(--teal-dark);
+        stroke-width: 4;
+      }
+
+      .zone-label {
+        fill: #17211e;
+        font-size: 14px;
+        font-weight: 900;
+        pointer-events: none;
+      }
+
+      .control-card {
+        align-content: start;
+        display: grid;
+        gap: 14px;
+      }
+
+      .zone-control {
+        background: #f8faf8;
+      }
+
+      .zone-title {
+        align-items: center;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .zone-title strong {
+        font-size: 1rem;
+      }
+
+      .pill {
+        background: #e7f4ef;
+        border-radius: 999px;
+        color: var(--teal-dark);
+        font-size: 0.72rem;
+        font-weight: 900;
+        padding: 5px 8px;
+        text-transform: uppercase;
+      }
+
+      .swatches {
+        display: grid;
+        gap: 8px;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+      }
+
+      .swatch {
+        border: 2px solid transparent;
+        border-radius: 8px;
+        height: 34px;
+        min-height: 34px;
+        padding: 0;
+      }
+
+      .swatch.active {
+        border-color: var(--ink);
+      }
+
+      .summary-grid {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .summary-card {
+        background: #f8faf8;
+      }
+
+      .summary-card strong {
+        font-size: 1.1rem;
+      }
+
+      .line-item {
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+      }
+
+      .line-item,
+      .finance-card {
+        background: #f8faf8;
+      }
+
+      .line-item div {
+        display: grid;
+        gap: 2px;
+      }
+
+      .line-item strong:last-child {
+        text-align: right;
+      }
+
+      .quote-total {
+        align-items: center;
+        border-top: 1px solid var(--line);
+        display: flex;
+        justify-content: space-between;
+        margin-top: 4px;
+        padding-top: 14px;
+      }
+
+      .quote-total strong {
+        font-size: 1.7rem;
+      }
+
+      .finance-card {
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+      }
+
+      .payload {
+        background: #15231f;
+        border-radius: 8px;
+        color: #dbe8e4;
+        font-family: "SFMono-Regular", Consolas, monospace;
+        font-size: 0.76rem;
+        margin: 0;
+        max-height: 170px;
+        overflow: auto;
+        padding: 12px;
+        white-space: pre-wrap;
+      }
+
+      .status-message {
+        color: var(--muted);
+        font-size: 0.88rem;
+        font-weight: 750;
+        min-height: 1.25rem;
+      }
+
+      .action-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      @media (max-width: 1180px) {
+        .app-shell {
+          grid-template-columns: 260px minmax(0, 1fr);
+        }
+
+        .quote-panel {
+          border-width: 1px 0 0;
+          grid-column: 1 / -1;
+        }
+      }
+
+      @media (max-width: 900px) {
+        .app-shell,
+        .workspace {
+          grid-template-columns: 1fr;
+        }
+
+        .sidebar {
+          border-width: 0 0 1px;
+        }
+
+        .summary-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .topbar {
+          align-items: start;
+          display: grid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">SD</span>
+          <div>
+            <strong>SalesDraft Clone</strong>
+            <span>Exterior quote MVP</span>
+          </div>
+        </div>
+
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">HighLevel</p>
+              <h2>Opportunities</h2>
+            </div>
+          </div>
+          <div class="customer-list" id="customerList"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Project</p>
+              <h2>Customer info</h2>
+            </div>
+          </div>
+          <div class="control-stack">
+            <label>
+              Customer
+              <input id="customerName" type="text" />
+            </label>
+            <label>
+              Address
+              <input id="projectAddress" type="text" />
+            </label>
+            <label>
+              Opportunity ID
+              <input id="opportunityId" type="text" />
+            </label>
+            <label>
+              Job notes
+              <textarea id="projectNotes"></textarea>
+            </label>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Connectors</p>
+              <h2>Integration endpoints</h2>
+            </div>
+          </div>
+          <div class="control-stack">
+            <label>
+              HighLevel proxy URL
+              <input id="highLevelEndpoint" type="url" placeholder="/api/highlevel/quote" />
+            </label>
+            <label>
+              Wisetack link
+              <input id="wisetackLink" type="url" placeholder="https://apply.wisetack.com/..." />
+            </label>
+          </div>
+        </section>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Presentation workspace</p>
+            <h1>Exterior visual estimator</h1>
+          </div>
+          <div class="action-row">
+            <button class="secondary-button" id="loadMockHighLevel" type="button">Load HighLevel sample</button>
+            <button class="primary-button" id="saveQuoteButton" type="button">Save quote</button>
+          </div>
+        </header>
+
+        <section class="workspace">
+          <section class="house-stage">
+            <div class="panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">House visual</p>
+                  <h2 id="selectedZoneHeading">Siding selected</h2>
+                </div>
+                <span class="pill" id="selectedZonePrice">$0</span>
+              </div>
+              <div class="house-frame">
+                <svg viewBox="0 0 900 560" role="img" aria-label="Interactive house estimator">
+                  <rect x="0" y="420" width="900" height="140" fill="#d5e8d0" />
+                  <path d="M130 295 L450 90 L770 295 Z" fill="#6f7f87" stroke="#17211e" stroke-width="3" data-zone="roof" class="house-zone" />
+                  <rect x="185" y="285" width="530" height="210" rx="4" fill="#dde3d8" data-zone="siding" class="house-zone" />
+                  <rect x="208" y="306" width="485" height="24" fill="#ffffff" data-zone="trim" class="house-zone" />
+                  <rect x="208" y="456" width="485" height="24" fill="#ffffff" data-zone="trim" class="house-zone" />
+                  <rect x="412" y="383" width="78" height="112" rx="4" fill="#4b5f6b" data-zone="door" class="house-zone" />
+                  <rect x="250" y="350" width="95" height="75" rx="4" fill="#dceef4" stroke="#17211e" stroke-width="2" />
+                  <rect x="555" y="350" width="95" height="75" rx="4" fill="#dceef4" stroke="#17211e" stroke-width="2" />
+                  <rect x="225" y="344" width="22" height="87" fill="#2f4858" data-zone="shutters" class="house-zone" />
+                  <rect x="348" y="344" width="22" height="87" fill="#2f4858" data-zone="shutters" class="house-zone" />
+                  <rect x="530" y="344" width="22" height="87" fill="#2f4858" data-zone="shutters" class="house-zone" />
+                  <rect x="653" y="344" width="22" height="87" fill="#2f4858" data-zone="shutters" class="house-zone" />
+                  <rect x="155" y="287" width="590" height="14" rx="7" fill="#ffffff" data-zone="gutters" class="house-zone" />
+                  <rect x="150" y="300" width="16" height="175" rx="8" fill="#ffffff" data-zone="gutters" class="house-zone" />
+                  <rect x="734" y="300" width="16" height="175" rx="8" fill="#ffffff" data-zone="gutters" class="house-zone" />
+                  <rect x="175" y="493" width="550" height="24" rx="4" fill="#a8a29e" />
+                  <text x="450" y="262" text-anchor="middle" class="zone-label">Roof</text>
+                  <text x="450" y="335" text-anchor="middle" class="zone-label">Siding</text>
+                  <text x="450" y="374" text-anchor="middle" class="zone-label">Trim</text>
+                  <text x="450" y="448" text-anchor="middle" class="zone-label">Door</text>
+                </svg>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Estimate</p>
+                  <h2>Project summary</h2>
+                </div>
+              </div>
+              <div class="summary-grid">
+                <article class="summary-card">
+                  <span>Materials</span>
+                  <strong id="materialTotal">$0</strong>
+                </article>
+                <article class="summary-card">
+                  <span>Labor</span>
+                  <strong id="laborTotal">$0</strong>
+                </article>
+                <article class="summary-card">
+                  <span>Margin</span>
+                  <strong id="marginTotal">$0</strong>
+                </article>
+              </div>
+            </div>
+          </section>
+
+          <aside class="panel control-card">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Selections</p>
+                <h2>Material controls</h2>
+              </div>
+            </div>
+            <div class="zone-control">
+              <div class="zone-title">
+                <strong id="zoneName">Siding</strong>
+                <span class="pill" id="zoneArea">1,850 sq ft</span>
+              </div>
+              <label>
+                Material
+                <select id="materialSelect"></select>
+              </label>
+              <label>
+                Color
+                <select id="colorSelect"></select>
+              </label>
+              <div class="swatches" id="colorSwatches"></div>
+              <label>
+                Quantity
+                <input id="quantityInput" type="number" min="1" step="1" />
+              </label>
+              <button class="primary-button" id="applySelection" type="button">Apply selection</button>
+            </div>
+            <div class="activity-feed" id="selectionFeed"></div>
+          </aside>
+        </section>
+      </main>
+
+      <aside class="quote-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Quote</p>
+            <h2>Estimate builder</h2>
+          </div>
+          <span class="pill" id="quoteStatus">Draft</span>
+        </div>
+
+        <div class="quote-lines" id="quoteLines"></div>
+        <div class="quote-total">
+          <span>Total estimate</span>
+          <strong id="quoteTotal">$0</strong>
+        </div>
+
+        <section>
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Financing</p>
+              <h2>Payment options</h2>
+            </div>
+          </div>
+          <div class="finance-options" id="financeOptions"></div>
+        </section>
+
+        <section>
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Sync</p>
+              <h2>Quote payload</h2>
+            </div>
+          </div>
+          <pre class="payload" id="quotePayload"></pre>
+          <p class="status-message" id="syncStatus" role="status"></p>
+          <div class="action-row">
+            <button class="secondary-button" id="copySummary" type="button">Copy summary</button>
+            <button class="secondary-button" id="openFinancing" type="button">Open financing</button>
+          </div>
+        </section>
+      </aside>
+    </div>
+
+    <script>
+      const formatter = new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        maximumFractionDigits: 0,
+      });
+
+      const customers = [
+        {
+          id: "opp-1042",
+          name: "Maya Johnson",
+          address: "1840 Northstar Dr, Austin, TX",
+          notes: "Storm-season exterior refresh. Wants siding and trim options first.",
+          value: 18500,
+        },
+        {
+          id: "opp-1188",
+          name: "Nia Brooks",
+          address: "720 Harbor View Ln, Tampa, FL",
+          notes: "Comparing roof replacement and gutter upgrade.",
+          value: 24600,
+        },
+        {
+          id: "opp-1214",
+          name: "Caleb Stone",
+          address: "49 Finch Ct, Denver, CO",
+          notes: "Rental property. Needs a fast good/better/best estimate.",
+          value: 13200,
+        },
+      ];
+
+      const zoneConfig = {
+        siding: {
+          label: "Siding",
+          unit: "sq ft",
+          quantity: 1850,
+          materials: [
+            { name: "Standard paint", price: 2.35, labor: 1.45 },
+            { name: "Premium paint", price: 3.4, labor: 1.65 },
+            { name: "Fiber cement", price: 7.95, labor: 3.75 },
+          ],
+          colors: [
+            ["Warm Gray", "#c7c5bb"],
+            ["Modern White", "#f4f1e8"],
+            ["Sage", "#9cae96"],
+            ["Charcoal", "#4a4f4d"],
+            ["Navy", "#334a62"],
+          ],
+        },
+        trim: {
+          label: "Trim",
+          unit: "linear ft",
+          quantity: 520,
+          materials: [
+            { name: "Trim paint", price: 1.6, labor: 1.25 },
+            { name: "Premium enamel", price: 2.25, labor: 1.45 },
+            { name: "PVC trim wrap", price: 5.9, labor: 2.4 },
+          ],
+          colors: [
+            ["White", "#ffffff"],
+            ["Cream", "#ede5d0"],
+            ["Black", "#222222"],
+            ["Bronze", "#6c5a45"],
+            ["Stone", "#a8a29e"],
+          ],
+        },
+        door: {
+          label: "Door",
+          unit: "door",
+          quantity: 1,
+          materials: [
+            { name: "Paint existing door", price: 180, labor: 220 },
+            { name: "Fiberglass replacement", price: 1150, labor: 475 },
+            { name: "Premium entry system", price: 2650, labor: 820 },
+          ],
+          colors: [
+            ["Slate Blue", "#4b5f6b"],
+            ["Classic Red", "#9b2c2c"],
+            ["Forest", "#2f5d50"],
+            ["Black", "#171717"],
+            ["Walnut", "#6f4e37"],
+          ],
+        },
+        shutters: {
+          label: "Shutters",
+          unit: "pair",
+          quantity: 2,
+          materials: [
+            { name: "Paint existing", price: 95, labor: 140 },
+            { name: "Vinyl shutters", price: 220, labor: 190 },
+            { name: "Composite shutters", price: 420, labor: 250 },
+          ],
+          colors: [
+            ["Deep Navy", "#2f4858"],
+            ["Black", "#171717"],
+            ["Burgundy", "#74343b"],
+            ["Green", "#345c4a"],
+            ["Clay", "#9a6b4f"],
+          ],
+        },
+        roof: {
+          label: "Roof",
+          unit: "sq",
+          quantity: 22,
+          materials: [
+            { name: "Architectural shingle", price: 185, labor: 240 },
+            { name: "Impact-rated shingle", price: 265, labor: 255 },
+            { name: "Standing seam metal", price: 620, labor: 410 },
+          ],
+          colors: [
+            ["Weathered Gray", "#6f7f87"],
+            ["Charcoal", "#343a40"],
+            ["Driftwood", "#7f6d5f"],
+            ["Black", "#1f2933"],
+            ["Bronze", "#5c5146"],
+          ],
+        },
+        gutters: {
+          label: "Gutters",
+          unit: "linear ft",
+          quantity: 180,
+          materials: [
+            { name: "Aluminum K-style", price: 5.4, labor: 3.6 },
+            { name: "Seamless aluminum", price: 7.25, labor: 4.25 },
+            { name: "Copper", price: 26, labor: 8.5 },
+          ],
+          colors: [
+            ["White", "#ffffff"],
+            ["Almond", "#dfd5bd"],
+            ["Bronze", "#6c5a45"],
+            ["Black", "#202020"],
+            ["Gray", "#9ca3af"],
+          ],
+        },
+      };
+
+      let selectedZone = "siding";
+      let selectedCustomer = customers[0];
+      let selections = Object.fromEntries(
+        Object.entries(zoneConfig).map(([zone, config]) => [
+          zone,
+          {
+            material: config.materials[0].name,
+            color: config.colors[0][0],
+            colorHex: config.colors[0][1],
+            quantity: config.quantity,
+          },
+        ]),
+      );
+
+      const customerList = document.querySelector("#customerList");
+      const quoteLines = document.querySelector("#quoteLines");
+      const quotePayload = document.querySelector("#quotePayload");
+      const selectionFeed = document.querySelector("#selectionFeed");
+      const syncStatus = document.querySelector("#syncStatus");
+
+      document.querySelectorAll(".house-zone").forEach((zone) => {
+        zone.addEventListener("click", () => {
+          selectedZone = zone.dataset.zone;
+          render();
+        });
+      });
+
+      document.querySelector("#applySelection").addEventListener("click", applySelection);
+      document.querySelector("#loadMockHighLevel").addEventListener("click", () => {
+        selectedCustomer = customers[(customers.findIndex((item) => item.id === selectedCustomer.id) + 1) % customers.length];
+        fillCustomerForm();
+        syncStatus.textContent = "Loaded sample HighLevel opportunity.";
+        render();
+      });
+      document.querySelector("#saveQuoteButton").addEventListener("click", saveQuote);
+      document.querySelector("#copySummary").addEventListener("click", copySummary);
+      document.querySelector("#openFinancing").addEventListener("click", openFinancing);
+
+      ["customerName", "projectAddress", "opportunityId", "projectNotes", "highLevelEndpoint", "wisetackLink"].forEach((id) => {
+        document.querySelector(`#${id}`).addEventListener("input", renderQuotePayload);
+      });
+
+      function render() {
+        renderCustomers();
+        renderControls();
+        renderHouse();
+        renderQuote();
+        renderFinance();
+        renderQuotePayload();
+      }
+
+      function renderCustomers() {
+        customerList.innerHTML = customers
+          .map(
+            (customer) => `
+              <button class="customer-card ${customer.id === selectedCustomer.id ? "active" : ""}" data-customer="${customer.id}" type="button">
+                <strong>${escapeHtml(customer.name)}</strong>
+                <span>${escapeHtml(customer.address)}</span>
+                <span>${formatter.format(customer.value)} opportunity</span>
+              </button>
+            `,
+          )
+          .join("");
+
+        customerList.querySelectorAll("[data-customer]").forEach((button) => {
+          button.addEventListener("click", () => {
+            selectedCustomer = customers.find((customer) => customer.id === button.dataset.customer);
+            fillCustomerForm();
+            render();
+          });
+        });
+      }
+
+      function fillCustomerForm() {
+        document.querySelector("#customerName").value = selectedCustomer.name;
+        document.querySelector("#projectAddress").value = selectedCustomer.address;
+        document.querySelector("#opportunityId").value = selectedCustomer.id;
+        document.querySelector("#projectNotes").value = selectedCustomer.notes;
+      }
+
+      function renderControls() {
+        const config = zoneConfig[selectedZone];
+        const selection = selections[selectedZone];
+        const materialSelect = document.querySelector("#materialSelect");
+        const colorSelect = document.querySelector("#colorSelect");
+
+        document.querySelector("#selectedZoneHeading").textContent = `${config.label} selected`;
+        document.querySelector("#selectedZonePrice").textContent = formatter.format(lineTotal(selectedZone));
+        document.querySelector("#zoneName").textContent = config.label;
+        document.querySelector("#zoneArea").textContent = `${selection.quantity.toLocaleString()} ${config.unit}`;
+        document.querySelector("#quantityInput").value = selection.quantity;
+
+        materialSelect.innerHTML = config.materials
+          .map((material) => `<option value="${escapeHtml(material.name)}">${escapeHtml(material.name)}</option>`)
+          .join("");
+        materialSelect.value = selection.material;
+
+        colorSelect.innerHTML = config.colors
+          .map(([name]) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`)
+          .join("");
+        colorSelect.value = selection.color;
+
+        document.querySelector("#colorSwatches").innerHTML = config.colors
+          .map(
+            ([name, hex]) => `
+              <button class="swatch ${name === selection.color ? "active" : ""}" data-color="${escapeHtml(name)}" title="${escapeHtml(name)}" style="background:${hex}" type="button"></button>
+            `,
+          )
+          .join("");
+
+        document.querySelectorAll("[data-color]").forEach((button) => {
+          button.addEventListener("click", () => {
+            const [name, hex] = config.colors.find(([colorName]) => colorName === button.dataset.color);
+            selections[selectedZone].color = name;
+            selections[selectedZone].colorHex = hex;
+            render();
+          });
+        });
+      }
+
+      function renderHouse() {
+        Object.entries(selections).forEach(([zone, selection]) => {
+          document.querySelectorAll(`[data-zone="${zone}"]`).forEach((element) => {
+            element.setAttribute("fill", selection.colorHex);
+            element.classList.toggle("active", zone === selectedZone);
+          });
+        });
+      }
+
+      function renderQuote() {
+        const lines = Object.keys(zoneConfig).map((zone) => ({
+          zone,
+          config: zoneConfig[zone],
+          selection: selections[zone],
+          total: lineTotal(zone),
+        }));
+
+        quoteLines.innerHTML = lines
+          .map(
+            (line) => `
+              <article class="line-item">
+                <div>
+                  <strong>${escapeHtml(line.config.label)}</strong>
+                  <span>${escapeHtml(line.selection.material)} · ${escapeHtml(line.selection.color)} · ${line.selection.quantity.toLocaleString()} ${line.config.unit}</span>
+                </div>
+                <strong>${formatter.format(line.total)}</strong>
+              </article>
+            `,
+          )
+          .join("");
+
+        const totals = estimateTotals();
+        document.querySelector("#materialTotal").textContent = formatter.format(totals.material);
+        document.querySelector("#laborTotal").textContent = formatter.format(totals.labor);
+        document.querySelector("#marginTotal").textContent = formatter.format(totals.margin);
+        document.querySelector("#quoteTotal").textContent = formatter.format(totals.total);
+
+        selectionFeed.innerHTML = lines
+          .filter((line) => line.total > 0)
+          .map(
+            (line) => `
+              <article>
+                <strong>${escapeHtml(line.config.label)} updated</strong>
+                <span>${escapeHtml(line.selection.material)} in ${escapeHtml(line.selection.color)}</span>
+              </article>
+            `,
+          )
+          .join("");
+      }
+
+      function renderFinance() {
+        const total = estimateTotals().total;
+        const options = [
+          { months: 12, apr: 0.099 },
+          { months: 36, apr: 0.129 },
+          { months: 60, apr: 0.149 },
+        ];
+
+        document.querySelector("#financeOptions").innerHTML = options
+          .map((option) => {
+            const payment = monthlyPayment(total, option.apr, option.months);
+            return `
+              <article class="finance-card">
+                <div>
+                  <strong>${option.months} months</strong>
+                  <span>${Math.round(option.apr * 1000) / 10}% APR estimate</span>
+                </div>
+                <strong>${formatter.format(payment)}/mo</strong>
+              </article>
+            `;
+          })
+          .join("");
+      }
+
+      function renderQuotePayload() {
+        quotePayload.textContent = JSON.stringify(quotePayloadData(), null, 2);
+      }
+
+      function applySelection() {
+        const config = zoneConfig[selectedZone];
+        const color = config.colors.find(([name]) => name === document.querySelector("#colorSelect").value);
+        selections[selectedZone] = {
+          material: document.querySelector("#materialSelect").value,
+          color: color[0],
+          colorHex: color[1],
+          quantity: Math.max(1, Number(document.querySelector("#quantityInput").value || config.quantity)),
+        };
+        syncStatus.textContent = `${config.label} selection updated.`;
+        render();
+      }
+
+      function saveQuote() {
+        const endpoint = document.querySelector("#highLevelEndpoint").value.trim();
+        const payload = quotePayloadData();
+        document.querySelector("#quoteStatus").textContent = "Saved";
+        syncStatus.textContent = endpoint
+          ? `Ready to POST quote payload to ${endpoint}.`
+          : "Quote saved locally. Add a HighLevel proxy URL to sync.";
+        quotePayload.textContent = JSON.stringify(payload, null, 2);
+      }
+
+      async function copySummary() {
+        const summary = quoteSummary();
+        try {
+          await navigator.clipboard.writeText(summary);
+          syncStatus.textContent = "Quote summary copied.";
+        } catch {
+          syncStatus.textContent = summary;
+        }
+      }
+
+      function openFinancing() {
+        const link = document.querySelector("#wisetackLink").value.trim();
+        if (link) {
+          window.open(link, "_blank", "noopener");
+          syncStatus.textContent = "Financing link opened.";
+          return;
+        }
+        syncStatus.textContent = "Add a Wisetack link or partner endpoint to open financing.";
+      }
+
+      function quotePayloadData() {
+        return {
+          opportunityId: document.querySelector("#opportunityId").value,
+          customerName: document.querySelector("#customerName").value,
+          address: document.querySelector("#projectAddress").value,
+          notes: document.querySelector("#projectNotes").value,
+          selections,
+          totals: estimateTotals(),
+          summary: quoteSummary(),
+        };
+      }
+
+      function quoteSummary() {
+        const totals = estimateTotals();
+        return `${document.querySelector("#customerName").value} exterior estimate: ${formatter.format(totals.total)} for ${Object.values(selections)
+          .map((selection) => selection.material)
+          .join(", ")}.`;
+      }
+
+      function lineTotal(zone) {
+        const config = zoneConfig[zone];
+        const selection = selections[zone];
+        const material = config.materials.find((item) => item.name === selection.material) || config.materials[0];
+        return Math.round(selection.quantity * (material.price + material.labor) * 1.18);
+      }
+
+      function estimateTotals() {
+        const totals = Object.keys(zoneConfig).reduce(
+          (totals, zone) => {
+            const config = zoneConfig[zone];
+            const selection = selections[zone];
+            const material = config.materials.find((item) => item.name === selection.material) || config.materials[0];
+            totals.material += selection.quantity * material.price;
+            totals.labor += selection.quantity * material.labor;
+            return totals;
+          },
+          { material: 0, labor: 0, margin: 0, total: 0 },
+        );
+
+        totals.material = Math.round(totals.material);
+        totals.labor = Math.round(totals.labor);
+        totals.margin = Math.round((totals.material + totals.labor) * 0.18);
+        totals.total = totals.material + totals.labor + totals.margin;
+        return totals;
+      }
+
+      function monthlyPayment(amount, apr, months) {
+        const monthlyRate = apr / 12;
+        return amount * (monthlyRate / (1 - Math.pow(1 + monthlyRate, -months)));
+      }
+
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, (char) => {
+          const entities = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+          return entities[char];
+        });
+      }
+
+      fillCustomerForm();
+      render();
+    </script>
+  </body>
+</html>
