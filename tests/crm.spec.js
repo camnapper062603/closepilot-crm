@@ -326,15 +326,16 @@ test('exports and imports a workspace backup', async ({ page }) => {
 
 test('creates a lead and an automated follow-up task', async ({ page }) => {
   await page.getByRole('button', { name: '+ Lead' }).click();
-  await expect(page.getByRole('dialog', { name: 'Add lead' })).toBeVisible();
-  await page.getByLabel('Contact name').fill('Cameron Ellis');
-  await page.getByLabel('Company').fill('Plus Growth Studio');
-  await page.getByLabel('Deal value').fill('9600');
-  await page.getByLabel('Stage').selectOption('proposal');
-  await page.getByLabel('Source').fill('Trade show');
-  await page.getByLabel('Next action').fill('Book discovery call');
-  await page.getByLabel('Notes').fill('Wants a SaaS-ready CRM workflow.');
-  await page.getByRole('button', { name: 'Create lead' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Add lead' });
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel('Contact name').fill('Cameron Ellis');
+  await dialog.getByLabel('Company').fill('Plus Growth Studio');
+  await dialog.getByLabel('Deal value').fill('9600');
+  await dialog.getByLabel('Stage').selectOption('proposal');
+  await dialog.getByLabel('Source', { exact: true }).fill('Trade show');
+  await dialog.getByLabel('Next action').fill('Book discovery call');
+  await dialog.getByLabel('Notes').fill('Wants a SaaS-ready CRM workflow.');
+  await dialog.getByRole('button', { name: 'Create lead' }).click();
 
   await expect(page.locator('#pipelineBoard').getByText('Plus Growth Studio')).toBeVisible();
   await expect(page.locator('#leadBrief')).toContainText('Trade show');
@@ -345,7 +346,7 @@ test('creates a lead and an automated follow-up task', async ({ page }) => {
   await expect(page.locator('#pipelineValue')).toContainText('$38,900');
 
   await navigateTo(page, 'Tasks', 'tasks');
-  await expect(page.getByText('Follow up with Cameron Ellis at Plus Growth Studio')).toBeVisible();
+  await expect(page.locator('#taskList')).toContainText('Follow up with Cameron Ellis at Plus Growth Studio');
 });
 
 test('moves a lead forward and updates the lead brief', async ({ page }) => {
@@ -356,7 +357,7 @@ test('moves a lead forward and updates the lead brief', async ({ page }) => {
   await expect(page.locator('#leadBrief')).toContainText('Stage changed to Proposal.');
 
   await navigateTo(page, 'Tasks', 'tasks');
-  await expect(page.getByText('Follow up with Maya Johnson after moving to Proposal')).toBeVisible();
+  await expect(page.locator('#taskList')).toContainText('Follow up with Maya Johnson after moving to Proposal');
 });
 
 test('marks the selected lead won and queues onboarding', async ({ page }) => {
@@ -478,6 +479,27 @@ test('manages SaaS workspace plan, seats, and invites', async ({ page }) => {
   await expect(page.locator('#workspaceNameLabel')).toContainText('ClosePilot Agency');
   await expect(page.locator('#workspaceModeLabel')).toContainText('Team workspace - Forecast revenue.');
   await expect(admin.locator('#adminMessage')).toContainText('Workspace settings saved.');
+});
+
+test('saves an expanded workspace profile for SaaS operations', async ({ page }) => {
+  await navigateTo(page, 'Admin', 'admin');
+  const admin = page.locator('#saasAdmin');
+
+  await admin.getByLabel('Owner email').fill('cameron@example.com');
+  await admin.getByLabel('Industry').fill('Roofing and home services');
+  await admin.getByLabel('Time zone').selectOption('America/Los_Angeles');
+  await admin.getByLabel('Default lead source').fill('Referral partner');
+  await admin.getByRole('button', { name: 'Update workspace' }).click();
+
+  await expect(admin.locator('#workspaceProfileSummary')).toContainText('cameron@example.com');
+  await expect(admin.locator('#workspaceProfileSummary')).toContainText('Roofing and home services');
+  await expect(admin.locator('#workspaceProfileSummary')).toContainText('Pacific');
+  await expect(admin.locator('#workspaceProfileSummary')).toContainText('Referral partner');
+  await expect(admin.locator('#auditList')).toContainText('Workspace updated');
+
+  await page.getByRole('button', { name: '+ Lead' }).click();
+  await expect(page.getByLabel('Source', { exact: true })).toHaveValue('Referral partner');
+  await page.getByRole('button', { name: 'Close' }).click();
 });
 
 test('edits the selected lead', async ({ page }) => {
@@ -955,6 +977,33 @@ test('selects and opens leads from the contact list', async ({ page }) => {
   await harborRow.getByRole('button', { name: 'Details' }).click();
   await expect(page.getByRole('dialog', { name: 'Harbor Fitness' })).toBeVisible();
   await expect(page.getByRole('dialog', { name: 'Harbor Fitness' })).toContainText('Review proposal pricing');
+});
+
+test('manages a contact profile workspace from the contacts page', async ({ page }) => {
+  await navigateTo(page, 'Contacts', 'contacts');
+  const profile = page.locator('#contactProfile');
+  const harborRow = page.locator('#contactTable .contact-row').filter({ hasText: 'Harbor Fitness' });
+
+  await expect(profile).toContainText('Northstar Roofing');
+  await harborRow.getByRole('button', { name: 'Profile' }).click();
+
+  await expect(profile).toContainText('Harbor Fitness');
+  await expect(profile).toContainText('Nia Brooks');
+  await expect(profile).toContainText('Draft Harbor Fitness proposal recap');
+
+  await profile.getByLabel('Next action').fill('Confirm rollout date and billing owner.');
+  await profile.getByRole('button', { name: 'Save next action' }).click();
+
+  await expect(profile).toContainText('Next action updated: Confirm rollout date and billing owner.');
+
+  await profile.getByPlaceholder('Log a call, objection, or update').fill('Nia approved a Friday launch review.');
+  await profile.getByRole('button', { name: 'Log note' }).click();
+
+  await expect(profile).toContainText('Note: Nia approved a Friday launch review.');
+
+  await navigateTo(page, 'Pipeline', 'pipeline');
+  await expect(page.locator('#leadBrief')).toContainText('Harbor Fitness');
+  await expect(page.locator('#leadBrief')).toContainText('Confirm rollout date and billing owner.');
 });
 
 test('creates follow-up tasks from the contact list', async ({ page }) => {

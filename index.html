@@ -288,6 +288,16 @@
             <div class="contact-table" id="contactTable"></div>
           </section>
 
+          <section class="panel contact-profile-panel" id="contactProfile" data-page="contacts" aria-labelledby="contactProfileHeading">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Account workspace</p>
+                <h2 id="contactProfileHeading">Contact profile</h2>
+              </div>
+            </div>
+            <div id="contactProfileContent" class="contact-profile-content"></div>
+          </section>
+
           <section class="panel" id="tasks" data-page="tasks" aria-labelledby="tasksHeading">
             <div class="panel-heading">
               <div>
@@ -404,8 +414,30 @@
                     <option value="Forecast revenue">Forecast revenue</option>
                   </select>
                 </label>
+                <label>
+                  Owner email
+                  <input id="adminOwnerEmail" type="email" />
+                </label>
+                <label>
+                  Industry
+                  <input id="adminIndustry" type="text" />
+                </label>
+                <label>
+                  Time zone
+                  <select id="adminTimezone">
+                    <option value="America/Chicago">Central</option>
+                    <option value="America/New_York">Eastern</option>
+                    <option value="America/Denver">Mountain</option>
+                    <option value="America/Los_Angeles">Pacific</option>
+                  </select>
+                </label>
+                <label>
+                  Default lead source
+                  <input id="adminDefaultSource" type="text" />
+                </label>
                 <button class="secondary-button" type="submit">Update workspace</button>
               </form>
+              <div class="workspace-profile-summary" id="workspaceProfileSummary" aria-label="Workspace profile summary"></div>
             </section>
 
             <section class="admin-card" aria-labelledby="billingHeading">

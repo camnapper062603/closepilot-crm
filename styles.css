@@ -656,14 +656,16 @@ button.insight-card:hover {
 }
 
 .plan-summary,
-.team-summary {
+.team-summary,
+.workspace-profile-summary {
   display: grid;
   gap: 10px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .plan-summary article,
-.team-summary article {
+.team-summary article,
+.workspace-profile-summary article {
   background: #f8faf8;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -674,15 +676,26 @@ button.insight-card:hover {
 
 .plan-summary span,
 .plan-summary small,
-.team-summary span {
+.team-summary span,
+.workspace-profile-summary span {
   color: var(--muted);
   font-size: 0.78rem;
   font-weight: 700;
 }
 
 .plan-summary span,
-.team-summary span {
+.team-summary span,
+.workspace-profile-summary span {
   text-transform: uppercase;
+}
+
+.workspace-profile-summary {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.workspace-profile-summary strong {
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
 }
 
 .plan-options {
@@ -1401,6 +1414,11 @@ button.insight-card:hover {
   grid-template-columns: auto 1.35fr 0.85fr 0.7fr 0.45fr 0.7fr auto;
 }
 
+.contact-row.active {
+  border-color: rgba(15, 118, 110, 0.45);
+  box-shadow: inset 4px 0 0 var(--teal);
+}
+
 .contact-select {
   align-items: center;
   display: flex;
@@ -1432,6 +1450,146 @@ button.insight-card:hover {
   min-height: 34px;
   padding: 0 10px;
   white-space: nowrap;
+}
+
+.contact-profile-content {
+  display: grid;
+  gap: 12px;
+}
+
+.contact-profile-hero {
+  align-items: start;
+  background: #f8faf8;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 14px;
+}
+
+.contact-profile-hero h3 {
+  font-size: 1.3rem;
+  margin: 0 0 4px;
+}
+
+.contact-profile-hero span {
+  color: var(--muted);
+}
+
+.contact-profile-hero > strong {
+  font-size: 1.2rem;
+  white-space: nowrap;
+}
+
+.contact-profile-stats {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.contact-profile-stats article,
+.contact-profile-section {
+  background: #f8faf8;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.contact-profile-stats span {
+  color: var(--muted);
+  display: block;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.contact-profile-stats strong {
+  display: block;
+  font-size: 0.96rem;
+  margin-top: 3px;
+}
+
+.contact-next-form {
+  align-items: end;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.contact-next-form label {
+  color: var(--muted);
+  display: grid;
+  font-size: 0.82rem;
+  font-weight: 800;
+  gap: 6px;
+}
+
+.contact-next-form input {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  min-height: 40px;
+  padding: 0 10px;
+}
+
+.contact-profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.contact-profile-actions button,
+.contact-next-form button {
+  min-height: 38px;
+}
+
+.contact-profile-section {
+  display: grid;
+  gap: 8px;
+}
+
+.contact-profile-section .eyebrow,
+.profile-message {
+  margin: 0;
+}
+
+.profile-message {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+  min-height: 1.25rem;
+}
+
+.linked-task-list {
+  display: grid;
+  gap: 8px;
+}
+
+.linked-task-list article {
+  align-items: start;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+}
+
+.linked-task-list article.done {
+  opacity: 0.68;
+}
+
+.linked-task-list span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.contact-profile-timeline {
+  border-top: 0;
+  padding-top: 0;
 }
 
 .task-controls {

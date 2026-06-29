@@ -196,6 +196,7 @@ const exportSourceReportButton = document.querySelector("#exportSourceReport");
 const leadBrief = document.querySelector("#leadBrief");
 const contactTable = document.querySelector("#contactTable");
 const contactSummary = document.querySelector("#contactSummary");
+const contactProfileContent = document.querySelector("#contactProfileContent");
 const contactSortInput = document.querySelector("#contactSort");
 const selectVisibleContactsButton = document.querySelector("#selectVisibleContacts");
 const clearSelectedContactsButton = document.querySelector("#clearSelectedContacts");
@@ -269,6 +270,11 @@ const workspaceAdminForm = document.querySelector("#workspaceAdminForm");
 const adminBusinessName = document.querySelector("#adminBusinessName");
 const adminWorkspaceType = document.querySelector("#adminWorkspaceType");
 const adminSalesGoal = document.querySelector("#adminSalesGoal");
+const adminOwnerEmail = document.querySelector("#adminOwnerEmail");
+const adminIndustry = document.querySelector("#adminIndustry");
+const adminTimezone = document.querySelector("#adminTimezone");
+const adminDefaultSource = document.querySelector("#adminDefaultSource");
+const workspaceProfileSummary = document.querySelector("#workspaceProfileSummary");
 const planSummary = document.querySelector("#planSummary");
 const teamSummary = document.querySelector("#teamSummary");
 const openCheckoutButton = document.querySelector("#openCheckout");
@@ -585,7 +591,7 @@ function openLeadModal(lead = null) {
   document.querySelector("#leadCompany").value = lead?.company || "";
   document.querySelector("#leadValue").value = lead?.value || 2500;
   document.querySelector("#leadStage").value = lead?.stage || "new";
-  document.querySelector("#leadSource").value = lead?.source || "Manual";
+  document.querySelector("#leadSource").value = lead?.source || workspaceSetupSettings().defaultSource || "Manual";
   document.querySelector("#leadNextAction").value = lead?.nextAction || "";
   document.querySelector("#leadNotes").value = lead?.notes || "";
   leadModal.hidden = false;
@@ -782,7 +788,30 @@ function renderSaasAdmin() {
   adminBusinessName.value = settings.name;
   adminWorkspaceType.value = settings.type;
   adminSalesGoal.value = settings.goal;
+  adminOwnerEmail.value = settings.ownerEmail;
+  adminIndustry.value = settings.industry;
+  adminTimezone.value = settings.timezone;
+  adminDefaultSource.value = settings.defaultSource;
   subscriptionStatus.textContent = `${plan.label} ${subscription.status === "trialing" ? "trial" : "plan"}`;
+
+  workspaceProfileSummary.innerHTML = `
+    <article>
+      <span>Owner</span>
+      <strong>${escapeHtml(settings.ownerEmail)}</strong>
+    </article>
+    <article>
+      <span>Industry</span>
+      <strong>${escapeHtml(settings.industry)}</strong>
+    </article>
+    <article>
+      <span>Time zone</span>
+      <strong>${escapeHtml(timezoneLabel(settings.timezone))}</strong>
+    </article>
+    <article>
+      <span>Default source</span>
+      <strong>${escapeHtml(settings.defaultSource)}</strong>
+    </article>
+  `;
 
   planSummary.innerHTML = `
     <article>
@@ -1384,6 +1413,10 @@ function renderLeadDetail(lead) {
       <p>${escapeHtml(lead.notes)}</p>
     </section>
     <section class="detail-section">
+      <p class="eyebrow">Open work</p>
+      ${renderLeadTaskList(lead)}
+    </section>
+    <section class="detail-section">
       ${renderSequencePreview(lead)}
     </section>
     <section class="detail-section">
@@ -1561,6 +1594,43 @@ function renderLeadActivities(leadId) {
     .join("");
 }
 
+function latestLeadActivity(leadId) {
+  return (state.activities || [])
+    .filter((activity) => activity.leadId === leadId)
+    .sort((left, right) => activityTime(right) - activityTime(left))[0];
+}
+
+function leadTasks(lead) {
+  const company = lead.company.toLowerCase();
+  const name = lead.name.toLowerCase();
+  return state.tasks.filter((task) => {
+    const text = task.text.toLowerCase();
+    return text.includes(company) || text.includes(name);
+  });
+}
+
+function renderLeadTaskList(lead) {
+  const tasks = leadTasks(lead).slice(0, 5);
+  if (!tasks.length) {
+    return "<p class=\"empty-state\">No linked tasks yet.</p>";
+  }
+
+  return `
+    <div class="linked-task-list">
+      ${tasks
+        .map(
+          (task) => `
+            <article class="${task.done ? "done" : ""}">
+              <strong>${escapeHtml(task.text)}</strong>
+              <span>${task.done ? "Done" : task.due}</span>
+            </article>
+          `,
+        )
+        .join("")}
+    </div>
+  `;
+}
+
 function renderActivityFeed() {
   const activities = visibleActivities();
 
@@ -1653,12 +1723,13 @@ function renderContacts() {
   renderContactSummary(filtered);
   syncSelectedContacts(leads);
   updateBulkContactTaskButton();
+  renderContactProfile(leads);
 
   contactTable.innerHTML = leads.length
     ? leads
       .map(
         (lead) => `
-      <article class="contact-row" data-contact-row="${lead.id}">
+      <article class="contact-row ${lead.id === state.selectedLeadId ? "active" : ""}" data-contact-row="${lead.id}">
         <label class="contact-select">
           <input data-contact-checkbox="${lead.id}" type="checkbox" ${selectedContactIds.has(lead.id) ? "checked" : ""} aria-label="Select ${escapeHtml(lead.company)}" />
         </label>
@@ -1668,6 +1739,7 @@ function renderContacts() {
         <p><span class="score-pill contact-score">${lead.score}</span></p>
         <p>${formatter.format(lead.value)}</p>
         <div class="contact-actions">
+          <button class="secondary-button" data-contact-profile="${lead.id}" type="button">Profile</button>
           <button class="secondary-button" data-contact-select="${lead.id}" type="button">View</button>
           <button class="secondary-button" data-contact-task="${lead.id}" type="button">Task</button>
           <button class="secondary-button" data-contact-outcome="${lead.id}" data-outcome="${lead.stage === "won" ? "reopen" : "won"}" type="button">${lead.stage === "won" ? "Reopen" : "Won"}</button>
@@ -1688,6 +1760,13 @@ function renderContacts() {
         selectedContactIds.delete(checkbox.dataset.contactCheckbox);
       }
       updateBulkContactTaskButton();
+    });
+  });
+
+  contactTable.querySelectorAll("[data-contact-profile]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.selectedLeadId = button.dataset.contactProfile;
+      renderContacts();
     });
   });
 
@@ -1721,6 +1800,104 @@ function renderContacts() {
     button.addEventListener("click", async () => {
       await moveLead(button.dataset.contactNext, 1);
     });
+  });
+}
+
+function renderContactProfile(leads) {
+  const lead =
+    leads.find((item) => item.id === state.selectedLeadId) ||
+    leads[0] ||
+    state.leads.find((item) => item.id === state.selectedLeadId);
+
+  if (!lead) {
+    contactProfileContent.innerHTML = "<p class=\"empty-state\">Add or import contacts to build an account profile.</p>";
+    return;
+  }
+
+  const tasks = leadTasks(lead);
+  const openTasks = tasks.filter((task) => !task.done);
+  const lastActivity = latestLeadActivity(lead.id);
+
+  contactProfileContent.innerHTML = `
+    <div class="contact-profile-hero">
+      <div>
+        <p class="eyebrow">${escapeHtml(stageLabel(lead.stage))} account</p>
+        <h3>${escapeHtml(lead.company)}</h3>
+        <span>${escapeHtml(lead.name)} · ${escapeHtml(lead.source)}</span>
+      </div>
+      <strong>${formatter.format(lead.value)}</strong>
+    </div>
+    <div class="contact-profile-stats">
+      <article>
+        <span>Score</span>
+        <strong>${lead.score}/100</strong>
+      </article>
+      <article>
+        <span>Open tasks</span>
+        <strong>${openTasks.length}</strong>
+      </article>
+      <article>
+        <span>Weighted</span>
+        <strong>${formatter.format(weightedLeadValue(lead))}</strong>
+      </article>
+      <article>
+        <span>Last touch</span>
+        <strong>${lastActivity ? formatShortDate(lastActivity.createdAt) : "None"}</strong>
+      </article>
+    </div>
+    <form class="contact-next-form" data-contact-next-form="${lead.id}">
+      <label>
+        Next action
+        <input data-contact-next-input="${lead.id}" type="text" value="${escapeHtml(lead.nextAction)}" required />
+      </label>
+      <button class="secondary-button" type="submit">Save next action</button>
+    </form>
+    <form class="note-form contact-note-form" data-contact-note-form="${lead.id}">
+      <textarea data-contact-note-input="${lead.id}" rows="3" placeholder="Log a call, objection, or update"></textarea>
+      <button class="primary-button" type="submit">Log note</button>
+    </form>
+    <div class="contact-profile-actions">
+      <button class="secondary-button" data-profile-pipeline="${lead.id}" type="button">Open pipeline</button>
+      <button class="secondary-button" data-profile-detail="${lead.id}" type="button">Open details</button>
+      <button class="primary-button" data-profile-task="${lead.id}" type="button">Add follow-up</button>
+    </div>
+    <section class="contact-profile-section">
+      <p class="eyebrow">Open work</p>
+      ${renderLeadTaskList(lead)}
+    </section>
+    <section class="contact-profile-section">
+      <p class="eyebrow">Timeline</p>
+      <div class="activity-timeline contact-profile-timeline">
+        ${renderLeadActivities(lead.id)}
+      </div>
+    </section>
+    <p class="profile-message" id="contactProfileMessage" role="status"></p>
+  `;
+
+  contactProfileContent.querySelector("[data-contact-next-form]")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const input = contactProfileContent.querySelector(`[data-contact-next-input="${lead.id}"]`);
+    await updateLeadNextAction(lead.id, input.value);
+  });
+
+  contactProfileContent.querySelector("[data-contact-note-form]")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const input = contactProfileContent.querySelector(`[data-contact-note-input="${lead.id}"]`);
+    await addLeadNote(lead.id, input.value);
+  });
+
+  contactProfileContent.querySelector("[data-profile-pipeline]")?.addEventListener("click", () => {
+    state.selectedLeadId = lead.id;
+    setActivePage("pipeline");
+    render();
+  });
+
+  contactProfileContent.querySelector("[data-profile-detail]")?.addEventListener("click", () => {
+    openLeadDetailModal(lead.id);
+  });
+
+  contactProfileContent.querySelector("[data-profile-task]")?.addEventListener("click", async () => {
+    await createFollowUpFromLead(lead.id);
   });
 }
 
@@ -2182,10 +2359,15 @@ function revenueTarget() {
 }
 
 function workspaceSetupSettings() {
+  const account = accountState();
   const fallback = {
     name: state.workspaceName || "Personal workspace",
     type: "Personal",
     goal: "Close more follow-ups",
+    ownerEmail: currentUser?.email || account.members[0]?.email || "owner@closepilot.local",
+    industry: "Local services",
+    timezone: "America/Chicago",
+    defaultSource: "Website",
   };
   const saved = localStorage.getItem(workspaceSetupKey());
   if (!saved) return fallback;
@@ -2197,22 +2379,38 @@ function workspaceSetupSettings() {
 }
 
 async function saveWorkspaceSetup() {
+  const existing = workspaceSetupSettings();
   const settings = {
+    ...existing,
     name: setupBusinessName.value.trim() || "Personal workspace",
     type: setupWorkspaceType.value,
     goal: setupSalesGoal.value,
   };
+  await persistWorkspaceSetup(settings);
+}
+
+async function persistWorkspaceSetup(settings) {
   localStorage.setItem(workspaceSetupKey(), JSON.stringify(settings));
   await store.updateWorkspaceSettings(settings);
 }
 
 async function saveAdminWorkspaceSettings(event) {
   event.preventDefault();
-  setupBusinessName.value = adminBusinessName.value.trim() || "Personal workspace";
-  setupWorkspaceType.value = adminWorkspaceType.value;
-  setupSalesGoal.value = adminSalesGoal.value;
-  await saveWorkspaceSetup();
-  await logAuditEvent("Workspace updated", `${setupBusinessName.value} settings saved.`);
+  const settings = {
+    ...workspaceSetupSettings(),
+    name: adminBusinessName.value.trim() || "Personal workspace",
+    type: adminWorkspaceType.value,
+    goal: adminSalesGoal.value,
+    ownerEmail: adminOwnerEmail.value.trim() || "owner@closepilot.local",
+    industry: adminIndustry.value.trim() || "Local services",
+    timezone: adminTimezone.value,
+    defaultSource: adminDefaultSource.value.trim() || "Website",
+  };
+  setupBusinessName.value = settings.name;
+  setupWorkspaceType.value = settings.type;
+  setupSalesGoal.value = settings.goal;
+  await persistWorkspaceSetup(settings);
+  await logAuditEvent("Workspace updated", `${settings.name} profile saved for ${settings.industry}.`);
   adminMessage.textContent = "Workspace settings saved.";
   await reloadState();
 }
@@ -2479,6 +2677,25 @@ async function addLeadNote(leadId, note) {
   await reloadState();
 }
 
+async function updateLeadNextAction(leadId, nextAction) {
+  const text = nextAction.trim();
+  const lead = state.leads.find((item) => item.id === leadId);
+  if (!lead || !text) return;
+
+  await store.updateLead({
+    ...lead,
+    nextAction: text,
+    score: clampScore(lead.score + 2),
+  });
+  await store.createActivity({
+    leadId,
+    type: "edited",
+    message: `Next action updated: ${text}`,
+  });
+  state.selectedLeadId = leadId;
+  await reloadState();
+}
+
 async function deleteLead(leadId) {
   const lead = state.leads.find((item) => item.id === leadId);
   if (lead) {
@@ -2574,7 +2791,7 @@ async function restoreWorkspaceBackup(backup) {
   setupBusinessName.value = backup.workspace.name;
   setupWorkspaceType.value = backup.workspace.type;
   setupSalesGoal.value = backup.workspace.goal;
-  await saveWorkspaceSetup();
+  await persistWorkspaceSetup(backup.workspace);
 
   const leadIdMap = new Map();
   for (const lead of backup.leads) {
@@ -2631,6 +2848,10 @@ function normalizeWorkspaceBackup(payload) {
       name: String(workspace.name || state.workspaceName || "Personal workspace").trim() || "Personal workspace",
       type: workspace.type === "Team" ? "Team" : "Personal",
       goal: String(workspace.goal || "Close more follow-ups").trim() || "Close more follow-ups",
+      ownerEmail: String(workspace.ownerEmail || "owner@closepilot.local").trim() || "owner@closepilot.local",
+      industry: String(workspace.industry || "Local services").trim() || "Local services",
+      timezone: String(workspace.timezone || "America/Chicago"),
+      defaultSource: String(workspace.defaultSource || "Website").trim() || "Website",
     },
     leads,
     tasks,
@@ -3638,6 +3859,16 @@ function formatShortDate(value) {
     month: "short",
     day: "numeric",
   }).format(new Date(value));
+}
+
+function timezoneLabel(value) {
+  const labels = {
+    "America/Chicago": "Central",
+    "America/New_York": "Eastern",
+    "America/Denver": "Mountain",
+    "America/Los_Angeles": "Pacific",
+  };
+  return labels[value] || value || "Central";
 }
 
 function activityTime(activity) {
