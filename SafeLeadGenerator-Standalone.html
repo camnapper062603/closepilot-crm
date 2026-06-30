@@ -435,6 +435,50 @@
 
         <section class="panel">
           <div class="panel-header">
+            <h2>Business Enrichment</h2>
+            <span class="pill info">API proxy</span>
+          </div>
+          <div class="controls">
+            <label>
+              Backend URL
+              <input id="enrichmentBackendUrl" type="url" placeholder="https://your-backend.vercel.app/api/business-enrichment" />
+            </label>
+            <label>
+              Backend access token
+              <input id="enrichmentClientToken" type="password" placeholder="Optional team token" />
+            </label>
+            <label>
+              Providers
+              <select id="enrichmentProviders">
+                <option value="apollo,hunter">Apollo + Hunter</option>
+                <option value="hunter">Hunter only</option>
+                <option value="apollo">Apollo only</option>
+              </select>
+            </label>
+            <label>
+              Domains
+              <textarea id="enrichmentDomains" placeholder="example.com&#10;roofingcompany.com"></textarea>
+            </label>
+            <label>
+              Titles
+              <textarea id="enrichmentTitles">owner, founder, president, operations manager, property manager, facilities manager</textarea>
+            </label>
+            <label>
+              Locations
+              <input id="enrichmentLocations" placeholder="Houston, TX" />
+            </label>
+            <label>
+              Max results
+              <input id="enrichmentLimit" type="number" min="1" max="50" step="1" value="20" />
+            </label>
+          </div>
+          <div class="actions">
+            <button class="button secondary" id="runBusinessEnrichmentButton" type="button">Run Apollo + Hunter</button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
             <h2>CSV Templates</h2>
             <span class="pill info">Start here</span>
           </div>
@@ -679,6 +723,13 @@ Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,512-555-0184,,maya@example.com,
         propertySourceType: document.querySelector("#propertySourceType"),
         propertySourceUrl: document.querySelector("#propertySourceUrl"),
         propertySourceLimit: document.querySelector("#propertySourceLimit"),
+        enrichmentBackendUrl: document.querySelector("#enrichmentBackendUrl"),
+        enrichmentClientToken: document.querySelector("#enrichmentClientToken"),
+        enrichmentProviders: document.querySelector("#enrichmentProviders"),
+        enrichmentDomains: document.querySelector("#enrichmentDomains"),
+        enrichmentTitles: document.querySelector("#enrichmentTitles"),
+        enrichmentLocations: document.querySelector("#enrichmentLocations"),
+        enrichmentLimit: document.querySelector("#enrichmentLimit"),
         confidenceInput: document.querySelector("#confidenceInput"),
         channelSelect: document.querySelector("#channelSelect"),
         recencySelect: document.querySelector("#recencySelect"),
@@ -727,6 +778,7 @@ Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,512-555-0184,,maya@example.com,
       document.querySelector("#clearButton").addEventListener("click", clearAll);
       document.querySelector("#useHcadButton").addEventListener("click", useHcadSource);
       document.querySelector("#pullPropertySourceButton").addEventListener("click", () => pullPropertyRecords().catch(showError));
+      document.querySelector("#runBusinessEnrichmentButton").addEventListener("click", () => runBusinessEnrichment().catch(showError));
       document.querySelectorAll("[data-template]").forEach((button) => {
         button.addEventListener("click", () => downloadTemplate(button.dataset.template));
       });
@@ -787,6 +839,94 @@ Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,512-555-0184,,maya@example.com,
         els.propertySourceUrl.value = preset.url;
         els.propertySourceLimit.value = preset.limit;
         setStatus("Harris County HCAD property source loaded. Click Pull property records when ready.");
+      }
+
+      async function runBusinessEnrichment() {
+        const backendUrl = els.enrichmentBackendUrl.value.trim() || "/api/business-enrichment";
+        const providers = splitLines(els.enrichmentProviders.value);
+        const domains = splitLines(els.enrichmentDomains.value).map((domain) => domain.replace(/^https?:\/\//i, "").replace(/^www\./i, "").split("/")[0]);
+        const titles = splitLines(els.enrichmentTitles.value);
+        const locations = splitLines(els.enrichmentLocations.value);
+        const limit = Math.max(1, Math.min(50, Number(els.enrichmentLimit.value || 20)));
+
+        if (!backendUrl) throw new Error("Enter the backend enrichment URL.");
+        if (!domains.length && !titles.length) throw new Error("Enter business domains or titles before enrichment.");
+
+        setStatus("Running Apollo/Hunter enrichment through backend proxy...");
+        const headers = { "content-type": "application/json" };
+        const clientToken = els.enrichmentClientToken.value.trim();
+        if (clientToken) headers.authorization = `Bearer ${clientToken}`;
+
+        const response = await fetch(backendUrl, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            providers,
+            domains,
+            titles,
+            locations,
+            limit,
+            useHunterForApolloDomains: true,
+          }),
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || `Enrichment backend failed with ${response.status}.`);
+
+        const imported = importBusinessEnrichmentRecords(data.records || []);
+        const warningText = data.warnings && data.warnings.length ? ` Warnings: ${data.warnings.join(" ")}` : "";
+        finishImport(`${imported.contacts} business contact(s) imported from Apollo/Hunter.${warningText}`);
+      }
+
+      function importBusinessEnrichmentRecords(records) {
+        if (!records.length) throw new Error("Apollo/Hunter returned no enrichment records.");
+
+        const propertyRows = [];
+        const contactRows = [];
+
+        records.forEach((record) => {
+          const organization = cleanText(record.organizationName || record.domain || record.personName || "Business Prospect");
+          const domain = cleanText(record.domain || "");
+          const location = cleanText(record.address || domain || organization);
+          const source = cleanText(
+            `${record.source || record.provider || "Business enrichment"}${record.personName ? ` - ${record.personName}` : ""}${record.title ? `, ${record.title}` : ""}`,
+          );
+
+          propertyRows.push({
+            owner_name: organization,
+            property_address: location,
+            property_city: cleanText(record.city || ""),
+            property_state: cleanText(record.state || ""),
+            property_zip: "",
+            mailing_address: location,
+            parcel_id: domain ? `business:${domain}` : `business:${normalizeToken(organization)}`,
+            county: "",
+          });
+
+          contactRows.push({
+            owner_name: organization,
+            property_address: location,
+            phone: record.phone || "",
+            email: record.email || "",
+            confidence: record.confidence || 70,
+            source,
+          });
+        });
+
+        const existingProperties = state.properties.map(propertyToRawRow);
+        const existingContacts = state.contacts.map(contactToRawRow);
+        const properties = setProperties(existingProperties.concat(propertyRows));
+        const contacts = setContacts(existingContacts.concat(contactRows));
+
+        if (!contacts) throw new Error("Apollo/Hunter records were imported, but none had a usable email or phone.");
+        return { properties, contacts };
+      }
+
+      function splitLines(value) {
+        return String(value || "")
+          .split(/[\n,]+/)
+          .map((part) => cleanText(part))
+          .filter(Boolean);
       }
 
       async function pullPropertyRecords() {
@@ -1303,6 +1443,36 @@ Jordan Lee,91 Pine Acre Rd,919-555-0102,jordan@example.com,74,Licensed enrichmen
         return `contact|${record.phone || "no-phone"}|${record.email || "no-email"}|${normalizeToken(record.ownerName)}|${normalizeToken(
           record.mailingAddress || record.propertyAddress,
         )}`;
+      }
+
+      function propertyToRawRow(property) {
+        return {
+          owner_name: property.ownerName,
+          property_address: property.propertyAddress,
+          property_city: property.propertyCity,
+          property_state: property.propertyState,
+          property_zip: property.propertyZip,
+          mailing_address: property.mailingAddress,
+          mailing_city: property.mailingCity,
+          mailing_state: property.mailingState,
+          mailing_zip: property.mailingZip,
+          assessed_value: property.assessedValue,
+          acreage: property.acreage,
+          county: property.county,
+          parcel_id: property.parcelId,
+        };
+      }
+
+      function contactToRawRow(contact) {
+        return {
+          owner_name: contact.ownerName,
+          mailing_address: contact.mailingAddress,
+          property_address: contact.propertyAddress,
+          phone: contact.phone,
+          email: contact.email,
+          confidence: contact.confidence,
+          source: contact.source,
+        };
       }
 
       function cleanText(value) {

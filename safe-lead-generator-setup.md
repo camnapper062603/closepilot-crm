@@ -183,6 +183,55 @@ internal-opt-outs.csv
 
 After those files are imported, export `safe-leads.csv`. If DNC files are missing or stale, export only `lead-candidates-needs-scrub.csv`.
 
+## Apollo + Hunter Business Enrichment
+
+The public HTML does not store Apollo or Hunter API keys. Keys must live in a backend environment.
+
+Backend endpoint added:
+
+```text
+/api/business-enrichment
+```
+
+Required backend environment variables:
+
+```text
+APOLLO_API_KEY=your_apollo_key
+HUNTER_API_KEY=your_hunter_key
+ENRICHMENT_CLIENT_TOKEN=your_team_access_token
+ENRICHMENT_ALLOWED_ORIGIN=https://camnapper062603.github.io
+```
+
+How it works:
+
+1. The app sends business domains, titles, and locations to `/api/business-enrichment`.
+2. The backend calls Apollo People Search for business people/company context.
+3. The backend calls Hunter Domain Search for business emails.
+4. The public HTML imports returned records as business lead candidates.
+5. Those leads are marked `needs-scrub` until DNC/state/internal suppression checks are loaded.
+
+Frontend workflow:
+
+1. Deploy the backend somewhere that supports Node API routes, such as Vercel.
+2. Add the environment variables above in that backend host.
+3. Open the live app.
+4. Paste your backend endpoint into `Backend URL`, for example:
+
+```text
+https://your-project.vercel.app/api/business-enrichment
+```
+
+5. Enter the `Backend access token`.
+6. Enter business domains, titles, and locations.
+7. Click `Run Apollo + Hunter`.
+
+Notes:
+
+- This uses official Apollo/Hunter APIs, not scraping.
+- Apollo API access depends on your Apollo plan.
+- Hunter credits are used for domain/email lookups.
+- Keep all Apollo/Hunter results in `needs-scrub` status until DNC and consent checks are complete.
+
 ## Pulling Property Records
 
 The app can pull property records directly from authorized open-data sources when the source allows browser access.

@@ -2,6 +2,7 @@ import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
+import { handleBusinessEnrichmentRequest } from "./business-enrichment-service.js";
 
 const root = fileURLToPath(new URL(".", import.meta.url));
 const host = process.env.HOST || "127.0.0.1";
@@ -19,6 +20,12 @@ const types = {
 
 createServer((request, response) => {
   const url = new URL(request.url || "/", `http://${request.headers.host}`);
+
+  if (url.pathname === "/api/business-enrichment") {
+    handleBusinessEnrichmentRequest(request, response);
+    return;
+  }
+
   const requestedPath = normalize(decodeURIComponent(url.pathname)).replace(/^(\.\.[/\\])+/, "");
   let filePath = join(root, requestedPath);
 
