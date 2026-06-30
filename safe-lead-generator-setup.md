@@ -6,6 +6,14 @@ It does not scrape restricted registries. Use official exports, licensed provide
 
 ## Open The App
 
+Standalone one-file version:
+
+```text
+SafeLeadGenerator-Standalone.html
+```
+
+You can open that file directly in Chrome. It has built-in template downloads and does not need the template folder.
+
 If the local server is running:
 
 ```text
@@ -19,6 +27,40 @@ npm start
 ```
 
 Then open the same URL.
+
+For the standalone file on the local server:
+
+```text
+http://127.0.0.1:4173/SafeLeadGenerator-Standalone.html
+```
+
+## Share With 100+ People
+
+Use `SafeLeadGenerator-Standalone.html` for the first team rollout.
+
+The app runs in each person's browser. That means:
+
+- no one needs Node installed
+- everyone can use the same hosted URL
+- uploaded CSVs stay in that user's browser during the session
+- exports download to that user's computer
+- there are no shared accounts, shared history, or central database in this version
+
+To turn on GitHub Pages without Netlify:
+
+1. Open the GitHub repo.
+2. Go to `Settings > Pages`.
+3. Under `Build and deployment`, set `Source` to `Deploy from a branch`.
+4. Set `Branch` to `main`.
+5. Set the folder to `/root`.
+6. Click `Save`.
+7. Wait a minute or two, then open:
+
+```text
+https://camnapper062603.github.io/closepilot-crm/SafeLeadGenerator-Standalone.html
+```
+
+For true SaaS access with employee/user accounts, saved imports, team permissions, audit history, and shared exports, the next build should use Supabase auth + database + storage instead of a pure HTML file.
 
 ## Automation Mode
 
