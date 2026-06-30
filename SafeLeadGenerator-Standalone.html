@@ -548,6 +548,7 @@
             <button class="button primary" id="generateButton" type="button">Generate safe leads</button>
             <button class="button secondary" id="generateResidentialButton" type="button">Generate residential mail leads</button>
             <button class="button secondary" id="exportLeadButton" type="button">Export leads</button>
+            <button class="button secondary" id="exportMatchReviewButton" type="button">Export match review</button>
             <button class="button secondary" id="exportAuditButton" type="button">Export audit</button>
             <button class="button danger" id="clearButton" type="button">Clear</button>
           </div>
@@ -603,6 +604,12 @@
               <h3>Free residential path</h3>
               <p class="muted">
                 Pull public property records, then use residential mail leads for postal outreach. Phone/email rows still require licensed enrichment and DNC checks.
+              </p>
+            </div>
+            <div class="status-card">
+              <h3>Matching engine</h3>
+              <p class="muted">
+                Licensed enrichment rows are matched by parcel ID, owner name, address, state, zip, and provider confidence. Export the match review for audit.
               </p>
             </div>
             <div class="status-card">
@@ -690,6 +697,7 @@
         },
         leads: [],
         audit: [],
+        matchReview: [],
         scrubStats: {
           propertyDuplicates: 0,
           contactDuplicates: 0,
@@ -706,8 +714,8 @@ Maya Johnson,1840 Northstar Dr,Austin,TX,78731,1840 Northstar Dr,Austin,TX,78731
         },
         contact: {
           filename: "contact-enrichment-template.csv",
-          rows: `owner_name,mailing_address,property_address,phone,phone2,email,email2,confidence,source
-Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,512-555-0184,,maya@example.com,,94,Licensed enrichment upload`,
+          rows: `owner_name,mailing_address,property_address,mailing_zip,property_zip,parcel_id,phone,phone2,email,email2,confidence,source
+Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,78731,78731,TX-1001,512-555-0184,,maya@example.com,,94,Licensed enrichment upload`,
         },
         federalDnc: {
           filename: "federal-dnc-template.csv",
@@ -796,6 +804,7 @@ Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,512-555-0184,,maya@example.com,
       document.querySelector("#generateButton").addEventListener("click", () => generateLeads());
       document.querySelector("#generateResidentialButton").addEventListener("click", generateResidentialMailLeads);
       document.querySelector("#exportLeadButton").addEventListener("click", () => exportCsv(leadExportFilename(), state.leads.map(leadToCsvRow)));
+      document.querySelector("#exportMatchReviewButton").addEventListener("click", () => exportCsv("match-review.csv", state.matchReview.map(matchReviewToCsvRow)));
       document.querySelector("#exportAuditButton").addEventListener("click", () => exportCsv("suppression-audit.csv", state.audit.map(auditToCsvRow)));
       document.querySelector("#clearButton").addEventListener("click", clearAll);
       document.querySelector("#useHcadButton").addEventListener("click", useHcadSource);
@@ -1170,11 +1179,11 @@ Caleb Stone,49 Finch Ct,Denver,CO,80210,PO Box 910,Denver,CO,80201,2023-11-18,61
 Nia Brooks,720 Harbor View Ln,Tampa,FL,33602,720 Harbor View Ln,Tampa,FL,33602,2025-01-04,390000,0.12,Hillsborough,FL-8821
 Jordan Lee,91 Pine Acre Rd,Raleigh,NC,27601,91 Pine Acre Rd,Raleigh,NC,27601,2022-08-14,335000,0.44,Wake,NC-5531`));
 
-        setContacts(parseCsv(`owner_name,mailing_address,phone,email,confidence,source
-Maya Johnson,1840 Northstar Dr,512-555-0184,maya@example.com,94,Licensed enrichment upload
-Caleb Stone,PO Box 910,303-555-0149,caleb@example.com,86,Licensed enrichment upload
-Nia Brooks,720 Harbor View Ln,813-555-0172,nia@example.com,92,Licensed enrichment upload
-Jordan Lee,91 Pine Acre Rd,919-555-0102,jordan@example.com,74,Licensed enrichment upload`));
+        setContacts(parseCsv(`owner_name,mailing_address,property_address,mailing_zip,property_zip,parcel_id,phone,email,confidence,source
+Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,78731,78731,TX-1001,512-555-0184,maya@example.com,94,Licensed enrichment upload
+Caleb Stone,PO Box 910,49 Finch Ct,80201,80210,CO-2042,303-555-0149,caleb@example.com,86,Licensed enrichment upload
+Nia Brooks,720 Harbor View Ln,720 Harbor View Ln,33602,33602,FL-8821,813-555-0172,nia@example.com,92,Licensed enrichment upload
+Jordan Lee,91 Pine Acre Rd,91 Pine Acre Rd,27601,27601,NC-5531,919-555-0102,jordan@example.com,74,Licensed enrichment upload`));
 
         state.federalDnc = new Set(["3035550149"]);
         state.stateDnc = new Map([["8135550172", new Set(["FL"])]]);
@@ -1198,6 +1207,7 @@ Jordan Lee,91 Pine Acre Rd,919-555-0102,jordan@example.com,74,Licensed enrichmen
         const phoneMayExport = allowedChannel === "any" || allowedChannel === "phone";
         const leads = [];
         const audit = [];
+        const matchReview = [];
 
         if (!state.properties.length) {
           showError(new Error("Import deed/property records before generating leads."));
@@ -1217,8 +1227,17 @@ Jordan Lee,91 Pine Acre Rd,919-555-0102,jordan@example.com,74,Licensed enrichmen
         }
 
         state.properties.forEach((property) => {
-          const matches = findContactsForProperty(property).filter((contact) => contact.confidence >= minimumConfidence);
+          const possibleMatches = findContactsForProperty(property);
+          const matches = possibleMatches.filter((contact) => contact.overallConfidence >= minimumConfidence);
           const contacts = matches.length ? matches : [{ ownerName: property.ownerName, phone: "", email: "", confidence: 0, source: "No enrichment match" }];
+
+          if (possibleMatches.length) {
+            possibleMatches.slice(0, 5).forEach((contact) => {
+              matchReview.push(makeMatchReviewRow(property, contact, matches.includes(contact) ? "matched" : "below threshold"));
+            });
+          } else {
+            matchReview.push(makeMatchReviewRow(property, null, "no match"));
+          }
 
           contacts.forEach((contact) => {
             const phoneCheck = checkPhoneCompliance(contact.phone, property.propertyState);
@@ -1252,7 +1271,9 @@ Jordan Lee,91 Pine Acre Rd,919-555-0102,jordan@example.com,74,Licensed enrichmen
               mailingAddress: compactAddress(property.mailingAddress, property.mailingCity, property.mailingState, property.mailingZip),
               phone: candidateMode ? formatPhone(contact.phone) : phoneCheck.allowed ? formatPhone(contact.phone) : "",
               email: candidateMode ? contact.email : emailCheck.allowed ? contact.email : "",
-              confidence: contact.confidence,
+              confidence: contact.overallConfidence ?? contact.confidence,
+              matchConfidence: contact.matchConfidence || 0,
+              matchReason: contact.matchReason || "No enrichment match",
               source: contact.source,
               channels,
               score: scoreLead(property, contact, channels),
@@ -1265,6 +1286,7 @@ Jordan Lee,91 Pine Acre Rd,919-555-0102,jordan@example.com,74,Licensed enrichmen
 
         state.leads = dedupeLeads(leads).sort((a, b) => b.score - a.score);
         state.audit = audit;
+        state.matchReview = matchReview;
         const message = candidateMode
           ? `${state.leads.length} lead candidate row(s) generated. Do not contact until DNC/state/internal scrub is complete.`
           : `${state.leads.length} safe lead row(s) generated after suppression checks.`;
@@ -1299,6 +1321,7 @@ Jordan Lee,91 Pine Acre Rd,919-555-0102,jordan@example.com,74,Licensed enrichmen
 
         state.leads = dedupeLeads(leads).sort((a, b) => b.score - a.score);
         state.audit = [];
+        state.matchReview = [];
         setStatus(`${state.leads.length} residential mail lead row(s) generated from property records. Use mail first, or enrich phone/email and scrub before outreach.`);
         render();
         return true;
@@ -1331,17 +1354,88 @@ Jordan Lee,91 Pine Acre Rd,919-555-0102,jordan@example.com,74,Licensed enrichmen
       }
 
       function findContactsForProperty(property) {
-        const ownerToken = normalizeToken(property.ownerName);
-        const mailingToken = normalizeToken(property.mailingAddress);
-        const propertyToken = normalizeToken(property.propertyAddress);
+        return state.contacts
+          .map((contact) => scoreContactMatch(property, contact))
+          .filter((contact) => contact.matchConfidence >= 35)
+          .sort((a, b) => b.overallConfidence - a.overallConfidence || b.matchConfidence - a.matchConfidence);
+      }
 
-        return state.contacts.filter((contact) => {
-          const contactOwner = normalizeToken(contact.ownerName);
-          const contactAddress = normalizeToken(contact.mailingAddress || contact.propertyAddress || contact.address);
-          const ownerMatch = ownerToken && contactOwner && (ownerToken.includes(contactOwner) || contactOwner.includes(ownerToken));
-          const addressMatch = contactAddress && (contactAddress === mailingToken || contactAddress === propertyToken);
-          return ownerMatch || addressMatch;
-        });
+      function scoreContactMatch(property, contact) {
+        const reasons = [];
+        let matchConfidence = 0;
+        const propertyParcel = normalizeToken(property.parcelId);
+        const contactParcel = normalizeToken(contact.parcelId);
+        const ownerScore = scoreOwnerMatch(property.ownerName, contact.ownerName);
+        const addressScore = scoreAddressMatch(property, contact);
+
+        if (propertyParcel && contactParcel && propertyParcel === contactParcel) {
+          matchConfidence += 80;
+          reasons.push("parcel ID match");
+        }
+        if (addressScore.score) {
+          matchConfidence += addressScore.score;
+          reasons.push(addressScore.reason);
+        }
+        if (ownerScore.score) {
+          matchConfidence += ownerScore.score;
+          reasons.push(ownerScore.reason);
+        }
+        if (property.propertyZip && contact.propertyZip && property.propertyZip === contact.propertyZip) {
+          matchConfidence += 8;
+          reasons.push("property zip match");
+        } else if (property.mailingZip && contact.mailingZip && property.mailingZip === contact.mailingZip) {
+          matchConfidence += 8;
+          reasons.push("mailing zip match");
+        }
+        if (property.propertyState && contact.propertyState && property.propertyState === contact.propertyState) {
+          matchConfidence += 4;
+          reasons.push("state match");
+        }
+
+        matchConfidence = Math.min(100, Math.round(matchConfidence));
+        const providerConfidence = normalizeConfidence(contact.confidence);
+        const overallConfidence = providerConfidence
+          ? Math.round(providerConfidence * 0.62 + matchConfidence * 0.38)
+          : matchConfidence;
+
+        return {
+          ...contact,
+          matchConfidence,
+          overallConfidence,
+          matchReason: reasons.join("; ") || "weak match",
+        };
+      }
+
+      function scoreAddressMatch(property, contact) {
+        const propertyAddresses = [property.propertyAddress, property.mailingAddress].filter(Boolean);
+        const contactAddresses = [contact.propertyAddress, contact.mailingAddress, contact.address].filter(Boolean);
+
+        for (const propertyAddress of propertyAddresses) {
+          for (const contactAddress of contactAddresses) {
+            const propertyKey = addressKey(propertyAddress);
+            const contactKey = addressKey(contactAddress);
+            if (!propertyKey || !contactKey) continue;
+            if (propertyKey === contactKey) return { score: 52, reason: "exact address match" };
+            if (addressStem(propertyAddress) === addressStem(contactAddress)) return { score: 42, reason: "street address match" };
+          }
+        }
+
+        return { score: 0, reason: "" };
+      }
+
+      function scoreOwnerMatch(propertyOwner, contactOwner) {
+        const propertyToken = normalizeToken(propertyOwner);
+        const contactToken = normalizeToken(contactOwner);
+        if (!propertyToken || !contactToken) return { score: 0, reason: "" };
+        if (propertyToken === contactToken) return { score: 36, reason: "exact owner name match" };
+        if (propertyToken.includes(contactToken) || contactToken.includes(propertyToken)) return { score: 28, reason: "owner name contains match" };
+
+        const propertyParts = nameParts(propertyOwner);
+        const contactParts = nameParts(contactOwner);
+        const shared = propertyParts.filter((part) => contactParts.includes(part));
+        if (shared.length >= 2) return { score: 24, reason: "multiple owner name tokens match" };
+        if (shared.length === 1 && shared[0].length >= 4) return { score: 16, reason: "owner name token match" };
+        return { score: 0, reason: "" };
       }
 
       function checkPhoneCompliance(phone, leadState) {
@@ -1365,7 +1459,7 @@ Jordan Lee,91 Pine Acre Rd,919-555-0102,jordan@example.com,74,Licensed enrichmen
       }
 
       function scoreLead(property, contact, channels) {
-        let score = Number(contact.confidence || 0);
+        let score = Number(contact.overallConfidence ?? contact.confidence ?? 0);
         const value = Number(String(property.assessedValue || "").replace(/[^0-9.]/g, ""));
         if (value >= 300000) score += 8;
         if (property.ownerOccupied) score += 6;
@@ -1382,6 +1476,26 @@ Jordan Lee,91 Pine Acre Rd,919-555-0102,jordan@example.com,74,Licensed enrichmen
         if (channels.includes("postal")) pieces.push("postal allowed");
         if (!phoneCheck.allowed && phoneCheck.reason !== "No phone") pieces.push(phoneCheck.reason);
         return pieces.join("; ");
+      }
+
+      function makeMatchReviewRow(property, contact, status) {
+        return {
+          ownerName: property.ownerName,
+          propertyAddress: compactAddress(property.propertyAddress, property.propertyCity, property.propertyState, property.propertyZip),
+          mailingAddress: compactAddress(property.mailingAddress, property.mailingCity, property.mailingState, property.mailingZip),
+          contactOwnerName: contact ? contact.ownerName : "",
+          contactAddress: contact ? contact.mailingAddress || contact.propertyAddress || contact.address || "" : "",
+          phone: contact ? formatPhone(contact.phone) : "",
+          email: contact ? contact.email : "",
+          providerConfidence: contact ? contact.confidence : 0,
+          matchConfidence: contact ? contact.matchConfidence : 0,
+          overallConfidence: contact ? contact.overallConfidence : 0,
+          matchReason: contact ? contact.matchReason : "No enrichment match",
+          status,
+          source: contact ? contact.source : "",
+          county: property.county,
+          parcelId: property.parcelId,
+        };
       }
 
       function normalizeProperty(row) {
@@ -1445,9 +1559,19 @@ Jordan Lee,91 Pine Acre Rd,919-555-0102,jordan@example.com,74,Licensed enrichmen
         ].filter(Boolean);
         const emails = [readField(row, ["email", "email1", "email_address"]), readField(row, ["email2"])].filter(Boolean);
         const base = {
-          ownerName: cleanName(readField(row, ["owner_name", "name", "full_name"])),
-          mailingAddress: cleanAddress(readField(row, ["mailing_address", "address", "owner_address"])),
-          propertyAddress: cleanAddress(readField(row, ["property_address", "site_address"])),
+          ownerName: cleanName(
+            readField(row, ["owner_name", "name", "full_name", "person_name"]) ||
+              [readField(row, ["first_name", "firstname"]), readField(row, ["last_name", "lastname"])].filter(Boolean).join(" "),
+          ),
+          mailingAddress: cleanAddress(readField(row, ["mailing_address", "address", "owner_address", "mail_address"])),
+          propertyAddress: cleanAddress(readField(row, ["property_address", "site_address", "situs_address"])),
+          mailingCity: cleanText(readField(row, ["mailing_city", "mail_city", "owner_city"])),
+          mailingState: normalizeState(readField(row, ["mailing_state", "mail_state", "owner_state"])),
+          mailingZip: cleanZip(readField(row, ["mailing_zip", "mail_zip", "owner_zip"])),
+          propertyCity: cleanText(readField(row, ["property_city", "site_city", "situs_city"])),
+          propertyState: normalizeState(readField(row, ["property_state", "site_state", "situs_state", "state"])),
+          propertyZip: cleanZip(readField(row, ["property_zip", "site_zip", "situs_zip", "zip", "zipcode"])),
+          parcelId: cleanText(readField(row, ["parcel_id", "parcel", "parcel_number", "apn", "pin", "folio", "acct_num"])),
           confidence: normalizeConfidence(readField(row, ["confidence", "match_confidence", "score"])),
           source: cleanText(readField(row, ["source", "provider", "vendor"])) || "Uploaded enrichment",
         };
@@ -1549,6 +1673,9 @@ Jordan Lee,91 Pine Acre Rd,919-555-0102,jordan@example.com,74,Licensed enrichmen
           owner_name: contact.ownerName,
           mailing_address: contact.mailingAddress,
           property_address: contact.propertyAddress,
+          mailing_zip: contact.mailingZip,
+          property_zip: contact.propertyZip,
+          parcel_id: contact.parcelId,
           phone: contact.phone,
           email: contact.email,
           confidence: contact.confidence,
@@ -1578,6 +1705,33 @@ Jordan Lee,91 Pine Acre Rd,919-555-0102,jordan@example.com,74,Licensed enrichmen
           .replace(/\bStreet\b/gi, "St")
           .replace(/\bTrail\b/gi, "Trl")
           .replace(/\bWay\b/gi, "Way");
+      }
+
+      function addressKey(value) {
+        return normalizeToken(addressStem(value));
+      }
+
+      function addressStem(value) {
+        return cleanAddress(value)
+          .toLowerCase()
+          .replace(/\b(apartment|apt|unit|suite|ste|number|no)\b\.?\s*[a-z0-9-]+$/i, "")
+          .replace(/#\s*[a-z0-9-]+$/i, "")
+          .replace(/[^a-z0-9\s]/g, " ")
+          .replace(/\b(north|n)\b/g, "n")
+          .replace(/\b(south|s)\b/g, "s")
+          .replace(/\b(east|e)\b/g, "e")
+          .replace(/\b(west|w)\b/g, "w")
+          .replace(/\s+/g, " ")
+          .trim();
+      }
+
+      function nameParts(value) {
+        const stopWords = new Set(["and", "or", "the", "trust", "trustee", "estate", "llc", "inc", "corp", "company", "co", "ltd", "lp", "llp"]);
+        return cleanName(value)
+          .toLowerCase()
+          .replace(/[^a-z0-9\s]/g, " ")
+          .split(/\s+/)
+          .filter((part) => part.length > 1 && !stopWords.has(part));
       }
 
       function cleanZip(value) {
@@ -1650,12 +1804,35 @@ Jordan Lee,91 Pine Acre Rd,919-555-0102,jordan@example.com,74,Licensed enrichmen
           mailing_address: lead.mailingAddress,
           phone: lead.phone,
           email: lead.email,
+          confidence: lead.confidence,
+          match_confidence: lead.matchConfidence || "",
+          match_reason: lead.matchReason || "",
           score: lead.score,
           channels: lead.channels.join("|"),
           compliance: lead.compliance,
           source: lead.source,
           county: lead.county,
           parcel_id: lead.parcelId,
+        };
+      }
+
+      function matchReviewToCsvRow(row) {
+        return {
+          owner_name: row.ownerName,
+          property_address: row.propertyAddress,
+          mailing_address: row.mailingAddress,
+          contact_owner_name: row.contactOwnerName,
+          contact_address: row.contactAddress,
+          phone: row.phone,
+          email: row.email,
+          provider_confidence: row.providerConfidence,
+          match_confidence: row.matchConfidence,
+          overall_confidence: row.overallConfidence,
+          match_reason: row.matchReason,
+          status: row.status,
+          source: row.source,
+          county: row.county,
+          parcel_id: row.parcelId,
         };
       }
 
@@ -1735,7 +1912,7 @@ Jordan Lee,91 Pine Acre Rd,919-555-0102,jordan@example.com,74,Licensed enrichmen
                     <td><strong>${escapeHtml(lead.ownerName)}</strong><small>${escapeHtml(lead.county || "")}</small></td>
                     <td>${escapeHtml(lead.propertyAddress)}<small>${escapeHtml(lead.mailingAddress || "")}</small></td>
                     <td>${escapeHtml(lead.phone || "No phone")}<small>${escapeHtml(lead.email || "No email")}</small></td>
-                    <td><span class="pill info">${lead.score}</span><small>${escapeHtml(lead.source || "")}</small></td>
+                    <td><span class="pill info">${lead.score}</span><small>${escapeHtml([lead.source, lead.matchReason].filter(Boolean).join(" | "))}</small></td>
                     <td>${lead.channels.map((channel) => `<span class="pill ${channel === "needs-scrub" || channel === "needs-enrichment" ? "warn" : "ok"}">${channel}</span>`).join(" ")}</td>
                     <td>${escapeHtml(lead.compliance)}</td>
                   </tr>
@@ -1766,6 +1943,7 @@ Jordan Lee,91 Pine Acre Rd,919-555-0102,jordan@example.com,74,Licensed enrichmen
       function resetOutputs() {
         state.leads = [];
         state.audit = [];
+        state.matchReview = [];
       }
 
       function resetScrubStats() {

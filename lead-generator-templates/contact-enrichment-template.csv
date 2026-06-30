@@ -1,2 +1,2 @@
-owner_name,mailing_address,property_address,phone,phone2,email,email2,confidence,source
-Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,512-555-0184,,maya@example.com,,94,Licensed enrichment upload
+owner_name,mailing_address,property_address,mailing_zip,property_zip,parcel_id,phone,phone2,email,email2,confidence,source
+Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,78731,78731,TX-1001,512-555-0184,,maya@example.com,,94,Licensed enrichment upload

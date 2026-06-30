@@ -88,6 +88,7 @@ Outputs are written to:
 
 ```text
 lead-generator-outputs/safe-leads.csv
+lead-generator-outputs/match-review.csv
 lead-generator-outputs/suppression-audit.csv
 lead-generator-outputs/run-summary.json
 ```
@@ -299,6 +300,58 @@ Not realistically free at scale:
 - TCPA consent validation
 
 For phone/email outreach, use a paid provider that allows your intended marketing use, keeps source/confidence fields, and can support compliance review.
+
+## Legal Skip Trace Matching Engine
+
+This app does not scrape personal phone/email records. It works as a legal matching and compliance engine:
+
+1. Pull or import property records.
+2. Import a licensed contact enrichment CSV from a provider you are allowed to use.
+3. Import federal DNC, Texas/state DNC, and internal opt-outs.
+4. Click `Generate safe leads`.
+5. Export `safe-leads.csv`.
+6. Export `match-review.csv` and keep it with the lead file.
+
+The matching engine compares:
+
+- parcel ID/APN
+- owner name
+- property address
+- mailing address
+- property/mailing ZIP
+- state
+- provider confidence score
+
+Every exported lead includes:
+
+- `confidence`
+- `match_confidence`
+- `match_reason`
+- `source`
+- `compliance`
+
+Use `match-review.csv` as your audit trail. Rows marked `matched` were used. Rows marked `below threshold` were found but did not meet the current minimum confidence setting. Rows marked `no match` did not have a usable enrichment match.
+
+Recommended contact enrichment CSV columns:
+
+```text
+owner_name
+first_name
+last_name
+mailing_address
+property_address
+mailing_zip
+property_zip
+parcel_id
+phone
+phone2
+email
+email2
+confidence
+source
+```
+
+The app also understands common alternates such as `apn`, `pin`, `full_name`, `primary_phone`, `mobile`, `email_address`, `provider`, and `vendor`.
 
 ## DNC List Access
 

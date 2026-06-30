@@ -47,8 +47,10 @@ async function main() {
   const result = generateLeads({ properties, contacts, federalDnc, stateDnc, optOutPhones, optOutEmails });
   const leadRows = result.leads.map(leadToCsvRow);
   const auditRows = result.audit.map(auditToCsvRow);
+  const matchReviewRows = result.matchReview.map(matchReviewToCsvRow);
 
   await writeCsv(join(outputDir, "safe-leads.csv"), leadRows);
+  await writeCsv(join(outputDir, "match-review.csv"), matchReviewRows);
   await writeCsv(join(outputDir, "suppression-audit.csv"), auditRows);
   await writeFile(
     join(outputDir, "run-summary.json"),
@@ -65,9 +67,11 @@ async function main() {
           optOutEmails: optOutEmails.size,
           safeLeads: result.leads.length,
           suppressedPhones: result.audit.length,
+          matchReviewRows: result.matchReview.length,
         },
         files: {
           safeLeads: "lead-generator-outputs/safe-leads.csv",
+          matchReview: "lead-generator-outputs/match-review.csv",
           suppressionAudit: "lead-generator-outputs/suppression-audit.csv",
         },
       },
@@ -80,6 +84,7 @@ async function main() {
   console.log(`Suppressed phone candidates: ${result.audit.length}`);
   console.log("Outputs:");
   console.log("  lead-generator-outputs/safe-leads.csv");
+  console.log("  lead-generator-outputs/match-review.csv");
   console.log("  lead-generator-outputs/suppression-audit.csv");
   console.log("  lead-generator-outputs/run-summary.json");
 }
@@ -87,12 +92,22 @@ async function main() {
 function generateLeads({ properties, contacts, federalDnc, stateDnc, optOutPhones, optOutEmails }) {
   const leads = [];
   const audit = [];
+  const matchReview = [];
 
   properties.forEach((property) => {
-    const matches = findContactsForProperty(property, contacts).filter((contact) => contact.confidence >= options.minimumConfidence);
+    const possibleMatches = findContactsForProperty(property, contacts);
+    const matches = possibleMatches.filter((contact) => contact.overallConfidence >= options.minimumConfidence);
     const candidateContacts = matches.length
       ? matches
       : [{ ownerName: property.ownerName, phone: "", email: "", confidence: 0, source: "No enrichment match" }];
+
+    if (possibleMatches.length) {
+      possibleMatches.slice(0, 5).forEach((contact) => {
+        matchReview.push(makeMatchReviewRow(property, contact, matches.includes(contact) ? "matched" : "below threshold"));
+      });
+    } else {
+      matchReview.push(makeMatchReviewRow(property, null, "no match"));
+    }
 
     candidateContacts.forEach((contact) => {
       const phoneCheck = checkPhoneCompliance(contact.phone, property.propertyState, federalDnc, stateDnc, optOutPhones);
@@ -122,7 +137,9 @@ function generateLeads({ properties, contacts, federalDnc, stateDnc, optOutPhone
         mailingAddress: compactAddress(property.mailingAddress, property.mailingCity, property.mailingState, property.mailingZip),
         phone: phoneCheck.allowed ? formatPhone(contact.phone) : "",
         email: emailCheck.allowed ? contact.email : "",
-        confidence: contact.confidence,
+        confidence: contact.overallConfidence ?? contact.confidence,
+        matchConfidence: contact.matchConfidence || 0,
+        matchReason: contact.matchReason || "No enrichment match",
         source: contact.source,
         channels,
         score: scoreLead(property, contact, channels),
@@ -136,6 +153,7 @@ function generateLeads({ properties, contacts, federalDnc, stateDnc, optOutPhone
   return {
     leads: dedupeLeads(leads).sort((a, b) => b.score - a.score),
     audit,
+    matchReview,
   };
 }
 
@@ -168,17 +186,86 @@ function dncIsStale() {
 }
 
 function findContactsForProperty(property, contacts) {
-  const ownerToken = normalizeToken(property.ownerName);
-  const mailingToken = normalizeToken(property.mailingAddress);
-  const propertyToken = normalizeToken(property.propertyAddress);
+  return contacts
+    .map((contact) => scoreContactMatch(property, contact))
+    .filter((contact) => contact.matchConfidence >= 35)
+    .sort((a, b) => b.overallConfidence - a.overallConfidence || b.matchConfidence - a.matchConfidence);
+}
 
-  return contacts.filter((contact) => {
-    const contactOwner = normalizeToken(contact.ownerName);
-    const contactAddress = normalizeToken(contact.mailingAddress || contact.propertyAddress || contact.address);
-    const ownerMatch = ownerToken && contactOwner && (ownerToken.includes(contactOwner) || contactOwner.includes(ownerToken));
-    const addressMatch = contactAddress && (contactAddress === mailingToken || contactAddress === propertyToken);
-    return ownerMatch || addressMatch;
-  });
+function scoreContactMatch(property, contact) {
+  const reasons = [];
+  let matchConfidence = 0;
+  const propertyParcel = normalizeToken(property.parcelId);
+  const contactParcel = normalizeToken(contact.parcelId);
+  const ownerScore = scoreOwnerMatch(property.ownerName, contact.ownerName);
+  const addressScore = scoreAddressMatch(property, contact);
+
+  if (propertyParcel && contactParcel && propertyParcel === contactParcel) {
+    matchConfidence += 80;
+    reasons.push("parcel ID match");
+  }
+  if (addressScore.score) {
+    matchConfidence += addressScore.score;
+    reasons.push(addressScore.reason);
+  }
+  if (ownerScore.score) {
+    matchConfidence += ownerScore.score;
+    reasons.push(ownerScore.reason);
+  }
+  if (property.propertyZip && contact.propertyZip && property.propertyZip === contact.propertyZip) {
+    matchConfidence += 8;
+    reasons.push("property zip match");
+  } else if (property.mailingZip && contact.mailingZip && property.mailingZip === contact.mailingZip) {
+    matchConfidence += 8;
+    reasons.push("mailing zip match");
+  }
+  if (property.propertyState && contact.propertyState && property.propertyState === contact.propertyState) {
+    matchConfidence += 4;
+    reasons.push("state match");
+  }
+
+  matchConfidence = Math.min(100, Math.round(matchConfidence));
+  const providerConfidence = normalizeConfidence(contact.confidence);
+  const overallConfidence = providerConfidence ? Math.round(providerConfidence * 0.62 + matchConfidence * 0.38) : matchConfidence;
+
+  return {
+    ...contact,
+    matchConfidence,
+    overallConfidence,
+    matchReason: reasons.join("; ") || "weak match",
+  };
+}
+
+function scoreAddressMatch(property, contact) {
+  const propertyAddresses = [property.propertyAddress, property.mailingAddress].filter(Boolean);
+  const contactAddresses = [contact.propertyAddress, contact.mailingAddress, contact.address].filter(Boolean);
+
+  for (const propertyAddress of propertyAddresses) {
+    for (const contactAddress of contactAddresses) {
+      const propertyKey = addressKey(propertyAddress);
+      const contactKey = addressKey(contactAddress);
+      if (!propertyKey || !contactKey) continue;
+      if (propertyKey === contactKey) return { score: 52, reason: "exact address match" };
+      if (addressStem(propertyAddress) === addressStem(contactAddress)) return { score: 42, reason: "street address match" };
+    }
+  }
+
+  return { score: 0, reason: "" };
+}
+
+function scoreOwnerMatch(propertyOwner, contactOwner) {
+  const propertyToken = normalizeToken(propertyOwner);
+  const contactToken = normalizeToken(contactOwner);
+  if (!propertyToken || !contactToken) return { score: 0, reason: "" };
+  if (propertyToken === contactToken) return { score: 36, reason: "exact owner name match" };
+  if (propertyToken.includes(contactToken) || contactToken.includes(propertyToken)) return { score: 28, reason: "owner name contains match" };
+
+  const propertyParts = nameParts(propertyOwner);
+  const contactParts = nameParts(contactOwner);
+  const shared = propertyParts.filter((part) => contactParts.includes(part));
+  if (shared.length >= 2) return { score: 24, reason: "multiple owner name tokens match" };
+  if (shared.length === 1 && shared[0].length >= 4) return { score: 16, reason: "owner name token match" };
+  return { score: 0, reason: "" };
 }
 
 function checkPhoneCompliance(phone, leadState, federalDnc, stateDnc, optOutPhones) {
@@ -202,7 +289,7 @@ function checkEmailCompliance(email, optOutEmails) {
 }
 
 function scoreLead(property, contact, channels) {
-  let score = Number(contact.confidence || 0);
+  let score = Number(contact.overallConfidence ?? contact.confidence ?? 0);
   const value = Number(String(property.assessedValue || "").replace(/[^0-9.]/g, ""));
   if (value >= 300000) score += 8;
   if (property.ownerOccupied) score += 6;
@@ -219,6 +306,26 @@ function complianceSummary(phoneCheck, emailCheck, channels) {
   if (channels.includes("postal")) pieces.push("postal allowed");
   if (!phoneCheck.allowed && phoneCheck.reason !== "No phone") pieces.push(phoneCheck.reason);
   return pieces.join("; ");
+}
+
+function makeMatchReviewRow(property, contact, status) {
+  return {
+    ownerName: property.ownerName,
+    propertyAddress: compactAddress(property.propertyAddress, property.propertyCity, property.propertyState, property.propertyZip),
+    mailingAddress: compactAddress(property.mailingAddress, property.mailingCity, property.mailingState, property.mailingZip),
+    contactOwnerName: contact ? contact.ownerName : "",
+    contactAddress: contact ? contact.mailingAddress || contact.propertyAddress || contact.address || "" : "",
+    phone: contact ? formatPhone(contact.phone) : "",
+    email: contact ? contact.email : "",
+    providerConfidence: contact ? contact.confidence : 0,
+    matchConfidence: contact ? contact.matchConfidence : 0,
+    overallConfidence: contact ? contact.overallConfidence : 0,
+    matchReason: contact ? contact.matchReason : "No enrichment match",
+    status,
+    source: contact ? contact.source : "",
+    county: property.county,
+    parcelId: property.parcelId,
+  };
 }
 
 function normalizeProperty(row) {
@@ -251,10 +358,19 @@ function normalizeContact(row) {
   ].filter(Boolean);
   const emails = [readField(row, ["email", "email1", "email_address"]), readField(row, ["email2"])].filter(Boolean);
   const base = {
-    ownerName: readField(row, ["owner_name", "name", "full_name"]),
-    mailingAddress: readField(row, ["mailing_address", "address", "owner_address"]),
-    propertyAddress: readField(row, ["property_address", "site_address"]),
-    confidence: Number(readField(row, ["confidence", "match_confidence", "score"]) || 0),
+    ownerName:
+      readField(row, ["owner_name", "name", "full_name", "person_name"]) ||
+      [readField(row, ["first_name", "firstname"]), readField(row, ["last_name", "lastname"])].filter(Boolean).join(" "),
+    mailingAddress: readField(row, ["mailing_address", "address", "owner_address", "mail_address"]),
+    propertyAddress: readField(row, ["property_address", "site_address", "situs_address"]),
+    mailingCity: readField(row, ["mailing_city", "mail_city", "owner_city"]),
+    mailingState: normalizeState(readField(row, ["mailing_state", "mail_state", "owner_state"])),
+    mailingZip: cleanZip(readField(row, ["mailing_zip", "mail_zip", "owner_zip"])),
+    propertyCity: readField(row, ["property_city", "site_city", "situs_city"]),
+    propertyState: normalizeState(readField(row, ["property_state", "site_state", "situs_state", "state"])),
+    propertyZip: cleanZip(readField(row, ["property_zip", "site_zip", "situs_zip", "zip", "zipcode"])),
+    parcelId: readField(row, ["parcel_id", "parcel", "parcel_number", "apn", "pin", "folio", "acct_num"]),
+    confidence: normalizeConfidence(readField(row, ["confidence", "match_confidence", "score"])),
     source: readField(row, ["source", "provider", "vendor"]) || "Uploaded enrichment",
   };
   const maxLength = Math.max(phones.length, emails.length, 1);
@@ -329,6 +445,17 @@ function normalizeEmail(value) {
   return String(value || "").trim().toLowerCase();
 }
 
+function cleanZip(value) {
+  const match = String(value || "").match(/\d{5}/);
+  return match ? match[0] : String(value || "").trim();
+}
+
+function normalizeConfidence(value) {
+  const confidence = Number(String(value || "").replace(/[^0-9.]/g, ""));
+  if (!Number.isFinite(confidence)) return 0;
+  return Math.max(0, Math.min(100, confidence));
+}
+
 function normalizeState(value) {
   return String(value || "").trim().toUpperCase();
 }
@@ -337,6 +464,52 @@ function normalizeToken(value) {
   return String(value || "")
     .toLowerCase()
     .replace(/[^a-z0-9]/g, "");
+}
+
+function cleanAddress(value) {
+  return String(value || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/\bP\.?\s*O\.?\s*Box\b/gi, "PO Box")
+    .replace(/\bAvenue\b/gi, "Ave")
+    .replace(/\bBoulevard\b/gi, "Blvd")
+    .replace(/\bCircle\b/gi, "Cir")
+    .replace(/\bCourt\b/gi, "Ct")
+    .replace(/\bDrive\b/gi, "Dr")
+    .replace(/\bLane\b/gi, "Ln")
+    .replace(/\bPlace\b/gi, "Pl")
+    .replace(/\bRoad\b/gi, "Rd")
+    .replace(/\bStreet\b/gi, "St")
+    .replace(/\bTrail\b/gi, "Trl")
+    .replace(/\bWay\b/gi, "Way");
+}
+
+function addressKey(value) {
+  return normalizeToken(addressStem(value));
+}
+
+function addressStem(value) {
+  return cleanAddress(value)
+    .toLowerCase()
+    .replace(/\b(apartment|apt|unit|suite|ste|number|no)\b\.?\s*[a-z0-9-]+$/i, "")
+    .replace(/#\s*[a-z0-9-]+$/i, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\b(north|n)\b/g, "n")
+    .replace(/\b(south|s)\b/g, "s")
+    .replace(/\b(east|e)\b/g, "e")
+    .replace(/\b(west|w)\b/g, "w")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function nameParts(value) {
+  const stopWords = new Set(["and", "or", "the", "trust", "trustee", "estate", "llc", "inc", "corp", "company", "co", "ltd", "lp", "llp"]);
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((part) => part.length > 1 && !stopWords.has(part));
 }
 
 function compactAddress(address, city, state, zip) {
@@ -365,12 +538,35 @@ function leadToCsvRow(lead) {
     mailing_address: lead.mailingAddress,
     phone: lead.phone,
     email: lead.email,
+    confidence: lead.confidence,
+    match_confidence: lead.matchConfidence || "",
+    match_reason: lead.matchReason || "",
     score: lead.score,
     channels: lead.channels.join("|"),
     compliance: lead.compliance,
     source: lead.source,
     county: lead.county,
     parcel_id: lead.parcelId,
+  };
+}
+
+function matchReviewToCsvRow(row) {
+  return {
+    owner_name: row.ownerName,
+    property_address: row.propertyAddress,
+    mailing_address: row.mailingAddress,
+    contact_owner_name: row.contactOwnerName,
+    contact_address: row.contactAddress,
+    phone: row.phone,
+    email: row.email,
+    provider_confidence: row.providerConfidence,
+    match_confidence: row.matchConfidence,
+    overall_confidence: row.overallConfidence,
+    match_reason: row.matchReason,
+    status: row.status,
+    source: row.source,
+    county: row.county,
+    parcel_id: row.parcelId,
   };
 }
 
