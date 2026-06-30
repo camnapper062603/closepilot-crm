@@ -32,6 +32,24 @@ Then open the same URL.
 
 Phone-capable leads are blocked unless both federal and state DNC files have been loaded.
 
+## Template Files
+
+Download templates from the app sidebar or use these local files:
+
+- `lead-generator-templates/property-records-template.csv`
+- `lead-generator-templates/contact-enrichment-template.csv`
+- `lead-generator-templates/federal-dnc-template.csv`
+- `lead-generator-templates/state-dnc-template.csv`
+- `lead-generator-templates/internal-opt-outs-template.csv`
+
+To import:
+
+1. Open `SafeLeadGenerator.html`.
+2. Click the matching file picker under `CSV Imports`.
+3. Select the CSV with matching headers.
+4. Confirm the count updates in the dashboard.
+5. Click `Generate safe leads` after all required imports are loaded.
+
 If a state has no separate list for your use case, upload an empty CSV with this header so the app records that the state DNC check was reviewed:
 
 ```csv

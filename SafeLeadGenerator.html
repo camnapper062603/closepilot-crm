@@ -140,6 +140,7 @@
 
       .upload-grid,
       .controls,
+      .template-links,
       .metric-grid,
       .two-col {
         display: grid;
@@ -223,6 +224,19 @@
       .danger {
         background: #fce7e5;
         color: var(--red);
+      }
+
+      .template-links a {
+        align-items: center;
+        background: #eef3f1;
+        border-radius: 8px;
+        color: var(--ink);
+        display: flex;
+        font-size: 0.9rem;
+        font-weight: 800;
+        min-height: 38px;
+        padding: 0 12px;
+        text-decoration: none;
       }
 
       .metric strong {
@@ -376,6 +390,20 @@
               <input id="optOutFile" type="file" accept=".csv,text/csv" />
               <span>Phone/email opt-outs</span>
             </label>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h2>CSV Templates</h2>
+            <span class="pill info">Start here</span>
+          </div>
+          <div class="template-links">
+            <a href="lead-generator-templates/property-records-template.csv" download>Property records template</a>
+            <a href="lead-generator-templates/contact-enrichment-template.csv" download>Contact enrichment template</a>
+            <a href="lead-generator-templates/federal-dnc-template.csv" download>Federal DNC template</a>
+            <a href="lead-generator-templates/state-dnc-template.csv" download>State DNC template</a>
+            <a href="lead-generator-templates/internal-opt-outs-template.csv" download>Internal opt-outs template</a>
           </div>
         </section>
 
