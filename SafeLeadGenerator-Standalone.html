@@ -231,7 +231,8 @@
         color: var(--red);
       }
 
-      .template-links button {
+      .template-links button,
+      .template-links a {
         align-items: center;
         background: #eef3f1;
         border: 0;
@@ -242,6 +243,7 @@
         font-weight: 800;
         min-height: 38px;
         padding: 0 12px;
+        text-decoration: none;
         text-align: left;
         width: 100%;
       }
@@ -528,10 +530,23 @@
         </section>
 
         <section class="panel">
+          <div class="panel-header">
+            <h2>DNC Access</h2>
+            <span class="pill warn">Paid lists</span>
+          </div>
+          <div class="template-links">
+            <a href="https://telemarketing.donotcall.gov/profile/create.aspx" target="_blank" rel="noopener noreferrer">Federal DNC registration</a>
+            <a href="https://www.texasnocall.com/" target="_blank" rel="noopener noreferrer">Texas No Call official site</a>
+            <a href="https://www.texasnocall.com/default.asp?goto=searchRenewal.asp" target="_blank" rel="noopener noreferrer">Texas renewal lookup</a>
+          </div>
+        </section>
+
+        <section class="panel">
           <h2>Actions</h2>
           <div class="actions">
             <button class="button secondary" id="loadSampleButton" type="button">Load sample</button>
             <button class="button primary" id="generateButton" type="button">Generate safe leads</button>
+            <button class="button secondary" id="generateResidentialButton" type="button">Generate residential mail leads</button>
             <button class="button secondary" id="exportLeadButton" type="button">Export leads</button>
             <button class="button secondary" id="exportAuditButton" type="button">Export audit</button>
             <button class="button danger" id="clearButton" type="button">Clear</button>
@@ -582,6 +597,12 @@
               <h3>Required before phone export</h3>
               <p class="muted">
                 Federal DNC, state DNC, and internal opt-outs are checked against normalized 10-digit phone numbers.
+              </p>
+            </div>
+            <div class="status-card">
+              <h3>Free residential path</h3>
+              <p class="muted">
+                Pull public property records, then use residential mail leads for postal outreach. Phone/email rows still require licensed enrichment and DNC checks.
               </p>
             </div>
             <div class="status-card">
@@ -773,6 +794,7 @@ Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,512-555-0184,,maya@example.com,
 
       document.querySelector("#loadSampleButton").addEventListener("click", loadSampleData);
       document.querySelector("#generateButton").addEventListener("click", () => generateLeads());
+      document.querySelector("#generateResidentialButton").addEventListener("click", generateResidentialMailLeads);
       document.querySelector("#exportLeadButton").addEventListener("click", () => exportCsv(leadExportFilename(), state.leads.map(leadToCsvRow)));
       document.querySelector("#exportAuditButton").addEventListener("click", () => exportCsv("suppression-audit.csv", state.audit.map(auditToCsvRow)));
       document.querySelector("#clearButton").addEventListener("click", clearAll);
@@ -1251,6 +1273,63 @@ Jordan Lee,91 Pine Acre Rd,919-555-0102,jordan@example.com,74,Licensed enrichmen
         return true;
       }
 
+      function generateResidentialMailLeads() {
+        if (!state.properties.length) {
+          showError(new Error("Pull or import property records before generating residential mail leads."));
+          return false;
+        }
+
+        const leads = state.properties
+          .filter(isResidentialProperty)
+          .filter((property) => property.mailingAddress || property.propertyAddress)
+          .map((property) => ({
+            ownerName: property.ownerName,
+            propertyAddress: compactAddress(property.propertyAddress, property.propertyCity, property.propertyState, property.propertyZip),
+            mailingAddress: compactAddress(property.mailingAddress || property.propertyAddress, property.mailingCity || property.propertyCity, property.mailingState || property.propertyState, property.mailingZip || property.propertyZip),
+            phone: "",
+            email: "",
+            confidence: 0,
+            source: "Property records only - needs contact enrichment for phone/email",
+            channels: ["postal", "needs-enrichment"],
+            score: scoreResidentialProperty(property),
+            compliance: "Postal/mail-ready from property records. Phone/email outreach still requires enrichment, DNC/state/internal scrub, and consent checks.",
+            parcelId: property.parcelId,
+            county: property.county,
+          }));
+
+        state.leads = dedupeLeads(leads).sort((a, b) => b.score - a.score);
+        state.audit = [];
+        setStatus(`${state.leads.length} residential mail lead row(s) generated from property records. Use mail first, or enrich phone/email and scrub before outreach.`);
+        render();
+        return true;
+      }
+
+      function isResidentialProperty(property) {
+        const stateClass = normalizeToken(property.stateClass);
+        const landUse = normalizeToken(property.landUse);
+        if (stateClass && /^a\d*/.test(stateClass)) return true;
+        if (["1001", "1002", "1003", "1004"].includes(landUse)) return true;
+        return !isBusinessOwner(property.ownerName);
+      }
+
+      function isBusinessOwner(ownerName) {
+        return /\b(llc|inc|corp|company|co\.?|ltd|lp|llp|trust|bank|fund|partners|holdings|properties|investments|ventures|homes|realty|management)\b/i.test(ownerName);
+      }
+
+      function scoreResidentialProperty(property) {
+        let score = 45;
+        const value = Number(String(property.assessedValue || "").replace(/[^0-9.]/g, ""));
+        if (property.ownerOccupied) score += 20;
+        if (value >= 500000) score += 18;
+        else if (value >= 300000) score += 12;
+        else if (value >= 180000) score += 7;
+        if (property.propertyState === "TX") score += 4;
+        if (property.mailingAddress || property.propertyAddress) score += 8;
+        if (property.acreage && Number(property.acreage) >= 0.15) score += 3;
+        if (isBusinessOwner(property.ownerName)) score -= 10;
+        return Math.max(0, Math.min(100, Math.round(score)));
+      }
+
       function findContactsForProperty(property) {
         const ownerToken = normalizeToken(property.ownerName);
         const mailingToken = normalizeToken(property.mailingAddress);
@@ -1339,6 +1418,8 @@ Jordan Lee,91 Pine Acre Rd,919-555-0102,jordan@example.com,74,Licensed enrichmen
           saleDate: cleanText(readField(row, ["sale_date", "recording_date", "deed_date"])),
           assessedValue: cleanText(readField(row, ["assessed_value", "market_value", "tax_value", "appraised_value", "total_appraised_val", "total_market_val", "value"])),
           acreage: cleanText(readField(row, ["acreage", "acreage_1", "acres", "lot_size", "statedarea"])),
+          stateClass: cleanText(readField(row, ["state_class", "class", "property_class", "prop_class"])),
+          landUse: cleanText(readField(row, ["land_use", "landuse", "use_code", "property_use"])),
           county: cleanText(readField(row, ["county", "site_county"])),
           parcelId: cleanText(readField(row, ["parcel_id", "parcel", "parcel_number", "parid", "lowparcelid", "hcad_num", "acct_num", "apn", "folio", "pin"])),
           ownerOccupied: normalizeToken(propertyAddress) === normalizeToken(mailingAddress || propertyAddress),
@@ -1632,13 +1713,14 @@ Jordan Lee,91 Pine Acre Rd,919-555-0102,jordan@example.com,74,Licensed enrichmen
         els.auditTableStatus.textContent = `${state.audit.length} rows`;
         const dncLoaded = state.loaded.federalDnc && state.loaded.stateDnc;
         const candidateRows = state.leads.filter((lead) => lead.channels.includes("needs-scrub")).length;
+        const enrichmentRows = state.leads.filter((lead) => lead.channels.includes("needs-enrichment")).length;
         els.gateStatus.textContent = dncLoaded ? "DNC loaded" : "Needs DNC data";
         els.gateStatus.className = `pill ${dncLoaded ? "ok" : "warn"}`;
-        els.exportStatus.textContent = candidateRows ? "Needs scrub" : state.leads.length ? "Ready" : "No leads";
-        els.exportStatus.className = `pill ${candidateRows ? "warn" : state.leads.length ? "ok" : "info"}`;
+        els.exportStatus.textContent = enrichmentRows ? "Mail ready" : candidateRows ? "Needs scrub" : state.leads.length ? "Ready" : "No leads";
+        els.exportStatus.className = `pill ${candidateRows || enrichmentRows ? "warn" : state.leads.length ? "ok" : "info"}`;
         const phoneReady = state.leads.filter((lead) => lead.channels.includes("phone")).length;
         const altReady = state.leads.filter((lead) => lead.channels.includes("email") || lead.channels.includes("postal")).length;
-        els.phoneStatus.textContent = candidateRows ? `${candidateRows} candidate rows need DNC/state/internal scrub before outreach.` : `${phoneReady} phone-ready leads after DNC checks.`;
+        els.phoneStatus.textContent = enrichmentRows ? `${enrichmentRows} residential rows are mail-ready; phone/email still need enrichment and scrub.` : candidateRows ? `${candidateRows} candidate rows need DNC/state/internal scrub before outreach.` : `${phoneReady} phone-ready leads after DNC checks.`;
         els.mailEmailStatus.textContent = `${altReady} email/postal leads available.`;
         renderLeadRows();
         renderAuditRows();
@@ -1654,7 +1736,7 @@ Jordan Lee,91 Pine Acre Rd,919-555-0102,jordan@example.com,74,Licensed enrichmen
                     <td>${escapeHtml(lead.propertyAddress)}<small>${escapeHtml(lead.mailingAddress || "")}</small></td>
                     <td>${escapeHtml(lead.phone || "No phone")}<small>${escapeHtml(lead.email || "No email")}</small></td>
                     <td><span class="pill info">${lead.score}</span><small>${escapeHtml(lead.source || "")}</small></td>
-                    <td>${lead.channels.map((channel) => `<span class="pill ${channel === "needs-scrub" ? "warn" : "ok"}">${channel}</span>`).join(" ")}</td>
+                    <td>${lead.channels.map((channel) => `<span class="pill ${channel === "needs-scrub" || channel === "needs-enrichment" ? "warn" : "ok"}">${channel}</span>`).join(" ")}</td>
                     <td>${escapeHtml(lead.compliance)}</td>
                   </tr>
                 `,
@@ -1696,6 +1778,7 @@ Jordan Lee,91 Pine Acre Rd,919-555-0102,jordan@example.com,74,Licensed enrichmen
       }
 
       function leadExportFilename() {
+        if (state.leads.some((lead) => lead.channels.includes("needs-enrichment"))) return "residential-mail-leads.csv";
         return state.leads.some((lead) => lead.channels.includes("needs-scrub")) ? "lead-candidates-needs-scrub.csv" : "safe-leads.csv";
       }
 

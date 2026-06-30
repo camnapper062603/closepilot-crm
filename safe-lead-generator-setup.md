@@ -269,6 +269,71 @@ Limits:
 - Some county portals require accounts, paid access, captchas, or terms that prohibit scraping.
 - For fully automated county-by-county pulling, build backend source adapters for the exact counties and providers you use.
 
+## Free Residential Workaround
+
+This is the most automated free path for residential roofing/home-improvement leads:
+
+1. Open `SafeLeadGenerator-Standalone.html`.
+2. Click `Use Harris County HCAD` or paste another authorized county ArcGIS/CSV source.
+3. Click `Pull property records`.
+4. Click `Generate residential mail leads`.
+5. Export `residential-mail-leads.csv`.
+
+Those rows are built from property records only and are intended for postal mail, door-hanger planning, canvassing routes, or later paid enrichment.
+
+The app intentionally leaves `phone` and `email` blank in this mode. Before calling, texting, or emailing those homeowners, run the records through a licensed enrichment provider and then import fresh federal DNC, Texas/state DNC, and internal opt-out files.
+
+Good free automation:
+
+- public county/appraisal district property data
+- owner names
+- property and mailing addresses
+- residential filtering
+- postal/mail-ready lead export
+
+Not realistically free at scale:
+
+- accurate homeowner mobile numbers
+- accurate homeowner personal emails
+- automatic federal/state DNC list access
+- TCPA consent validation
+
+For phone/email outreach, use a paid provider that allows your intended marketing use, keeps source/confidence fields, and can support compliance review.
+
+## DNC List Access
+
+Federal DNC telemarketer registration and subscription:
+
+```text
+https://telemarketing.donotcall.gov/profile/create.aspx
+```
+
+Federal DNC main portal:
+
+```text
+https://telemarketing.donotcall.gov/
+```
+
+Texas No Call official site:
+
+```text
+https://www.texasnocall.com/
+```
+
+Texas telemarketer registration is linked from the official site as:
+
+```text
+https://www.texasnocall.com/default.asp?goto=telemarketer.asp
+```
+
+If the direct Texas registration link shows an error, open the main Texas No Call site first and click `Telemarketer Registration`. The Texas site also has a renewal link:
+
+```text
+https://www.texasnocall.com/default.asp?goto=searchRenewal.asp
+```
+
+Texas publishes its lists quarterly and says telemarketers can pay by credit card through the website. Keep proof of every DNC download/import with your exported leads.
+
 ## Bulk Import File Names
 
 The standalone app can auto-sort files by filename and headers. These names are recommended:
