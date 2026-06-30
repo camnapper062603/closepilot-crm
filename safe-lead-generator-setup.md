@@ -135,6 +135,30 @@ Use files you are authorized to access:
 
 Do not upload scraped phone/email data unless you have confirmed the source and your outreach use are lawful.
 
+## FTC Do Not Call Data Page
+
+The FTC Open Government Do Not Call data page is useful for research, trend analysis, and complaint context, but it is not the official suppression list to scrub your leads against.
+
+Use the official telemarketer registry portal for federal DNC suppression files:
+
+```text
+https://telemarketing.donotcall.gov/
+```
+
+Treat the FTC open data page as reference data only unless your attorney/compliance vendor tells you otherwise.
+
+## Candidate Leads Before DNC Scrub
+
+If you only have property records and contact enrichment, the app can generate lead candidates that still need suppression review:
+
+1. Bulk import `property-records.csv`.
+2. Bulk import `contact-enrichment.csv`.
+3. Set `Allowed outreach` to `Candidate list - needs DNC scrub`.
+4. Click `Generate safe leads`.
+5. Export `lead-candidates-needs-scrub.csv`.
+
+Candidate rows are not contact-ready. Do not call, text, or otherwise use phone numbers from that file until federal DNC, state DNC, internal opt-out, and consent checks are complete.
+
 ## Bulk Import File Names
 
 The standalone app can auto-sort files by filename and headers. These names are recommended:

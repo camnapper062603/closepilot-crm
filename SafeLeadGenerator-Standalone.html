@@ -425,6 +425,7 @@
               Allowed outreach
               <select id="channelSelect">
                 <option value="any">Any compliant channel</option>
+                <option value="candidate">Candidate list - needs DNC scrub</option>
                 <option value="phone">Phone only after DNC clear</option>
                 <option value="email">Email only</option>
                 <option value="mail">Postal mail only</option>
@@ -666,7 +667,7 @@ Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,512-555-0184,,maya@example.com,
 
       document.querySelector("#loadSampleButton").addEventListener("click", loadSampleData);
       document.querySelector("#generateButton").addEventListener("click", generateLeads);
-      document.querySelector("#exportLeadButton").addEventListener("click", () => exportCsv("safe-leads.csv", state.leads.map(leadToCsvRow)));
+      document.querySelector("#exportLeadButton").addEventListener("click", () => exportCsv(leadExportFilename(), state.leads.map(leadToCsvRow)));
       document.querySelector("#exportAuditButton").addEventListener("click", () => exportCsv("suppression-audit.csv", state.audit.map(auditToCsvRow)));
       document.querySelector("#clearButton").addEventListener("click", clearAll);
       document.querySelectorAll("[data-template]").forEach((button) => {
@@ -869,11 +870,13 @@ Jordan Lee,91 Pine Acre Rd,919-555-0102,jordan@example.com,74,Licensed enrichmen
         const recencyDays = Number(els.recencySelect.value || 30);
         const scrubDate = new Date(els.scrubDateInput.value);
         const staleScrub = Number.isNaN(scrubDate.getTime()) || daysBetween(scrubDate, new Date()) > recencyDays;
+        const candidateMode = allowedChannel === "candidate";
         const phoneMayExport = allowedChannel === "any" || allowedChannel === "phone";
         const leads = [];
         const audit = [];
 
         if (!state.properties.length) return showError(new Error("Import deed/property records before generating leads."));
+        if (!state.contacts.length && allowedChannel !== "mail") return showError(new Error("Import contact enrichment before generating non-mail lead candidates."));
         if (phoneMayExport && (!state.loaded.federalDnc || !state.loaded.stateDnc)) {
           return showError(new Error("Import or confirm both federal and state DNC suppression CSVs before generating phone-capable leads."));
         }
@@ -889,11 +892,15 @@ Jordan Lee,91 Pine Acre Rd,919-555-0102,jordan@example.com,74,Licensed enrichmen
             const postalReady = Boolean(property.mailingAddress || property.propertyAddress);
             const channels = [];
 
-            if (allowedChannel !== "email" && allowedChannel !== "mail" && contact.phone && phoneCheck.allowed) channels.push("phone");
-            if (allowedChannel !== "phone" && allowedChannel !== "mail" && contact.email && emailCheck.allowed) channels.push("email");
-            if (allowedChannel !== "phone" && allowedChannel !== "email" && postalReady) channels.push("postal");
+            if (candidateMode) {
+              if (contact.phone || contact.email || postalReady) channels.push("needs-scrub");
+            } else {
+              if (allowedChannel !== "email" && allowedChannel !== "mail" && contact.phone && phoneCheck.allowed) channels.push("phone");
+              if (allowedChannel !== "phone" && allowedChannel !== "mail" && contact.email && emailCheck.allowed) channels.push("email");
+              if (allowedChannel !== "phone" && allowedChannel !== "email" && postalReady) channels.push("postal");
+            }
 
-            if (contact.phone && !phoneCheck.allowed) {
+            if (!candidateMode && contact.phone && !phoneCheck.allowed) {
               audit.push({
                 ownerName: property.ownerName,
                 phone: formatPhone(contact.phone),
@@ -909,13 +916,13 @@ Jordan Lee,91 Pine Acre Rd,919-555-0102,jordan@example.com,74,Licensed enrichmen
               ownerName: property.ownerName,
               propertyAddress: compactAddress(property.propertyAddress, property.propertyCity, property.propertyState, property.propertyZip),
               mailingAddress: compactAddress(property.mailingAddress, property.mailingCity, property.mailingState, property.mailingZip),
-              phone: phoneCheck.allowed ? formatPhone(contact.phone) : "",
-              email: emailCheck.allowed ? contact.email : "",
+              phone: candidateMode ? formatPhone(contact.phone) : phoneCheck.allowed ? formatPhone(contact.phone) : "",
+              email: candidateMode ? contact.email : emailCheck.allowed ? contact.email : "",
               confidence: contact.confidence,
               source: contact.source,
               channels,
               score: scoreLead(property, contact, channels),
-              compliance: complianceSummary(phoneCheck, emailCheck, channels),
+              compliance: candidateMode ? "NOT CONTACT READY - DNC/state/internal scrub required before outreach" : complianceSummary(phoneCheck, emailCheck, channels),
               parcelId: property.parcelId,
               county: property.county,
             });
@@ -924,7 +931,7 @@ Jordan Lee,91 Pine Acre Rd,919-555-0102,jordan@example.com,74,Licensed enrichmen
 
         state.leads = dedupeLeads(leads).sort((a, b) => b.score - a.score);
         state.audit = audit;
-        setStatus(`${state.leads.length} safe lead rows generated after suppression checks.`);
+        setStatus(candidateMode ? `${state.leads.length} lead candidate row(s) generated. Do not contact until DNC/state/internal scrub is complete.` : `${state.leads.length} safe lead rows generated after suppression checks.`);
         render();
       }
 
@@ -1192,13 +1199,14 @@ Jordan Lee,91 Pine Acre Rd,919-555-0102,jordan@example.com,74,Licensed enrichmen
         els.leadTableStatus.textContent = `${state.leads.length} rows`;
         els.auditTableStatus.textContent = `${state.audit.length} rows`;
         const dncLoaded = state.loaded.federalDnc && state.loaded.stateDnc;
+        const candidateRows = state.leads.filter((lead) => lead.channels.includes("needs-scrub")).length;
         els.gateStatus.textContent = dncLoaded ? "DNC loaded" : "Needs DNC data";
         els.gateStatus.className = `pill ${dncLoaded ? "ok" : "warn"}`;
-        els.exportStatus.textContent = state.leads.length ? "Ready" : "No leads";
-        els.exportStatus.className = `pill ${state.leads.length ? "ok" : "info"}`;
+        els.exportStatus.textContent = candidateRows ? "Needs scrub" : state.leads.length ? "Ready" : "No leads";
+        els.exportStatus.className = `pill ${candidateRows ? "warn" : state.leads.length ? "ok" : "info"}`;
         const phoneReady = state.leads.filter((lead) => lead.channels.includes("phone")).length;
         const altReady = state.leads.filter((lead) => lead.channels.includes("email") || lead.channels.includes("postal")).length;
-        els.phoneStatus.textContent = `${phoneReady} phone-ready leads after DNC checks.`;
+        els.phoneStatus.textContent = candidateRows ? `${candidateRows} candidate rows need DNC/state/internal scrub before outreach.` : `${phoneReady} phone-ready leads after DNC checks.`;
         els.mailEmailStatus.textContent = `${altReady} email/postal leads available.`;
         renderLeadRows();
         renderAuditRows();
@@ -1214,7 +1222,7 @@ Jordan Lee,91 Pine Acre Rd,919-555-0102,jordan@example.com,74,Licensed enrichmen
                     <td>${escapeHtml(lead.propertyAddress)}<small>${escapeHtml(lead.mailingAddress || "")}</small></td>
                     <td>${escapeHtml(lead.phone || "No phone")}<small>${escapeHtml(lead.email || "No email")}</small></td>
                     <td><span class="pill info">${lead.score}</span><small>${escapeHtml(lead.source || "")}</small></td>
-                    <td>${lead.channels.map((channel) => `<span class="pill ok">${channel}</span>`).join(" ")}</td>
+                    <td>${lead.channels.map((channel) => `<span class="pill ${channel === "needs-scrub" ? "warn" : "ok"}">${channel}</span>`).join(" ")}</td>
                     <td>${escapeHtml(lead.compliance)}</td>
                   </tr>
                 `,
@@ -1244,6 +1252,10 @@ Jordan Lee,91 Pine Acre Rd,919-555-0102,jordan@example.com,74,Licensed enrichmen
       function resetOutputs() {
         state.leads = [];
         state.audit = [];
+      }
+
+      function leadExportFilename() {
+        return state.leads.some((lead) => lead.channels.includes("needs-scrub")) ? "lead-candidates-needs-scrub.csv" : "safe-leads.csv";
       }
 
       function clearAll() {
