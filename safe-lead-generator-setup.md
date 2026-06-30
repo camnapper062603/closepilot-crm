@@ -111,15 +111,47 @@ The import and output folders are ignored by Git so private lead/contact data do
 
 ## Required Workflow
 
-1. Import deed/property records.
-2. Import contact enrichment records.
-3. Import federal DNC suppression data.
-4. Import state DNC suppression data.
-5. Import internal opt-outs if you have them.
-6. Click `Generate safe leads`.
-7. Export only the `Safe Lead Output`.
+1. Get authorized deed/property records.
+2. Get licensed contact enrichment records.
+3. Get your federal DNC suppression export from your authorized telemarketer registry account.
+4. Get required state DNC suppression exports for the states you market in.
+5. Export your internal opt-outs if you have them.
+6. Open `SafeLeadGenerator-Standalone.html`.
+7. Use `Bulk import all CSVs` and select all required CSV files at once.
+8. Click `Generate safe leads`.
+9. Export only the `Safe Lead Output`.
 
 Phone-capable leads are blocked unless both federal and state DNC files have been loaded.
+
+## Required CSV Sources
+
+Use files you are authorized to access:
+
+- Property/deed records: county recorder, county assessor, county bulk data portal, or a licensed property data provider.
+- Contact enrichment: licensed skip trace/contact provider with source and confidence fields.
+- Federal DNC: official telemarketer access at `telemarketing.donotcall.gov`.
+- State DNC: state consumer protection/attorney general list access, or a compliance vendor covering your target states.
+- Internal opt-outs: your own do-not-contact list from calls, texts, emails, forms, CRM notes, and unsubscribe requests.
+
+Do not upload scraped phone/email data unless you have confirmed the source and your outreach use are lawful.
+
+## Bulk Import File Names
+
+The standalone app can auto-sort files by filename and headers. These names are recommended:
+
+```text
+property-records.csv
+contact-enrichment.csv
+federal-dnc.csv
+state-dnc.csv
+internal-opt-outs.csv
+```
+
+If a state has no separate DNC rows for your use case, upload a CSV named `state-dnc.csv` with this header:
+
+```csv
+phone,state
+```
 
 ## Template Files
 

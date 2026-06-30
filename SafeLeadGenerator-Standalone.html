@@ -368,6 +368,11 @@
           </div>
           <div class="upload-grid">
             <label class="upload-card">
+              Bulk import all CSVs
+              <input id="bulkImportFiles" type="file" accept=".csv,text/csv" multiple />
+              <span>Select all required files at once. The app sorts them by filename and headers.</span>
+            </label>
+            <label class="upload-card">
               Deed/property records
               <input id="propertyFile" type="file" accept=".csv,text/csv" />
               <span>Required: owner/address fields</span>
@@ -613,6 +618,7 @@ Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,512-555-0184,,maya@example.com,
       };
 
       const els = {
+        bulkImportFiles: document.querySelector("#bulkImportFiles"),
         propertyFile: document.querySelector("#propertyFile"),
         contactFile: document.querySelector("#contactFile"),
         federalDncFile: document.querySelector("#federalDncFile"),
@@ -653,6 +659,11 @@ Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,512-555-0184,,maya@example.com,
         });
       });
 
+      els.bulkImportFiles.addEventListener("change", (event) => {
+        const files = Array.from(event.target.files || []);
+        if (files.length) importCsvBundle(files).catch(showError);
+      });
+
       document.querySelector("#loadSampleButton").addEventListener("click", loadSampleData);
       document.querySelector("#generateButton").addEventListener("click", generateLeads);
       document.querySelector("#exportLeadButton").addEventListener("click", () => exportCsv("safe-leads.csv", state.leads.map(leadToCsvRow)));
@@ -667,28 +678,101 @@ Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,512-555-0184,,maya@example.com,
       }
 
       function importProperties(rows) {
-        state.properties = rows.map(normalizeProperty).filter((row) => row.ownerName && row.propertyAddress);
+        setProperties(rows);
         setStatus(`${state.properties.length} property records imported.`);
         resetOutputs();
         render();
       }
 
       function importContacts(rows) {
-        state.contacts = rows.flatMap(normalizeContact).filter((row) => row.ownerName || row.phone || row.email);
+        setContacts(rows);
         setStatus(`${state.contacts.length} contact rows imported.`);
         resetOutputs();
         render();
       }
 
       function importFederalDnc(rows) {
-        state.federalDnc = new Set(rows.map((row) => normalizePhone(readField(row, ["phone", "number", "telephone"]))).filter(Boolean));
-        state.loaded.federalDnc = true;
+        setFederalDnc(rows);
         setStatus(`${state.federalDnc.size} federal DNC phones imported.`);
         resetOutputs();
         render();
       }
 
       function importStateDnc(rows) {
+        setStateDnc(rows);
+        setStatus(`${state.stateDnc.size} state DNC phones imported.`);
+        resetOutputs();
+        render();
+      }
+
+      function importOptOuts(rows) {
+        setOptOuts(rows);
+        setStatus(`${state.optOutPhones.size + state.optOutEmails.size} internal opt-outs imported.`);
+        resetOutputs();
+        render();
+      }
+
+      async function importCsvBundle(files) {
+        const groups = {
+          properties: [],
+          contacts: [],
+          federalDnc: [],
+          stateDnc: [],
+          optOuts: [],
+          unknown: [],
+        };
+        const seenTypes = new Set();
+
+        const entries = await Promise.all(
+          files.map(async (file) => ({
+            name: file.name,
+            rows: parseCsv(await file.text()),
+          })),
+        );
+
+        entries.forEach((entry) => {
+          const type = classifyCsvFile(entry.name, entry.rows);
+          if (!type) {
+            groups.unknown.push(entry.name);
+            return;
+          }
+          seenTypes.add(type);
+          groups[type].push(...entry.rows);
+        });
+
+        const imported = [];
+        if (seenTypes.has("properties")) imported.push(`${setProperties(groups.properties)} properties`);
+        if (seenTypes.has("contacts")) imported.push(`${setContacts(groups.contacts)} contacts`);
+        if (seenTypes.has("federalDnc")) imported.push(`${setFederalDnc(groups.federalDnc)} federal DNC phones`);
+        if (seenTypes.has("stateDnc")) imported.push(`${setStateDnc(groups.stateDnc)} state DNC phones`);
+        if (seenTypes.has("optOuts")) imported.push(`${setOptOuts(groups.optOuts)} opt-outs`);
+
+        resetOutputs();
+        render();
+
+        const missing = requiredImportGaps();
+        const unknown = groups.unknown.length ? ` Unknown file(s): ${groups.unknown.join(", ")}.` : "";
+        const missingText = missing.length ? ` Missing: ${missing.join(", ")}.` : "";
+        setStatus(`Bulk import complete: ${imported.join(", ") || "no recognized files"}.${missingText}${unknown}`);
+      }
+
+      function setProperties(rows) {
+        state.properties = rows.map(normalizeProperty).filter((row) => row.ownerName && row.propertyAddress);
+        return state.properties.length;
+      }
+
+      function setContacts(rows) {
+        state.contacts = rows.flatMap(normalizeContact).filter((row) => row.ownerName || row.phone || row.email);
+        return state.contacts.length;
+      }
+
+      function setFederalDnc(rows) {
+        state.federalDnc = new Set(rows.map((row) => normalizePhone(readField(row, ["phone", "number", "telephone"]))).filter(Boolean));
+        state.loaded.federalDnc = true;
+        return state.federalDnc.size;
+      }
+
+      function setStateDnc(rows) {
         state.stateDnc = new Map();
         rows.forEach((row) => {
           const phone = normalizePhone(readField(row, ["phone", "number", "telephone"]));
@@ -698,12 +782,10 @@ Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,512-555-0184,,maya@example.com,
           state.stateDnc.get(phone).add(listState || "ALL");
         });
         state.loaded.stateDnc = true;
-        setStatus(`${state.stateDnc.size} state DNC phones imported.`);
-        resetOutputs();
-        render();
+        return state.stateDnc.size;
       }
 
-      function importOptOuts(rows) {
+      function setOptOuts(rows) {
         state.optOutPhones = new Set();
         state.optOutEmails = new Set();
         rows.forEach((row) => {
@@ -713,9 +795,47 @@ Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,512-555-0184,,maya@example.com,
           if (email) state.optOutEmails.add(email);
         });
         state.loaded.optOut = true;
-        setStatus(`${state.optOutPhones.size + state.optOutEmails.size} internal opt-outs imported.`);
-        resetOutputs();
-        render();
+        return state.optOutPhones.size + state.optOutEmails.size;
+      }
+
+      function classifyCsvFile(filename, rows) {
+        const name = filename.toLowerCase().replace(/[_\s]+/g, "-");
+        if (/(federal|national).*dnc|dnc.*(federal|national)/.test(name)) return "federalDnc";
+        if (/state.*dnc|dnc.*state/.test(name)) return "stateDnc";
+        if (/opt|do-not-contact|do-not-call|internal|suppression/.test(name)) return "optOuts";
+        if (/property|deed|parcel|assessor|records/.test(name)) return "properties";
+        if (/contact|enrichment|skiptrace|skip-trace|phone|email/.test(name)) return "contacts";
+
+        const headers = new Set(Object.keys(rows[0] || {}));
+        const hasOwner = hasAnyHeader(headers, ["owner_name", "owner", "grantee", "buyer_name", "name", "full_name"]);
+        const hasPropertyAddress = hasAnyHeader(headers, ["property_address", "situs_address", "site_address", "address"]);
+        const hasPhone = hasAnyHeader(headers, ["phone", "phone1", "primary_phone", "mobile", "landline", "number", "telephone"]);
+        const hasEmail = hasAnyHeader(headers, ["email", "email1", "email_address"]);
+        const hasState = hasAnyHeader(headers, ["state", "list_state", "jurisdiction"]);
+        const hasContactSignal = hasAnyHeader(headers, ["confidence", "match_confidence", "score", "source", "provider", "vendor"]);
+        const hasPropertySignal = hasAnyHeader(headers, ["parcel_id", "apn", "folio", "pin", "assessed_value", "market_value"]);
+        const hasOptOutSignal = hasAnyHeader(headers, ["reason", "opt_out_reason", "status"]);
+
+        if (hasOwner && hasPropertyAddress && !hasPhone) return "properties";
+        if (hasPropertySignal && hasPropertyAddress) return "properties";
+        if (hasPhone && hasState) return "stateDnc";
+        if ((hasPhone || hasEmail) && hasOptOutSignal) return "optOuts";
+        if ((hasPhone || hasEmail) && (hasOwner || hasContactSignal || hasPropertyAddress)) return "contacts";
+        if (hasPhone) return "federalDnc";
+        return null;
+      }
+
+      function hasAnyHeader(headers, names) {
+        return names.some((name) => headers.has(normalizeHeader(name)));
+      }
+
+      function requiredImportGaps() {
+        const gaps = [];
+        if (!state.properties.length) gaps.push("property records");
+        if (!state.contacts.length) gaps.push("contact enrichment");
+        if (!state.loaded.federalDnc) gaps.push("federal DNC");
+        if (!state.loaded.stateDnc) gaps.push("state DNC");
+        return gaps;
       }
 
       function loadSampleData() {
