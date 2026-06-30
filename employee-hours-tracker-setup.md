@@ -13,7 +13,7 @@ No employee IDs are required.
 
 1. Create a new Google Sheet.
 2. Open `Extensions > Apps Script`.
-3. Paste the code from `employee-hours-tracker-appscript.gs`.
+3. Paste the code from `COPY_THIS_TO_CODE_GS.gs` into `Code.gs`.
 4. Click `+` next to Files, choose `HTML`, and name it `EmployeePortal`.
 5. Paste the code from `EmployeePortal.html` into that new HTML file.
 6. Click `Save`.
