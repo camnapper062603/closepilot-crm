@@ -2,7 +2,7 @@
 
 This is a Google Sheets + Apps Script MVP for employee-owned scheduling and time tracking.
 
-Employees can create and update their own schedule rows anytime. The system identifies people only by:
+Employees can create and update their own schedule rows anytime from a web app portal. The system identifies people by:
 
 - Employee Name
 - Employee Email
@@ -14,11 +14,30 @@ No employee IDs are required.
 1. Create a new Google Sheet.
 2. Open `Extensions > Apps Script`.
 3. Paste the code from `employee-hours-tracker-appscript.gs`.
-4. Click `Save`.
-5. Run `setupHoursTracker`.
-6. Approve the Google permissions prompt.
-7. Reload the Google Sheet.
-8. Use the new `Hours Tracker` menu.
+4. Click `+` next to Files, choose `HTML`, and name it `EmployeePortal`.
+5. Paste the code from `EmployeePortal.html` into that new HTML file.
+6. Click `Save`.
+7. Run `setupHoursTracker`.
+8. Approve the Google permissions prompt.
+9. Reload the Google Sheet.
+10. Use the new `Hours Tracker` menu.
+
+## Employee Portal Deployment
+
+After setup works, deploy the employee-facing portal.
+
+1. In Apps Script, click `Deploy > New deployment`.
+2. Choose type `Web app`.
+3. Description: `Employee Schedule Portal`.
+4. Execute as: `Me`.
+5. Who has access: `Anyone with Google account`.
+6. Click `Deploy`.
+7. Copy the web app URL.
+8. Give employees the web app URL, not the master spreadsheet.
+
+The master Google Sheet should stay private to you or managers. Employees use the portal to see and update only the schedule rows tied to their email.
+
+If Google does not autofill their email, the employee can type their email in the portal. For a lightweight MVP this works well, but for stronger identity verification later we should add employee PINs or Google Workspace-only sign-in rules.
 
 ## Sheet Tabs
 
@@ -69,7 +88,7 @@ The script also auto-adds an employee when they save a schedule row or clock in/
 
 ## Employee Schedule
 
-This is the main schedule tab. Employees can edit this anytime.
+This is the master schedule tab. You can see everyone here. Employees should normally update this through the portal, not by editing this tab directly.
 
 | Column | Header | Example |
 | --- | --- | --- |
@@ -84,18 +103,19 @@ This is the main schedule tab. Employees can edit this anytime.
 | I | Scheduled Hours | Auto-filled |
 | J | Last Updated | Auto-filled |
 
-Employee workflow:
+Portal workflow:
 
-1. Add or edit rows on `Employee Schedule`.
-2. Optional: select the rows and use `Hours Tracker > Fill selected rows with my name/email`.
-3. Use `Hours Tracker > Save/update schedule rows`.
-4. The script normalizes the name/email, calculates scheduled hours, updates the employee directory, and refreshes timesheets.
+1. Employee opens the web app URL.
+2. Employee enters name/email if needed.
+3. Employee adds, edits, or removes shifts.
+4. Employee clicks `Save schedule`.
+5. The master `Employee Schedule` tab updates automatically.
 
-Employees can update the same row anytime by changing the date, time, break, role, or notes and running `Save/update schedule rows` again.
+You can still edit this tab directly as the owner if needed, then run `Hours Tracker > Refresh timesheets and summary`.
 
 ## Time Clock
 
-Employees use the menu:
+Employees can clock in/out from the portal. You can also use the sheet menu:
 
 - `Hours Tracker > Clock in`
 - `Hours Tracker > Clock out`
@@ -167,17 +187,13 @@ Most setup issues will show a clear message here, such as a missing sheet, inval
 
 ## Recommended Sharing Setup
 
-For the quickest MVP:
+For the portal version:
 
-1. Share the Google Sheet with employees as editors.
-2. Tell employees to use only:
+1. Do not share the master Google Sheet with regular employees.
+2. Share only the deployed web app URL.
+3. Keep the Google Sheet shared only with owners/managers.
+4. Managers can review:
    - `Employee Schedule`
-   - `Hours Tracker > Fill selected rows with my name/email`
-   - `Hours Tracker > Save/update schedule rows`
-   - `Hours Tracker > Clock in`
-   - `Hours Tracker > Clock out`
-3. Protect these tabs for managers only if you want cleaner records:
-   - `Employees`
    - `Time Clock`
    - `Timesheets`
    - `Summary`
@@ -185,7 +201,7 @@ For the quickest MVP:
 
 ## Important Notes
 
-- This version is flexible, but a shared Google Sheet cannot strongly prevent one editor from changing another editor's schedule row.
-- For stronger control later, build this into an Apps Script web app where employees only see their own form and their own shifts.
+- The portal keeps the master sheet private and filters rows by employee email.
+- If employees manually type email addresses, someone could type another employee's email. For stronger control later, add employee PINs or restrict deployment to a Google Workspace domain.
 - Overnight shifts are supported. If the end time is earlier than the start time, the script treats the end time as the next day.
 - Break minutes are subtracted from scheduled and worked hours.

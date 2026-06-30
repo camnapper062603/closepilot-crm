@@ -1,0 +1,594 @@
+<!doctype html>
+<html>
+  <head>
+    <base target="_top" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        --bg: #f5f7f6;
+        --surface: #ffffff;
+        --ink: #16211f;
+        --muted: #65736f;
+        --line: #dce4e0;
+        --teal: #0f766e;
+        --teal-dark: #115e59;
+        --red: #b42318;
+        --shadow: 0 14px 32px rgba(22, 33, 31, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        background: var(--bg);
+        color: var(--ink);
+        font-family: Arial, Helvetica, sans-serif;
+        margin: 0;
+      }
+
+      button,
+      input,
+      textarea {
+        font: inherit;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      .app {
+        display: grid;
+        gap: 18px;
+        margin: 0 auto;
+        max-width: 1180px;
+        padding: 22px;
+      }
+
+      header {
+        align-items: end;
+        display: flex;
+        gap: 16px;
+        justify-content: space-between;
+      }
+
+      h1,
+      h2,
+      p {
+        margin-top: 0;
+      }
+
+      h1 {
+        font-size: 1.7rem;
+        margin-bottom: 4px;
+      }
+
+      h2 {
+        font-size: 1rem;
+        margin-bottom: 0;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+        display: grid;
+        gap: 14px;
+        padding: 16px;
+      }
+
+      .grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      label {
+        color: var(--muted);
+        display: grid;
+        font-size: 0.82rem;
+        font-weight: 700;
+        gap: 6px;
+      }
+
+      input,
+      textarea {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        color: var(--ink);
+        min-height: 40px;
+        padding: 8px 10px;
+        width: 100%;
+      }
+
+      textarea {
+        min-height: 40px;
+        resize: vertical;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .button {
+        border: 0;
+        border-radius: 8px;
+        font-weight: 800;
+        min-height: 40px;
+        padding: 0 14px;
+      }
+
+      .primary {
+        background: var(--teal);
+        color: #ffffff;
+      }
+
+      .primary:hover {
+        background: var(--teal-dark);
+      }
+
+      .secondary {
+        background: #edf3f1;
+        color: var(--ink);
+      }
+
+      .danger {
+        background: #fde8e5;
+        color: var(--red);
+      }
+
+      .metric-grid {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .metric {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        display: grid;
+        gap: 4px;
+        padding: 12px;
+      }
+
+      .metric span {
+        color: var(--muted);
+        font-size: 0.8rem;
+      }
+
+      .metric strong {
+        font-size: 1.2rem;
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+      }
+
+      table {
+        border-collapse: collapse;
+        min-width: 940px;
+        width: 100%;
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid var(--line);
+        padding: 8px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        color: var(--muted);
+        font-size: 0.78rem;
+        text-transform: uppercase;
+      }
+
+      td input,
+      td textarea {
+        min-width: 110px;
+      }
+
+      td textarea {
+        min-width: 170px;
+      }
+
+      .hours-cell {
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .status {
+        border-left: 4px solid var(--teal);
+        color: var(--muted);
+        min-height: 24px;
+        padding-left: 10px;
+      }
+
+      .status.error {
+        border-left-color: var(--red);
+        color: var(--red);
+      }
+
+      @media (max-width: 840px) {
+        .grid,
+        .metric-grid {
+          grid-template-columns: 1fr;
+        }
+
+        header {
+          align-items: start;
+          display: grid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <header>
+        <div>
+          <h1>Employee Schedule Portal</h1>
+          <p class="muted">Create or update your schedule. Your changes sync to the master schedule.</p>
+        </div>
+        <div class="actions">
+          <button class="button secondary" type="button" id="loadButton">Load my schedule</button>
+          <button class="button primary" type="button" id="saveButton">Save schedule</button>
+        </div>
+      </header>
+
+      <section class="panel">
+        <h2>Your Info</h2>
+        <div class="grid">
+          <label>
+            Employee name
+            <input id="employeeName" autocomplete="name" placeholder="Full name" />
+          </label>
+          <label>
+            Employee email
+            <input id="employeeEmail" autocomplete="email" placeholder="name@email.com" />
+          </label>
+          <label>
+            Pay period
+            <input id="payPeriod" disabled />
+          </label>
+          <label>
+            Today
+            <input id="today" disabled />
+          </label>
+        </div>
+        <p class="status" id="statusMessage">Loading portal...</p>
+      </section>
+
+      <section class="panel">
+        <div class="actions">
+          <button class="button secondary" type="button" id="addShiftButton">Add shift</button>
+          <button class="button secondary" type="button" id="clockInButton">Clock in</button>
+          <button class="button secondary" type="button" id="clockOutButton">Clock out</button>
+        </div>
+        <div class="metric-grid">
+          <article class="metric">
+            <span>Scheduled hours</span>
+            <strong id="scheduledHours">0</strong>
+          </article>
+          <article class="metric">
+            <span>Worked hours</span>
+            <strong id="workedHours">0</strong>
+          </article>
+          <article class="metric">
+            <span>Variance</span>
+            <strong id="varianceHours">0</strong>
+          </article>
+          <article class="metric">
+            <span>Open punches</span>
+            <strong id="openPunches">0</strong>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>My Schedule</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Break</th>
+                <th>Role/Job</th>
+                <th>Notes</th>
+                <th>Hours</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="scheduleRows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Recent Timesheet Rows</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Clock in</th>
+                <th>Clock out</th>
+                <th>Scheduled</th>
+                <th>Worked</th>
+                <th>Variance</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="timesheetRows"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const state = {
+        shifts: [],
+        timesheets: [],
+        today: "",
+      };
+
+      const els = {
+        addShiftButton: document.querySelector("#addShiftButton"),
+        clockInButton: document.querySelector("#clockInButton"),
+        clockOutButton: document.querySelector("#clockOutButton"),
+        employeeEmail: document.querySelector("#employeeEmail"),
+        employeeName: document.querySelector("#employeeName"),
+        loadButton: document.querySelector("#loadButton"),
+        payPeriod: document.querySelector("#payPeriod"),
+        saveButton: document.querySelector("#saveButton"),
+        scheduleRows: document.querySelector("#scheduleRows"),
+        statusMessage: document.querySelector("#statusMessage"),
+        timesheetRows: document.querySelector("#timesheetRows"),
+        today: document.querySelector("#today"),
+      };
+
+      els.addShiftButton.addEventListener("click", addShift);
+      els.clockInButton.addEventListener("click", () => runClock("portalClockIn", "Clocking in..."));
+      els.clockOutButton.addEventListener("click", () => runClock("portalClockOut", "Clocking out..."));
+      els.loadButton.addEventListener("click", loadSchedule);
+      els.saveButton.addEventListener("click", saveSchedule);
+
+      function bootstrap() {
+        setStatus("Loading portal...");
+        google.script.run
+          .withSuccessHandler((data) => {
+            state.today = data.today || "";
+            els.employeeEmail.value = data.emailGuess || "";
+            els.employeeName.value = data.nameGuess || "";
+            els.payPeriod.value = `${data.payPeriod.start || ""} to ${data.payPeriod.end || ""}`;
+            els.today.value = data.today || "";
+            if (data.emailGuess) {
+              loadSchedule();
+            } else {
+              setStatus("Enter your name and email, then load or add shifts.");
+              addShift();
+            }
+          })
+          .withFailureHandler(showError)
+          .getPortalBootstrap();
+      }
+
+      function identity() {
+        return {
+          name: els.employeeName.value.trim(),
+          email: els.employeeEmail.value.trim().toLowerCase(),
+        };
+      }
+
+      function requireIdentity(requireName) {
+        const employee = identity();
+        if (!employee.email) throw new Error("Enter your employee email first.");
+        if (requireName && !employee.name) throw new Error("Enter your employee name first.");
+        return employee;
+      }
+
+      function loadSchedule() {
+        let employee;
+        try {
+          employee = requireIdentity(false);
+        } catch (error) {
+          showError(error);
+          return;
+        }
+
+        setStatus("Loading your schedule...");
+        google.script.run.withSuccessHandler(renderPortalData).withFailureHandler(showError).getPortalData(employee);
+      }
+
+      function saveSchedule() {
+        let employee;
+        try {
+          employee = requireIdentity(true);
+        } catch (error) {
+          showError(error);
+          return;
+        }
+
+        setStatus("Saving schedule...");
+        google.script.run
+          .withSuccessHandler((data) => {
+            renderPortalData(data);
+            setStatus("Schedule saved to the master sheet.");
+          })
+          .withFailureHandler(showError)
+          .savePortalSchedule({
+            name: employee.name,
+            email: employee.email,
+            shifts: state.shifts.filter((shift) => shift.date || shift.startTime || shift.endTime || shift.roleJob || shift.notes),
+          });
+      }
+
+      function runClock(functionName, message) {
+        let employee;
+        try {
+          employee = requireIdentity(true);
+        } catch (error) {
+          showError(error);
+          return;
+        }
+
+        setStatus(message);
+        const runner = google.script.run
+          .withSuccessHandler((data) => {
+            renderPortalData(data);
+            setStatus(functionName === "portalClockIn" ? "Clock in recorded." : "Clock out recorded.");
+          })
+          .withFailureHandler(showError);
+
+        if (functionName === "portalClockIn") {
+          runner.portalClockIn(employee);
+        } else {
+          runner.portalClockOut(employee);
+        }
+      }
+
+      function renderPortalData(data) {
+        if (data.employee) {
+          if (data.employee.name) els.employeeName.value = data.employee.name;
+          if (data.employee.email) els.employeeEmail.value = data.employee.email;
+        }
+
+        state.shifts = (data.schedule || []).map((shift) => ({ ...shift }));
+        state.timesheets = data.timesheets || [];
+        if (!state.shifts.length) addShift(false);
+        renderSchedule();
+        renderTimesheets();
+        renderMetrics();
+        if (!els.statusMessage.textContent || els.statusMessage.textContent.includes("Loading")) {
+          setStatus("Schedule loaded.");
+        }
+      }
+
+      function addShift(renderNow = true) {
+        state.shifts.push({
+          date: state.today,
+          startTime: "09:00",
+          endTime: "17:00",
+          breakMinutes: 30,
+          roleJob: "",
+          notes: "",
+          scheduledHours: 7.5,
+        });
+        if (renderNow) {
+          renderSchedule();
+          renderMetrics();
+        }
+      }
+
+      function removeShift(index) {
+        state.shifts.splice(index, 1);
+        if (!state.shifts.length) addShift(false);
+        renderSchedule();
+        renderMetrics();
+      }
+
+      function renderSchedule() {
+        els.scheduleRows.innerHTML = state.shifts
+          .map(
+            (shift, index) => `
+              <tr>
+                <td><input type="date" data-index="${index}" data-field="date" value="${escapeHtml(shift.date || "")}" /></td>
+                <td><input type="time" data-index="${index}" data-field="startTime" value="${escapeHtml(shift.startTime || "")}" /></td>
+                <td><input type="time" data-index="${index}" data-field="endTime" value="${escapeHtml(shift.endTime || "")}" /></td>
+                <td><input type="number" min="0" step="5" data-index="${index}" data-field="breakMinutes" value="${Number(shift.breakMinutes || 0)}" /></td>
+                <td><input data-index="${index}" data-field="roleJob" value="${escapeHtml(shift.roleJob || "")}" placeholder="Role or job" /></td>
+                <td><textarea data-index="${index}" data-field="notes" placeholder="Notes">${escapeHtml(shift.notes || "")}</textarea></td>
+                <td class="hours-cell">${calculateHours(shift).toFixed(2)}</td>
+                <td><button class="button danger" type="button" data-remove="${index}">Remove</button></td>
+              </tr>
+            `,
+          )
+          .join("");
+
+        els.scheduleRows.querySelectorAll("[data-field]").forEach((input) => {
+          input.addEventListener("input", (event) => {
+            const index = Number(event.target.dataset.index);
+            const field = event.target.dataset.field;
+            state.shifts[index][field] = field === "breakMinutes" ? Number(event.target.value || 0) : event.target.value;
+            state.shifts[index].scheduledHours = calculateHours(state.shifts[index]);
+            event.target.closest("tr").querySelector(".hours-cell").textContent = state.shifts[index].scheduledHours.toFixed(2);
+            renderMetrics();
+          });
+        });
+
+        els.scheduleRows.querySelectorAll("[data-remove]").forEach((button) => {
+          button.addEventListener("click", () => removeShift(Number(button.dataset.remove)));
+        });
+      }
+
+      function renderTimesheets() {
+        els.timesheetRows.innerHTML = state.timesheets.length
+          ? state.timesheets
+              .map(
+                (row) => `
+                  <tr>
+                    <td>${escapeHtml(row.date || "")}</td>
+                    <td>${escapeHtml(row.clockIn || "")}</td>
+                    <td>${escapeHtml(row.clockOut || "")}</td>
+                    <td>${Number(row.scheduledHours || 0).toFixed(2)}</td>
+                    <td>${Number(row.workedHours || 0).toFixed(2)}</td>
+                    <td>${Number(row.variance || 0).toFixed(2)}</td>
+                    <td>${escapeHtml(row.status || "")}</td>
+                  </tr>
+                `,
+              )
+              .join("")
+          : `<tr><td colspan="7" class="muted">No timesheet rows yet.</td></tr>`;
+      }
+
+      function renderMetrics() {
+        const scheduled = state.shifts.reduce((sum, shift) => sum + calculateHours(shift), 0);
+        const worked = state.timesheets.reduce((sum, row) => sum + Number(row.workedHours || 0), 0);
+        const openPunches = state.timesheets.filter((row) => row.status === "No Clock Out").length;
+
+        document.querySelector("#scheduledHours").textContent = scheduled.toFixed(2);
+        document.querySelector("#workedHours").textContent = worked.toFixed(2);
+        document.querySelector("#varianceHours").textContent = (worked - scheduled).toFixed(2);
+        document.querySelector("#openPunches").textContent = String(openPunches);
+      }
+
+      function calculateHours(shift) {
+        if (!shift.date || !shift.startTime || !shift.endTime) return 0;
+        const start = new Date(`${shift.date}T${shift.startTime}:00`);
+        let end = new Date(`${shift.date}T${shift.endTime}:00`);
+        if (end <= start) end = new Date(end.getTime() + 24 * 60 * 60 * 1000);
+        const rawHours = (end - start) / (1000 * 60 * 60);
+        return Math.max(0, rawHours - Number(shift.breakMinutes || 0) / 60);
+      }
+
+      function setStatus(message) {
+        els.statusMessage.textContent = message;
+        els.statusMessage.classList.remove("error");
+      }
+
+      function showError(error) {
+        const message = error && error.message ? error.message : String(error);
+        els.statusMessage.textContent = message;
+        els.statusMessage.classList.add("error");
+      }
+
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, (char) => {
+          const entities = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+          return entities[char];
+        });
+      }
+
+      bootstrap();
+    </script>
+  </body>
+</html>

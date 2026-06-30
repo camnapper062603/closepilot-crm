@@ -3,6 +3,8 @@
  *
  * Paste this file into Extensions > Apps Script, save it, run setupHoursTracker(),
  * then reload the spreadsheet and use the "Hours Tracker" menu.
+ * For the web app portal, also create an HTML file named EmployeePortal and
+ * paste the contents of EmployeePortal.html into it.
  *
  * This version lets employees create and update their own schedule rows anytime.
  * Employees are identified only by Employee Name + Employee Email.
@@ -81,6 +83,12 @@ function onOpen() {
     .addToUi();
 }
 
+function doGet() {
+  return HtmlService.createHtmlOutputFromFile("EmployeePortal")
+    .setTitle("Employee Schedule Portal")
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
 function setupHoursTracker() {
   return runSafely_("Setup or refresh workbook", setupHoursTracker_);
 }
@@ -111,6 +119,89 @@ function clockOut() {
 
 function refreshTimesheets(showAlert) {
   return runSafely_("Refresh timesheets and summary", () => refreshTimesheets_(showAlert));
+}
+
+function getPortalBootstrap() {
+  return runPortalSafely_("Portal bootstrap", () => {
+    const settings = getSettings_();
+    const emailGuess = cleanEmail_(Session.getActiveUser().getEmail());
+    const existingEmployee = emailGuess ? findEmployeeByEmail_(emailGuess) : null;
+
+    return {
+      emailGuess,
+      nameGuess: existingEmployee ? existingEmployee.name : "",
+      today: formatDateForInput_(new Date()),
+      payPeriod: {
+        start: formatSettingDate_(settings["Pay Period Start"]),
+        end: formatSettingDate_(settings["Pay Period End"]),
+      },
+    };
+  });
+}
+
+function getPortalData(identity) {
+  return runPortalSafely_("Portal load schedule", () => {
+    const employee = normalizePortalIdentity_(identity, false);
+    const existingEmployee = findEmployeeByEmail_(employee.email);
+    const name = employee.name || (existingEmployee && existingEmployee.name) || "";
+
+    return {
+      employee: {
+        name,
+        email: employee.email,
+      },
+      schedule: getScheduleForEmail_(employee.email),
+      timesheets: getTimesheetsForEmail_(employee.email),
+    };
+  });
+}
+
+function savePortalSchedule(payload) {
+  return runPortalSafely_("Portal save schedule", () => {
+    const employee = normalizePortalIdentity_(payload, true);
+    const shifts = (payload && payload.shifts ? payload.shifts : [])
+      .map((shift, index) => normalizePortalShift_(shift, index + 1))
+      .filter(Boolean);
+    const now = new Date();
+    const lock = LockService.getDocumentLock();
+
+    lock.waitLock(30000);
+    try {
+      deleteScheduleRowsForEmail_(employee.email);
+      if (shifts.length) {
+        appendRows_(
+          SpreadsheetApp.getActive().getSheetByName(HOURS_TRACKER.sheets.schedule),
+          shifts.map((shift) => [
+            employee.name,
+            employee.email,
+            shift.date,
+            shift.startTime,
+            shift.endTime,
+            shift.breakMinutes,
+            shift.roleJob,
+            shift.notes,
+            shift.scheduledHours,
+            now,
+          ]),
+        );
+      }
+      upsertEmployee_(employee);
+      sortSchedule_();
+      refreshTimesheets_(false);
+    } finally {
+      lock.releaseLock();
+    }
+
+    return getPortalData(employee);
+  });
+}
+
+function portalClockIn(identity) {
+  return clockPortal_("Clock In", identity);
+}
+
+function portalClockOut(identity) {
+  return clockPortal_("Clock Out", identity);
 }
 
 function setupHoursTracker_() {
@@ -303,6 +394,110 @@ function addClockEntry_(action) {
   SpreadsheetApp.getUi().alert(`${action} recorded for ${employee.name}.`);
 }
 
+function clockPortal_(action, identity) {
+  return runPortalSafely_(`Portal ${action}`, () => {
+    if (!HOURS_TRACKER.statuses.punch.includes(action)) throw new Error(`Invalid clock action: ${action}`);
+
+    const employee = normalizePortalIdentity_(identity, true);
+    const now = new Date();
+    const sheet = SpreadsheetApp.getActive().getSheetByName(HOURS_TRACKER.sheets.timeClock);
+
+    upsertEmployee_(employee);
+    appendRows_(sheet, [[makeId_("CLK"), now, employee.name, employee.email, action, normalizeDate_(now), normalizeTime_(now), ""]]);
+    refreshTimesheets_(false);
+    return getPortalData(employee);
+  });
+}
+
+function getScheduleForEmail_(email) {
+  const normalizedEmail = cleanEmail_(email);
+  const rows = getBodyRows_(SpreadsheetApp.getActive().getSheetByName(HOURS_TRACKER.sheets.schedule)).map((item) => item.row);
+
+  return rows
+    .filter((row) => cleanEmail_(row[1]) === normalizedEmail)
+    .map((row) => ({
+      date: formatDateForInput_(row[2]),
+      startTime: formatTimeForInput_(row[3]),
+      endTime: formatTimeForInput_(row[4]),
+      breakMinutes: Number(row[5] || 0),
+      roleJob: row[6] || "",
+      notes: row[7] || "",
+      scheduledHours: Number(row[8] || 0),
+      lastUpdated: row[9] ? formatDateTimeForDisplay_(row[9]) : "",
+    }));
+}
+
+function getTimesheetsForEmail_(email) {
+  const normalizedEmail = cleanEmail_(email);
+  const rows = getBodyRows_(SpreadsheetApp.getActive().getSheetByName(HOURS_TRACKER.sheets.timesheets)).map((item) => item.row);
+
+  return rows
+    .filter((row) => cleanEmail_(row[1]) === normalizedEmail)
+    .map((row) => ({
+      date: formatDateForInput_(row[2]),
+      clockIn: row[3] ? formatTimeForInput_(row[3]) : "",
+      clockOut: row[4] ? formatTimeForInput_(row[4]) : "",
+      breakMinutes: Number(row[5] || 0),
+      workedHours: Number(row[6] || 0),
+      scheduledHours: Number(row[7] || 0),
+      variance: Number(row[8] || 0),
+      scheduledShifts: Number(row[9] || 0),
+      status: row[10] || "",
+    }));
+}
+
+function deleteScheduleRowsForEmail_(email) {
+  const sheet = SpreadsheetApp.getActive().getSheetByName(HOURS_TRACKER.sheets.schedule);
+  const normalizedEmail = cleanEmail_(email);
+  const rows = getBodyRows_(sheet);
+
+  rows
+    .filter((item) => cleanEmail_(item.row[1]) === normalizedEmail)
+    .map((item) => item.index)
+    .sort((a, b) => b - a)
+    .forEach((rowIndex) => sheet.deleteRow(rowIndex));
+}
+
+function normalizePortalIdentity_(identity, requireName) {
+  const payload = identity || {};
+  const email = cleanEmail_(payload.email || Session.getActiveUser().getEmail());
+  if (!email) throw new Error("Enter your employee email before loading or saving the portal.");
+
+  const existingEmployee = findEmployeeByEmail_(email);
+  const name = cleanName_(payload.name || (existingEmployee && existingEmployee.name) || "");
+  if (requireName && !name) throw new Error("Enter your employee name before saving or clocking time.");
+
+  return { name, email };
+}
+
+function normalizePortalShift_(shift, rowNumber) {
+  const payload = shift || {};
+  const date = payload.date;
+  const startTime = payload.startTime;
+  const endTime = payload.endTime;
+  const hasAnyValue = date || startTime || endTime || payload.breakMinutes || payload.roleJob || payload.notes;
+
+  if (!hasAnyValue) return null;
+  if (!date || !startTime || !endTime) {
+    throw new Error(`Portal shift ${rowNumber} needs Date, Start Time, and End Time.`);
+  }
+
+  const breakMinutes = Number(payload.breakMinutes || 0);
+  if (breakMinutes < 0) throw new Error(`Portal shift ${rowNumber} has an invalid break value.`);
+
+  const normalized = {
+    date: normalizeDate_(date),
+    startTime: normalizeTime_(startTime),
+    endTime: normalizeTime_(endTime),
+    breakMinutes,
+    roleJob: payload.roleJob || "",
+    notes: payload.notes || "",
+    scheduledHours: 0,
+  };
+  normalized.scheduledHours = calculateHours_(normalized.date, normalized.startTime, normalized.endTime, normalized.breakMinutes);
+  return normalized;
+}
+
 function buildSummary_() {
   const ss = SpreadsheetApp.getActive();
   const summarySheet = ss.getSheetByName(HOURS_TRACKER.sheets.summary);
@@ -392,6 +587,7 @@ function formatWorkbook_() {
   setDateTimeFormats_(ss.getSheetByName(HOURS_TRACKER.sheets.timeClock), [2]);
   setDateFormats_(ss.getSheetByName(HOURS_TRACKER.sheets.timesheets), [3]);
   setTimeFormats_(ss.getSheetByName(HOURS_TRACKER.sheets.timesheets), [4, 5]);
+  setDateTimeFormats_(ss.getSheetByName(HOURS_TRACKER.sheets.errorLog), [1]);
 }
 
 function applyValidations_() {
@@ -450,6 +646,15 @@ function runSafely_(action, callback) {
   } catch (error) {
     logError_(action, error);
     showErrorAlert_(action, error);
+    throw error;
+  }
+}
+
+function runPortalSafely_(action, callback) {
+  try {
+    return callback();
+  } catch (error) {
+    logError_(action, error);
     throw error;
   }
 }
@@ -561,6 +766,8 @@ function normalizeDate_(value) {
     const epoch = new Date(1899, 11, 30);
     return new Date(epoch.getTime() + value * 24 * 60 * 60 * 1000);
   }
+  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || "").trim());
+  if (isoMatch) return new Date(Number(isoMatch[1]), Number(isoMatch[2]) - 1, Number(isoMatch[3]));
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) throw new Error(`Invalid date: ${value}`);
   return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
@@ -572,6 +779,8 @@ function normalizeTime_(value) {
     const totalMinutes = Math.round(value * 24 * 60);
     return new Date(1899, 11, 30, Math.floor(totalMinutes / 60), totalMinutes % 60, 0, 0);
   }
+  const timeMatch = /^(\d{1,2}):(\d{2})$/.exec(String(value || "").trim());
+  if (timeMatch) return new Date(1899, 11, 30, Number(timeMatch[1]), Number(timeMatch[2]), 0, 0);
   const parsed = new Date(`January 1, 2000 ${value}`);
   if (Number.isNaN(parsed.getTime())) throw new Error(`Invalid time: ${value}`);
   return new Date(1899, 11, 30, parsed.getHours(), parsed.getMinutes(), 0, 0);
@@ -615,6 +824,21 @@ function roundHours_(value) {
 function formatSettingDate_(value) {
   if (!value) return "";
   return Utilities.formatDate(normalizeDate_(value), Session.getScriptTimeZone(), "M/d/yyyy");
+}
+
+function formatDateForInput_(value) {
+  if (!value) return "";
+  return Utilities.formatDate(normalizeDate_(value), Session.getScriptTimeZone(), "yyyy-MM-dd");
+}
+
+function formatTimeForInput_(value) {
+  if (!value) return "";
+  return Utilities.formatDate(normalizeTime_(value), Session.getScriptTimeZone(), "HH:mm");
+}
+
+function formatDateTimeForDisplay_(value) {
+  if (!value) return "";
+  return Utilities.formatDate(new Date(value), Session.getScriptTimeZone(), "M/d/yyyy h:mm a");
 }
 
 function makeId_(prefix) {
