@@ -1,13 +1,15 @@
 /**
- * Employee-Owned Hours Tracker for Google Sheets.
+ * Employee Hours Tracker - Complete Google Apps Script backend.
  *
- * Paste this file into Extensions > Apps Script, save it, run setupHoursTracker(),
- * then reload the spreadsheet and use the "Hours Tracker" menu.
- * For the web app portal, also create an HTML file named EmployeePortal and
- * paste the contents of EmployeePortal.html into it.
+ * Apps Script file setup:
+ * 1. Put this entire file in Code.gs.
+ * 2. Create a separate HTML file named EmployeePortal.
+ * 3. Put the contents of EmployeePortal.html in that HTML file.
+ * 4. Run setupHoursTracker().
+ * 5. Deploy as a Web App.
  *
- * This version lets employees create and update their own schedule rows anytime.
- * Employees are identified only by Employee Name + Employee Email.
+ * The Google Sheet is the private master schedule. Employees use the web app
+ * portal to load, save, and clock time for rows tied to their email address.
  */
 
 const HOURS_TRACKER = {
@@ -61,10 +63,8 @@ const HOURS_TRACKER = {
     ],
     errorLog: ["Timestamp", "Action", "Message", "Stack"],
   },
-  statuses: {
-    punch: ["Clock In", "Clock Out"],
-    timesheet: ["Complete", "No Clock In", "No Clock Out"],
-  },
+  punchActions: ["Clock In", "Clock Out"],
+  timesheetStatuses: ["Complete", "No Clock In", "No Clock Out"],
 };
 
 function onOpen() {
@@ -89,6 +89,10 @@ function doGet() {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
+function doget() {
+  return doGet();
+}
+
 function setupHoursTracker() {
   return runSafely_("Setup or refresh workbook", setupHoursTracker_);
 }
@@ -110,25 +114,31 @@ function submitMySchedule() {
 }
 
 function clockIn() {
-  return runSafely_("Clock in", clockIn_);
+  return runSafely_("Clock in", function () {
+    addClockEntry_("Clock In");
+  });
 }
 
 function clockOut() {
-  return runSafely_("Clock out", clockOut_);
+  return runSafely_("Clock out", function () {
+    addClockEntry_("Clock Out");
+  });
 }
 
 function refreshTimesheets(showAlert) {
-  return runSafely_("Refresh timesheets and summary", () => refreshTimesheets_(showAlert));
+  return runSafely_("Refresh timesheets and summary", function () {
+    refreshTimesheets_(showAlert);
+  });
 }
 
 function getPortalBootstrap() {
-  return runPortalSafely_("Portal bootstrap", () => {
+  return runPortalSafely_("Portal bootstrap", function () {
     const settings = getSettings_();
     const emailGuess = cleanEmail_(Session.getActiveUser().getEmail());
     const existingEmployee = emailGuess ? findEmployeeByEmail_(emailGuess) : null;
 
     return {
-      emailGuess,
+      emailGuess: emailGuess,
       nameGuess: existingEmployee ? existingEmployee.name : "",
       today: formatDateForInput_(new Date()),
       payPeriod: {
@@ -140,14 +150,14 @@ function getPortalBootstrap() {
 }
 
 function getPortalData(identity) {
-  return runPortalSafely_("Portal load schedule", () => {
+  return runPortalSafely_("Portal load schedule", function () {
     const employee = normalizePortalIdentity_(identity, false);
     const existingEmployee = findEmployeeByEmail_(employee.email);
     const name = employee.name || (existingEmployee && existingEmployee.name) || "";
 
     return {
       employee: {
-        name,
+        name: name,
         email: employee.email,
       },
       schedule: getScheduleForEmail_(employee.email),
@@ -157,10 +167,12 @@ function getPortalData(identity) {
 }
 
 function savePortalSchedule(payload) {
-  return runPortalSafely_("Portal save schedule", () => {
+  return runPortalSafely_("Portal save schedule", function () {
     const employee = normalizePortalIdentity_(payload, true);
     const shifts = (payload && payload.shifts ? payload.shifts : [])
-      .map((shift, index) => normalizePortalShift_(shift, index + 1))
+      .map(function (shift, index) {
+        return normalizePortalShift_(shift, index + 1);
+      })
       .filter(Boolean);
     const now = new Date();
     const lock = LockService.getDocumentLock();
@@ -170,19 +182,21 @@ function savePortalSchedule(payload) {
       deleteScheduleRowsForEmail_(employee.email);
       if (shifts.length) {
         appendRows_(
-          SpreadsheetApp.getActive().getSheetByName(HOURS_TRACKER.sheets.schedule),
-          shifts.map((shift) => [
-            employee.name,
-            employee.email,
-            shift.date,
-            shift.startTime,
-            shift.endTime,
-            shift.breakMinutes,
-            shift.roleJob,
-            shift.notes,
-            shift.scheduledHours,
-            now,
-          ]),
+          ss_().getSheetByName(HOURS_TRACKER.sheets.schedule),
+          shifts.map(function (shift) {
+            return [
+              employee.name,
+              employee.email,
+              shift.date,
+              shift.startTime,
+              shift.endTime,
+              shift.breakMinutes,
+              shift.roleJob,
+              shift.notes,
+              shift.scheduledHours,
+              now,
+            ];
+          }),
         );
       }
       upsertEmployee_(employee);
@@ -205,9 +219,9 @@ function portalClockOut(identity) {
 }
 
 function setupHoursTracker_() {
-  const ss = SpreadsheetApp.getActive();
+  const ss = ss_();
 
-  Object.keys(HOURS_TRACKER.sheets).forEach((key) => {
+  Object.keys(HOURS_TRACKER.sheets).forEach(function (key) {
     const sheet = ensureSheet_(ss, HOURS_TRACKER.sheets[key]);
     setHeader_(sheet, HOURS_TRACKER.headers[key]);
   });
@@ -215,19 +229,17 @@ function setupHoursTracker_() {
   seedSettings_();
   formatWorkbook_();
   applyValidations_();
-  SpreadsheetApp.getUi().alert(
-    "Hours Tracker is ready. Employees can add or update rows on Employee Schedule anytime.",
-  );
+  SpreadsheetApp.getUi().alert("Hours Tracker is ready. Deploy the web app and share the portal URL with employees.");
 }
 
 function registerOrUpdateEmployee_() {
-  const identity = promptEmployeeIdentity_();
-  upsertEmployee_(identity);
-  SpreadsheetApp.getUi().alert(`Saved ${identity.name} (${identity.email}) to Employees.`);
+  const employee = promptEmployeeIdentity_();
+  upsertEmployee_(employee);
+  SpreadsheetApp.getUi().alert("Saved " + employee.name + " (" + employee.email + ") to Employees.");
 }
 
 function fillSelectedScheduleIdentity_() {
-  const ss = SpreadsheetApp.getActive();
+  const ss = ss_();
   const sheet = ss.getActiveSheet();
   const selection = sheet.getActiveRange();
 
@@ -236,7 +248,7 @@ function fillSelectedScheduleIdentity_() {
     return;
   }
 
-  const identity = promptEmployeeIdentity_();
+  const employee = promptEmployeeIdentity_();
   const startRow = Math.max(selection.getRow(), 2);
   const rowCount = selection.getLastRow() - startRow + 1;
   if (rowCount < 1) {
@@ -244,21 +256,21 @@ function fillSelectedScheduleIdentity_() {
     return;
   }
 
-  const values = Array.from({ length: rowCount }, () => [identity.name, identity.email]);
-
+  const values = Array.from({ length: rowCount }, function () {
+    return [employee.name, employee.email];
+  });
   sheet.getRange(startRow, 1, rowCount, 2).setValues(values);
-  upsertEmployee_(identity);
-  SpreadsheetApp.getUi().alert(`Filled ${rowCount} row(s) with ${identity.name} (${identity.email}).`);
+  upsertEmployee_(employee);
+  SpreadsheetApp.getUi().alert("Filled " + rowCount + " row(s) with " + employee.name + " (" + employee.email + ").");
 }
 
 function saveEmployeeSchedule_() {
-  const ss = SpreadsheetApp.getActive();
-  const scheduleSheet = ss.getSheetByName(HOURS_TRACKER.sheets.schedule);
-  const rows = getBodyRows_(scheduleSheet);
+  const sheet = ss_().getSheetByName(HOURS_TRACKER.sheets.schedule);
+  const rows = getBodyRows_(sheet);
   const now = new Date();
   let updated = 0;
 
-  rows.forEach((item) => {
+  rows.forEach(function (item) {
     const row = item.row;
     const name = cleanName_(row[0]);
     const email = cleanEmail_(row[1]);
@@ -268,57 +280,50 @@ function saveEmployeeSchedule_() {
 
     if (!name && !email && !date && !start && !end) return;
     if (!name || !email || !date || !start || !end) {
-      throw new Error(`Row ${item.index} needs Employee Name, Employee Email, Date, Start Time, and End Time.`);
+      throw new Error("Row " + item.index + " needs Employee Name, Employee Email, Date, Start Time, and End Time.");
     }
 
     const breakMinutes = Number(row[5] || 0);
     const scheduledHours = calculateHours_(date, start, end, breakMinutes);
 
-    scheduleSheet
-      .getRange(item.index, 1, 1, HOURS_TRACKER.headers.schedule.length)
-      .setValues([
-        [
-          name,
-          email,
-          normalizeDate_(date),
-          normalizeTime_(start),
-          normalizeTime_(end),
-          breakMinutes,
-          row[6] || "",
-          row[7] || "",
-          scheduledHours,
-          now,
-        ],
-      ]);
+    sheet.getRange(item.index, 1, 1, HOURS_TRACKER.headers.schedule.length).setValues([
+      [
+        name,
+        email,
+        normalizeDate_(date),
+        normalizeTime_(start),
+        normalizeTime_(end),
+        breakMinutes,
+        row[6] || "",
+        row[7] || "",
+        scheduledHours,
+        now,
+      ],
+    ]);
 
-    upsertEmployee_({ name, email });
+    upsertEmployee_({ name: name, email: email });
     updated += 1;
   });
 
   sortSchedule_();
   refreshTimesheets_(false);
-  SpreadsheetApp.getUi().alert(`${updated} schedule row(s) saved or updated.`);
-}
-
-function clockIn_() {
-  addClockEntry_("Clock In");
-}
-
-function clockOut_() {
-  addClockEntry_("Clock Out");
+  SpreadsheetApp.getUi().alert(updated + " schedule row(s) saved or updated.");
 }
 
 function refreshTimesheets_(showAlert) {
   const shouldAlert = showAlert !== false;
-  const ss = SpreadsheetApp.getActive();
-  const scheduleSheet = ss.getSheetByName(HOURS_TRACKER.sheets.schedule);
-  const clockSheet = ss.getSheetByName(HOURS_TRACKER.sheets.timeClock);
-  const timesheetSheet = ss.getSheetByName(HOURS_TRACKER.sheets.timesheets);
-  const scheduleRows = getBodyRows_(scheduleSheet).map((item) => item.row);
-  const punchRows = getBodyRows_(clockSheet).map((item) => item.row);
+  const scheduleSheet = ss_().getSheetByName(HOURS_TRACKER.sheets.schedule);
+  const clockSheet = ss_().getSheetByName(HOURS_TRACKER.sheets.timeClock);
+  const timesheetSheet = ss_().getSheetByName(HOURS_TRACKER.sheets.timesheets);
+  const scheduleRows = getBodyRows_(scheduleSheet).map(function (item) {
+    return item.row;
+  });
+  const punchRows = getBodyRows_(clockSheet).map(function (item) {
+    return item.row;
+  });
   const groups = {};
 
-  scheduleRows.forEach((row) => {
+  scheduleRows.forEach(function (row) {
     const name = cleanName_(row[0]);
     const email = cleanEmail_(row[1]);
     const date = row[2];
@@ -332,7 +337,7 @@ function refreshTimesheets_(showAlert) {
     groups[key].scheduledShifts += 1;
   });
 
-  punchRows.forEach((row) => {
+  punchRows.forEach(function (row) {
     const name = cleanName_(row[2]);
     const email = cleanEmail_(row[3]);
     const date = row[5];
@@ -350,17 +355,22 @@ function refreshTimesheets_(showAlert) {
 
   const output = Object.keys(groups)
     .sort()
-    .map((key) => {
+    .map(function (key) {
       const group = groups[key];
-      const punches = group.punches.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-      const clockInEntry = punches.find((punch) => punch.action === "Clock In");
-      const clockOutEntries = punches.filter((punch) => punch.action === "Clock Out");
+      const punches = group.punches.sort(function (a, b) {
+        return new Date(a.timestamp) - new Date(b.timestamp);
+      });
+      const clockInEntry = punches.find(function (punch) {
+        return punch.action === "Clock In";
+      });
+      const clockOutEntries = punches.filter(function (punch) {
+        return punch.action === "Clock Out";
+      });
       const clockOutEntry = clockOutEntries[clockOutEntries.length - 1];
       const workedHours =
         clockInEntry && clockOutEntry
           ? calculateHours_(group.date, clockInEntry.time, clockOutEntry.time, group.breakMinutes)
           : 0;
-      const status = getTimesheetStatus_(clockInEntry, clockOutEntry);
 
       return [
         group.name,
@@ -373,34 +383,34 @@ function refreshTimesheets_(showAlert) {
         roundHours_(group.scheduledHours),
         roundHours_(workedHours - group.scheduledHours),
         group.scheduledShifts,
-        status,
+        getTimesheetStatus_(clockInEntry, clockOutEntry),
       ];
     });
 
   clearBody_(timesheetSheet);
   if (output.length) appendRows_(timesheetSheet, output);
   buildSummary_();
-  if (shouldAlert) SpreadsheetApp.getUi().alert(`Timesheets refreshed with ${output.length} row(s).`);
+  if (shouldAlert) SpreadsheetApp.getUi().alert("Timesheets refreshed with " + output.length + " row(s).");
 }
 
 function addClockEntry_(action) {
   const employee = promptEmployeeIdentity_();
   const now = new Date();
-  const sheet = SpreadsheetApp.getActive().getSheetByName(HOURS_TRACKER.sheets.timeClock);
+  const sheet = ss_().getSheetByName(HOURS_TRACKER.sheets.timeClock);
 
   upsertEmployee_(employee);
   appendRows_(sheet, [[makeId_("CLK"), now, employee.name, employee.email, action, normalizeDate_(now), normalizeTime_(now), ""]]);
   refreshTimesheets_(false);
-  SpreadsheetApp.getUi().alert(`${action} recorded for ${employee.name}.`);
+  SpreadsheetApp.getUi().alert(action + " recorded for " + employee.name + ".");
 }
 
 function clockPortal_(action, identity) {
-  return runPortalSafely_(`Portal ${action}`, () => {
-    if (!HOURS_TRACKER.statuses.punch.includes(action)) throw new Error(`Invalid clock action: ${action}`);
+  return runPortalSafely_("Portal " + action, function () {
+    if (HOURS_TRACKER.punchActions.indexOf(action) === -1) throw new Error("Invalid clock action: " + action);
 
     const employee = normalizePortalIdentity_(identity, true);
     const now = new Date();
-    const sheet = SpreadsheetApp.getActive().getSheetByName(HOURS_TRACKER.sheets.timeClock);
+    const sheet = ss_().getSheetByName(HOURS_TRACKER.sheets.timeClock);
 
     upsertEmployee_(employee);
     appendRows_(sheet, [[makeId_("CLK"), now, employee.name, employee.email, action, normalizeDate_(now), normalizeTime_(now), ""]]);
@@ -411,51 +421,71 @@ function clockPortal_(action, identity) {
 
 function getScheduleForEmail_(email) {
   const normalizedEmail = cleanEmail_(email);
-  const rows = getBodyRows_(SpreadsheetApp.getActive().getSheetByName(HOURS_TRACKER.sheets.schedule)).map((item) => item.row);
+  const rows = getBodyRows_(ss_().getSheetByName(HOURS_TRACKER.sheets.schedule)).map(function (item) {
+    return item.row;
+  });
 
   return rows
-    .filter((row) => cleanEmail_(row[1]) === normalizedEmail)
-    .map((row) => ({
-      date: formatDateForInput_(row[2]),
-      startTime: formatTimeForInput_(row[3]),
-      endTime: formatTimeForInput_(row[4]),
-      breakMinutes: Number(row[5] || 0),
-      roleJob: row[6] || "",
-      notes: row[7] || "",
-      scheduledHours: Number(row[8] || 0),
-      lastUpdated: row[9] ? formatDateTimeForDisplay_(row[9]) : "",
-    }));
+    .filter(function (row) {
+      return cleanEmail_(row[1]) === normalizedEmail;
+    })
+    .map(function (row) {
+      return {
+        date: formatDateForInput_(row[2]),
+        startTime: formatTimeForInput_(row[3]),
+        endTime: formatTimeForInput_(row[4]),
+        breakMinutes: Number(row[5] || 0),
+        roleJob: row[6] || "",
+        notes: row[7] || "",
+        scheduledHours: Number(row[8] || 0),
+        lastUpdated: row[9] ? formatDateTimeForDisplay_(row[9]) : "",
+      };
+    });
 }
 
 function getTimesheetsForEmail_(email) {
   const normalizedEmail = cleanEmail_(email);
-  const rows = getBodyRows_(SpreadsheetApp.getActive().getSheetByName(HOURS_TRACKER.sheets.timesheets)).map((item) => item.row);
+  const rows = getBodyRows_(ss_().getSheetByName(HOURS_TRACKER.sheets.timesheets)).map(function (item) {
+    return item.row;
+  });
 
   return rows
-    .filter((row) => cleanEmail_(row[1]) === normalizedEmail)
-    .map((row) => ({
-      date: formatDateForInput_(row[2]),
-      clockIn: row[3] ? formatTimeForInput_(row[3]) : "",
-      clockOut: row[4] ? formatTimeForInput_(row[4]) : "",
-      breakMinutes: Number(row[5] || 0),
-      workedHours: Number(row[6] || 0),
-      scheduledHours: Number(row[7] || 0),
-      variance: Number(row[8] || 0),
-      scheduledShifts: Number(row[9] || 0),
-      status: row[10] || "",
-    }));
+    .filter(function (row) {
+      return cleanEmail_(row[1]) === normalizedEmail;
+    })
+    .map(function (row) {
+      return {
+        date: formatDateForInput_(row[2]),
+        clockIn: row[3] ? formatTimeForInput_(row[3]) : "",
+        clockOut: row[4] ? formatTimeForInput_(row[4]) : "",
+        breakMinutes: Number(row[5] || 0),
+        workedHours: Number(row[6] || 0),
+        scheduledHours: Number(row[7] || 0),
+        variance: Number(row[8] || 0),
+        scheduledShifts: Number(row[9] || 0),
+        status: row[10] || "",
+      };
+    });
 }
 
 function deleteScheduleRowsForEmail_(email) {
-  const sheet = SpreadsheetApp.getActive().getSheetByName(HOURS_TRACKER.sheets.schedule);
+  const sheet = ss_().getSheetByName(HOURS_TRACKER.sheets.schedule);
   const normalizedEmail = cleanEmail_(email);
   const rows = getBodyRows_(sheet);
 
   rows
-    .filter((item) => cleanEmail_(item.row[1]) === normalizedEmail)
-    .map((item) => item.index)
-    .sort((a, b) => b - a)
-    .forEach((rowIndex) => sheet.deleteRow(rowIndex));
+    .filter(function (item) {
+      return cleanEmail_(item.row[1]) === normalizedEmail;
+    })
+    .map(function (item) {
+      return item.index;
+    })
+    .sort(function (a, b) {
+      return b - a;
+    })
+    .forEach(function (rowIndex) {
+      sheet.deleteRow(rowIndex);
+    });
 }
 
 function normalizePortalIdentity_(identity, requireName) {
@@ -467,54 +497,57 @@ function normalizePortalIdentity_(identity, requireName) {
   const name = cleanName_(payload.name || (existingEmployee && existingEmployee.name) || "");
   if (requireName && !name) throw new Error("Enter your employee name before saving or clocking time.");
 
-  return { name, email };
+  return { name: name, email: email };
 }
 
 function normalizePortalShift_(shift, rowNumber) {
   const payload = shift || {};
-  const date = payload.date;
-  const startTime = payload.startTime;
-  const endTime = payload.endTime;
-  const hasAnyValue = date || startTime || endTime || payload.breakMinutes || payload.roleJob || payload.notes;
-
+  const hasAnyValue =
+    payload.date || payload.startTime || payload.endTime || payload.breakMinutes || payload.roleJob || payload.notes;
   if (!hasAnyValue) return null;
-  if (!date || !startTime || !endTime) {
-    throw new Error(`Portal shift ${rowNumber} needs Date, Start Time, and End Time.`);
+  if (!payload.date || !payload.startTime || !payload.endTime) {
+    throw new Error("Portal shift " + rowNumber + " needs Date, Start Time, and End Time.");
   }
 
   const breakMinutes = Number(payload.breakMinutes || 0);
-  if (breakMinutes < 0) throw new Error(`Portal shift ${rowNumber} has an invalid break value.`);
+  if (breakMinutes < 0) throw new Error("Portal shift " + rowNumber + " has an invalid break value.");
 
   const normalized = {
-    date: normalizeDate_(date),
-    startTime: normalizeTime_(startTime),
-    endTime: normalizeTime_(endTime),
-    breakMinutes,
+    date: normalizeDate_(payload.date),
+    startTime: normalizeTime_(payload.startTime),
+    endTime: normalizeTime_(payload.endTime),
+    breakMinutes: breakMinutes,
     roleJob: payload.roleJob || "",
     notes: payload.notes || "",
     scheduledHours: 0,
   };
-  normalized.scheduledHours = calculateHours_(normalized.date, normalized.startTime, normalized.endTime, normalized.breakMinutes);
+  normalized.scheduledHours = calculateHours_(
+    normalized.date,
+    normalized.startTime,
+    normalized.endTime,
+    normalized.breakMinutes,
+  );
   return normalized;
 }
 
 function buildSummary_() {
-  const ss = SpreadsheetApp.getActive();
-  const summarySheet = ss.getSheetByName(HOURS_TRACKER.sheets.summary);
-  const timesheetRows = getBodyRows_(ss.getSheetByName(HOURS_TRACKER.sheets.timesheets)).map((item) => item.row);
+  const summarySheet = ss_().getSheetByName(HOURS_TRACKER.sheets.summary);
+  const rows = getBodyRows_(ss_().getSheetByName(HOURS_TRACKER.sheets.timesheets)).map(function (item) {
+    return item.row;
+  });
   const settings = getSettings_();
-  const payPeriod = `${formatSettingDate_(settings["Pay Period Start"])} to ${formatSettingDate_(settings["Pay Period End"])}`;
+  const payPeriod = formatSettingDate_(settings["Pay Period Start"]) + " to " + formatSettingDate_(settings["Pay Period End"]);
   const groups = {};
 
-  timesheetRows.forEach((row) => {
+  rows.forEach(function (row) {
     const name = cleanName_(row[0]);
     const email = cleanEmail_(row[1]);
     if (!email) return;
 
     if (!groups[email]) {
       groups[email] = {
-        name,
-        email,
+        name: name,
+        email: email,
         scheduled: 0,
         worked: 0,
         openPunches: 0,
@@ -531,7 +564,7 @@ function buildSummary_() {
 
   const output = Object.keys(groups)
     .sort()
-    .map((email) => {
+    .map(function (email) {
       const group = groups[email];
       return [
         group.name,
@@ -550,24 +583,27 @@ function buildSummary_() {
 }
 
 function seedSettings_() {
-  const sheet = SpreadsheetApp.getActive().getSheetByName(HOURS_TRACKER.sheets.settings);
-  if (sheet.getLastRow() > 1) return;
-
+  const sheet = ss_().getSheetByName(HOURS_TRACKER.sheets.settings);
+  const existing = getSettings_();
   const today = new Date();
   const start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - today.getDay());
   const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);
+  const rows = [];
 
-  appendRows_(sheet, [
-    ["Timezone", Session.getScriptTimeZone(), "Used for date and time formatting."],
-    ["Pay Period Start", start, "Change this when you run payroll."],
-    ["Pay Period End", end, "Change this when you run payroll."],
-    ["Schedule Owner Rule", "Name + Email", "Employees are identified only by these two fields."],
-  ]);
+  if (!existing.Timezone) rows.push(["Timezone", Session.getScriptTimeZone(), "Used for date and time formatting."]);
+  if (!existing["Pay Period Start"]) rows.push(["Pay Period Start", start, "Change this when you run payroll."]);
+  if (!existing["Pay Period End"]) rows.push(["Pay Period End", end, "Change this when you run payroll."]);
+  if (!existing["Schedule Owner Rule"]) {
+    rows.push(["Schedule Owner Rule", "Name + Email", "Portal rows are filtered by employee email."]);
+  }
+
+  if (rows.length) appendRows_(sheet, rows);
 }
 
 function formatWorkbook_() {
-  const ss = SpreadsheetApp.getActive();
-  Object.keys(HOURS_TRACKER.sheets).forEach((key) => {
+  const ss = ss_();
+
+  Object.keys(HOURS_TRACKER.sheets).forEach(function (key) {
     const sheet = ss.getSheetByName(HOURS_TRACKER.sheets[key]);
     sheet.setFrozenRows(1);
     sheet.autoResizeColumns(1, HOURS_TRACKER.headers[key].length);
@@ -582,25 +618,24 @@ function formatWorkbook_() {
   setDateFormats_(ss.getSheetByName(HOURS_TRACKER.sheets.schedule), [3]);
   setTimeFormats_(ss.getSheetByName(HOURS_TRACKER.sheets.schedule), [4, 5]);
   setDateTimeFormats_(ss.getSheetByName(HOURS_TRACKER.sheets.schedule), [10]);
+  setDateTimeFormats_(ss.getSheetByName(HOURS_TRACKER.sheets.timeClock), [2]);
   setDateFormats_(ss.getSheetByName(HOURS_TRACKER.sheets.timeClock), [6]);
   setTimeFormats_(ss.getSheetByName(HOURS_TRACKER.sheets.timeClock), [7]);
-  setDateTimeFormats_(ss.getSheetByName(HOURS_TRACKER.sheets.timeClock), [2]);
   setDateFormats_(ss.getSheetByName(HOURS_TRACKER.sheets.timesheets), [3]);
   setTimeFormats_(ss.getSheetByName(HOURS_TRACKER.sheets.timesheets), [4, 5]);
   setDateTimeFormats_(ss.getSheetByName(HOURS_TRACKER.sheets.errorLog), [1]);
 }
 
 function applyValidations_() {
-  const ss = SpreadsheetApp.getActive();
-  const timeClock = ss.getSheetByName(HOURS_TRACKER.sheets.timeClock);
-  const timesheets = ss.getSheetByName(HOURS_TRACKER.sheets.timesheets);
+  const timeClock = ss_().getSheetByName(HOURS_TRACKER.sheets.timeClock);
+  const timesheets = ss_().getSheetByName(HOURS_TRACKER.sheets.timesheets);
 
-  setListValidation_(timeClock, 5, HOURS_TRACKER.statuses.punch);
-  setListValidation_(timesheets, 11, HOURS_TRACKER.statuses.timesheet);
+  setListValidation_(timeClock, 5, HOURS_TRACKER.punchActions);
+  setListValidation_(timesheets, 11, HOURS_TRACKER.timesheetStatuses);
 }
 
 function sortSchedule_() {
-  const sheet = SpreadsheetApp.getActive().getSheetByName(HOURS_TRACKER.sheets.schedule);
+  const sheet = ss_().getSheetByName(HOURS_TRACKER.sheets.schedule);
   if (sheet.getLastRow() < 3) return;
   sheet.getRange(2, 1, sheet.getLastRow() - 1, HOURS_TRACKER.headers.schedule.length).sort([
     { column: 3, ascending: true },
@@ -609,14 +644,24 @@ function sortSchedule_() {
   ]);
 }
 
+function ss_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    throw new Error("No active spreadsheet found. Open the Google Sheet first, then use Extensions > Apps Script.");
+  }
+  return ss;
+}
+
 function ensureSheet_(ss, name) {
   return ss.getSheetByName(name) || ss.insertSheet(name);
 }
 
 function setHeader_(sheet, headers) {
   const current = sheet.getRange(1, 1, 1, headers.length).getValues()[0];
-  const missing = headers.some((header, index) => current[index] !== header);
-  if (missing) sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  const needsHeader = headers.some(function (header, index) {
+    return current[index] !== header;
+  });
+  if (needsHeader) sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
 }
 
 function appendRows_(sheet, rows) {
@@ -631,7 +676,9 @@ function getBodyRows_(sheet) {
   return sheet
     .getRange(2, 1, lastRow - 1, lastColumn)
     .getValues()
-    .map((row, index) => ({ row, index: index + 2 }));
+    .map(function (row, index) {
+      return { row: row, index: index + 2 };
+    });
 }
 
 function clearBody_(sheet) {
@@ -664,15 +711,13 @@ function logError_(action, error) {
   const stack = error && error.stack ? error.stack : "";
 
   try {
-    const ss = SpreadsheetApp.getActive();
-    if (!ss) throw new Error("No active spreadsheet found. Open the Sheet, then use Extensions > Apps Script from that Sheet.");
-    const sheet = ensureSheet_(ss, HOURS_TRACKER.sheets.errorLog);
+    const sheet = ensureSheet_(ss_(), HOURS_TRACKER.sheets.errorLog);
     setHeader_(sheet, HOURS_TRACKER.headers.errorLog);
     appendRows_(sheet, [[new Date(), action, message, stack]]);
   } catch (loggingError) {
-    Logger.log(`Hours Tracker error during ${action}: ${message}`);
+    Logger.log("Hours Tracker error during " + action + ": " + message);
     Logger.log(stack);
-    Logger.log(`Could not write Error Log tab: ${loggingError.message || loggingError}`);
+    Logger.log("Could not write Error Log tab: " + (loggingError.message || loggingError));
   }
 }
 
@@ -681,10 +726,10 @@ function showErrorAlert_(action, error) {
 
   try {
     SpreadsheetApp.getUi().alert(
-      `Hours Tracker error while running "${action}":\n\n${message}\n\nCheck the Error Log tab for details.`,
+      'Hours Tracker error while running "' + action + '":\n\n' + message + "\n\nCheck the Error Log tab for details.",
     );
   } catch (alertError) {
-    Logger.log(`Could not show error alert: ${alertError.message || alertError}`);
+    Logger.log("Could not show error alert: " + (alertError.message || alertError));
   }
 }
 
@@ -702,35 +747,36 @@ function promptEmployeeIdentity_() {
   if (!email) throw new Error("Employee email is required.");
 
   const existing = findEmployeeByEmail_(email);
-  const nameResponse = ui.prompt(
-    "Employee name",
-    "Enter the employee full name.",
-    ui.ButtonSet.OK_CANCEL,
-  );
-
+  const nameResponse = ui.prompt("Employee name", "Enter the employee full name.", ui.ButtonSet.OK_CANCEL);
   if (nameResponse.getSelectedButton() !== ui.Button.OK) throw new Error("Employee name is required.");
+
   const name = cleanName_(nameResponse.getResponseText() || (existing && existing.name));
   if (!name) throw new Error("Employee name is required.");
-
-  return { name, email };
+  return { name: name, email: email };
 }
 
 function upsertEmployee_(employee) {
-  const sheet = SpreadsheetApp.getActive().getSheetByName(HOURS_TRACKER.sheets.employees);
+  const sheet = ss_().getSheetByName(HOURS_TRACKER.sheets.employees);
   const rows = getBodyRows_(sheet);
-  const match = rows.find((item) => cleanEmail_(item.row[1]) === employee.email);
+  const match = rows.find(function (item) {
+    return cleanEmail_(item.row[1]) === employee.email;
+  });
 
   if (match) {
     sheet.getRange(match.index, 1, 1, 2).setValues([[employee.name, employee.email]]);
     return;
   }
-
   appendRows_(sheet, [[employee.name, employee.email]]);
 }
 
 function findEmployeeByEmail_(email) {
-  const rows = getBodyRows_(SpreadsheetApp.getActive().getSheetByName(HOURS_TRACKER.sheets.employees)).map((item) => item.row);
-  const match = rows.find((row) => cleanEmail_(row[1]) === cleanEmail_(email));
+  const rows = getBodyRows_(ss_().getSheetByName(HOURS_TRACKER.sheets.employees)).map(function (item) {
+    return item.row;
+  });
+  const normalizedEmail = cleanEmail_(email);
+  const match = rows.find(function (row) {
+    return cleanEmail_(row[1]) === normalizedEmail;
+  });
   if (!match) return null;
   return {
     name: cleanName_(match[0]),
@@ -739,11 +785,16 @@ function findEmployeeByEmail_(email) {
 }
 
 function getSettings_() {
-  const rows = getBodyRows_(SpreadsheetApp.getActive().getSheetByName(HOURS_TRACKER.sheets.settings)).map((item) => item.row);
-  return rows.reduce((settings, row) => {
-    if (row[0]) settings[row[0]] = row[1];
-    return settings;
-  }, {});
+  const sheet = ss_().getSheetByName(HOURS_TRACKER.sheets.settings);
+  if (!sheet) return {};
+  return getBodyRows_(sheet)
+    .map(function (item) {
+      return item.row;
+    })
+    .reduce(function (settings, row) {
+      if (row[0]) settings[row[0]] = row[1];
+      return settings;
+    }, {});
 }
 
 function calculateHours_(dateValue, startValue, endValue, breakMinutes) {
@@ -766,10 +817,13 @@ function normalizeDate_(value) {
     const epoch = new Date(1899, 11, 30);
     return new Date(epoch.getTime() + value * 24 * 60 * 60 * 1000);
   }
-  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || "").trim());
+
+  const text = String(value || "").trim();
+  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
   if (isoMatch) return new Date(Number(isoMatch[1]), Number(isoMatch[2]) - 1, Number(isoMatch[3]));
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) throw new Error(`Invalid date: ${value}`);
+
+  const parsed = new Date(text);
+  if (Number.isNaN(parsed.getTime())) throw new Error("Invalid date: " + value);
   return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
 }
 
@@ -779,16 +833,19 @@ function normalizeTime_(value) {
     const totalMinutes = Math.round(value * 24 * 60);
     return new Date(1899, 11, 30, Math.floor(totalMinutes / 60), totalMinutes % 60, 0, 0);
   }
-  const timeMatch = /^(\d{1,2}):(\d{2})$/.exec(String(value || "").trim());
+
+  const text = String(value || "").trim();
+  const timeMatch = /^(\d{1,2}):(\d{2})$/.exec(text);
   if (timeMatch) return new Date(1899, 11, 30, Number(timeMatch[1]), Number(timeMatch[2]), 0, 0);
-  const parsed = new Date(`January 1, 2000 ${value}`);
-  if (Number.isNaN(parsed.getTime())) throw new Error(`Invalid time: ${value}`);
+
+  const parsed = new Date("January 1, 2000 " + text);
+  if (Number.isNaN(parsed.getTime())) throw new Error("Invalid time: " + value);
   return new Date(1899, 11, 30, parsed.getHours(), parsed.getMinutes(), 0, 0);
 }
 
 function groupKey_(email, dateValue) {
   const date = normalizeDate_(dateValue);
-  return `${cleanEmail_(email)}|${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+  return cleanEmail_(email) + "|" + date.getFullYear() + "-" + (date.getMonth() + 1) + "-" + date.getDate();
 }
 
 function makeGroup_(name, email, dateValue) {
@@ -842,9 +899,13 @@ function formatDateTimeForDisplay_(value) {
 }
 
 function makeId_(prefix) {
-  return `${prefix}-${Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyyMMdd-HHmmss")}-${Math.floor(
-    Math.random() * 10000,
-  )}`;
+  return (
+    prefix +
+    "-" +
+    Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyyMMdd-HHmmss") +
+    "-" +
+    Math.floor(Math.random() * 10000)
+  );
 }
 
 function setListValidation_(sheet, column, values) {
@@ -853,13 +914,19 @@ function setListValidation_(sheet, column, values) {
 }
 
 function setDateFormats_(sheet, columns) {
-  columns.forEach((column) => sheet.getRange(2, column, Math.max(sheet.getMaxRows() - 1, 1), 1).setNumberFormat("m/d/yyyy"));
+  columns.forEach(function (column) {
+    sheet.getRange(2, column, Math.max(sheet.getMaxRows() - 1, 1), 1).setNumberFormat("m/d/yyyy");
+  });
 }
 
 function setTimeFormats_(sheet, columns) {
-  columns.forEach((column) => sheet.getRange(2, column, Math.max(sheet.getMaxRows() - 1, 1), 1).setNumberFormat("h:mm AM/PM"));
+  columns.forEach(function (column) {
+    sheet.getRange(2, column, Math.max(sheet.getMaxRows() - 1, 1), 1).setNumberFormat("h:mm AM/PM");
+  });
 }
 
 function setDateTimeFormats_(sheet, columns) {
-  columns.forEach((column) => sheet.getRange(2, column, Math.max(sheet.getMaxRows() - 1, 1), 1).setNumberFormat("m/d/yyyy h:mm AM/PM"));
+  columns.forEach(function (column) {
+    sheet.getRange(2, column, Math.max(sheet.getMaxRows() - 1, 1), 1).setNumberFormat("m/d/yyyy h:mm AM/PM");
+  });
 }
