@@ -159,6 +159,30 @@ If you only have property records and contact enrichment, the app can generate l
 
 Candidate rows are not contact-ready. Do not call, text, or otherwise use phone numbers from that file until federal DNC, state DNC, internal opt-out, and consent checks are complete.
 
+## Automated Lead Workflow
+
+The standalone app now auto-scrubs property and contact enrichment imports.
+
+When `Auto scrub and generate` is checked:
+
+1. Import property records and contact enrichment.
+2. The app normalizes names, addresses, phones, emails, states, zips, and confidence scores.
+3. Duplicate property and contact rows are removed.
+4. Invalid property/contact rows are dropped.
+5. Lead candidates are generated automatically and marked `needs-scrub`.
+6. Import federal DNC, state DNC, and internal opt-out files.
+7. The app automatically re-generates the list as safe leads when the DNC scrub date is fresh.
+
+Your ongoing manual job should be keeping these files current:
+
+```text
+federal-dnc.csv
+state-dnc.csv
+internal-opt-outs.csv
+```
+
+After those files are imported, export `safe-leads.csv`. If DNC files are missing or stale, export only `lead-candidates-needs-scrub.csv`.
+
 ## Bulk Import File Names
 
 The standalone app can auto-sort files by filename and headers. These names are recommended:
