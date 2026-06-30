@@ -1,3 +1,13 @@
+function doGet() {
+  return HtmlService.createHtmlOutputFromFile("EmployeePortal")
+    .setTitle("Employee Schedule Portal")
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function doget() {
+  return doGet();
+}
+
 /**
  * Employee Hours Tracker - Complete Google Apps Script backend.
  *
@@ -81,16 +91,6 @@ function onOpen() {
     .addSeparator()
     .addItem("Refresh timesheets and summary", "refreshTimesheets")
     .addToUi();
-}
-
-function doGet() {
-  return HtmlService.createHtmlOutputFromFile("EmployeePortal")
-    .setTitle("Employee Schedule Portal")
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-}
-
-function doget() {
-  return doGet();
 }
 
 function setupHoursTracker() {
