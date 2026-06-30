@@ -190,17 +190,29 @@ The app can pull property records directly from authorized open-data sources whe
 Supported source types:
 
 - `CSV URL`: a direct public or signed CSV download URL.
-- `ArcGIS FeatureServer layer`: a public ArcGIS REST layer URL ending in a layer number, such as `/FeatureServer/0`.
+- `ArcGIS MapServer/FeatureServer layer`: a public ArcGIS REST layer URL ending in a layer number, such as `/MapServer/0` or `/FeatureServer/0`.
 
 Workflow:
 
 1. Find an authorized county/assessor/property data source.
 2. Copy the direct CSV URL or ArcGIS FeatureServer layer URL.
 3. Paste it into `Property source URL`.
-4. Choose `CSV URL` or `ArcGIS FeatureServer layer`.
+4. Choose `CSV URL` or `ArcGIS MapServer/FeatureServer layer`.
 5. Click `Pull property records`.
 
 The app then cleans, dedupes, and imports those property records automatically.
+
+For Harris County:
+
+1. Click `Use Harris County HCAD`.
+2. Adjust `Max records` if needed.
+3. Click `Pull property records`.
+
+The preset uses HCAD's public parcel ArcGIS service:
+
+```text
+https://www.gis.hctx.net/arcgis/rest/services/HCAD/Parcels/MapServer/0
+```
 
 Limits:
 

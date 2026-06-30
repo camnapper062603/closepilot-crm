@@ -415,7 +415,7 @@
               Source type
               <select id="propertySourceType">
                 <option value="csv">CSV URL</option>
-                <option value="arcgis">ArcGIS FeatureServer layer</option>
+                <option value="arcgis">ArcGIS MapServer/FeatureServer layer</option>
               </select>
             </label>
             <label>
@@ -428,6 +428,7 @@
             </label>
           </div>
           <div class="actions">
+            <button class="button secondary" id="useHcadButton" type="button">Use Harris County HCAD</button>
             <button class="button secondary" id="pullPropertySourceButton" type="button">Pull property records</button>
           </div>
         </section>
@@ -660,6 +661,14 @@ Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,512-555-0184,,maya@example.com,
         },
       };
 
+      const propertySourcePresets = {
+        hcad: {
+          type: "arcgis",
+          url: "https://www.gis.hctx.net/arcgis/rest/services/HCAD/Parcels/MapServer/0",
+          limit: 500,
+        },
+      };
+
       const els = {
         bulkImportFiles: document.querySelector("#bulkImportFiles"),
         propertyFile: document.querySelector("#propertyFile"),
@@ -716,6 +725,7 @@ Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,512-555-0184,,maya@example.com,
       document.querySelector("#exportLeadButton").addEventListener("click", () => exportCsv(leadExportFilename(), state.leads.map(leadToCsvRow)));
       document.querySelector("#exportAuditButton").addEventListener("click", () => exportCsv("suppression-audit.csv", state.audit.map(auditToCsvRow)));
       document.querySelector("#clearButton").addEventListener("click", clearAll);
+      document.querySelector("#useHcadButton").addEventListener("click", useHcadSource);
       document.querySelector("#pullPropertySourceButton").addEventListener("click", () => pullPropertyRecords().catch(showError));
       document.querySelectorAll("[data-template]").forEach((button) => {
         button.addEventListener("click", () => downloadTemplate(button.dataset.template));
@@ -769,6 +779,14 @@ Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,512-555-0184,,maya@example.com,
       function importProperties(rows) {
         const count = setProperties(rows);
         finishImport(`${count} property record(s) cleaned and deduped.`);
+      }
+
+      function useHcadSource() {
+        const preset = propertySourcePresets.hcad;
+        els.propertySourceType.value = preset.type;
+        els.propertySourceUrl.value = preset.url;
+        els.propertySourceLimit.value = preset.limit;
+        setStatus("Harris County HCAD property source loaded. Click Pull property records when ready.");
       }
 
       async function pullPropertyRecords() {
@@ -1160,26 +1178,42 @@ Jordan Lee,91 Pine Acre Rd,919-555-0102,jordan@example.com,74,Licensed enrichmen
             "location_address",
             "full_address",
             "address",
-          ]),
+          ]) || buildHcadSiteAddress(row),
         );
-        const mailingAddress = cleanAddress(readField(row, ["mailing_address", "mailing_addr", "owner_address", "owner_addr", "mail_address", "mail_addr"]));
+        const mailingAddress = cleanAddress(
+          readField(row, ["mailing_address", "mailing_addr", "owner_address", "owner_addr", "mail_address", "mail_addr"]) || buildAddressParts(row, ["mail_addr_1", "mail_addr_2"]),
+        );
         return {
-          ownerName: cleanName(readField(row, ["owner_name", "owner", "owner1", "owner_1", "property_owner", "taxpayer_name", "grantee", "buyer_name", "name"])),
+          ownerName: cleanName(
+            readField(row, ["owner_name", "owner", "owner1", "owner_1", "owner_name_1", "property_owner", "taxpayer_name", "grantee", "buyer_name", "name"]) ||
+              buildAddressParts(row, ["owner_name_1", "owner_name_2"]),
+          ),
           propertyAddress,
           propertyCity: cleanText(readField(row, ["property_city", "situs_city", "site_city", "prop_city", "city"])),
-          propertyState: normalizeState(readField(row, ["property_state", "situs_state", "site_state", "prop_state", "state"])),
+          propertyState: normalizeState(readField(row, ["property_state", "situs_state", "site_state", "prop_state", "state"]) || (readField(row, ["site_county"]) ? "TX" : "")),
           propertyZip: cleanZip(readField(row, ["property_zip", "situs_zip", "site_zip", "prop_zip", "zip", "zipcode"])),
           mailingAddress,
           mailingCity: cleanText(readField(row, ["mailing_city", "mail_city", "owner_city"])),
           mailingState: normalizeState(readField(row, ["mailing_state", "mail_state", "owner_state"])),
           mailingZip: cleanZip(readField(row, ["mailing_zip", "mail_zip", "owner_zip"])),
           saleDate: cleanText(readField(row, ["sale_date", "recording_date", "deed_date"])),
-          assessedValue: cleanText(readField(row, ["assessed_value", "market_value", "tax_value", "appraised_value", "value"])),
-          acreage: cleanText(readField(row, ["acreage", "acres", "lot_size"])),
-          county: cleanText(readField(row, ["county"])),
-          parcelId: cleanText(readField(row, ["parcel_id", "parcel", "parcel_number", "parid", "apn", "folio", "pin"])),
+          assessedValue: cleanText(readField(row, ["assessed_value", "market_value", "tax_value", "appraised_value", "total_appraised_val", "total_market_val", "value"])),
+          acreage: cleanText(readField(row, ["acreage", "acreage_1", "acres", "lot_size", "statedarea"])),
+          county: cleanText(readField(row, ["county", "site_county"])),
+          parcelId: cleanText(readField(row, ["parcel_id", "parcel", "parcel_number", "parid", "lowparcelid", "hcad_num", "acct_num", "apn", "folio", "pin"])),
           ownerOccupied: normalizeToken(propertyAddress) === normalizeToken(mailingAddress || propertyAddress),
         };
+      }
+
+      function buildHcadSiteAddress(row) {
+        return buildAddressParts(row, ["site_str_pfx", "site_str_num", "site_str_num_sfx", "site_str_name", "site_str_sfx", "site_str_sfx_dir"]);
+      }
+
+      function buildAddressParts(row, fields) {
+        return fields
+          .map((field) => readField(row, [field]))
+          .filter((part) => cleanText(part))
+          .join(" ");
       }
 
       function normalizeContact(row) {
