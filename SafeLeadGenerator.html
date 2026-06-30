@@ -1,0 +1,1086 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Safe Property Lead Generator</title>
+    <style>
+      :root {
+        --bg: #f4f6f5;
+        --surface: #ffffff;
+        --ink: #17211f;
+        --muted: #65746f;
+        --line: #dce4df;
+        --teal: #0f766e;
+        --teal-dark: #115e59;
+        --gold: #a16207;
+        --red: #b42318;
+        --blue: #2f5f8f;
+        --shadow: 0 16px 36px rgba(23, 33, 31, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        background: var(--bg);
+        color: var(--ink);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        margin: 0;
+      }
+
+      button,
+      input,
+      select,
+      textarea {
+        font: inherit;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      .app {
+        display: grid;
+        grid-template-columns: 330px minmax(0, 1fr);
+        min-height: 100vh;
+      }
+
+      .sidebar {
+        background: var(--surface);
+        border-right: 1px solid var(--line);
+        display: grid;
+        gap: 14px;
+        align-content: start;
+        padding: 18px;
+      }
+
+      .main {
+        display: grid;
+        gap: 16px;
+        align-content: start;
+        padding: 20px;
+      }
+
+      .brand {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .brand-mark {
+        align-items: center;
+        background: #dff3ef;
+        border-radius: 8px;
+        color: var(--teal-dark);
+        display: inline-flex;
+        font-weight: 900;
+        height: 42px;
+        justify-content: center;
+        width: 42px;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+
+      h1 {
+        font-size: 1.55rem;
+        margin-bottom: 4px;
+      }
+
+      h2 {
+        font-size: 1.02rem;
+        margin-bottom: 0;
+      }
+
+      h3 {
+        font-size: 0.92rem;
+        margin-bottom: 0;
+      }
+
+      .muted,
+      label,
+      .small,
+      .upload-card span,
+      .metric span,
+      td small {
+        color: var(--muted);
+      }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+        display: grid;
+        gap: 14px;
+        padding: 16px;
+      }
+
+      .panel-header,
+      .topbar {
+        align-items: center;
+        display: flex;
+        gap: 12px;
+        justify-content: space-between;
+      }
+
+      .topbar {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+        padding: 16px;
+      }
+
+      .upload-grid,
+      .controls,
+      .metric-grid,
+      .two-col {
+        display: grid;
+        gap: 12px;
+      }
+
+      .metric-grid {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+      }
+
+      .two-col {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      }
+
+      .upload-card,
+      .metric,
+      .status-card {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        display: grid;
+        gap: 8px;
+        padding: 12px;
+      }
+
+      .upload-card input {
+        width: 100%;
+      }
+
+      label {
+        display: grid;
+        font-size: 0.82rem;
+        font-weight: 800;
+        gap: 6px;
+      }
+
+      input,
+      select,
+      textarea {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        color: var(--ink);
+        min-height: 38px;
+        padding: 8px 10px;
+        width: 100%;
+      }
+
+      textarea {
+        min-height: 88px;
+        resize: vertical;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .button {
+        border: 0;
+        border-radius: 8px;
+        font-weight: 850;
+        min-height: 40px;
+        padding: 0 14px;
+        white-space: nowrap;
+      }
+
+      .primary {
+        background: var(--teal);
+        color: #ffffff;
+      }
+
+      .primary:hover {
+        background: var(--teal-dark);
+      }
+
+      .secondary {
+        background: #eef3f1;
+        color: var(--ink);
+      }
+
+      .danger {
+        background: #fce7e5;
+        color: var(--red);
+      }
+
+      .metric strong {
+        font-size: 1.35rem;
+      }
+
+      .pill {
+        border-radius: 999px;
+        display: inline-flex;
+        font-size: 0.74rem;
+        font-weight: 850;
+        padding: 5px 8px;
+        width: max-content;
+      }
+
+      .ok {
+        background: #dcfce7;
+        color: #166534;
+      }
+
+      .warn {
+        background: #fef3c7;
+        color: var(--gold);
+      }
+
+      .block {
+        background: #fee2e2;
+        color: var(--red);
+      }
+
+      .info {
+        background: #dbeafe;
+        color: var(--blue);
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+      }
+
+      table {
+        border-collapse: collapse;
+        min-width: 1000px;
+        width: 100%;
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid var(--line);
+        padding: 10px 8px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        color: var(--muted);
+        font-size: 0.74rem;
+        text-transform: uppercase;
+      }
+
+      td {
+        font-size: 0.9rem;
+      }
+
+      td small {
+        display: block;
+        margin-top: 2px;
+      }
+
+      .status-message {
+        border-left: 4px solid var(--teal);
+        color: var(--muted);
+        margin: 0;
+        min-height: 24px;
+        padding-left: 10px;
+      }
+
+      code {
+        background: #edf3f1;
+        border-radius: 6px;
+        padding: 2px 5px;
+      }
+
+      @media (max-width: 1080px) {
+        .app,
+        .two-col {
+          grid-template-columns: 1fr;
+        }
+
+        .sidebar {
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+
+        .metric-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 680px) {
+        .metric-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .topbar,
+        .panel-header {
+          align-items: start;
+          display: grid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="brand-mark">SL</span>
+          <div>
+            <strong>Safe Leads</strong>
+            <span class="small">Property lead generator</span>
+          </div>
+        </div>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h2>CSV Imports</h2>
+            <span class="pill info">Local MVP</span>
+          </div>
+          <div class="upload-grid">
+            <label class="upload-card">
+              Deed/property records
+              <input id="propertyFile" type="file" accept=".csv,text/csv" />
+              <span>Required: owner/address fields</span>
+            </label>
+            <label class="upload-card">
+              Contact enrichment
+              <input id="contactFile" type="file" accept=".csv,text/csv" />
+              <span>Phone/email/source/confidence</span>
+            </label>
+            <label class="upload-card">
+              Federal DNC suppression
+              <input id="federalDncFile" type="file" accept=".csv,text/csv" />
+              <span>Authorized registry export only</span>
+            </label>
+            <label class="upload-card">
+              State DNC suppression
+              <input id="stateDncFile" type="file" accept=".csv,text/csv" />
+              <span>Phone plus state/list source</span>
+            </label>
+            <label class="upload-card">
+              Internal opt-out list
+              <input id="optOutFile" type="file" accept=".csv,text/csv" />
+              <span>Phone/email opt-outs</span>
+            </label>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>Lead Rules</h2>
+          <div class="controls">
+            <label>
+              Minimum contact confidence
+              <input id="confidenceInput" type="number" min="0" max="100" step="1" value="70" />
+            </label>
+            <label>
+              Allowed outreach
+              <select id="channelSelect">
+                <option value="any">Any compliant channel</option>
+                <option value="phone">Phone only after DNC clear</option>
+                <option value="email">Email only</option>
+                <option value="mail">Postal mail only</option>
+              </select>
+            </label>
+            <label>
+              Federal DNC recency
+              <select id="recencySelect">
+                <option value="30">Require scrub dated within 30 days</option>
+                <option value="60">Require scrub dated within 60 days</option>
+                <option value="90">Require scrub dated within 90 days</option>
+              </select>
+            </label>
+            <label>
+              Scrub date
+              <input id="scrubDateInput" type="date" />
+            </label>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>Actions</h2>
+          <div class="actions">
+            <button class="button secondary" id="loadSampleButton" type="button">Load sample</button>
+            <button class="button primary" id="generateButton" type="button">Generate safe leads</button>
+            <button class="button secondary" id="exportLeadButton" type="button">Export leads</button>
+            <button class="button secondary" id="exportAuditButton" type="button">Export audit</button>
+            <button class="button danger" id="clearButton" type="button">Clear</button>
+          </div>
+          <p class="status-message" id="statusMessage">Import CSVs or load sample data.</p>
+        </section>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <h1>Compliant Property Lead Builder</h1>
+            <p class="muted">Deed records, enrichment matches, and DNC suppression before export.</p>
+          </div>
+          <span class="pill warn">No live scraping</span>
+        </header>
+
+        <section class="metric-grid">
+          <article class="metric">
+            <span>Properties</span>
+            <strong id="propertyCount">0</strong>
+          </article>
+          <article class="metric">
+            <span>Contacts</span>
+            <strong id="contactCount">0</strong>
+          </article>
+          <article class="metric">
+            <span>Suppressed phones</span>
+            <strong id="suppressionCount">0</strong>
+          </article>
+          <article class="metric">
+            <span>Generated leads</span>
+            <strong id="leadCount">0</strong>
+          </article>
+          <article class="metric">
+            <span>Blocked candidates</span>
+            <strong id="blockedCount">0</strong>
+          </article>
+        </section>
+
+        <section class="two-col">
+          <section class="panel">
+            <div class="panel-header">
+              <h2>Compliance Gate</h2>
+              <span class="pill ok" id="gateStatus">Ready</span>
+            </div>
+            <div class="status-card">
+              <h3>Required before phone export</h3>
+              <p class="muted">
+                Federal DNC, state DNC, and internal opt-outs are checked against normalized 10-digit phone numbers.
+              </p>
+            </div>
+            <div class="status-card">
+              <h3>Supported Columns</h3>
+              <p class="muted">
+                Properties: <code>owner_name</code>, <code>property_address</code>, <code>property_state</code>, <code>mailing_address</code>.
+                Contacts: <code>owner_name</code>, <code>phone</code>, <code>email</code>, <code>confidence</code>, <code>source</code>.
+              </p>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <h2>Export Readiness</h2>
+              <span class="pill info" id="exportStatus">No leads</span>
+            </div>
+            <div class="status-card">
+              <h3>Phone outreach</h3>
+              <p class="muted" id="phoneStatus">No phone-ready leads generated.</p>
+            </div>
+            <div class="status-card">
+              <h3>Mail/email rows</h3>
+              <p class="muted" id="mailEmailStatus">No alternate-channel leads generated.</p>
+            </div>
+          </section>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h2>Safe Lead Output</h2>
+            <span class="pill ok" id="leadTableStatus">0 rows</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Owner</th>
+                  <th>Property</th>
+                  <th>Contact</th>
+                  <th>Score</th>
+                  <th>Channels</th>
+                  <th>Compliance</th>
+                </tr>
+              </thead>
+              <tbody id="leadRows"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h2>Suppression Audit</h2>
+            <span class="pill warn" id="auditTableStatus">0 rows</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Owner</th>
+                  <th>Phone</th>
+                  <th>Reason</th>
+                  <th>List</th>
+                  <th>Source</th>
+                </tr>
+              </thead>
+              <tbody id="auditRows"></tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      const state = {
+        properties: [],
+        contacts: [],
+        federalDnc: new Set(),
+        stateDnc: new Map(),
+        optOutPhones: new Set(),
+        optOutEmails: new Set(),
+        loaded: {
+          federalDnc: false,
+          stateDnc: false,
+          optOut: false,
+        },
+        leads: [],
+        audit: [],
+      };
+
+      const els = {
+        propertyFile: document.querySelector("#propertyFile"),
+        contactFile: document.querySelector("#contactFile"),
+        federalDncFile: document.querySelector("#federalDncFile"),
+        stateDncFile: document.querySelector("#stateDncFile"),
+        optOutFile: document.querySelector("#optOutFile"),
+        confidenceInput: document.querySelector("#confidenceInput"),
+        channelSelect: document.querySelector("#channelSelect"),
+        recencySelect: document.querySelector("#recencySelect"),
+        scrubDateInput: document.querySelector("#scrubDateInput"),
+        statusMessage: document.querySelector("#statusMessage"),
+        propertyCount: document.querySelector("#propertyCount"),
+        contactCount: document.querySelector("#contactCount"),
+        suppressionCount: document.querySelector("#suppressionCount"),
+        leadCount: document.querySelector("#leadCount"),
+        blockedCount: document.querySelector("#blockedCount"),
+        gateStatus: document.querySelector("#gateStatus"),
+        exportStatus: document.querySelector("#exportStatus"),
+        phoneStatus: document.querySelector("#phoneStatus"),
+        mailEmailStatus: document.querySelector("#mailEmailStatus"),
+        leadRows: document.querySelector("#leadRows"),
+        auditRows: document.querySelector("#auditRows"),
+        leadTableStatus: document.querySelector("#leadTableStatus"),
+        auditTableStatus: document.querySelector("#auditTableStatus"),
+      };
+
+      els.scrubDateInput.value = new Date().toISOString().slice(0, 10);
+
+      [
+        ["propertyFile", importProperties],
+        ["contactFile", importContacts],
+        ["federalDncFile", importFederalDnc],
+        ["stateDncFile", importStateDnc],
+        ["optOutFile", importOptOuts],
+      ].forEach(([id, handler]) => {
+        els[id].addEventListener("change", (event) => {
+          const file = event.target.files[0];
+          if (file) readCsvFile(file).then(handler).catch(showError);
+        });
+      });
+
+      document.querySelector("#loadSampleButton").addEventListener("click", loadSampleData);
+      document.querySelector("#generateButton").addEventListener("click", generateLeads);
+      document.querySelector("#exportLeadButton").addEventListener("click", () => exportCsv("safe-leads.csv", state.leads.map(leadToCsvRow)));
+      document.querySelector("#exportAuditButton").addEventListener("click", () => exportCsv("suppression-audit.csv", state.audit.map(auditToCsvRow)));
+      document.querySelector("#clearButton").addEventListener("click", clearAll);
+
+      function readCsvFile(file) {
+        return file.text().then(parseCsv);
+      }
+
+      function importProperties(rows) {
+        state.properties = rows.map(normalizeProperty).filter((row) => row.ownerName && row.propertyAddress);
+        setStatus(`${state.properties.length} property records imported.`);
+        resetOutputs();
+        render();
+      }
+
+      function importContacts(rows) {
+        state.contacts = rows.flatMap(normalizeContact).filter((row) => row.ownerName || row.phone || row.email);
+        setStatus(`${state.contacts.length} contact rows imported.`);
+        resetOutputs();
+        render();
+      }
+
+      function importFederalDnc(rows) {
+        state.federalDnc = new Set(rows.map((row) => normalizePhone(readField(row, ["phone", "number", "telephone"]))).filter(Boolean));
+        state.loaded.federalDnc = true;
+        setStatus(`${state.federalDnc.size} federal DNC phones imported.`);
+        resetOutputs();
+        render();
+      }
+
+      function importStateDnc(rows) {
+        state.stateDnc = new Map();
+        rows.forEach((row) => {
+          const phone = normalizePhone(readField(row, ["phone", "number", "telephone"]));
+          const listState = normalizeState(readField(row, ["state", "list_state", "jurisdiction"]));
+          if (!phone) return;
+          if (!state.stateDnc.has(phone)) state.stateDnc.set(phone, new Set());
+          state.stateDnc.get(phone).add(listState || "ALL");
+        });
+        state.loaded.stateDnc = true;
+        setStatus(`${state.stateDnc.size} state DNC phones imported.`);
+        resetOutputs();
+        render();
+      }
+
+      function importOptOuts(rows) {
+        state.optOutPhones = new Set();
+        state.optOutEmails = new Set();
+        rows.forEach((row) => {
+          const phone = normalizePhone(readField(row, ["phone", "number", "telephone"]));
+          const email = normalizeEmail(readField(row, ["email", "email_address"]));
+          if (phone) state.optOutPhones.add(phone);
+          if (email) state.optOutEmails.add(email);
+        });
+        state.loaded.optOut = true;
+        setStatus(`${state.optOutPhones.size + state.optOutEmails.size} internal opt-outs imported.`);
+        resetOutputs();
+        render();
+      }
+
+      function loadSampleData() {
+        state.properties = parseCsv(`owner_name,property_address,property_city,property_state,property_zip,mailing_address,mailing_city,mailing_state,mailing_zip,sale_date,assessed_value,acreage,county,parcel_id
+Maya Johnson,1840 Northstar Dr,Austin,TX,78731,1840 Northstar Dr,Austin,TX,78731,2024-05-10,420000,0.21,Travis,TX-1001
+Caleb Stone,49 Finch Ct,Denver,CO,80210,PO Box 910,Denver,CO,80201,2023-11-18,615000,0.17,Denver,CO-2042
+Nia Brooks,720 Harbor View Ln,Tampa,FL,33602,720 Harbor View Ln,Tampa,FL,33602,2025-01-04,390000,0.12,Hillsborough,FL-8821
+Jordan Lee,91 Pine Acre Rd,Raleigh,NC,27601,91 Pine Acre Rd,Raleigh,NC,27601,2022-08-14,335000,0.44,Wake,NC-5531`).map(normalizeProperty);
+
+        state.contacts = parseCsv(`owner_name,mailing_address,phone,email,confidence,source
+Maya Johnson,1840 Northstar Dr,512-555-0184,maya@example.com,94,Licensed enrichment upload
+Caleb Stone,PO Box 910,303-555-0149,caleb@example.com,86,Licensed enrichment upload
+Nia Brooks,720 Harbor View Ln,813-555-0172,nia@example.com,92,Licensed enrichment upload
+Jordan Lee,91 Pine Acre Rd,919-555-0102,jordan@example.com,74,Licensed enrichment upload`).flatMap(normalizeContact);
+
+        state.federalDnc = new Set(["3035550149"]);
+        state.stateDnc = new Map([["8135550172", new Set(["FL"])]]);
+        state.optOutPhones = new Set(["9195550102"]);
+        state.optOutEmails = new Set(["jordan@example.com"]);
+        state.loaded.federalDnc = true;
+        state.loaded.stateDnc = true;
+        state.loaded.optOut = true;
+        setStatus("Sample property, contact, and suppression data loaded.");
+        resetOutputs();
+        render();
+      }
+
+      function generateLeads() {
+        const minimumConfidence = Number(els.confidenceInput.value || 0);
+        const allowedChannel = els.channelSelect.value;
+        const recencyDays = Number(els.recencySelect.value || 30);
+        const scrubDate = new Date(els.scrubDateInput.value);
+        const staleScrub = Number.isNaN(scrubDate.getTime()) || daysBetween(scrubDate, new Date()) > recencyDays;
+        const phoneMayExport = allowedChannel === "any" || allowedChannel === "phone";
+        const leads = [];
+        const audit = [];
+
+        if (!state.properties.length) return showError(new Error("Import deed/property records before generating leads."));
+        if (phoneMayExport && (!state.loaded.federalDnc || !state.loaded.stateDnc)) {
+          return showError(new Error("Import or confirm both federal and state DNC suppression CSVs before generating phone-capable leads."));
+        }
+        if (phoneMayExport && staleScrub) return showError(new Error("DNC scrub date is missing or older than the selected recency rule."));
+
+        state.properties.forEach((property) => {
+          const matches = findContactsForProperty(property).filter((contact) => contact.confidence >= minimumConfidence);
+          const contacts = matches.length ? matches : [{ ownerName: property.ownerName, phone: "", email: "", confidence: 0, source: "No enrichment match" }];
+
+          contacts.forEach((contact) => {
+            const phoneCheck = checkPhoneCompliance(contact.phone, property.propertyState);
+            const emailCheck = checkEmailCompliance(contact.email);
+            const postalReady = Boolean(property.mailingAddress || property.propertyAddress);
+            const channels = [];
+
+            if (allowedChannel !== "email" && allowedChannel !== "mail" && contact.phone && phoneCheck.allowed) channels.push("phone");
+            if (allowedChannel !== "phone" && allowedChannel !== "mail" && contact.email && emailCheck.allowed) channels.push("email");
+            if (allowedChannel !== "phone" && allowedChannel !== "email" && postalReady) channels.push("postal");
+
+            if (contact.phone && !phoneCheck.allowed) {
+              audit.push({
+                ownerName: property.ownerName,
+                phone: formatPhone(contact.phone),
+                reason: phoneCheck.reason,
+                list: phoneCheck.list,
+                source: contact.source || "Contact enrichment",
+              });
+            }
+
+            if (!channels.length) return;
+
+            leads.push({
+              ownerName: property.ownerName,
+              propertyAddress: compactAddress(property.propertyAddress, property.propertyCity, property.propertyState, property.propertyZip),
+              mailingAddress: compactAddress(property.mailingAddress, property.mailingCity, property.mailingState, property.mailingZip),
+              phone: phoneCheck.allowed ? formatPhone(contact.phone) : "",
+              email: emailCheck.allowed ? contact.email : "",
+              confidence: contact.confidence,
+              source: contact.source,
+              channels,
+              score: scoreLead(property, contact, channels),
+              compliance: complianceSummary(phoneCheck, emailCheck, channels),
+              parcelId: property.parcelId,
+              county: property.county,
+            });
+          });
+        });
+
+        state.leads = dedupeLeads(leads).sort((a, b) => b.score - a.score);
+        state.audit = audit;
+        setStatus(`${state.leads.length} safe lead rows generated after suppression checks.`);
+        render();
+      }
+
+      function findContactsForProperty(property) {
+        const ownerToken = normalizeToken(property.ownerName);
+        const mailingToken = normalizeToken(property.mailingAddress);
+        const propertyToken = normalizeToken(property.propertyAddress);
+
+        return state.contacts.filter((contact) => {
+          const contactOwner = normalizeToken(contact.ownerName);
+          const contactAddress = normalizeToken(contact.mailingAddress || contact.propertyAddress || contact.address);
+          const ownerMatch = ownerToken && contactOwner && (ownerToken.includes(contactOwner) || contactOwner.includes(ownerToken));
+          const addressMatch = contactAddress && (contactAddress === mailingToken || contactAddress === propertyToken);
+          return ownerMatch || addressMatch;
+        });
+      }
+
+      function checkPhoneCompliance(phone, leadState) {
+        const normalizedPhone = normalizePhone(phone);
+        if (!normalizedPhone) return { allowed: false, reason: "No phone", list: "none" };
+        if (state.optOutPhones.has(normalizedPhone)) return { allowed: false, reason: "Internal opt-out", list: "internal" };
+        if (state.federalDnc.has(normalizedPhone)) return { allowed: false, reason: "Federal DNC match", list: "federal" };
+        const stateLists = state.stateDnc.get(normalizedPhone);
+        const propertyState = normalizeState(leadState);
+        if (stateLists && (stateLists.has("ALL") || stateLists.has(propertyState))) {
+          return { allowed: false, reason: "State DNC match", list: propertyState || "state" };
+        }
+        return { allowed: true, reason: "Phone clear", list: "clear" };
+      }
+
+      function checkEmailCompliance(email) {
+        const normalizedEmail = normalizeEmail(email);
+        if (!normalizedEmail) return { allowed: false, reason: "No email" };
+        if (state.optOutEmails.has(normalizedEmail)) return { allowed: false, reason: "Email opt-out" };
+        return { allowed: true, reason: "Email clear" };
+      }
+
+      function scoreLead(property, contact, channels) {
+        let score = Number(contact.confidence || 0);
+        const value = Number(String(property.assessedValue || "").replace(/[^0-9.]/g, ""));
+        if (value >= 300000) score += 8;
+        if (property.ownerOccupied) score += 6;
+        if (channels.includes("phone")) score += 5;
+        if (channels.includes("email")) score += 3;
+        if (property.acreage && Number(property.acreage) >= 0.2) score += 2;
+        return Math.min(100, Math.round(score));
+      }
+
+      function complianceSummary(phoneCheck, emailCheck, channels) {
+        const pieces = [];
+        if (channels.includes("phone")) pieces.push("phone DNC clear");
+        if (channels.includes("email")) pieces.push(emailCheck.reason);
+        if (channels.includes("postal")) pieces.push("postal allowed");
+        if (!phoneCheck.allowed && phoneCheck.reason !== "No phone") pieces.push(phoneCheck.reason);
+        return pieces.join("; ");
+      }
+
+      function normalizeProperty(row) {
+        const propertyAddress = readField(row, ["property_address", "situs_address", "site_address", "address"]);
+        const mailingAddress = readField(row, ["mailing_address", "owner_address", "mail_address"]);
+        return {
+          ownerName: readField(row, ["owner_name", "owner", "grantee", "buyer_name", "name"]),
+          propertyAddress,
+          propertyCity: readField(row, ["property_city", "situs_city", "city"]),
+          propertyState: normalizeState(readField(row, ["property_state", "situs_state", "state"])),
+          propertyZip: readField(row, ["property_zip", "situs_zip", "zip"]),
+          mailingAddress,
+          mailingCity: readField(row, ["mailing_city", "owner_city"]),
+          mailingState: normalizeState(readField(row, ["mailing_state", "owner_state"])),
+          mailingZip: readField(row, ["mailing_zip", "owner_zip"]),
+          saleDate: readField(row, ["sale_date", "recording_date", "deed_date"]),
+          assessedValue: readField(row, ["assessed_value", "market_value", "value"]),
+          acreage: readField(row, ["acreage", "acres", "lot_size"]),
+          county: readField(row, ["county"]),
+          parcelId: readField(row, ["parcel_id", "apn", "folio", "pin"]),
+          ownerOccupied: normalizeToken(propertyAddress) === normalizeToken(mailingAddress || propertyAddress),
+        };
+      }
+
+      function normalizeContact(row) {
+        const phones = [
+          readField(row, ["phone", "phone1", "primary_phone", "mobile", "landline"]),
+          readField(row, ["phone2", "secondary_phone"]),
+          readField(row, ["phone3"]),
+        ].filter(Boolean);
+        const emails = [readField(row, ["email", "email1", "email_address"]), readField(row, ["email2"])].filter(Boolean);
+        const base = {
+          ownerName: readField(row, ["owner_name", "name", "full_name"]),
+          mailingAddress: readField(row, ["mailing_address", "address", "owner_address"]),
+          propertyAddress: readField(row, ["property_address", "site_address"]),
+          confidence: Number(readField(row, ["confidence", "match_confidence", "score"]) || 0),
+          source: readField(row, ["source", "provider", "vendor"]) || "Uploaded enrichment",
+        };
+        const maxLength = Math.max(phones.length, emails.length, 1);
+        return Array.from({ length: maxLength }, (_, index) => ({
+          ...base,
+          phone: normalizePhone(phones[index] || phones[0] || ""),
+          email: normalizeEmail(emails[index] || emails[0] || ""),
+        }));
+      }
+
+      function parseCsv(text) {
+        const rows = [];
+        let row = [];
+        let value = "";
+        let quoted = false;
+        for (let index = 0; index < text.length; index += 1) {
+          const char = text[index];
+          const next = text[index + 1];
+          if (char === '"' && quoted && next === '"') {
+            value += '"';
+            index += 1;
+          } else if (char === '"') {
+            quoted = !quoted;
+          } else if (char === "," && !quoted) {
+            row.push(value);
+            value = "";
+          } else if ((char === "\n" || char === "\r") && !quoted) {
+            if (char === "\r" && next === "\n") index += 1;
+            row.push(value);
+            if (row.some((cell) => cell.trim())) rows.push(row);
+            row = [];
+            value = "";
+          } else {
+            value += char;
+          }
+        }
+        row.push(value);
+        if (row.some((cell) => cell.trim())) rows.push(row);
+        if (!rows.length) return [];
+        const headers = rows.shift().map((header) => normalizeHeader(header));
+        return rows.map((cells) =>
+          headers.reduce((record, header, index) => {
+            record[header] = (cells[index] || "").trim();
+            return record;
+          }, {}),
+        );
+      }
+
+      function readField(row, names) {
+        for (const name of names) {
+          const key = normalizeHeader(name);
+          if (row[key] !== undefined && row[key] !== "") return row[key];
+        }
+        return "";
+      }
+
+      function normalizeHeader(value) {
+        return String(value || "")
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "_")
+          .replace(/^_|_$/g, "");
+      }
+
+      function normalizePhone(value) {
+        const digits = String(value || "").replace(/\D/g, "");
+        if (digits.length === 11 && digits.startsWith("1")) return digits.slice(1);
+        return digits.length === 10 ? digits : "";
+      }
+
+      function normalizeEmail(value) {
+        return String(value || "").trim().toLowerCase();
+      }
+
+      function normalizeState(value) {
+        return String(value || "").trim().toUpperCase();
+      }
+
+      function normalizeToken(value) {
+        return String(value || "")
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, "");
+      }
+
+      function compactAddress(address, city, state, zip) {
+        return [address, city, state, zip].filter(Boolean).join(", ");
+      }
+
+      function formatPhone(phone) {
+        const digits = normalizePhone(phone);
+        return digits ? `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}` : "";
+      }
+
+      function daysBetween(start, end) {
+        return Math.abs(end - start) / (1000 * 60 * 60 * 24);
+      }
+
+      function dedupeLeads(leads) {
+        const seen = new Set();
+        return leads.filter((lead) => {
+          const key = `${normalizeToken(lead.ownerName)}|${normalizeToken(lead.propertyAddress)}|${lead.phone}|${lead.email}|${lead.channels.join("-")}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      }
+
+      function leadToCsvRow(lead) {
+        return {
+          owner_name: lead.ownerName,
+          property_address: lead.propertyAddress,
+          mailing_address: lead.mailingAddress,
+          phone: lead.phone,
+          email: lead.email,
+          score: lead.score,
+          channels: lead.channels.join("|"),
+          compliance: lead.compliance,
+          source: lead.source,
+          county: lead.county,
+          parcel_id: lead.parcelId,
+        };
+      }
+
+      function auditToCsvRow(row) {
+        return {
+          owner_name: row.ownerName,
+          phone: row.phone,
+          reason: row.reason,
+          list: row.list,
+          source: row.source,
+        };
+      }
+
+      function exportCsv(filename, records) {
+        if (!records.length) return showError(new Error("No rows to export."));
+        const headers = Object.keys(records[0]);
+        const csv = [headers.join(",")]
+          .concat(records.map((record) => headers.map((header) => csvEscape(record[header])).join(",")))
+          .join("\n");
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        link.click();
+        URL.revokeObjectURL(link.href);
+      }
+
+      function csvEscape(value) {
+        const text = String(value ?? "");
+        return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+      }
+
+      function render() {
+        els.propertyCount.textContent = state.properties.length;
+        els.contactCount.textContent = state.contacts.length;
+        els.suppressionCount.textContent = state.federalDnc.size + state.stateDnc.size + state.optOutPhones.size;
+        els.leadCount.textContent = state.leads.length;
+        els.blockedCount.textContent = state.audit.length;
+        els.leadTableStatus.textContent = `${state.leads.length} rows`;
+        els.auditTableStatus.textContent = `${state.audit.length} rows`;
+        const dncLoaded = state.loaded.federalDnc && state.loaded.stateDnc;
+        els.gateStatus.textContent = dncLoaded ? "DNC loaded" : "Needs DNC data";
+        els.gateStatus.className = `pill ${dncLoaded ? "ok" : "warn"}`;
+        els.exportStatus.textContent = state.leads.length ? "Ready" : "No leads";
+        els.exportStatus.className = `pill ${state.leads.length ? "ok" : "info"}`;
+        const phoneReady = state.leads.filter((lead) => lead.channels.includes("phone")).length;
+        const altReady = state.leads.filter((lead) => lead.channels.includes("email") || lead.channels.includes("postal")).length;
+        els.phoneStatus.textContent = `${phoneReady} phone-ready leads after DNC checks.`;
+        els.mailEmailStatus.textContent = `${altReady} email/postal leads available.`;
+        renderLeadRows();
+        renderAuditRows();
+      }
+
+      function renderLeadRows() {
+        els.leadRows.innerHTML = state.leads.length
+          ? state.leads
+              .map(
+                (lead) => `
+                  <tr>
+                    <td><strong>${escapeHtml(lead.ownerName)}</strong><small>${escapeHtml(lead.county || "")}</small></td>
+                    <td>${escapeHtml(lead.propertyAddress)}<small>${escapeHtml(lead.mailingAddress || "")}</small></td>
+                    <td>${escapeHtml(lead.phone || "No phone")}<small>${escapeHtml(lead.email || "No email")}</small></td>
+                    <td><span class="pill info">${lead.score}</span><small>${escapeHtml(lead.source || "")}</small></td>
+                    <td>${lead.channels.map((channel) => `<span class="pill ok">${channel}</span>`).join(" ")}</td>
+                    <td>${escapeHtml(lead.compliance)}</td>
+                  </tr>
+                `,
+              )
+              .join("")
+          : `<tr><td colspan="6" class="muted">No safe leads generated yet.</td></tr>`;
+      }
+
+      function renderAuditRows() {
+        els.auditRows.innerHTML = state.audit.length
+          ? state.audit
+              .map(
+                (row) => `
+                  <tr>
+                    <td>${escapeHtml(row.ownerName)}</td>
+                    <td>${escapeHtml(row.phone)}</td>
+                    <td><span class="pill block">${escapeHtml(row.reason)}</span></td>
+                    <td>${escapeHtml(row.list)}</td>
+                    <td>${escapeHtml(row.source)}</td>
+                  </tr>
+                `,
+              )
+              .join("")
+          : `<tr><td colspan="5" class="muted">No blocked phone rows yet.</td></tr>`;
+      }
+
+      function resetOutputs() {
+        state.leads = [];
+        state.audit = [];
+      }
+
+      function clearAll() {
+        state.properties = [];
+        state.contacts = [];
+        state.federalDnc = new Set();
+        state.stateDnc = new Map();
+        state.optOutPhones = new Set();
+        state.optOutEmails = new Set();
+        state.loaded.federalDnc = false;
+        state.loaded.stateDnc = false;
+        state.loaded.optOut = false;
+        resetOutputs();
+        setStatus("Cleared local data.");
+        render();
+      }
+
+      function setStatus(message) {
+        els.statusMessage.textContent = message;
+      }
+
+      function showError(error) {
+        setStatus(error.message || String(error));
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "").replace(/[&<>"']/g, (char) => {
+          const entities = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+          return entities[char];
+        });
+      }
+
+      render();
+    </script>
+  </body>
+</html>
