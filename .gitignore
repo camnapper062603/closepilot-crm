@@ -6,3 +6,9 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# Safe lead generator local data
+lead-generator-imports/*
+!lead-generator-imports/.gitkeep
+lead-generator-outputs/*
+!lead-generator-outputs/.gitkeep

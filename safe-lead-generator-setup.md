@@ -20,6 +20,53 @@ npm start
 
 Then open the same URL.
 
+## Automation Mode
+
+Use this when you want the workflow to run from files instead of clicking through the browser app.
+
+Put these files in `lead-generator-imports/`:
+
+```text
+property-records.csv
+contact-enrichment.csv
+federal-dnc.csv
+state-dnc.csv
+internal-opt-outs.csv
+```
+
+`internal-opt-outs.csv` is optional, but the other four files are required for phone-capable lead generation.
+
+Then run:
+
+```bash
+npm run lead:generate
+```
+
+Outputs are written to:
+
+```text
+lead-generator-outputs/safe-leads.csv
+lead-generator-outputs/suppression-audit.csv
+lead-generator-outputs/run-summary.json
+```
+
+You can control a run with environment variables:
+
+```bash
+MIN_CONFIDENCE=80 CHANNEL=any DNC_MAX_DAYS=30 SCRUB_DATE=2026-06-30 npm run lead:generate
+```
+
+Supported channels:
+
+```text
+any
+phone
+email
+mail
+```
+
+The import and output folders are ignored by Git so private lead/contact data does not get pushed to GitHub.
+
 ## Required Workflow
 
 1. Import deed/property records.

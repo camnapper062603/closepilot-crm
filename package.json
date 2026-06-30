@@ -7,6 +7,7 @@
   "scripts": {
     "build": "node build.js",
     "start": "node server.js",
+    "lead:generate": "node safe-lead-generator-batch.js",
     "test": "playwright test",
     "test:ui": "playwright test --ui"
   },
