@@ -183,6 +183,31 @@ internal-opt-outs.csv
 
 After those files are imported, export `safe-leads.csv`. If DNC files are missing or stale, export only `lead-candidates-needs-scrub.csv`.
 
+## Pulling Property Records
+
+The app can pull property records directly from authorized open-data sources when the source allows browser access.
+
+Supported source types:
+
+- `CSV URL`: a direct public or signed CSV download URL.
+- `ArcGIS FeatureServer layer`: a public ArcGIS REST layer URL ending in a layer number, such as `/FeatureServer/0`.
+
+Workflow:
+
+1. Find an authorized county/assessor/property data source.
+2. Copy the direct CSV URL or ArcGIS FeatureServer layer URL.
+3. Paste it into `Property source URL`.
+4. Choose `CSV URL` or `ArcGIS FeatureServer layer`.
+5. Click `Pull property records`.
+
+The app then cleans, dedupes, and imports those property records automatically.
+
+Limits:
+
+- Some county sites block browser access with CORS. If that happens, download the CSV manually or build a backend connector.
+- Some county portals require accounts, paid access, captchas, or terms that prohibit scraping.
+- For fully automated county-by-county pulling, build backend source adapters for the exact counties and providers you use.
+
 ## Bulk Import File Names
 
 The standalone app can auto-sort files by filename and headers. These names are recommended:

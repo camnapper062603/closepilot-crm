@@ -407,6 +407,33 @@
 
         <section class="panel">
           <div class="panel-header">
+            <h2>Property Source</h2>
+            <span class="pill info">Authorized URL</span>
+          </div>
+          <div class="controls">
+            <label>
+              Source type
+              <select id="propertySourceType">
+                <option value="csv">CSV URL</option>
+                <option value="arcgis">ArcGIS FeatureServer layer</option>
+              </select>
+            </label>
+            <label>
+              Property source URL
+              <input id="propertySourceUrl" type="url" placeholder="https://..." />
+            </label>
+            <label>
+              Max records
+              <input id="propertySourceLimit" type="number" min="1" max="5000" step="1" value="500" />
+            </label>
+          </div>
+          <div class="actions">
+            <button class="button secondary" id="pullPropertySourceButton" type="button">Pull property records</button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
             <h2>CSV Templates</h2>
             <span class="pill info">Start here</span>
           </div>
@@ -640,6 +667,9 @@ Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,512-555-0184,,maya@example.com,
         federalDncFile: document.querySelector("#federalDncFile"),
         stateDncFile: document.querySelector("#stateDncFile"),
         optOutFile: document.querySelector("#optOutFile"),
+        propertySourceType: document.querySelector("#propertySourceType"),
+        propertySourceUrl: document.querySelector("#propertySourceUrl"),
+        propertySourceLimit: document.querySelector("#propertySourceLimit"),
         confidenceInput: document.querySelector("#confidenceInput"),
         channelSelect: document.querySelector("#channelSelect"),
         recencySelect: document.querySelector("#recencySelect"),
@@ -686,6 +716,7 @@ Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,512-555-0184,,maya@example.com,
       document.querySelector("#exportLeadButton").addEventListener("click", () => exportCsv(leadExportFilename(), state.leads.map(leadToCsvRow)));
       document.querySelector("#exportAuditButton").addEventListener("click", () => exportCsv("suppression-audit.csv", state.audit.map(auditToCsvRow)));
       document.querySelector("#clearButton").addEventListener("click", clearAll);
+      document.querySelector("#pullPropertySourceButton").addEventListener("click", () => pullPropertyRecords().catch(showError));
       document.querySelectorAll("[data-template]").forEach((button) => {
         button.addEventListener("click", () => downloadTemplate(button.dataset.template));
       });
@@ -738,6 +769,65 @@ Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,512-555-0184,,maya@example.com,
       function importProperties(rows) {
         const count = setProperties(rows);
         finishImport(`${count} property record(s) cleaned and deduped.`);
+      }
+
+      async function pullPropertyRecords() {
+        const sourceType = els.propertySourceType.value;
+        const sourceUrl = els.propertySourceUrl.value.trim();
+        const limit = Math.max(1, Math.min(5000, Number(els.propertySourceLimit.value || 500)));
+
+        if (!sourceUrl) throw new Error("Paste an authorized property source URL first.");
+        if (!/^https?:\/\//i.test(sourceUrl)) throw new Error("Property source URL must start with http:// or https://.");
+
+        setStatus(`Pulling property records from ${sourceType === "arcgis" ? "ArcGIS" : "CSV"} source...`);
+
+        try {
+          const rows = sourceType === "arcgis" ? await fetchArcgisProperties(sourceUrl, limit) : await fetchCsvProperties(sourceUrl);
+          if (!rows.length) throw new Error("The property source returned no rows.");
+          const count = setProperties(rows);
+          finishImport(`${count} property record(s) pulled from authorized source and cleaned.`);
+        } catch (error) {
+          const message = error && error.message ? error.message : String(error);
+          if (/Failed to fetch|NetworkError|Load failed|CORS/i.test(message)) {
+            throw new Error("That property source blocked browser access. Download its CSV manually or use a backend connector for that county/provider.");
+          }
+          throw error;
+        }
+      }
+
+      async function fetchCsvProperties(url) {
+        const response = await fetch(url, { mode: "cors" });
+        if (!response.ok) throw new Error(`Property CSV request failed with ${response.status}.`);
+        return parseCsv(await response.text());
+      }
+
+      async function fetchArcgisProperties(url, limit) {
+        const endpoint = buildArcgisQueryUrl(url, limit);
+        const response = await fetch(endpoint.toString(), { mode: "cors" });
+        if (!response.ok) throw new Error(`ArcGIS request failed with ${response.status}.`);
+        const data = await response.json();
+        if (data.error) throw new Error(data.error.message || "ArcGIS returned an error.");
+        return (data.features || []).map((feature) => feature.attributes || feature.properties || {});
+      }
+
+      function buildArcgisQueryUrl(rawUrl, limit) {
+        if (/\/query(\?|$)/i.test(rawUrl)) {
+          const queryUrl = new URL(rawUrl);
+          queryUrl.searchParams.set("f", "json");
+          queryUrl.searchParams.set("returnGeometry", "false");
+          queryUrl.searchParams.set("resultRecordCount", String(limit));
+          if (!queryUrl.searchParams.has("where")) queryUrl.searchParams.set("where", "1=1");
+          if (!queryUrl.searchParams.has("outFields")) queryUrl.searchParams.set("outFields", "*");
+          return queryUrl;
+        }
+
+        const queryUrl = new URL(`${rawUrl.replace(/\/$/, "")}/query`);
+        queryUrl.searchParams.set("where", "1=1");
+        queryUrl.searchParams.set("outFields", "*");
+        queryUrl.searchParams.set("returnGeometry", "false");
+        queryUrl.searchParams.set("f", "json");
+        queryUrl.searchParams.set("resultRecordCount", String(limit));
+        return queryUrl;
       }
 
       function importContacts(rows) {
@@ -1058,23 +1148,36 @@ Jordan Lee,91 Pine Acre Rd,919-555-0102,jordan@example.com,74,Licensed enrichmen
       }
 
       function normalizeProperty(row) {
-        const propertyAddress = cleanAddress(readField(row, ["property_address", "situs_address", "site_address", "address"]));
-        const mailingAddress = cleanAddress(readField(row, ["mailing_address", "owner_address", "mail_address"]));
+        const propertyAddress = cleanAddress(
+          readField(row, [
+            "property_address",
+            "situs_address",
+            "situs",
+            "site_address",
+            "site_addr",
+            "prop_addr",
+            "property_location",
+            "location_address",
+            "full_address",
+            "address",
+          ]),
+        );
+        const mailingAddress = cleanAddress(readField(row, ["mailing_address", "mailing_addr", "owner_address", "owner_addr", "mail_address", "mail_addr"]));
         return {
-          ownerName: cleanName(readField(row, ["owner_name", "owner", "grantee", "buyer_name", "name"])),
+          ownerName: cleanName(readField(row, ["owner_name", "owner", "owner1", "owner_1", "property_owner", "taxpayer_name", "grantee", "buyer_name", "name"])),
           propertyAddress,
-          propertyCity: cleanText(readField(row, ["property_city", "situs_city", "city"])),
-          propertyState: normalizeState(readField(row, ["property_state", "situs_state", "state"])),
-          propertyZip: cleanZip(readField(row, ["property_zip", "situs_zip", "zip"])),
+          propertyCity: cleanText(readField(row, ["property_city", "situs_city", "site_city", "prop_city", "city"])),
+          propertyState: normalizeState(readField(row, ["property_state", "situs_state", "site_state", "prop_state", "state"])),
+          propertyZip: cleanZip(readField(row, ["property_zip", "situs_zip", "site_zip", "prop_zip", "zip", "zipcode"])),
           mailingAddress,
-          mailingCity: cleanText(readField(row, ["mailing_city", "owner_city"])),
-          mailingState: normalizeState(readField(row, ["mailing_state", "owner_state"])),
-          mailingZip: cleanZip(readField(row, ["mailing_zip", "owner_zip"])),
+          mailingCity: cleanText(readField(row, ["mailing_city", "mail_city", "owner_city"])),
+          mailingState: normalizeState(readField(row, ["mailing_state", "mail_state", "owner_state"])),
+          mailingZip: cleanZip(readField(row, ["mailing_zip", "mail_zip", "owner_zip"])),
           saleDate: cleanText(readField(row, ["sale_date", "recording_date", "deed_date"])),
-          assessedValue: cleanText(readField(row, ["assessed_value", "market_value", "value"])),
+          assessedValue: cleanText(readField(row, ["assessed_value", "market_value", "tax_value", "appraised_value", "value"])),
           acreage: cleanText(readField(row, ["acreage", "acres", "lot_size"])),
           county: cleanText(readField(row, ["county"])),
-          parcelId: cleanText(readField(row, ["parcel_id", "apn", "folio", "pin"])),
+          parcelId: cleanText(readField(row, ["parcel_id", "parcel", "parcel_number", "parid", "apn", "folio", "pin"])),
           ownerOccupied: normalizeToken(propertyAddress) === normalizeToken(mailingAddress || propertyAddress),
         };
       }
