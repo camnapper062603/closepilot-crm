@@ -6,6 +6,7 @@ This is the safe connector path for MOJO lead data. It does not scrape MOJO's pr
 
 - Creates a Google Sheet lead table.
 - Imports exported/pasted MOJO rows.
+- Imports copied house/detail panel text.
 - Accepts authorized JSON webhook rows from API Nation, Zapier, Make, or another connector.
 - Normalizes names, addresses, phones, emails, status, tags, and notes.
 - Upserts by MOJO lead ID when available, or by a generated stable ID.
@@ -35,6 +36,7 @@ The script creates:
 
 - `MOJO Settings`
 - `MOJO CSV Paste`
+- `MOJO Detail Paste`
 - `MOJO Leads`
 - `MOJO Raw Imports`
 - `MOJO Import Log`
@@ -46,6 +48,33 @@ The script creates:
 3. Paste the exported rows, including headers, starting in cell A1.
 4. Click `MOJO Connector > Import pasted/exported rows`.
 5. Review the normalized leads in `MOJO Leads`.
+
+## Faster Click-And-Copy Workflow
+
+I cannot provide a script that hooks into MOJO's private page after each house icon click. This workflow is the safe version that still saves most of the manual typing:
+
+1. In MOJO, manually click a house icon.
+2. Select/copy the visible house or lead detail text.
+3. Paste that copied text into the `MOJO Detail Paste` tab.
+4. Put each copied house/detail block in its own row, or separate blocks with blank lines.
+5. Click `MOJO Connector > Import copied detail text`.
+6. Review the normalized leads in `MOJO Leads`.
+
+The parser looks for common labels and patterns, including:
+
+- `Name:`
+- `Owner:`
+- `Address:`
+- `City:`
+- `State:`
+- `Zip:`
+- `Phone:`
+- `Email:`
+- `Status:`
+- `Tags:`
+- `Notes:`
+
+It also tries to detect unlabeled phone numbers, email addresses, street addresses, and `TX 77000` style state/ZIP lines.
 
 ## Webhook Workflow
 

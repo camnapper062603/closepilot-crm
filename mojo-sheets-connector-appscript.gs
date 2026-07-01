@@ -14,6 +14,7 @@ const MOJO_CONNECTOR = {
   sheets: {
     settings: "MOJO Settings",
     paste: "MOJO CSV Paste",
+    detailPaste: "MOJO Detail Paste",
     leads: "MOJO Leads",
     raw: "MOJO Raw Imports",
     log: "MOJO Import Log",
@@ -21,6 +22,7 @@ const MOJO_CONNECTOR = {
   headers: {
     settings: ["Setting", "Value", "Notes"],
     paste: ["Paste exported MOJO columns here, then run Import pasted/exported rows"],
+    detailPaste: ["Paste copied house/detail text here. Use one lead per row or separate copied blocks with blank lines."],
     leads: [
       "Lead ID",
       "Imported At",
@@ -52,6 +54,7 @@ function onOpen() {
     .createMenu("MOJO Connector")
     .addItem("Setup connector", "setupMojoConnector")
     .addItem("Import pasted/exported rows", "importMojoPasteSheet")
+    .addItem("Import copied detail text", "importMojoDetailPasteSheet")
     .addItem("Generate new webhook token", "generateMojoWebhookToken")
     .addItem("Show webhook info", "showMojoWebhookInfo")
     .addToUi();
@@ -119,6 +122,24 @@ function importMojoPasteSheet() {
   });
 }
 
+function importMojoDetailPasteSheet() {
+  runMojoSafely_("importMojoDetailPasteSheet", () => {
+    setupMojoConnector(false);
+    const sheet = SpreadsheetApp.getActive().getSheetByName(MOJO_CONNECTOR.sheets.detailPaste);
+    const values = sheet.getDataRange().getDisplayValues();
+    const blocks = extractMojoDetailBlocks_(values);
+
+    if (!blocks.length) {
+      SpreadsheetApp.getUi().alert("Paste copied MOJO house/detail text into the MOJO Detail Paste tab first.");
+      return;
+    }
+
+    const rows = blocks.map(parseMojoDetailText_);
+    const result = importMojoRows_(rows, "Copied Detail Text");
+    SpreadsheetApp.getUi().alert(`Imported ${result.inserted} new lead(s), updated ${result.updated}, skipped ${result.skipped}.`);
+  });
+}
+
 function rowsFromPasteValues_(values) {
   const singleColumnCsv = values[0].length === 1 && String(values[0][0] || "").includes(",");
   const table = singleColumnCsv ? Utilities.parseCsv(values.map((row) => row[0]).join("\n")) : values;
@@ -134,6 +155,79 @@ function rowsFromPasteValues_(values) {
       }, {}),
     );
 }
+
+function extractMojoDetailBlocks_(values) {
+  const cells = values
+    .flat()
+    .map((cell) => String(cell || "").trim())
+    .filter(Boolean);
+
+  if (!cells.length) return [];
+
+  return cells.flatMap((cell) =>
+    cell
+      .split(/\n\s*\n+/)
+      .map((block) => block.trim())
+      .filter(Boolean),
+  );
+}
+
+function parseMojoDetailText_(text) {
+  const lines = String(text || "")
+    .split(/\r?\n/)
+    .map((line) => cleanMojoText_(line))
+    .filter(Boolean);
+  const row = { raw_detail_text: text };
+
+  lines.forEach((line, index) => {
+    const labelMatch = /^([^:]{2,40}):\s*(.+)$/.exec(line);
+    if (labelMatch) {
+      assignMojoParsedField_(row, labelMatch[1], labelMatch[2]);
+      return;
+    }
+
+    const emailMatch = line.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+    const phoneMatch = line.match(/(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/);
+    const zipMatch = line.match(/\b[A-Z]{2}\s+\d{5}(?:-\d{4})?\b/i);
+    const addressLike = /\d{1,6}\s+[A-Za-z0-9 .'-]+\s+(?:St|Street|Ave|Avenue|Rd|Road|Dr|Drive|Ln|Lane|Ct|Court|Cir|Circle|Blvd|Boulevard|Way|Trail|Trl|Place|Pl)\b/i.test(line);
+
+    if (!row.email && emailMatch) row.email = emailMatch[0];
+    if (!row.phone && phoneMatch) row.phone = phoneMatch[0];
+    if (!row.property_address && addressLike) row.property_address = line;
+    if (zipMatch && !row.property_state && !row.property_zip) {
+      const parts = zipMatch[0].split(/\s+/);
+      row.property_state = parts[0];
+      row.property_zip = parts[1];
+    }
+    if (!row.contact_name && index === 0 && !emailMatch && !phoneMatch && !addressLike) row.contact_name = line;
+    if (!row.notes) row.notes = "";
+    row.notes = [row.notes, line].filter(Boolean).join(" | ");
+  });
+
+  return row;
+}
+
+function assignMojoParsedField_(row, label, value) {
+  const key = normalizeMojoHeader_(label);
+  const text = cleanMojoText_(value);
+
+  if (/^(name|contact|contact_name|owner|owner_name|lead|lead_name)$/.test(key)) row.contact_name = text;
+  else if (/^(first|first_name)$/.test(key)) row.first_name = text;
+  else if (/^(last|last_name)$/.test(key)) row.last_name = text;
+  else if (/^(address|property_address|home_address|street|street_address)$/.test(key)) row.property_address = text;
+  else if (/^(city|property_city)$/.test(key)) row.property_city = text;
+  else if (/^(state|property_state)$/.test(key)) row.property_state = text;
+  else if (/^(zip|zipcode|postal_code|property_zip)$/.test(key)) row.property_zip = text;
+  else if (/^(mailing_address|mail_address|owner_address)$/.test(key)) row.mailing_address = text;
+  else if (/^(phone|phone_1|phone1|primary_phone|mobile|cell)$/.test(key)) row.phone = text;
+  else if (/^(phone_2|phone2|secondary_phone|alternate_phone)$/.test(key)) row.phone2 = text;
+  else if (/^(email|email_1|email1|email_address)$/.test(key)) row.email = text;
+  else if (/^(status|lead_status|disposition)$/.test(key)) row.status = text;
+  else if (/^(tag|tags|campaign|group|groups)$/.test(key)) row.tags = text;
+  else if (/^(note|notes|comment|comments)$/.test(key)) row.notes = text;
+  else if (/^(lead_id|id|mojo_id|contact_id|record_id)$/.test(key)) row.lead_id = text;
+}
+
 
 function importMojoRows_(rows, source) {
   const normalized = rows.map((row) => normalizeMojoLead_(row, source)).filter((lead) => lead.contactName || lead.propertyAddress || lead.phone || lead.email);
