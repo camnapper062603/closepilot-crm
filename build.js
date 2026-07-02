@@ -1,4 +1,4 @@
-import { writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 
 const config = {
   supabaseUrl: process.env.SUPABASE_URL || "",
@@ -9,10 +9,24 @@ const config = {
   productUrl: process.env.PRODUCT_URL || "",
 };
 
-writeFileSync(
+const configText = `window.ClosePilotConfig = ${JSON.stringify(config, null, 2)};\n`;
+writeFileSync("config.js", configText);
+
+rmSync("dist", { force: true, recursive: true });
+mkdirSync("dist", { recursive: true });
+
+[
+  "index.html",
+  "app.js",
+  "styles.css",
   "config.js",
-  `window.ClosePilotConfig = ${JSON.stringify(config, null, 2)};\n`,
-);
+  "recruiting.html",
+  "recruiting.css",
+  "recruiting.js",
+  "SafeLeadGenerator-Standalone.html",
+].forEach(copyToDist);
+
+["assets", "lead-generator-outputs"].forEach(copyToDist);
 
 console.log(
   config.supabaseUrl && config.supabaseAnonKey
@@ -44,6 +58,11 @@ function normalizeJwt(value) {
   }
 
   return value;
+}
+
+function copyToDist(path) {
+  if (!existsSync(path)) return;
+  cpSync(path, `dist/${path}`, { recursive: true });
 }
 
 function parseBase64UrlJson(value) {
