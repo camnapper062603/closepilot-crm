@@ -5,13 +5,15 @@ import { test, expect } from '@playwright/test';
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.clear());
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await expect(page.getByRole('heading', { name: 'Pipeline command center' })).toBeVisible();
+  await expect(page.locator('.topbar h1')).toHaveText('Dashboard');
 });
 
 async function navigateTo(page, label, hash) {
   const headings = {
     Admin: 'Workspace admin',
-    Pipeline: 'Pipeline command center',
+    Calendar: 'Calendar',
+    Dial: 'Dial floor',
+    Dashboard: 'Dashboard',
   };
   await page.getByRole('link', { name: label }).click();
   await expect(page).toHaveURL(new RegExp(`#${hash}`));
@@ -19,8 +21,8 @@ async function navigateTo(page, label, hash) {
 }
 
 test('renders the CRM dashboard MVP', async ({ page }) => {
-  await expect(page).toHaveTitle(/ClosePilot CRM/);
-  await expect(page.getByRole('heading', { name: 'Pipeline command center' })).toBeVisible();
+  await expect(page).toHaveTitle(/Kira Home/);
+  await expect(page.locator('.topbar h1')).toHaveText('Dashboard');
   await expect(page.locator('#pipelineBoard').getByText('Northstar Roofing')).toBeVisible();
 
   await navigateTo(page, 'Automation', 'automation');
@@ -47,9 +49,42 @@ test('opens primary sidebar items as separate app pages', async ({ page }) => {
   await expect(page.locator('#activity')).toBeVisible();
   await expect(page.locator('#tasks')).toBeHidden();
 
+  await navigateTo(page, 'Dial', 'dial');
+  await expect(page.locator('#dial')).toBeVisible();
+  await expect(page.locator('#activity')).toBeHidden();
+
+  await navigateTo(page, 'Calendar', 'calendar');
+  await expect(page.locator('#calendar')).toBeVisible();
+  await expect(page.locator('#dial')).toBeHidden();
+
   await navigateTo(page, 'Admin', 'admin');
   await expect(page.locator('#saasAdmin')).toBeVisible();
-  await expect(page.locator('#activity')).toBeHidden();
+  await expect(page.locator('#calendar')).toBeHidden();
+});
+
+test('opens section subpages inside CRM tabs', async ({ page }) => {
+  await navigateTo(page, 'Dashboard', 'pipeline');
+  await expect(page.locator('#subpageNav')).toContainText('Pipeline insights');
+  await page.getByRole('button', { name: 'Pipeline insights' }).click();
+  await expect(page.locator('#insightsPanel')).toBeVisible();
+  await expect(page.locator('#pipeline')).toBeHidden();
+
+  await page.getByRole('button', { name: 'Lead brief' }).click();
+  await expect(page.locator('#leadBrief')).toBeVisible();
+  await expect(page.locator('#pipeline')).toBeHidden();
+
+  await navigateTo(page, 'Automation', 'automation');
+  await page.getByRole('button', { name: 'Automation builder' }).click();
+  await expect(page.locator('#automation .automation-builder')).toBeVisible();
+  await expect(page.locator('#automationTemplateList')).toBeHidden();
+
+  await page.getByRole('button', { name: 'Automation templates' }).click();
+  await expect(page.locator('#automationTemplateList')).toBeVisible();
+
+  await navigateTo(page, 'Admin', 'admin');
+  await page.getByRole('button', { name: 'Backup center' }).click();
+  await expect(page.locator('#workspaceBackup')).toBeVisible();
+  await expect(page.locator('#saasAdmin')).toBeHidden();
 });
 
 test('shows actionable pipeline insights', async ({ page }) => {
@@ -191,7 +226,7 @@ test('runs stage and won automation templates without duplicating automatic runs
   await page.getByRole('button', { name: /Upcoming/ }).click();
   await expect(page.locator('#taskList')).toContainText('Ask Maya Johnson for final objections and decision timing.');
 
-  await navigateTo(page, 'Pipeline', 'pipeline');
+  await navigateTo(page, 'Dashboard', 'pipeline');
   await page.locator('#leadBrief').getByRole('button', { name: 'Mark won' }).click();
   await navigateTo(page, 'Tasks', 'tasks');
   await page.getByRole('button', { name: /Today/ }).click();
@@ -199,7 +234,7 @@ test('runs stage and won automation templates without duplicating automatic runs
   await page.getByRole('button', { name: /Upcoming/ }).click();
   await expect(page.locator('#taskList')).toContainText('Schedule kickoff with Maya Johnson.');
 
-  await navigateTo(page, 'Pipeline', 'pipeline');
+  await navigateTo(page, 'Dashboard', 'pipeline');
   await page.locator('#leadBrief').getByRole('button', { name: 'Reopen deal' }).click();
   await page.locator('#leadBrief').getByRole('button', { name: 'Mark won' }).click();
   await navigateTo(page, 'Automation', 'automation');
@@ -271,7 +306,7 @@ test('shows a global activity feed and opens related leads', async ({ page }) =>
   await expect(page.locator('#activityFeed')).toContainText('Stage set to Qualified.');
   await expect(page.locator('#activitySummary')).toHaveText('2 activities shown');
 
-  await navigateTo(page, 'Pipeline', 'pipeline');
+  await navigateTo(page, 'Dashboard', 'pipeline');
   await page.locator('#leadBrief').getByRole('button', { name: 'Add follow-up' }).click();
   await navigateTo(page, 'Activity', 'activity');
   await activityFilters.getByRole('button', { name: 'Tasks' }).click();
@@ -279,7 +314,7 @@ test('shows a global activity feed and opens related leads', async ({ page }) =>
   await expect(page.locator('#activityFeed')).not.toContainText('Stage set to Qualified.');
   await expect(page.locator('#activitySummary')).toHaveText('1 activity shown');
 
-  await navigateTo(page, 'Pipeline', 'pipeline');
+  await navigateTo(page, 'Dashboard', 'pipeline');
   await page.locator('#leadBrief').getByRole('button', { name: 'Open details' }).click();
   const dialog = page.getByRole('dialog', { name: 'Northstar Roofing' });
   await dialog.getByPlaceholder('Log a call, objection, or update').fill('Customer asked for Tuesday scheduling.');
@@ -315,7 +350,7 @@ test('shows a global activity feed and opens related leads', async ({ page }) =>
   expect(csv).not.toContain('Harbor Fitness');
   await page.getByPlaceholder('Search activity').fill('');
 
-  await navigateTo(page, 'Pipeline', 'pipeline');
+  await navigateTo(page, 'Dashboard', 'pipeline');
   await page.locator('#pipelineBoard').getByText('Harbor Fitness').click();
   await expect(page.locator('#leadBrief')).toContainText('Nia Brooks');
 
@@ -379,7 +414,7 @@ test('exports and imports a workspace backup', async ({ page }) => {
   const backup = JSON.parse(await readFile(await download.path(), 'utf8'));
 
   expect(download.suggestedFilename()).toMatch(/^closepilot-backup-\d{4}-\d{2}-\d{2}\.json$/);
-  expect(backup.app).toBe('ClosePilot CRM');
+  expect(backup.app).toBe('Kira Home');
   expect(backup.data.leads).toHaveLength(4);
   expect(backup.data.tasks).toHaveLength(3);
   await expect(page.locator('#backupMessage')).toHaveText('Backup exported.');
@@ -389,7 +424,7 @@ test('exports and imports a workspace backup', async ({ page }) => {
     mimeType: 'application/json',
     buffer: Buffer.from(
       JSON.stringify({
-        app: 'ClosePilot CRM',
+        app: 'Kira Home',
         version: 1,
         workspace: {
           name: 'Cameron Backup Co',
@@ -546,17 +581,33 @@ test('manages SaaS workspace plan, seats, and invites', async ({ page }) => {
 
   await expect(admin).toContainText('Workspace admin');
   await expect(admin.locator('#subscriptionStatus')).toContainText('Starter trial');
+
+  await page.getByRole('button', { name: 'Plan and seats' }).click();
   await expect(admin.locator('#planSummary')).toContainText('Starter');
   await expect(admin.locator('#planSummary')).toContainText('$29/mo');
   await expect(admin.locator('#planSummary')).toContainText('1/3');
+  await expect(admin.locator('#planAddonList')).toContainText('Kira Recruit $99/mo');
+  await expect(admin.locator('#planAddonList')).toContainText('Residential Lead Gen $149/mo');
+  await expect(admin.locator('#planAddonList')).toContainText('Recruit + Lead Gen bundle $199/mo');
+
+  await page.getByRole('button', { name: 'Connected apps' }).click();
+  await expect(admin.getByRole('link', { name: 'Open Recruit' })).toHaveAttribute('href', '/recruiting.html');
+  await expect(admin.getByRole('link', { name: 'Open Lead Gen' })).toHaveAttribute('href', '/SafeLeadGenerator-Standalone.html');
+
+  await page.getByRole('button', { name: 'Members and invites' }).click();
   await expect(admin.locator('#teamSummary')).toContainText('Active members');
   await expect(admin.locator('#teamSummary')).toContainText('1');
+
+  await page.getByRole('button', { name: 'Production readiness' }).click();
   await expect(admin.locator('#launchChecklist')).toContainText('Cloud database');
   await expect(admin.locator('#launchChecklist')).toContainText('Add SUPABASE_URL and SUPABASE_ANON_KEY.');
   await expect(admin.locator('#launchChecklist')).toContainText('Add STRIPE_CHECKOUT_URL.');
-  await expect(admin.locator('#launchChecklist')).toContainText('support@closepilot.local is set.');
+  await expect(admin.locator('#launchChecklist')).toContainText('support@kira.local is set.');
+
+  await page.getByRole('button', { name: 'Audit trail' }).click();
   await expect(admin.locator('#auditList')).toContainText('Workspace created');
 
+  await page.getByRole('button', { name: 'Plan and seats' }).click();
   await admin.getByRole('button', { name: 'Growth $79/mo' }).click();
 
   await expect(admin.locator('#subscriptionStatus')).toContainText('Growth plan');
@@ -570,6 +621,7 @@ test('manages SaaS workspace plan, seats, and invites', async ({ page }) => {
   await admin.getByRole('button', { name: 'Billing portal' }).click();
   await expect(admin.locator('#adminMessage')).toContainText('Add STRIPE_PORTAL_URL');
 
+  await page.getByRole('button', { name: 'Members and invites' }).click();
   await admin.locator('#inviteEmail').fill('sales@example.com');
   await admin.getByLabel('Invite role').selectOption('admin');
   await admin.getByRole('button', { name: 'Invite' }).click();
@@ -578,7 +630,10 @@ test('manages SaaS workspace plan, seats, and invites', async ({ page }) => {
   await expect(admin.locator('#teamList')).toContainText('admin');
   await expect(admin.locator('#teamList')).toContainText('Send email');
   await expect(admin.locator('#teamSummary')).toContainText('1');
+
+  await page.getByRole('button', { name: 'Plan and seats' }).click();
   await expect(admin.locator('#planSummary')).toContainText('2/10');
+  await page.getByRole('button', { name: 'Members and invites' }).click();
   await expect(admin.locator('#adminMessage')).toContainText('Invite staged for sales@example.com');
   await expect(admin.locator('#auditList')).toContainText('Invite staged');
 
@@ -586,12 +641,13 @@ test('manages SaaS workspace plan, seats, and invites', async ({ page }) => {
   await expect(admin.locator('#adminMessage')).toContainText('Email draft opened for sales@example.com');
   await expect(admin.locator('#auditList')).toContainText('Invite email prepared');
 
-  await admin.locator('#adminBusinessName').fill('ClosePilot Agency');
+  await page.getByRole('button', { name: 'Workspace settings' }).click();
+  await admin.locator('#adminBusinessName').fill('Kira Home Agency');
   await admin.locator('#adminWorkspaceType').selectOption('Team');
   await admin.locator('#adminSalesGoal').selectOption('Forecast revenue');
   await admin.getByRole('button', { name: 'Update workspace' }).click();
 
-  await expect(page.locator('#workspaceNameLabel')).toContainText('ClosePilot Agency');
+  await expect(page.locator('#workspaceNameLabel')).toContainText('Kira Home Agency');
   await expect(page.locator('#workspaceModeLabel')).toContainText('Team workspace - Forecast revenue.');
   await expect(admin.locator('#adminMessage')).toContainText('Workspace settings saved.');
 });
@@ -706,7 +762,7 @@ test('filters tasks by today, upcoming, done, and all', async ({ page }) => {
   await expect(page.locator('#taskList')).toContainText('Send onboarding checklist to Stone & Finch');
   await expect(page.locator('#taskList')).not.toContainText('Call Maya before 3 PM');
 
-  await navigateTo(page, 'Pipeline', 'pipeline');
+  await navigateTo(page, 'Dashboard', 'pipeline');
   await page.locator('#leadBrief').getByRole('button', { name: 'Start sequence' }).click();
   await navigateTo(page, 'Tasks', 'tasks');
   await taskFilters.getByRole('button', { name: /Upcoming/ }).click();
@@ -992,6 +1048,146 @@ test('imports leads from CSV', async ({ page }) => {
   await expect(page.locator('#pipelineValue')).toContainText('$36,500');
 });
 
+test('pulls five safe generated leads for dialers', async ({ page }) => {
+  await page.route('**/lead-generator-outputs/safe-leads.csv', async (route) => {
+    const csv = [
+      'owner_name,property_address,mailing_address,phone,email,confidence,match_confidence,match_reason,score,channels,compliance,source,county,parcel_id',
+      'Riley Park,"100 Cedar St, Austin, TX, 78701","100 Cedar St, Austin, TX, 78701",(512) 555-1001,riley@example.com,91,88,match,94,phone|email|postal,DNC clear,Licensed enrichment,Travis,TX-2001',
+      'Jordan Lee,"101 Cedar St, Austin, TX, 78701","101 Cedar St, Austin, TX, 78701",(512) 555-1002,jordan@example.com,90,87,match,93,phone|email|postal,DNC clear,Licensed enrichment,Travis,TX-2002',
+      'Avery Kim,"102 Cedar St, Austin, TX, 78701","102 Cedar St, Austin, TX, 78701",(512) 555-1003,avery@example.com,89,86,match,92,phone|email|postal,DNC clear,Licensed enrichment,Travis,TX-2003',
+      'Morgan Ellis,"103 Cedar St, Austin, TX, 78701","103 Cedar St, Austin, TX, 78701",(512) 555-1004,morgan@example.com,88,85,match,91,phone|email|postal,DNC clear,Licensed enrichment,Travis,TX-2004',
+      'Quinn Reed,"104 Cedar St, Austin, TX, 78701","104 Cedar St, Austin, TX, 78701",(512) 555-1005,quinn@example.com,87,84,match,90,phone|email|postal,DNC clear,Licensed enrichment,Travis,TX-2005',
+      'Taylor Fox,"105 Cedar St, Austin, TX, 78701","105 Cedar St, Austin, TX, 78701",(512) 555-1006,taylor@example.com,86,83,match,89,phone|email|postal,DNC clear,Licensed enrichment,Travis,TX-2006',
+    ].join('\n');
+
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/csv',
+      body: csv,
+    });
+  });
+
+  await navigateTo(page, 'Dial', 'dial');
+  await page.getByRole('button', { name: 'Pull 5 safe leads' }).click();
+
+  await expect(page.locator('#leadGeneratorStatus')).toContainText('Finish 5 pulled leads before pulling 5 more.');
+  await expect(page.getByRole('button', { name: 'Pull 5 safe leads' })).toBeDisabled();
+  await expect(page.locator('#dialActiveLead')).toContainText('Riley Park');
+  await expect(page.locator('#dialActiveLead')).toContainText('100 Cedar St');
+  await expect(page.locator('#dialSummary')).toContainText('5');
+
+  await navigateTo(page, 'Tasks', 'tasks');
+  await expect(page.locator('#taskList')).toContainText('Call (512) 555-1001');
+  await expect(page.locator('#taskList')).toContainText('Call (512) 555-1005');
+});
+
+test('logs exact dialer texts and requires attempts before another batch', async ({ page }) => {
+  await page.route('**/lead-generator-outputs/safe-leads.csv', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/csv',
+      body: [
+        'owner_name,property_address,mailing_address,phone,email,confidence,match_confidence,match_reason,score,channels,compliance,source,county,parcel_id',
+        'Riley Park,"100 Cedar St, Austin, TX, 78701","100 Cedar St, Austin, TX, 78701",(512) 555-1001,riley@example.com,91,88,match,94,phone|email|postal,DNC clear,Licensed enrichment,Travis,TX-2001',
+        'Jordan Lee,"101 Cedar St, Austin, TX, 78701","101 Cedar St, Austin, TX, 78701",(512) 555-1002,jordan@example.com,90,87,match,93,phone|email|postal,DNC clear,Licensed enrichment,Travis,TX-2002',
+      ].join('\n'),
+    });
+  });
+
+  await navigateTo(page, 'Dial', 'dial');
+  await page.getByRole('button', { name: 'Pull 5 safe leads' }).click();
+  await expect(page.getByRole('button', { name: 'Pull 5 safe leads' })).toBeDisabled();
+
+  await page.locator('#dialContactMethod').selectOption('Text');
+  await page.locator('#dialTextMessage').fill('Hi Riley, this is Cameron following up about your property estimate.');
+  await page.locator('#dialNotes').fill('Initial SMS sent.');
+  await page.getByRole('button', { name: 'Save outcome' }).click();
+
+  await expect(page.locator('#dialMessage')).toContainText('Outcome saved.');
+  await expect(page.locator('#dialActiveLead')).toContainText('Jordan Lee');
+
+  await navigateTo(page, 'Activity', 'activity');
+  await expect(page.locator('#activityFeed')).toContainText(
+    'Text logged - Hi Riley, this is Cameron following up about your property estimate.',
+  );
+});
+
+test('books dialer appointments through round robin closers', async ({ page }) => {
+  await page.route('**/lead-generator-outputs/safe-leads.csv', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/csv',
+      body: [
+        'owner_name,property_address,mailing_address,phone,email,confidence,match_confidence,match_reason,score,channels,compliance,source,county,parcel_id',
+        'Riley Park,"100 Cedar St, Austin, TX, 78701","100 Cedar St, Austin, TX, 78701",(512) 555-1001,riley@example.com,91,88,match,94,phone|email|postal,DNC clear,Licensed enrichment,Travis,TX-2001',
+      ].join('\n'),
+    });
+  });
+
+  await navigateTo(page, 'Dial', 'dial');
+  await page.getByRole('button', { name: 'Pull 5 safe leads' }).click();
+  await page.locator('#dialOutcome').selectOption('Appointment set');
+  await page.locator('#appointmentDate').fill('2026-07-03');
+  await page.getByRole('button', { name: '10 AM' }).click();
+  await page.locator('#dialNotes').fill('Owner wants a roof inspection estimate.');
+  await page.getByRole('button', { name: 'Save outcome' }).click();
+
+  await expect(page.locator('#dialMessage')).toContainText('Appointment booked and assigned round robin.');
+  await expect(page.locator('#appointmentList')).toContainText('100 Cedar St');
+  await expect(page.locator('#appointmentList')).toContainText('owner@kira.local');
+  await expect(page.locator('#dialActiveLead')).toContainText('Qualified');
+});
+
+test('updates dialer weekly schedule from the dial tab', async ({ page }) => {
+  await navigateTo(page, 'Dial', 'dial');
+
+  await expect(page.locator('#dialSchedulePanel')).toBeHidden();
+  await page.getByRole('button', { name: 'My schedule' }).click();
+  await expect(page.locator('#dialSchedulePanel')).toBeVisible();
+  await expect(page.locator('#dial')).toBeHidden();
+
+  await expect(page.locator('#dialScheduleGrid .schedule-hour').first()).toHaveText('6 AM');
+  await expect(page.locator('#dialScheduleGrid .schedule-day').first()).toHaveText('Sun');
+
+  await page.locator('[data-schedule-key="Mon-9"]').click();
+  await page.locator('[data-schedule-key="Fri-17"]').click();
+
+  await expect(page.locator('#scheduleMessage')).toContainText('Schedule updated.');
+  await expect(page.locator('[data-schedule-key="Mon-9"]')).toHaveClass(/active/);
+  await expect(page.locator('[data-schedule-key="Fri-17"]')).toHaveClass(/active/);
+
+  await page.getByRole('button', { name: 'Dial floor' }).click();
+  await expect(page.locator('#dial')).toBeVisible();
+  await expect(page.locator('#dialSchedulePanel')).toBeHidden();
+});
+
+test('shows booked appointments in calendar and my appointments views', async ({ page }) => {
+  await page.route('**/lead-generator-outputs/safe-leads.csv', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/csv',
+      body: [
+        'owner_name,property_address,mailing_address,phone,email,confidence,match_confidence,match_reason,score,channels,compliance,source,county,parcel_id',
+        'Riley Park,"100 Cedar St, Austin, TX, 78701","100 Cedar St, Austin, TX, 78701",(512) 555-1001,riley@example.com,91,88,match,94,phone|email|postal,DNC clear,Licensed enrichment,Travis,TX-2001',
+      ].join('\n'),
+    });
+  });
+
+  await navigateTo(page, 'Dial', 'dial');
+  await page.getByRole('button', { name: 'Pull 5 safe leads' }).click();
+  await page.locator('#dialOutcome').selectOption('Appointment set');
+  await page.locator('#appointmentDate').fill('2026-07-03');
+  await page.getByRole('button', { name: '10 AM' }).click();
+  await page.getByRole('button', { name: 'Save outcome' }).click();
+
+  await navigateTo(page, 'Calendar', 'calendar');
+  await expect(page.locator('#calendarBoard')).toContainText('100 Cedar St');
+  await expect(page.locator('#calendarBoard')).toContainText('owner@kira.local');
+
+  await page.getByRole('button', { name: 'My appointments' }).click();
+  await expect(page.locator('#calendarBoard')).toContainText('100 Cedar St');
+});
+
 test('reviews CSV import errors before saving', async ({ page }) => {
   await navigateTo(page, 'Contacts', 'contacts');
 
@@ -1099,9 +1295,11 @@ test('manages a contact profile workspace from the contacts page', async ({ page
   const profile = page.locator('#contactProfile');
   const harborRow = page.locator('#contactTable .contact-row').filter({ hasText: 'Harbor Fitness' });
 
-  await expect(profile).toContainText('Northstar Roofing');
+  await expect(profile).toBeHidden();
   await harborRow.getByRole('button', { name: 'Profile' }).click();
 
+  await expect(page.locator('#contacts')).toBeHidden();
+  await expect(profile).toBeVisible();
   await expect(profile).toContainText('Harbor Fitness');
   await expect(profile).toContainText('Nia Brooks');
   await expect(profile).toContainText('Draft Harbor Fitness proposal recap');
@@ -1115,8 +1313,11 @@ test('manages a contact profile workspace from the contacts page', async ({ page
   await profile.getByRole('button', { name: 'Log note' }).click();
 
   await expect(profile).toContainText('Note: Nia approved a Friday launch review.');
+  await profile.getByRole('button', { name: 'Back to contacts' }).click();
+  await expect(page.locator('#contacts')).toBeVisible();
+  await expect(profile).toBeHidden();
 
-  await navigateTo(page, 'Pipeline', 'pipeline');
+  await navigateTo(page, 'Dashboard', 'pipeline');
   await expect(page.locator('#leadBrief')).toContainText('Harbor Fitness');
   await expect(page.locator('#leadBrief')).toContainText('Confirm rollout date and billing owner.');
 });

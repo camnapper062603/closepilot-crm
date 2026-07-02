@@ -1,15 +1,19 @@
 :root {
-  --bg: #f5f7f4;
+  --bg: #ffffff;
   --surface: #ffffff;
-  --ink: #17211e;
-  --muted: #64716d;
-  --line: #dbe2dd;
-  --teal: #0f766e;
-  --teal-dark: #115e59;
+  --ink: #050505;
+  --muted: #5f6670;
+  --line: #d8dde5;
+  --teal: #0b2f63;
+  --teal-dark: #071f42;
+  --navy: #0b2f63;
+  --navy-dark: #071f42;
+  --navy-soft: #eef4ff;
+  --black: #050505;
   --amber: #c57b22;
   --coral: #c85a54;
-  --blue: #476f95;
-  --shadow: 0 18px 40px rgba(23, 33, 30, 0.08);
+  --blue: #174b8f;
+  --shadow: 0 12px 30px rgba(5, 5, 5, 0.08);
 }
 
 * {
@@ -35,13 +39,18 @@ button {
   cursor: pointer;
 }
 
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
 [hidden] {
   display: none !important;
 }
 
 .auth-panel {
   align-items: center;
-  background: #eef3ef;
+  background: #f4f6f9;
   display: flex;
   min-height: 100vh;
   padding: 24px;
@@ -109,7 +118,7 @@ button {
 }
 
 .sidebar {
-  background: #182520;
+  background: var(--black);
   color: #f4faf7;
   display: flex;
   flex-direction: column;
@@ -128,9 +137,9 @@ button {
 
 .brand-mark {
   align-items: center;
-  background: #e0f2ef;
+  background: #ffffff;
   border-radius: 8px;
-  color: var(--teal-dark);
+  color: var(--navy-dark);
   display: inline-flex;
   font-weight: 800;
   height: 42px;
@@ -147,7 +156,7 @@ button {
 
 .brand span,
 .workspace-card span {
-  color: #adc1bb;
+  color: #aab2bf;
   font-size: 0.88rem;
 }
 
@@ -158,14 +167,14 @@ button {
 
 .nav-links a {
   border-radius: 8px;
-  color: #dbe8e4;
+  color: #dfe5ef;
   padding: 11px 12px;
   text-decoration: none;
 }
 
 .nav-links a.active,
 .nav-links a:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--navy);
   color: #ffffff;
 }
 
@@ -183,6 +192,7 @@ button {
 }
 
 .main {
+  align-content: start;
   display: grid;
   gap: 22px;
   padding: 26px;
@@ -190,9 +200,14 @@ button {
 
 .topbar {
   align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 8px 18px rgba(5, 5, 5, 0.04);
   display: flex;
   gap: 16px;
   justify-content: space-between;
+  padding: 16px;
 }
 
 .eyebrow {
@@ -211,8 +226,8 @@ p {
 }
 
 h1 {
-  font-size: clamp(2rem, 4vw, 2.9rem);
-  line-height: 1.04;
+  font-size: 1.65rem;
+  line-height: 1.12;
   margin-bottom: 0;
 }
 
@@ -225,6 +240,34 @@ h2 {
   align-items: center;
   display: flex;
   gap: 10px;
+}
+
+.subpage-nav {
+  align-items: center;
+  background: #f4f6f9;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+}
+
+.subpage-nav button {
+  background: #ffffff;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--navy);
+  font-size: 0.86rem;
+  font-weight: 850;
+  min-height: 34px;
+  padding: 0 12px;
+}
+
+.subpage-nav button.active {
+  background: var(--navy);
+  box-shadow: 0 4px 12px rgba(11, 47, 99, 0.16);
+  color: #ffffff;
 }
 
 .search {
@@ -248,35 +291,42 @@ h2 {
 .primary-button,
 .secondary-button,
 .task-form button {
-  background: var(--teal);
+  align-items: center;
+  background: var(--navy);
   border: 0;
   border-radius: 8px;
   color: #ffffff;
-  font-weight: 800;
-  min-height: 42px;
-  padding: 0 16px;
+  display: inline-flex;
+  font-size: 0.9rem;
+  font-weight: 850;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 20px;
   white-space: nowrap;
 }
 
 .primary-button:hover,
 .task-form button:hover {
-  background: var(--teal-dark);
+  background: var(--navy-dark);
 }
 
 .secondary-button {
-  background: #edf2ee;
-  border: 1px solid var(--line);
-  color: var(--ink);
+  background: var(--navy);
+  color: #ffffff;
+  font-size: 0.84rem;
+  min-height: 38px;
+  padding: 0 14px;
 }
 
 .secondary-button:hover {
-  background: #dfe8e2;
+  background: var(--navy-dark);
 }
 
 .mode-pill {
-  background: #e6efeb;
+  background: #f4f6f9;
+  border: 1px solid var(--line);
   border-radius: 999px;
-  color: var(--teal-dark);
+  color: var(--black);
   display: inline-flex;
   font-size: 0.78rem;
   font-weight: 800;
@@ -346,7 +396,7 @@ h2 {
 }
 
 .goal-progress {
-  background: #e8eee9;
+  background: #eef1f5;
   border-radius: 999px;
   height: 12px;
   margin-bottom: 14px;
@@ -369,7 +419,7 @@ h2 {
 }
 
 .goal-summary article {
-  background: #f8faf8;
+  background: #f8fafc;
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
@@ -472,7 +522,7 @@ body[data-active-page="activity"] .workspace-grid {
 }
 
 .source-card {
-  background: #f8faf8;
+  background: #f8fafc;
   border: 1px solid var(--line);
   border-radius: 8px;
   overflow: hidden;
@@ -490,7 +540,7 @@ body[data-active-page="activity"] .workspace-grid {
 }
 
 .source-card-main:hover {
-  background: #eef5f0;
+  background: #eef4ff;
 }
 
 .source-card-main span,
@@ -527,7 +577,7 @@ body[data-active-page="activity"] .workspace-grid {
 }
 
 .insight-card {
-  background: #f8faf8;
+  background: #f8fafc;
   border: 1px solid var(--line);
   border-left: 4px solid var(--blue);
   border-radius: 8px;
@@ -540,7 +590,7 @@ body[data-active-page="activity"] .workspace-grid {
 }
 
 button.insight-card:hover {
-  background: #eef4f1;
+  background: #eef4ff;
 }
 
 .insight-card span {
@@ -568,7 +618,7 @@ button.insight-card:hover {
 .lower-grid {
   display: grid;
   gap: 22px;
-  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  grid-template-columns: 1fr;
 }
 
 .backup-panel {
@@ -582,7 +632,7 @@ button.insight-card:hover {
 }
 
 .backup-summary article {
-  background: #f8faf8;
+  background: #f8fafc;
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
@@ -616,7 +666,7 @@ button.insight-card:hover {
 .saas-grid {
   display: grid;
   gap: 14px;
-  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1fr) minmax(320px, 1.05fr);
+  grid-template-columns: 1fr;
 }
 
 .admin-card {
@@ -625,6 +675,38 @@ button.insight-card:hover {
   display: grid;
   gap: 12px;
   padding: 14px;
+}
+
+.admin-dropdown {
+  background: #ffffff;
+}
+
+.admin-dropdown summary {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  list-style: none;
+}
+
+.admin-dropdown summary::-webkit-details-marker {
+  display: none;
+}
+
+.admin-dropdown summary::after {
+  background: var(--navy);
+  border-radius: 999px;
+  color: #ffffff;
+  content: "+";
+  display: inline-grid;
+  font-weight: 900;
+  height: 26px;
+  place-items: center;
+  width: 26px;
+}
+
+.admin-dropdown[open] summary::after {
+  content: "-";
 }
 
 .admin-card h3 {
@@ -665,13 +747,13 @@ button.insight-card:hover {
 .workspace-profile-summary {
   display: grid;
   gap: 10px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .plan-summary article,
 .team-summary article,
 .workspace-profile-summary article {
-  background: #f8faf8;
+  background: #f8fafc;
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
@@ -694,6 +776,17 @@ button.insight-card:hover {
   text-transform: uppercase;
 }
 
+.plan-addon-list {
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 800;
+  line-height: 1.45;
+  padding: 10px;
+}
+
 .workspace-profile-summary {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -710,18 +803,20 @@ button.insight-card:hover {
 }
 
 .plan-options .active {
-  background: #e7f4ef;
-  border-color: rgba(15, 118, 110, 0.35);
+  background: var(--navy-soft);
+  border-color: rgba(11, 47, 99, 0.24);
   color: var(--teal-dark);
 }
 
 .team-card,
+.extensions-card,
 .launch-card,
 .audit-card {
   align-content: start;
 }
 
 .team-list,
+.extension-grid,
 .launch-checklist,
 .audit-list {
   display: grid;
@@ -729,6 +824,7 @@ button.insight-card:hover {
 }
 
 .team-row,
+.extension-grid article,
 .launch-check,
 .audit-row {
   align-items: center;
@@ -738,6 +834,33 @@ button.insight-card:hover {
   gap: 10px;
   justify-content: space-between;
   padding: 10px;
+}
+
+.extension-grid article {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.extension-grid strong,
+.extension-grid span {
+  display: block;
+}
+
+.extension-grid span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 750;
+  margin-top: 2px;
+}
+
+.extension-grid a.primary-button {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+  min-height: 36px;
+  text-decoration: none;
+  white-space: nowrap;
 }
 
 .team-row div,
@@ -768,7 +891,7 @@ button.insight-card:hover {
 }
 
 .launch-check.ready > span {
-  background: #e7f4ef;
+  background: var(--navy-soft);
   color: var(--teal-dark);
 }
 
@@ -784,7 +907,7 @@ button.insight-card:hover {
 }
 
 .status-pill {
-  background: #e7f4ef;
+  background: var(--navy-soft);
   border-radius: 999px;
   color: var(--teal-dark) !important;
   flex: 0 0 auto;
@@ -830,26 +953,27 @@ button.insight-card:hover {
 }
 
 .segmented-control {
-  background: #edf2ee;
+  background: #f4f6f9;
+  border: 1px solid var(--line);
   border-radius: 8px;
   display: inline-flex;
   padding: 3px;
 }
 
 .segmented-control button {
-  background: transparent;
-  border: 0;
+  background: #ffffff;
+  border: 1px solid transparent;
   border-radius: 6px;
-  color: var(--muted);
+  color: var(--navy);
   font-weight: 700;
-  min-height: 32px;
+  min-height: 34px;
   padding: 0 12px;
 }
 
 .segmented-control button.active {
-  background: var(--surface);
-  color: var(--ink);
-  box-shadow: 0 4px 12px rgba(23, 33, 30, 0.08);
+  background: var(--navy);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(11, 47, 99, 0.18);
 }
 
 .task-filters {
@@ -863,6 +987,249 @@ button.insight-card:hover {
   flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 12px;
+}
+
+.lead-generator-status {
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 800;
+  margin: -4px 0 12px;
+  min-height: 1.25rem;
+}
+
+.dial-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1.15fr) minmax(340px, 0.85fr);
+}
+
+.dial-panel,
+.appointments-panel {
+  align-content: start;
+}
+
+.dial-panel {
+  grid-row: span 2;
+}
+
+.dial-summary,
+.dial-info-grid {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.dial-summary {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.dial-info-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.dial-summary article,
+.dial-info-grid article,
+.appointment-row {
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.dial-summary span,
+.dial-info-grid span,
+.appointment-row span,
+.dial-script-card small {
+  color: var(--muted);
+}
+
+.dial-summary strong,
+.dial-info-grid strong,
+.appointment-row strong,
+.appointment-row span {
+  display: block;
+}
+
+.dial-lead {
+  display: grid;
+  gap: 12px;
+}
+
+.dial-lead-hero {
+  align-items: center;
+  background: linear-gradient(180deg, #ffffff, #f4f7fb);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  padding: 16px;
+}
+
+.dial-lead-hero h3 {
+  font-size: 1.4rem;
+  margin: 0;
+}
+
+.dial-lead-hero span {
+  color: var(--muted);
+}
+
+.dial-script-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+}
+
+.dial-script-card p {
+  margin-bottom: 0;
+}
+
+.dial-script-card pre {
+  color: var(--muted);
+  font: inherit;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.dial-form,
+.appointment-fields,
+.appointment-list {
+  display: grid;
+  gap: 12px;
+}
+
+.appointment-time-picker {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.time-button {
+  background: var(--navy);
+  border: 0;
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 0.84rem;
+  font-weight: 850;
+  min-height: 38px;
+  padding: 0 10px;
+}
+
+.time-button.active {
+  background: var(--black);
+  box-shadow: inset 0 0 0 2px #ffffff, 0 0 0 2px var(--black);
+}
+
+.dial-form label {
+  color: var(--muted);
+  display: grid;
+  font-size: 0.86rem;
+  font-weight: 800;
+  gap: 6px;
+}
+
+.dial-message {
+  color: var(--muted);
+  font-weight: 800;
+  min-height: 1.25rem;
+}
+
+.appointment-row {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.appointment-row time {
+  color: var(--teal-dark);
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.dial-switch-panel,
+.dial-schedule-panel {
+  grid-column: 1 / -1;
+}
+
+.schedule-grid {
+  display: grid;
+  gap: 4px;
+  grid-template-columns: 92px repeat(16, minmax(64px, 1fr));
+  overflow-x: auto;
+}
+
+.schedule-corner,
+.schedule-day,
+.schedule-hour {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--muted);
+  display: flex;
+  font-size: 0.78rem;
+  font-weight: 850;
+  min-height: 34px;
+  padding: 0 8px;
+}
+
+.schedule-day {
+  color: var(--black);
+  justify-content: flex-start;
+}
+
+.schedule-cell {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 900;
+  min-height: 34px;
+}
+
+.schedule-cell.active {
+  background: var(--navy);
+  border-color: var(--navy);
+}
+
+.calendar-panel {
+  align-content: start;
+}
+
+.calendar-board {
+  display: grid;
+  gap: 10px;
+}
+
+.calendar-appointment {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 160px minmax(0, 1fr);
+  padding: 12px;
+}
+
+.calendar-appointment time {
+  color: var(--navy);
+  font-weight: 900;
+}
+
+.calendar-appointment strong,
+.calendar-appointment span {
+  display: block;
+}
+
+.calendar-appointment span,
+.calendar-appointment p {
+  color: var(--muted);
 }
 
 .contact-filters {
@@ -915,7 +1282,7 @@ button.insight-card:hover {
 .contact-summary article,
 .task-summary article,
 .pipeline-health article {
-  background: #f8faf8;
+  background: #f8fafc;
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
@@ -950,7 +1317,7 @@ button.insight-card:hover {
 
 .task-filters span,
 .contact-filters span {
-  background: #d9f1ed;
+  background: #dbe8ff;
   border-radius: 999px;
   color: var(--teal-dark);
   font-size: 0.7rem;
@@ -967,7 +1334,7 @@ button.insight-card:hover {
 }
 
 .stage-column {
-  background: #f8faf8;
+  background: #f8fafc;
   border: 1px solid var(--line);
   border-radius: 8px;
   min-height: 320px;
@@ -1010,7 +1377,7 @@ button.insight-card:hover {
 }
 
 .count-pill {
-  background: #e6efeb;
+  background: var(--navy-soft);
   color: var(--teal-dark);
 }
 
@@ -1038,7 +1405,7 @@ button.insight-card:hover {
 }
 
 .deal-card.active {
-  outline: 3px solid rgba(15, 118, 110, 0.16);
+  outline: 3px solid rgba(11, 47, 99, 0.16);
 }
 
 .deal-card strong,
@@ -1073,11 +1440,14 @@ button.insight-card:hover {
 .card-actions button,
 .task-item button,
 .automation-row button {
-  background: #edf2ee;
-  border: 1px solid var(--line);
+  background: var(--navy);
+  border: 0;
   border-radius: 8px;
-  color: var(--ink);
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 800;
   min-height: 34px;
+  padding: 0 10px;
 }
 
 .forecast-view {
@@ -1094,7 +1464,7 @@ button.insight-card:hover {
 
 .forecast-summary article,
 .forecast-row {
-  background: #f8faf8;
+  background: #f8fafc;
   border: 1px solid var(--line);
   border-radius: 8px;
 }
@@ -1168,21 +1538,21 @@ button.insight-card:hover {
 }
 
 .danger-button {
-  background: #f4e1df;
-  border: 1px solid #e6bfbc;
+  background: var(--navy);
+  border: 0;
   border-radius: 8px;
-  color: var(--coral);
+  color: #ffffff;
   font-weight: 800;
   min-height: 38px;
   padding: 0 12px;
 }
 
 .danger-button:hover {
-  background: #efd1ce;
+  background: var(--navy-dark);
 }
 
 .sequence-preview {
-  background: #f8faf8;
+  background: #f8fafc;
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
@@ -1191,7 +1561,7 @@ button.insight-card:hover {
 }
 
 .assistant-card {
-  background: #f8faf8;
+  background: #f8fafc;
   border: 1px solid var(--line);
   border-left: 4px solid var(--blue);
   border-radius: 8px;
@@ -1264,7 +1634,7 @@ button.insight-card:hover {
 }
 
 .brief-grid div {
-  background: #f8faf8;
+  background: #f8fafc;
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 10px;
@@ -1309,7 +1679,7 @@ button.insight-card:hover {
 }
 
 .automation-summary article {
-  background: #f8faf8;
+  background: #f8fafc;
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
@@ -1397,7 +1767,7 @@ button.insight-card:hover {
 }
 
 .automation-preview {
-  background: #f8faf8;
+  background: #f8fafc;
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
@@ -1570,7 +1940,7 @@ button.insight-card:hover {
 }
 
 .status-pill.on {
-  background: #d9f1ed;
+  background: #dbe8ff;
   color: var(--teal-dark);
 }
 
@@ -1584,7 +1954,7 @@ button.insight-card:hover {
 }
 
 .contact-row.active {
-  border-color: rgba(15, 118, 110, 0.45);
+  border-color: rgba(11, 47, 99, 0.35);
   box-shadow: inset 4px 0 0 var(--teal);
 }
 
@@ -1595,14 +1965,14 @@ button.insight-card:hover {
 }
 
 .contact-select input {
-  accent-color: var(--teal);
+  accent-color: var(--navy);
   height: 18px;
   width: 18px;
 }
 
 .contact-score {
-  background: #e6efeb;
-  color: var(--teal-dark);
+  background: var(--navy-soft);
+  color: var(--navy-dark);
   display: inline-block;
   min-width: 34px;
   text-align: center;
@@ -1628,7 +1998,7 @@ button.insight-card:hover {
 
 .contact-profile-hero {
   align-items: start;
-  background: #f8faf8;
+  background: #f8fafc;
   border: 1px solid var(--line);
   border-radius: 8px;
   display: flex;
@@ -1659,7 +2029,7 @@ button.insight-card:hover {
 
 .contact-profile-stats article,
 .contact-profile-section {
-  background: #f8faf8;
+  background: #f8fafc;
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 10px;
@@ -1911,7 +2281,7 @@ button.insight-card:hover {
 
 .detail-hero {
   align-items: start;
-  background: #f8faf8;
+  background: #f8fafc;
   border: 1px solid var(--line);
   border-radius: 8px;
   display: flex;
@@ -2011,7 +2381,7 @@ button.insight-card:hover {
 }
 
 .import-summary article {
-  background: #f8faf8;
+  background: #f8fafc;
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
@@ -2089,9 +2459,10 @@ button.insight-card:hover {
 
 .icon-button {
   align-items: center;
-  background: #edf2ee;
-  border: 1px solid var(--line);
+  background: var(--navy);
+  border: 0;
   border-radius: 8px;
+  color: #ffffff;
   display: inline-flex;
   font-size: 1.4rem;
   height: 38px;
@@ -2107,6 +2478,7 @@ button.insight-card:hover {
 
   .workspace-grid,
   .lower-grid,
+  .dial-grid,
   .saas-grid {
     grid-template-columns: 1fr;
   }
@@ -2175,6 +2547,8 @@ button.insight-card:hover {
 
   .metrics,
   .contact-summary,
+  .dial-summary,
+  .dial-info-grid,
   .pipeline-health,
   .task-summary,
   .plan-summary,
@@ -2213,6 +2587,8 @@ button.insight-card:hover {
 
   .metrics,
   .contact-summary,
+  .dial-summary,
+  .dial-info-grid,
   .pipeline-health,
   .task-summary,
   .right-rail,
@@ -2240,7 +2616,9 @@ button.insight-card:hover {
   }
 
   .detail-hero,
-  .detail-actions {
+  .detail-actions,
+  .dial-lead-hero,
+  .appointment-row {
     align-items: stretch;
     flex-direction: column;
   }

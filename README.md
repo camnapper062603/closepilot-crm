@@ -1,6 +1,6 @@
-# ClosePilot CRM
+# Kira Home
 
-ClosePilot is a hosted MVP CRM for a personal sales workflow now and a SaaS product later.
+Kira Home is a hosted MVP CRM for a personal sales workflow now and a SaaS product later.
 
 ## Run Locally
 
@@ -14,6 +14,12 @@ Then visit:
 
 ```text
 http://localhost:4173
+```
+
+The recruiting background app is available at:
+
+```text
+http://localhost:4173/recruiting.html
 ```
 
 If that port is already busy, run another port:
@@ -87,5 +93,6 @@ This build includes:
 - Launch readiness checklist and admin audit trail
 - Supabase schema and RLS policies for CRM data, subscriptions, and invitations
 - CRM pipeline, contacts, tasks, automations, activity, CSV import/export, backups, revenue goals, and channel reporting
+- Standalone Kira Recruit background app for job setup, job-board connector feeds, applicant intake, interview booking, and future CRM recruits sync
 
 Production billing still needs a Stripe checkout/customer portal integration, and real invitation delivery still needs an email provider.

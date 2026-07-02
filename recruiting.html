@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kira Recruit</title>
+    <link rel="stylesheet" href="recruiting.css" />
+  </head>
+  <body>
+    <div class="recruit-shell">
+      <main class="recruit-main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Recruiting operating system</p>
+            <h1>Auto recruiting</h1>
+          </div>
+          <div class="topbar-actions">
+            <span class="mode-pill" id="syncMode">Demo connectors</span>
+            <button class="secondary-button" id="resetRecruiting" type="button">Reset demo</button>
+            <button class="primary-button" id="syncToCrm" type="button">Sync CRM feed</button>
+          </div>
+        </header>
+
+        <nav class="subpage-nav" id="recruitSubpageNav" aria-label="Recruiting pages"></nav>
+
+        <section class="metrics" id="dashboard" data-recruit-subpage="dashboard" aria-label="Recruiting summary">
+          <article>
+            <span>Live postings</span>
+            <strong id="livePostings">0</strong>
+          </article>
+          <article>
+            <span>Applicants</span>
+            <strong id="applicantCount">0</strong>
+          </article>
+          <article>
+            <span>Qualified</span>
+            <strong id="qualifiedCount">0</strong>
+          </article>
+          <article>
+            <span>Booked calls</span>
+            <strong id="bookedCount">0</strong>
+          </article>
+        </section>
+
+        <section class="workspace-grid">
+          <section class="panel job-panel" id="job" data-recruit-subpage="job" aria-labelledby="jobHeading">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Job intake</p>
+                <h2 id="jobHeading">Job details</h2>
+              </div>
+              <button class="primary-button large-button" id="publishJob" type="button">List job</button>
+            </div>
+            <form class="job-form" id="jobForm">
+              <label>
+                Job title
+                <input id="jobTitle" type="text" value="Inside Sales Dialer" required />
+              </label>
+              <label>
+                Location
+                <input id="jobLocation" type="text" value="Remote - Texas" required />
+              </label>
+              <label>
+                Pay range
+                <input id="jobPay" type="text" value="$18/hr + bonus" required />
+              </label>
+              <label>
+                Schedule
+                <input id="jobSchedule" type="text" value="Monday-Friday, flexible shifts" required />
+              </label>
+              <label>
+                Interview call time
+                <select id="interviewTime">
+                  <option value="09:00">9 AM</option>
+                  <option value="10:00" selected>10 AM</option>
+                  <option value="11:00">11 AM</option>
+                  <option value="14:00">2 PM</option>
+                  <option value="15:00">3 PM</option>
+                </select>
+              </label>
+              <label>
+                Priority
+                <select id="jobPriority">
+                  <option value="Normal">Normal</option>
+                  <option value="Urgent">Urgent</option>
+                  <option value="Evergreen">Evergreen</option>
+                </select>
+              </label>
+              <label class="wide-field">
+                Role summary
+                <textarea id="jobSummary" rows="5">Call warm homeowner leads, qualify motivation, log outcomes, and book appointments for closers.</textarea>
+              </label>
+              <label class="wide-field">
+                Must haves
+                <textarea id="jobRequirements" rows="4">Phone confidence, reliable follow-up, clear written notes, CRM experience, weekend availability preferred.</textarea>
+              </label>
+            </form>
+            <p class="status-message" id="jobMessage" role="status"></p>
+          </section>
+
+          <section class="panel board-panel" id="boards" data-recruit-subpage="boards" aria-labelledby="boardsHeading">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Distribution</p>
+                <h2 id="boardsHeading">Job board connectors</h2>
+              </div>
+              <button class="secondary-button" id="refreshBoards" type="button">Refresh boards</button>
+            </div>
+            <div class="board-list" id="boardList"></div>
+          </section>
+
+          <section class="panel applicant-panel" id="applicants" data-recruit-subpage="applicants" aria-labelledby="applicantHeading">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Applicant inbox</p>
+                <h2 id="applicantHeading">Single candidate location</h2>
+              </div>
+              <div class="panel-actions">
+                <button class="secondary-button" id="syncApplicants" type="button">Sync applicants</button>
+                <button class="primary-button" id="bookInterviews" type="button">Book interviews</button>
+              </div>
+            </div>
+            <div class="applicant-tools">
+              <label>
+                Filter
+                <select id="candidateFilter">
+                  <option value="all">All candidates</option>
+                  <option value="qualified">Qualified</option>
+                  <option value="booked">Booked</option>
+                  <option value="new">New</option>
+                </select>
+              </label>
+              <label>
+                Sort
+                <select id="candidateSort">
+                  <option value="score">Best score</option>
+                  <option value="recent">Newest</option>
+                  <option value="source">Source</option>
+                </select>
+              </label>
+            </div>
+            <div class="candidate-list" id="candidateList"></div>
+          </section>
+
+          <section class="panel interview-panel" id="interviews" data-recruit-subpage="interviews" aria-labelledby="interviewHeading">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Auto scheduler</p>
+                <h2 id="interviewHeading">Monday, Wednesday, Friday calls</h2>
+              </div>
+              <span class="schedule-pill">3x weekly</span>
+            </div>
+            <div class="interview-list" id="interviewList"></div>
+          </section>
+
+          <section class="panel crm-panel" id="crm" data-recruit-subpage="crm" aria-labelledby="crmHeading">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">CRM handoff</p>
+                <h2 id="crmHeading">Recruiting feed</h2>
+              </div>
+              <button class="secondary-button" id="downloadFeed" type="button">Download feed</button>
+            </div>
+            <div class="feed-preview" id="feedPreview"></div>
+            <p class="status-message" id="feedMessage" role="status"></p>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script src="recruiting.js" type="module"></script>
+  </body>
+</html>

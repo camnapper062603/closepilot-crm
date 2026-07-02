@@ -5,7 +5,7 @@ const config = {
   supabaseAnonKey: normalizeJwt(process.env.SUPABASE_ANON_KEY || ""),
   stripeCheckoutUrl: process.env.STRIPE_CHECKOUT_URL || "",
   stripePortalUrl: process.env.STRIPE_PORTAL_URL || "",
-  supportEmail: process.env.SUPPORT_EMAIL || "support@closepilot.local",
+  supportEmail: process.env.SUPPORT_EMAIL || "support@kira.local",
   productUrl: process.env.PRODUCT_URL || "",
 };
 

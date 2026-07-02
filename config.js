@@ -3,6 +3,6 @@ window.ClosePilotConfig = {
   "supabaseAnonKey": "",
   "stripeCheckoutUrl": "",
   "stripePortalUrl": "",
-  "supportEmail": "support@closepilot.local",
+  "supportEmail": "support@kira.local",
   "productUrl": ""
 };

@@ -6,17 +6,21 @@
     <title>Safe Property Lead Generator - Standalone</title>
     <style>
       :root {
-        --bg: #f4f6f5;
+        --bg: #ffffff;
         --surface: #ffffff;
-        --ink: #17211f;
-        --muted: #65746f;
-        --line: #dce4df;
-        --teal: #0f766e;
-        --teal-dark: #115e59;
+        --ink: #050505;
+        --muted: #5f6670;
+        --line: #d8dde5;
+        --teal: #0b2f63;
+        --teal-dark: #071f42;
+        --navy: #0b2f63;
+        --navy-dark: #071f42;
+        --navy-soft: #eef4ff;
+        --black: #050505;
         --gold: #a16207;
         --red: #b42318;
         --blue: #2f5f8f;
-        --shadow: 0 16px 36px rgba(23, 33, 31, 0.08);
+        --shadow: 0 12px 30px rgba(5, 5, 5, 0.08);
       }
 
       * {
@@ -41,15 +45,23 @@
         cursor: pointer;
       }
 
+      [hidden] {
+        display: none !important;
+      }
+
       .app {
         display: grid;
         grid-template-columns: 330px minmax(0, 1fr);
         min-height: 100vh;
       }
 
+      body[data-lead-tab="costs"] .app {
+        grid-template-columns: 1fr;
+      }
+
       .sidebar {
-        background: var(--surface);
-        border-right: 1px solid var(--line);
+        background: var(--black);
+        color: #ffffff;
         display: grid;
         gap: 14px;
         align-content: start;
@@ -71,9 +83,9 @@
 
       .brand-mark {
         align-items: center;
-        background: #dff3ef;
+        background: #ffffff;
         border-radius: 8px;
-        color: var(--teal-dark);
+        color: var(--black);
         display: inline-flex;
         font-weight: 900;
         height: 42px;
@@ -105,11 +117,14 @@
 
       .muted,
       label,
-      .small,
       .upload-card span,
       .metric span,
       td small {
         color: var(--muted);
+      }
+
+      .sidebar .small {
+        color: rgba(255, 255, 255, 0.68);
       }
 
       .panel {
@@ -203,6 +218,38 @@
         gap: 8px;
       }
 
+      .tab-switcher {
+        background: #f4f6f9;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        display: inline-flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        padding: 4px;
+      }
+
+      .tab-switcher button {
+        background: #ffffff;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        color: var(--navy);
+        font-size: 0.86rem;
+        font-weight: 850;
+        min-height: 34px;
+        padding: 0 12px;
+      }
+
+      .tab-switcher button.active {
+        background: var(--navy);
+        box-shadow: 0 4px 12px rgba(11, 47, 99, 0.16);
+        color: #ffffff;
+      }
+
+      .subpage-nav {
+        display: flex;
+        width: 100%;
+      }
+
       .button {
         border: 0;
         border-radius: 8px;
@@ -213,16 +260,17 @@
       }
 
       .primary {
-        background: var(--teal);
+        background: var(--navy);
         color: #ffffff;
       }
 
       .primary:hover {
-        background: var(--teal-dark);
+        background: var(--navy-dark);
       }
 
       .secondary {
-        background: #eef3f1;
+        background: #ffffff;
+        border: 1px solid var(--line);
         color: var(--ink);
       }
 
@@ -322,6 +370,90 @@
         padding-left: 10px;
       }
 
+      .cost-layout {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: 1fr;
+      }
+
+      .cost-controls,
+      .cost-summary,
+      .cost-group,
+      .cost-row,
+      .stack-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .cost-group {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px;
+      }
+
+      .cost-group-header {
+        align-items: start;
+        display: flex;
+        gap: 12px;
+        justify-content: space-between;
+      }
+
+      .cost-group-header h3,
+      .cost-group-header p {
+        margin: 0;
+      }
+
+      .cost-group-header h3 {
+        font-size: 1rem;
+      }
+
+      .cost-group-total {
+        white-space: nowrap;
+      }
+
+      .cost-controls {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .cost-row {
+        align-items: end;
+        background: #ffffff;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        grid-template-columns: minmax(280px, 1.5fr) 130px 130px 150px 90px;
+        padding: 12px;
+      }
+
+      .cost-row strong,
+      .cost-row span {
+        display: block;
+      }
+
+      .cost-row input[type="checkbox"] {
+        justify-self: start;
+      }
+
+      .cost-summary {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+      }
+
+      .cost-summary article,
+      .stack-item {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        display: grid;
+        gap: 6px;
+        padding: 12px;
+      }
+
+      .cost-summary strong {
+        font-size: 1.3rem;
+      }
+
+      .stack-item p {
+        margin: 0;
+      }
+
       code {
         background: #edf3f1;
         border-radius: 6px;
@@ -330,7 +462,8 @@
 
       @media (max-width: 1080px) {
         .app,
-        .two-col {
+        .two-col,
+        .cost-layout {
           grid-template-columns: 1fr;
         }
 
@@ -349,6 +482,12 @@
           grid-template-columns: 1fr;
         }
 
+        .cost-controls,
+        .cost-row,
+        .cost-summary {
+          grid-template-columns: 1fr;
+        }
+
         .topbar,
         .panel-header {
           align-items: start;
@@ -359,7 +498,7 @@
   </head>
   <body>
     <div class="app">
-      <aside class="sidebar">
+      <aside class="sidebar" data-lead-tab="generator">
         <div class="brand">
           <span class="brand-mark">SL</span>
           <div>
@@ -385,9 +524,14 @@
               <span>Required: owner/address fields</span>
             </label>
             <label class="upload-card">
-              Contact enrichment
+              Zillow/Redfin export
+              <input id="portalFile" type="file" accept=".csv,text/csv" />
+              <span>CSV/API export only; no page scraping</span>
+            </label>
+            <label class="upload-card">
+              BatchLeads skip trace
               <input id="contactFile" type="file" accept=".csv,text/csv" />
-              <span>Phone/email/source/confidence</span>
+              <span>Residential owner phone/email/source/confidence</span>
             </label>
             <label class="upload-card">
               Federal DNC suppression
@@ -433,49 +577,10 @@
             <button class="button secondary" id="useHcadButton" type="button">Use Harris County HCAD</button>
             <button class="button secondary" id="pullPropertySourceButton" type="button">Pull property records</button>
           </div>
-        </section>
-
-        <section class="panel">
-          <div class="panel-header">
-            <h2>Business Enrichment</h2>
-            <span class="pill info">API proxy</span>
-          </div>
-          <div class="controls">
-            <label>
-              Backend URL
-              <input id="enrichmentBackendUrl" type="url" placeholder="https://your-backend.vercel.app/api/business-enrichment" />
-            </label>
-            <label>
-              Backend access token
-              <input id="enrichmentClientToken" type="password" placeholder="Optional team token" />
-            </label>
-            <label>
-              Providers
-              <select id="enrichmentProviders">
-                <option value="apollo,hunter">Apollo + Hunter</option>
-                <option value="hunter">Hunter only</option>
-                <option value="apollo">Apollo only</option>
-              </select>
-            </label>
-            <label>
-              Domains
-              <textarea id="enrichmentDomains" placeholder="example.com&#10;roofingcompany.com"></textarea>
-            </label>
-            <label>
-              Titles
-              <textarea id="enrichmentTitles">owner, founder, president, operations manager, property manager, facilities manager</textarea>
-            </label>
-            <label>
-              Locations
-              <input id="enrichmentLocations" placeholder="Houston, TX" />
-            </label>
-            <label>
-              Max results
-              <input id="enrichmentLimit" type="number" min="1" max="50" step="1" value="20" />
-            </label>
-          </div>
-          <div class="actions">
-            <button class="button secondary" id="runBusinessEnrichmentButton" type="button">Run Apollo + Hunter</button>
+          <div class="template-links">
+            <a href="https://www.redfin.com/news/data-center/" target="_blank" rel="noopener noreferrer">Redfin Data Center downloads</a>
+            <a href="https://support.redfin.com/hc/en-us/articles/360016476931-Downloading-Data" target="_blank" rel="noopener noreferrer">Redfin Download All help</a>
+            <a href="https://www.zillowgroup.com/developers/" target="_blank" rel="noopener noreferrer">Zillow Group data/API access</a>
           </div>
         </section>
 
@@ -486,7 +591,7 @@
           </div>
           <div class="template-links">
             <button type="button" data-template="property">Property records template</button>
-            <button type="button" data-template="contact">Contact enrichment template</button>
+            <button type="button" data-template="contact">BatchLeads skip trace template</button>
             <button type="button" data-template="federalDnc">Federal DNC template</button>
             <button type="button" data-template="stateDnc">State DNC template</button>
             <button type="button" data-template="optOut">Internal opt-outs template</button>
@@ -562,10 +667,17 @@
             <h1>Compliant Property Lead Builder</h1>
             <p class="muted">Upload CSVs, scrub DNC/opt-outs, and export safe leads from the browser.</p>
           </div>
-          <span class="pill warn">No live scraping</span>
+          <div class="actions">
+            <span class="pill warn">No live scraping</span>
+          </div>
         </header>
 
-        <section class="metric-grid">
+        <nav class="subpage-nav tab-switcher" aria-label="Lead generator view">
+          <button class="active" data-lead-tab-button="generator" type="button">Generator</button>
+          <button data-lead-tab-button="costs" type="button">Cost planner</button>
+        </nav>
+
+        <section class="metric-grid" data-lead-tab="generator">
           <article class="metric">
             <span>Properties</span>
             <strong id="propertyCount">0</strong>
@@ -588,7 +700,7 @@
           </article>
         </section>
 
-        <section class="two-col">
+        <section class="two-col" data-lead-tab="generator">
           <section class="panel">
             <div class="panel-header">
               <h2>Compliance Gate</h2>
@@ -603,13 +715,13 @@
             <div class="status-card">
               <h3>Free residential path</h3>
               <p class="muted">
-                Pull public property records, then use residential mail leads for postal outreach. Phone/email rows still require licensed enrichment and DNC checks.
+                Pull public property records, then use residential mail leads for postal outreach. Phone/email rows still require BatchLeads skip trace data and DNC checks.
               </p>
             </div>
             <div class="status-card">
               <h3>Matching engine</h3>
               <p class="muted">
-                Licensed enrichment rows are matched by parcel ID, owner name, address, state, zip, and provider confidence. Export the match review for audit.
+                BatchLeads skip trace rows are matched by parcel ID, owner name, address, state, zip, and provider confidence. Export the match review for audit.
               </p>
             </div>
             <div class="status-card">
@@ -637,7 +749,7 @@
           </section>
         </section>
 
-        <section class="panel">
+        <section class="panel" data-lead-tab="generator">
           <div class="panel-header">
             <h2>Safe Lead Output</h2>
             <span class="pill ok" id="leadTableStatus">0 rows</span>
@@ -659,7 +771,7 @@
           </div>
         </section>
 
-        <section class="panel">
+        <section class="panel" data-lead-tab="generator">
           <div class="panel-header">
             <h2>Suppression Audit</h2>
             <span class="pill warn" id="auditTableStatus">0 rows</span>
@@ -678,6 +790,105 @@
               <tbody id="auditRows"></tbody>
             </table>
           </div>
+        </section>
+
+        <section class="panel" data-lead-tab="costs" hidden>
+          <div class="panel-header">
+            <div>
+              <h2>Auto residential lead cost planner</h2>
+              <p class="muted">Adjust the assumptions below with real vendor quotes before you buy data or subscriptions.</p>
+            </div>
+            <span class="pill warn">Editable estimates</span>
+          </div>
+          <div class="cost-controls">
+            <label>
+              Records per month
+              <input id="costRecordsInput" type="number" min="1" step="100" value="5000" />
+            </label>
+            <label>
+              Low match rate %
+              <input id="costMatchRateInput" type="number" min="0" max="100" step="1" value="80" />
+            </label>
+            <label>
+              High match rate %
+              <input id="costMatchRateHighInput" type="number" min="0" max="100" step="1" value="95" />
+            </label>
+            <label>
+              DNC/suppression loss %
+              <input id="costSuppressionRateInput" type="number" min="0" max="100" step="1" value="18" />
+            </label>
+            <label>
+              Appointment conversion %
+              <input id="costConversionRateInput" type="number" min="0" max="100" step="0.1" value="2.5" />
+            </label>
+          </div>
+        </section>
+
+        <section class="cost-layout" data-lead-tab="costs" hidden>
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <h2>Paid stack</h2>
+                <p class="muted">Turn items on/off and enter monthly or per-record pricing.</p>
+              </div>
+              <button class="button secondary" id="resetCostPlannerButton" type="button">Reset estimates</button>
+            </div>
+            <div class="cost-row muted" aria-hidden="true">
+              <strong>Item</strong>
+              <strong>Monthly</strong>
+              <strong>Per record</strong>
+              <strong>Records used</strong>
+              <strong>Use</strong>
+            </div>
+            <div id="costStackRows" class="stack-list"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <h2>Estimated monthly cost</h2>
+              <span class="pill info" id="costPlannerStatus">Planning</span>
+            </div>
+            <div class="cost-summary">
+              <article>
+                <span class="muted">Fixed monthly</span>
+                <strong id="fixedMonthlyCost">$0</strong>
+              </article>
+              <article>
+                <span class="muted">Variable spend</span>
+                <strong id="variableMonthlyCost">$0</strong>
+              </article>
+              <article>
+                <span class="muted">Total monthly</span>
+                <strong id="totalMonthlyCost">$0</strong>
+              </article>
+              <article>
+                <span class="muted">Cost per safe lead</span>
+                <strong id="costPerLead">$0</strong>
+              </article>
+              <article>
+                <span class="muted">Estimated safe leads</span>
+                <strong id="estimatedSafeLeads">0</strong>
+              </article>
+              <article>
+                <span class="muted">Estimated appointments</span>
+                <strong id="estimatedAppointments">0</strong>
+              </article>
+            </div>
+            <div class="stack-list">
+              <div class="stack-item">
+                <h3>DNC and compliance</h3>
+                <p class="muted">Federal DNC access, state no-call lists, and internal opt-out management are required before phone outreach exports.</p>
+              </div>
+              <div class="stack-item">
+                <h3>Skip tracing</h3>
+                <p class="muted">This is usually the main data step because property records need consumer phone/email append before dialing.</p>
+              </div>
+              <div class="stack-item">
+                <h3>Public records</h3>
+                <p class="muted">County property records can be free, but paid aggregators may be worth it if they save cleanup time.</p>
+              </div>
+            </div>
+          </section>
         </section>
       </main>
     </div>
@@ -706,6 +917,281 @@
         },
       };
 
+      const defaultCostPlanner = {
+        records: 10000,
+        matchRate: 80,
+        matchRateHigh: 95,
+        suppressionRate: 18,
+        conversionRate: 2.5,
+        items: [
+          {
+            id: "texasPublicRecords",
+            category: "Property data",
+            name: "Texas deeds/property records",
+            note: "Texas county appraisal/deed records are usually public; keep this at $0 unless buying a bulk data feed.",
+            monthly: 0,
+            perRecord: 0,
+            recordsMode: "all",
+            enabled: true,
+          },
+          {
+            id: "redfinZillowExports",
+            category: "Property data",
+            name: "Redfin/Zillow authorized exports",
+            note: "Use downloaded Redfin CSVs or Zillow/Bridge/API exports. Keep direct page scraping out of the workflow.",
+            monthly: 0,
+            perRecord: 0,
+            recordsMode: "all",
+            enabled: false,
+          },
+          {
+            id: "attomNavigator",
+            category: "Property data",
+            name: "ATTOM Property Navigator",
+            note: "Public price anchor: Professional plan is $499/year; API/enterprise pricing varies by dataset and volume.",
+            monthly: 42,
+            perRecord: 0,
+            recordsMode: "none",
+            enabled: false,
+          },
+          {
+            id: "regridParcels",
+            category: "Property data/API",
+            name: "Regrid parcels/API",
+            note: "Parcel API and data downloads for standardized parcel, owner, zoning, and building data. Pricing is often plan/custom.",
+            monthly: 100,
+            perRecord: 0,
+            recordsMode: "none",
+            enabled: false,
+          },
+          {
+            id: "propstreamData",
+            category: "Property data + skip trace",
+            name: "PropStream",
+            note: "Property lists, exports, documents, skip tracing, and investor filters. Adjust for your selected plan.",
+            monthly: 99,
+            perRecord: 0.12,
+            recordsMode: "matched",
+            enabled: false,
+          },
+          {
+            id: "propertyRadar",
+            category: "Property data + skip trace",
+            name: "PropertyRadar",
+            note: "Property search with built-in phones/emails and campaign targeting. Enter your exact plan quote.",
+            monthly: 89,
+            perRecord: 0,
+            recordsMode: "none",
+            enabled: false,
+          },
+          {
+            id: "batchleads",
+            category: "Lead platform + skip trace",
+            name: "BatchLeads Growth/skip trace",
+            note: "Planning placeholder: Growth-style BatchLeads account with 10k monthly leads/contact info. Adjust to your checkout/account price.",
+            monthly: 119,
+            perRecord: 0,
+            recordsMode: "none",
+            enabled: true,
+          },
+          {
+            id: "batchdata",
+            category: "Property data/API + skip trace",
+            name: "BatchData Growth/API",
+            note: "Bulk property data and skip tracing API. Public pricing anchor shows Growth around $1,000/mo for 100k records.",
+            monthly: 1000,
+            perRecord: 0,
+            recordsMode: "none",
+            enabled: false,
+          },
+          {
+            id: "batchdataSkipTrace",
+            category: "Skip trace API",
+            name: "BatchData skip trace API",
+            note: "Alternative pay-per-match planning row for owner phones/emails at volume.",
+            monthly: 0,
+            perRecord: 0.07,
+            recordsMode: "matched",
+            enabled: false,
+          },
+          {
+            id: "tracerfy",
+            category: "Skip trace API",
+            name: "Tracerfy bulk skip trace",
+            note: "Pay-per-record skip trace alternative. Verify accuracy, coverage, and compliance before production.",
+            monthly: 0,
+            perRecord: 0.02,
+            recordsMode: "matched",
+            enabled: false,
+          },
+          {
+            id: "federalDnc",
+            category: "DNC/compliance",
+            name: "Federal DNC - Texas coverage",
+            note: "Assumes statewide Texas area-code coverage budgeted monthly. If you only use five or fewer area codes, this may be $0.",
+            monthly: 212,
+            perRecord: 0,
+            recordsMode: "none",
+            enabled: true,
+          },
+          {
+            id: "stateDnc",
+            category: "DNC/compliance",
+            name: "Texas No-Call list",
+            note: "Budgeted from Texas quarterly list access. Confirm exact subscriber price before purchase.",
+            monthly: 67,
+            perRecord: 0,
+            recordsMode: "none",
+            enabled: true,
+          },
+          {
+            id: "dncScrubVendor",
+            category: "DNC/compliance API",
+            name: "DNC scrub vendor/API",
+            note: "Placeholder for Contact Center Compliance, DNC.com-style scrubbing, or another certified suppression API.",
+            monthly: 250,
+            perRecord: 0.002,
+            recordsMode: "matched",
+            enabled: false,
+          },
+          {
+            id: "internalOptOutTool",
+            category: "DNC/compliance",
+            name: "Internal opt-out manager",
+            note: "Suppression database, audit logs, opt-out forms, and CRM sync. Can be built in-house or vendor-backed.",
+            monthly: 49,
+            perRecord: 0,
+            recordsMode: "none",
+            enabled: false,
+          },
+          {
+            id: "emailVerification",
+            category: "Validation",
+            name: "Email verification reserve",
+            note: "Optional backup if BatchLeads email data needs separate verification before email outreach.",
+            monthly: 0,
+            perRecord: 0.01,
+            recordsMode: "matched",
+            enabled: false,
+          },
+          {
+            id: "phoneValidation",
+            category: "Validation/API",
+            name: "Phone validation / line type lookup",
+            note: "Twilio Lookup, Telnyx, or similar carrier/line-type verification before dialing or texting.",
+            monthly: 0,
+            perRecord: 0.01,
+            recordsMode: "matched",
+            enabled: false,
+          },
+          {
+            id: "smsDialer",
+            category: "Dialer/SMS",
+            name: "Dialer/SMS platform",
+            note: "Reserve for phone/SMS carrier costs, numbers, call recording, and outbound deliverability.",
+            monthly: 150,
+            perRecord: 0,
+            recordsMode: "safe",
+            enabled: true,
+          },
+          {
+            id: "mojoDialer",
+            category: "Dialer",
+            name: "Mojo Dialer",
+            note: "Dialer workflow alternative if you want calling lists exported from this lead app.",
+            monthly: 99,
+            perRecord: 0,
+            recordsMode: "none",
+            enabled: false,
+          },
+          {
+            id: "twilioMessaging",
+            category: "SMS/API",
+            name: "Twilio/Telnyx messaging",
+            note: "Usage-based SMS/voice API reserve for reminders, follow-up, and number management.",
+            monthly: 25,
+            perRecord: 0.01,
+            recordsMode: "safe",
+            enabled: false,
+          },
+          {
+            id: "automationConnector",
+            category: "Automation/API",
+            name: "Zapier/Make/n8n connector",
+            note: "Optional middleware for moving safe leads into CRM, dialer, sheets, or notifications.",
+            monthly: 30,
+            perRecord: 0,
+            recordsMode: "none",
+            enabled: false,
+          },
+          {
+            id: "compliance",
+            category: "DNC/compliance",
+            name: "Texas registration + bond allowance",
+            note: "Annualized planning reserve for Texas telephone-solicitation registration and surety bond premium.",
+            monthly: 42,
+            perRecord: 0,
+            recordsMode: "none",
+            enabled: true,
+          },
+        ],
+      };
+
+      const costCategoryCatalog = [
+        {
+          id: "propertyInfo",
+          label: "Property info",
+          detail: "Public records, property portals, parcel APIs, and list-building platforms.",
+        },
+        {
+          id: "skipTracers",
+          label: "Skip tracers",
+          detail: "Owner phone/email append, built-in contact data platforms, and skip trace APIs.",
+        },
+        {
+          id: "dncLists",
+          label: "DNC lists and compliance",
+          detail: "Federal/state no-call access, opt-out management, scrubbing vendors, and registration reserves.",
+        },
+        {
+          id: "validation",
+          label: "Validation",
+          detail: "Email verification, phone validation, line type lookup, and carrier checks.",
+        },
+        {
+          id: "dialerSms",
+          label: "Dialer, SMS, and outreach",
+          detail: "Dialers, texting APIs, phone numbers, call recording, and deliverability reserves.",
+        },
+        {
+          id: "automation",
+          label: "CRM and automation",
+          detail: "Connectors for moving safe leads into CRM, dialer, sheets, and notifications.",
+        },
+      ];
+
+      const costCategoryMap = {
+        "Property data": "propertyInfo",
+        "Property data/API": "propertyInfo",
+        "Property data + skip trace": "propertyInfo",
+        "Lead platform + skip trace": "skipTracers",
+        "Property data/API + skip trace": "skipTracers",
+        "Skip trace API": "skipTracers",
+        "DNC/compliance": "dncLists",
+        "DNC/compliance API": "dncLists",
+        Validation: "validation",
+        "Validation/API": "validation",
+        "Dialer/SMS": "dialerSms",
+        Dialer: "dialerSms",
+        "SMS/API": "dialerSms",
+        "Automation/API": "automation",
+      };
+
+      const costPlannerStorageKey = "safeLeadCostPlanner-v4";
+
+      let activeLeadTab = "generator";
+      let costPlanner = loadCostPlanner();
+
       const templateFiles = {
         property: {
           filename: "property-records-template.csv",
@@ -713,9 +1199,9 @@
 Maya Johnson,1840 Northstar Dr,Austin,TX,78731,1840 Northstar Dr,Austin,TX,78731,2024-05-10,420000,0.21,Travis,TX-1001`,
         },
         contact: {
-          filename: "contact-enrichment-template.csv",
+          filename: "batchleads-skip-trace-template.csv",
           rows: `owner_name,mailing_address,property_address,mailing_zip,property_zip,parcel_id,phone,phone2,email,email2,confidence,source
-Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,78731,78731,TX-1001,512-555-0184,,maya@example.com,,94,Licensed enrichment upload`,
+Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,78731,78731,TX-1001,512-555-0184,,maya@example.com,,94,BatchLeads skip trace`,
         },
         federalDnc: {
           filename: "federal-dnc-template.csv",
@@ -745,6 +1231,7 @@ Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,78731,78731,TX-1001,512-555-018
       const els = {
         bulkImportFiles: document.querySelector("#bulkImportFiles"),
         propertyFile: document.querySelector("#propertyFile"),
+        portalFile: document.querySelector("#portalFile"),
         contactFile: document.querySelector("#contactFile"),
         federalDncFile: document.querySelector("#federalDncFile"),
         stateDncFile: document.querySelector("#stateDncFile"),
@@ -752,13 +1239,6 @@ Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,78731,78731,TX-1001,512-555-018
         propertySourceType: document.querySelector("#propertySourceType"),
         propertySourceUrl: document.querySelector("#propertySourceUrl"),
         propertySourceLimit: document.querySelector("#propertySourceLimit"),
-        enrichmentBackendUrl: document.querySelector("#enrichmentBackendUrl"),
-        enrichmentClientToken: document.querySelector("#enrichmentClientToken"),
-        enrichmentProviders: document.querySelector("#enrichmentProviders"),
-        enrichmentDomains: document.querySelector("#enrichmentDomains"),
-        enrichmentTitles: document.querySelector("#enrichmentTitles"),
-        enrichmentLocations: document.querySelector("#enrichmentLocations"),
-        enrichmentLimit: document.querySelector("#enrichmentLimit"),
         confidenceInput: document.querySelector("#confidenceInput"),
         channelSelect: document.querySelector("#channelSelect"),
         recencySelect: document.querySelector("#recencySelect"),
@@ -778,12 +1258,27 @@ Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,78731,78731,TX-1001,512-555-018
         auditRows: document.querySelector("#auditRows"),
         leadTableStatus: document.querySelector("#leadTableStatus"),
         auditTableStatus: document.querySelector("#auditTableStatus"),
+        costRecordsInput: document.querySelector("#costRecordsInput"),
+        costMatchRateInput: document.querySelector("#costMatchRateInput"),
+        costMatchRateHighInput: document.querySelector("#costMatchRateHighInput"),
+        costSuppressionRateInput: document.querySelector("#costSuppressionRateInput"),
+        costConversionRateInput: document.querySelector("#costConversionRateInput"),
+        costStackRows: document.querySelector("#costStackRows"),
+        fixedMonthlyCost: document.querySelector("#fixedMonthlyCost"),
+        variableMonthlyCost: document.querySelector("#variableMonthlyCost"),
+        totalMonthlyCost: document.querySelector("#totalMonthlyCost"),
+        costPerLead: document.querySelector("#costPerLead"),
+        estimatedSafeLeads: document.querySelector("#estimatedSafeLeads"),
+        estimatedAppointments: document.querySelector("#estimatedAppointments"),
+        costPlannerStatus: document.querySelector("#costPlannerStatus"),
       };
 
       els.scrubDateInput.value = new Date().toISOString().slice(0, 10);
+      hydrateCostPlannerInputs();
 
       [
         ["propertyFile", importProperties],
+        ["portalFile", importPortalProperties],
         ["contactFile", importContacts],
         ["federalDncFile", importFederalDnc],
         ["stateDncFile", importStateDnc],
@@ -809,9 +1304,18 @@ Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,78731,78731,TX-1001,512-555-018
       document.querySelector("#clearButton").addEventListener("click", clearAll);
       document.querySelector("#useHcadButton").addEventListener("click", useHcadSource);
       document.querySelector("#pullPropertySourceButton").addEventListener("click", () => pullPropertyRecords().catch(showError));
-      document.querySelector("#runBusinessEnrichmentButton").addEventListener("click", () => runBusinessEnrichment().catch(showError));
+      document.querySelector("#resetCostPlannerButton").addEventListener("click", resetCostPlanner);
       document.querySelectorAll("[data-template]").forEach((button) => {
         button.addEventListener("click", () => downloadTemplate(button.dataset.template));
+      });
+      document.querySelectorAll("[data-lead-tab-button]").forEach((button) => {
+        button.addEventListener("click", () => {
+          activeLeadTab = button.dataset.leadTabButton;
+          renderLeadTabs();
+        });
+      });
+      [els.costRecordsInput, els.costMatchRateInput, els.costMatchRateHighInput, els.costSuppressionRateInput, els.costConversionRateInput].forEach((input) => {
+        input.addEventListener("input", updateCostAssumptions);
       });
 
       function readCsvFile(file) {
@@ -830,7 +1334,7 @@ Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,78731,78731,TX-1001,512-555-018
         const autoChannel = getAutoChannel();
         if (!autoChannel) {
           render();
-          setStatus(`${message} Import property and contact enrichment files to auto-generate leads.`);
+          setStatus(`${message} Import property records and BatchLeads skip trace files to auto-generate leads.`);
           return;
         }
 
@@ -864,93 +1368,30 @@ Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,78731,78731,TX-1001,512-555-018
         finishImport(`${count} property record(s) cleaned and deduped.`);
       }
 
+      function importPortalProperties(rows) {
+        const normalizedRows = rows.map((row) => ({
+          ...row,
+          source: readField(row, ["source"]) || "Portal/API export",
+          owner_name: readField(row, ["owner_name", "owner", "seller", "agent_name"]) || "Unknown owner",
+          property_address: readField(row, ["property_address", "address", "street_address", "full_address"]),
+          property_city: readField(row, ["property_city", "city"]),
+          property_state: readField(row, ["property_state", "state", "state_or_province"]),
+          property_zip: readField(row, ["property_zip", "zip", "zipcode", "zip_or_postal_code", "postal_code"]),
+          assessed_value: readField(row, ["assessed_value", "price", "list_price", "sale_price", "estimate", "zestimate"]),
+          acreage: readField(row, ["acreage", "acres", "lot_size", "lot_sqft"]),
+          parcel_id: readField(row, ["parcel_id", "apn", "mls", "mls_number", "mls_id", "mls_"]),
+          land_use: readField(row, ["property_type", "home_type", "land_use"]),
+        }));
+        const count = setProperties(normalizedRows);
+        finishImport(`${count} Zillow/Redfin export row(s) imported as residential property records.`);
+      }
+
       function useHcadSource() {
         const preset = propertySourcePresets.hcad;
         els.propertySourceType.value = preset.type;
         els.propertySourceUrl.value = preset.url;
         els.propertySourceLimit.value = preset.limit;
         setStatus("Harris County HCAD property source loaded. Click Pull property records when ready.");
-      }
-
-      async function runBusinessEnrichment() {
-        const backendUrl = els.enrichmentBackendUrl.value.trim() || "/api/business-enrichment";
-        const providers = splitLines(els.enrichmentProviders.value);
-        const domains = splitLines(els.enrichmentDomains.value).map((domain) => domain.replace(/^https?:\/\//i, "").replace(/^www\./i, "").split("/")[0]);
-        const titles = splitLines(els.enrichmentTitles.value);
-        const locations = splitLines(els.enrichmentLocations.value);
-        const limit = Math.max(1, Math.min(50, Number(els.enrichmentLimit.value || 20)));
-
-        if (!backendUrl) throw new Error("Enter the backend enrichment URL.");
-        if (!domains.length && !titles.length) throw new Error("Enter business domains or titles before enrichment.");
-
-        setStatus("Running Apollo/Hunter enrichment through backend proxy...");
-        const headers = { "content-type": "application/json" };
-        const clientToken = els.enrichmentClientToken.value.trim();
-        if (clientToken) headers.authorization = `Bearer ${clientToken}`;
-
-        const response = await fetch(backendUrl, {
-          method: "POST",
-          headers,
-          body: JSON.stringify({
-            providers,
-            domains,
-            titles,
-            locations,
-            limit,
-            useHunterForApolloDomains: true,
-          }),
-        });
-
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error || `Enrichment backend failed with ${response.status}.`);
-
-        const imported = importBusinessEnrichmentRecords(data.records || []);
-        const warningText = data.warnings && data.warnings.length ? ` Warnings: ${data.warnings.join(" ")}` : "";
-        finishImport(`${imported.contacts} business contact(s) imported from Apollo/Hunter.${warningText}`);
-      }
-
-      function importBusinessEnrichmentRecords(records) {
-        if (!records.length) throw new Error("Apollo/Hunter returned no enrichment records.");
-
-        const propertyRows = [];
-        const contactRows = [];
-
-        records.forEach((record) => {
-          const organization = cleanText(record.organizationName || record.domain || record.personName || "Business Prospect");
-          const domain = cleanText(record.domain || "");
-          const location = cleanText(record.address || domain || organization);
-          const source = cleanText(
-            `${record.source || record.provider || "Business enrichment"}${record.personName ? ` - ${record.personName}` : ""}${record.title ? `, ${record.title}` : ""}`,
-          );
-
-          propertyRows.push({
-            owner_name: organization,
-            property_address: location,
-            property_city: cleanText(record.city || ""),
-            property_state: cleanText(record.state || ""),
-            property_zip: "",
-            mailing_address: location,
-            parcel_id: domain ? `business:${domain}` : `business:${normalizeToken(organization)}`,
-            county: "",
-          });
-
-          contactRows.push({
-            owner_name: organization,
-            property_address: location,
-            phone: record.phone || "",
-            email: record.email || "",
-            confidence: record.confidence || 70,
-            source,
-          });
-        });
-
-        const existingProperties = state.properties.map(propertyToRawRow);
-        const existingContacts = state.contacts.map(contactToRawRow);
-        const properties = setProperties(existingProperties.concat(propertyRows));
-        const contacts = setContacts(existingContacts.concat(contactRows));
-
-        if (!contacts) throw new Error("Apollo/Hunter records were imported, but none had a usable email or phone.");
-        return { properties, contacts };
       }
 
       function splitLines(value) {
@@ -1165,7 +1606,7 @@ Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,78731,78731,TX-1001,512-555-018
       function requiredImportGaps() {
         const gaps = [];
         if (!state.properties.length) gaps.push("property records");
-        if (!state.contacts.length) gaps.push("contact enrichment");
+        if (!state.contacts.length) gaps.push("BatchLeads skip trace");
         if (!state.loaded.federalDnc) gaps.push("federal DNC");
         if (!state.loaded.stateDnc) gaps.push("state DNC");
         return gaps;
@@ -1180,10 +1621,10 @@ Nia Brooks,720 Harbor View Ln,Tampa,FL,33602,720 Harbor View Ln,Tampa,FL,33602,2
 Jordan Lee,91 Pine Acre Rd,Raleigh,NC,27601,91 Pine Acre Rd,Raleigh,NC,27601,2022-08-14,335000,0.44,Wake,NC-5531`));
 
         setContacts(parseCsv(`owner_name,mailing_address,property_address,mailing_zip,property_zip,parcel_id,phone,email,confidence,source
-Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,78731,78731,TX-1001,512-555-0184,maya@example.com,94,Licensed enrichment upload
-Caleb Stone,PO Box 910,49 Finch Ct,80201,80210,CO-2042,303-555-0149,caleb@example.com,86,Licensed enrichment upload
-Nia Brooks,720 Harbor View Ln,720 Harbor View Ln,33602,33602,FL-8821,813-555-0172,nia@example.com,92,Licensed enrichment upload
-Jordan Lee,91 Pine Acre Rd,91 Pine Acre Rd,27601,27601,NC-5531,919-555-0102,jordan@example.com,74,Licensed enrichment upload`));
+Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,78731,78731,TX-1001,512-555-0184,maya@example.com,94,BatchLeads skip trace
+Caleb Stone,PO Box 910,49 Finch Ct,80201,80210,CO-2042,303-555-0149,caleb@example.com,86,BatchLeads skip trace
+Nia Brooks,720 Harbor View Ln,720 Harbor View Ln,33602,33602,FL-8821,813-555-0172,nia@example.com,92,BatchLeads skip trace
+Jordan Lee,91 Pine Acre Rd,91 Pine Acre Rd,27601,27601,NC-5531,919-555-0102,jordan@example.com,74,BatchLeads skip trace`));
 
         state.federalDnc = new Set(["3035550149"]);
         state.stateDnc = new Map([["8135550172", new Set(["FL"])]]);
@@ -1214,7 +1655,7 @@ Jordan Lee,91 Pine Acre Rd,91 Pine Acre Rd,27601,27601,NC-5531,919-555-0102,jord
           return false;
         }
         if (!state.contacts.length && allowedChannel !== "mail") {
-          showError(new Error("Import contact enrichment before generating non-mail lead candidates."));
+          showError(new Error("Import BatchLeads skip trace data before generating non-mail lead candidates."));
           return false;
         }
         if (phoneMayExport && (!state.loaded.federalDnc || !state.loaded.stateDnc)) {
@@ -1229,7 +1670,7 @@ Jordan Lee,91 Pine Acre Rd,91 Pine Acre Rd,27601,27601,NC-5531,919-555-0102,jord
         state.properties.forEach((property) => {
           const possibleMatches = findContactsForProperty(property);
           const matches = possibleMatches.filter((contact) => contact.overallConfidence >= minimumConfidence);
-          const contacts = matches.length ? matches : [{ ownerName: property.ownerName, phone: "", email: "", confidence: 0, source: "No enrichment match" }];
+          const contacts = matches.length ? matches : [{ ownerName: property.ownerName, phone: "", email: "", confidence: 0, source: "No skip trace match" }];
 
           if (possibleMatches.length) {
             possibleMatches.slice(0, 5).forEach((contact) => {
@@ -1259,7 +1700,7 @@ Jordan Lee,91 Pine Acre Rd,91 Pine Acre Rd,27601,27601,NC-5531,919-555-0102,jord
                 phone: formatPhone(contact.phone),
                 reason: phoneCheck.reason,
                 list: phoneCheck.list,
-                source: contact.source || "Contact enrichment",
+                source: contact.source || "BatchLeads skip trace",
               });
             }
 
@@ -1273,7 +1714,7 @@ Jordan Lee,91 Pine Acre Rd,91 Pine Acre Rd,27601,27601,NC-5531,919-555-0102,jord
               email: candidateMode ? contact.email : emailCheck.allowed ? contact.email : "",
               confidence: contact.overallConfidence ?? contact.confidence,
               matchConfidence: contact.matchConfidence || 0,
-              matchReason: contact.matchReason || "No enrichment match",
+              matchReason: contact.matchReason || "No skip trace match",
               source: contact.source,
               channels,
               score: scoreLead(property, contact, channels),
@@ -1311,10 +1752,10 @@ Jordan Lee,91 Pine Acre Rd,91 Pine Acre Rd,27601,27601,NC-5531,919-555-0102,jord
             phone: "",
             email: "",
             confidence: 0,
-            source: "Property records only - needs contact enrichment for phone/email",
+            source: "Property records only - needs BatchLeads skip trace for phone/email",
             channels: ["postal", "needs-enrichment"],
             score: scoreResidentialProperty(property),
-            compliance: "Postal/mail-ready from property records. Phone/email outreach still requires enrichment, DNC/state/internal scrub, and consent checks.",
+            compliance: "Postal/mail-ready from property records. Phone/email outreach still requires BatchLeads skip trace, DNC/state/internal scrub, and consent checks.",
             parcelId: property.parcelId,
             county: property.county,
           }));
@@ -1490,7 +1931,7 @@ Jordan Lee,91 Pine Acre Rd,91 Pine Acre Rd,27601,27601,NC-5531,919-555-0102,jord
           providerConfidence: contact ? contact.confidence : 0,
           matchConfidence: contact ? contact.matchConfidence : 0,
           overallConfidence: contact ? contact.overallConfidence : 0,
-          matchReason: contact ? contact.matchReason : "No enrichment match",
+          matchReason: contact ? contact.matchReason : "No skip trace match",
           status,
           source: contact ? contact.source : "",
           county: property.county,
@@ -1510,6 +1951,7 @@ Jordan Lee,91 Pine Acre Rd,91 Pine Acre Rd,27601,27601,NC-5531,919-555-0102,jord
             "property_location",
             "location_address",
             "full_address",
+            "street_address",
             "address",
           ]) || buildHcadSiteAddress(row),
         );
@@ -1523,19 +1965,19 @@ Jordan Lee,91 Pine Acre Rd,91 Pine Acre Rd,27601,27601,NC-5531,919-555-0102,jord
           ),
           propertyAddress,
           propertyCity: cleanText(readField(row, ["property_city", "situs_city", "site_city", "prop_city", "city"])),
-          propertyState: normalizeState(readField(row, ["property_state", "situs_state", "site_state", "prop_state", "state"]) || (readField(row, ["site_county"]) ? "TX" : "")),
-          propertyZip: cleanZip(readField(row, ["property_zip", "situs_zip", "site_zip", "prop_zip", "zip", "zipcode"])),
+          propertyState: normalizeState(readField(row, ["property_state", "situs_state", "site_state", "prop_state", "state", "state_or_province"]) || (readField(row, ["site_county"]) ? "TX" : "")),
+          propertyZip: cleanZip(readField(row, ["property_zip", "situs_zip", "site_zip", "prop_zip", "zip", "zipcode", "zip_or_postal_code", "postal_code"])),
           mailingAddress,
           mailingCity: cleanText(readField(row, ["mailing_city", "mail_city", "owner_city"])),
           mailingState: normalizeState(readField(row, ["mailing_state", "mail_state", "owner_state"])),
           mailingZip: cleanZip(readField(row, ["mailing_zip", "mail_zip", "owner_zip"])),
           saleDate: cleanText(readField(row, ["sale_date", "recording_date", "deed_date"])),
-          assessedValue: cleanText(readField(row, ["assessed_value", "market_value", "tax_value", "appraised_value", "total_appraised_val", "total_market_val", "value"])),
-          acreage: cleanText(readField(row, ["acreage", "acreage_1", "acres", "lot_size", "statedarea"])),
+          assessedValue: cleanText(readField(row, ["assessed_value", "market_value", "tax_value", "appraised_value", "total_appraised_val", "total_market_val", "value", "price", "list_price", "sale_price", "estimate", "zestimate"])),
+          acreage: cleanText(readField(row, ["acreage", "acreage_1", "acres", "lot_size", "lot_sqft", "statedarea"])),
           stateClass: cleanText(readField(row, ["state_class", "class", "property_class", "prop_class"])),
-          landUse: cleanText(readField(row, ["land_use", "landuse", "use_code", "property_use"])),
+          landUse: cleanText(readField(row, ["land_use", "landuse", "use_code", "property_use", "property_type", "home_type"])),
           county: cleanText(readField(row, ["county", "site_county"])),
-          parcelId: cleanText(readField(row, ["parcel_id", "parcel", "parcel_number", "parid", "lowparcelid", "hcad_num", "acct_num", "apn", "folio", "pin"])),
+          parcelId: cleanText(readField(row, ["parcel_id", "parcel", "parcel_number", "parid", "lowparcelid", "hcad_num", "acct_num", "apn", "folio", "pin", "mls", "mls_number", "mls_id", "mls_"])),
           ownerOccupied: normalizeToken(propertyAddress) === normalizeToken(mailingAddress || propertyAddress),
         };
       }
@@ -1573,7 +2015,7 @@ Jordan Lee,91 Pine Acre Rd,91 Pine Acre Rd,27601,27601,NC-5531,919-555-0102,jord
           propertyZip: cleanZip(readField(row, ["property_zip", "site_zip", "situs_zip", "zip", "zipcode"])),
           parcelId: cleanText(readField(row, ["parcel_id", "parcel", "parcel_number", "apn", "pin", "folio", "acct_num"])),
           confidence: normalizeConfidence(readField(row, ["confidence", "match_confidence", "score"])),
-          source: cleanText(readField(row, ["source", "provider", "vendor"])) || "Uploaded enrichment",
+          source: cleanText(readField(row, ["source", "provider", "vendor"])) || "Uploaded skip trace",
         };
         const maxLength = Math.max(phones.length, emails.length, 1);
         return Array.from({ length: maxLength }, (_, index) => ({
@@ -1880,6 +2322,214 @@ Jordan Lee,91 Pine Acre Rd,91 Pine Acre Rd,27601,27601,NC-5531,919-555-0102,jord
         return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
       }
 
+      function loadCostPlanner() {
+        try {
+          const saved = JSON.parse(localStorage.getItem(costPlannerStorageKey) || "null");
+          if (!saved || typeof saved !== "object") return structuredClone(defaultCostPlanner);
+          const savedItems = new Map((saved.items || []).map((item) => [item.id, item]));
+          return {
+            ...structuredClone(defaultCostPlanner),
+            ...saved,
+            items: defaultCostPlanner.items.map((item) => ({ ...item, ...(savedItems.get(item.id) || {}) })),
+          };
+        } catch {
+          return structuredClone(defaultCostPlanner);
+        }
+      }
+
+      function saveCostPlanner() {
+        localStorage.setItem(costPlannerStorageKey, JSON.stringify(costPlanner));
+      }
+
+      function hydrateCostPlannerInputs() {
+        els.costRecordsInput.value = costPlanner.records;
+        els.costMatchRateInput.value = costPlanner.matchRate;
+        els.costMatchRateHighInput.value = costPlanner.matchRateHigh;
+        els.costSuppressionRateInput.value = costPlanner.suppressionRate;
+        els.costConversionRateInput.value = costPlanner.conversionRate;
+      }
+
+      function updateCostAssumptions() {
+        costPlanner.records = Math.max(1, Number(els.costRecordsInput.value || 0));
+        costPlanner.matchRate = Math.min(clampPercent(els.costMatchRateInput.value), clampPercent(els.costMatchRateHighInput.value));
+        costPlanner.matchRateHigh = Math.max(clampPercent(els.costMatchRateInput.value), clampPercent(els.costMatchRateHighInput.value));
+        costPlanner.suppressionRate = clampPercent(els.costSuppressionRateInput.value);
+        costPlanner.conversionRate = clampPercent(els.costConversionRateInput.value);
+        hydrateCostPlannerInputs();
+        saveCostPlanner();
+        renderCostPlanner();
+      }
+
+      function resetCostPlanner() {
+        costPlanner = structuredClone(defaultCostPlanner);
+        hydrateCostPlannerInputs();
+        saveCostPlanner();
+        renderCostPlanner();
+      }
+
+      function renderLeadTabs() {
+        document.body.dataset.leadTab = activeLeadTab;
+        document.querySelectorAll("[data-lead-tab-button]").forEach((button) => {
+          button.classList.toggle("active", button.dataset.leadTabButton === activeLeadTab);
+        });
+        document.querySelectorAll("[data-lead-tab]").forEach((section) => {
+          section.hidden = section.dataset.leadTab !== activeLeadTab;
+        });
+      }
+
+      function renderCostPlanner() {
+        const estimate = costEstimate();
+        els.fixedMonthlyCost.textContent = money(estimate.fixed);
+        els.variableMonthlyCost.textContent = money(estimate.variable);
+        els.totalMonthlyCost.textContent = money(estimate.total);
+        els.costPerLead.textContent = estimate.safeLeadsLow ? `${money(estimate.total / estimate.safeLeadsHigh)}-${money(estimate.total / estimate.safeLeadsLow)}` : "$0";
+        els.estimatedSafeLeads.textContent = rangeText(estimate.safeLeadsLow, estimate.safeLeadsHigh);
+        els.estimatedAppointments.textContent = rangeText(estimate.appointmentsLow, estimate.appointmentsHigh);
+        els.costPlannerStatus.textContent = estimate.safeLeadsLow ? `${rangeText(estimate.safeLeadsLow, estimate.safeLeadsHigh)} safe leads` : "Planning";
+
+        els.costStackRows.innerHTML = costCategoryCatalog
+          .map((category) => {
+            const items = costPlanner.items.filter((item) => costCategoryId(item) === category.id);
+            if (!items.length) return "";
+            const groupTotal = items.reduce((sum, item) => sum + costItemTotal(item, estimate), 0);
+            return `
+              <section class="cost-group" data-cost-category="${category.id}">
+                <div class="cost-group-header">
+                  <div>
+                    <h3>${escapeHtml(category.label)}</h3>
+                    <p class="muted">${escapeHtml(category.detail)}</p>
+                  </div>
+                  <span class="pill info cost-group-total">${money(groupTotal)}/mo enabled</span>
+                </div>
+                ${items.map((item) => costItemRow(item, estimate)).join("")}
+              </section>
+            `;
+          })
+          .join("");
+
+        els.costStackRows.querySelectorAll("[data-cost-field]").forEach((input) => {
+          input.addEventListener("input", updateCostItem);
+          input.addEventListener("change", updateCostItem);
+        });
+      }
+
+      function costItemRow(item, estimate) {
+        const itemTotal = costItemTotal(item, estimate);
+        return `
+          <article class="cost-row" data-cost-row="${item.id}">
+            <div>
+              <strong>${escapeHtml(item.name)}</strong>
+              <span class="muted">${escapeHtml(item.note)}</span>
+              <span class="pill info">${money(itemTotal)}/mo</span>
+            </div>
+            <label>
+              Monthly
+              <input data-cost-field="monthly" data-cost-id="${item.id}" type="number" min="0" step="1" value="${item.monthly}" />
+            </label>
+            <label>
+              Per record
+              <input data-cost-field="perRecord" data-cost-id="${item.id}" type="number" min="0" step="0.001" value="${item.perRecord}" />
+            </label>
+            <label>
+              Records used
+              <select data-cost-field="recordsMode" data-cost-id="${item.id}">
+                <option value="all" ${item.recordsMode === "all" ? "selected" : ""}>All records</option>
+                <option value="matched" ${item.recordsMode === "matched" ? "selected" : ""}>Matched contacts</option>
+                <option value="safe" ${item.recordsMode === "safe" ? "selected" : ""}>Safe leads</option>
+                <option value="none" ${item.recordsMode === "none" ? "selected" : ""}>Monthly only</option>
+              </select>
+            </label>
+            <label>
+              Enabled
+              <input data-cost-field="enabled" data-cost-id="${item.id}" type="checkbox" ${item.enabled ? "checked" : ""} />
+            </label>
+          </article>
+        `;
+      }
+
+      function costItemTotal(item, estimate) {
+        if (!item.enabled) return 0;
+        return Number(item.monthly || 0) + Number(item.perRecord || 0) * recordsForCostMode(item.recordsMode, estimate);
+      }
+
+      function costCategoryId(item) {
+        return costCategoryMap[item.category] || "automation";
+      }
+
+      function updateCostItem(event) {
+        const input = event.currentTarget;
+        const item = costPlanner.items.find((row) => row.id === input.dataset.costId);
+        if (!item) return;
+        if (input.dataset.costField === "enabled") {
+          item.enabled = input.checked;
+        } else if (input.dataset.costField === "recordsMode") {
+          item.recordsMode = input.value;
+        } else {
+          item[input.dataset.costField] = Math.max(0, Number(input.value || 0));
+        }
+        saveCostPlanner();
+        renderCostPlanner();
+      }
+
+      function costEstimate() {
+        const records = Math.max(1, Number(costPlanner.records || 0));
+        const matchLow = Math.min(clampPercent(costPlanner.matchRate), clampPercent(costPlanner.matchRateHigh ?? costPlanner.matchRate));
+        const matchHigh = Math.max(clampPercent(costPlanner.matchRate), clampPercent(costPlanner.matchRateHigh ?? costPlanner.matchRate));
+        const matchedContactsLow = Math.round(records * (matchLow / 100));
+        const matchedContactsHigh = Math.round(records * (matchHigh / 100));
+        const safeLeadsLow = Math.max(0, Math.round(matchedContactsLow * (1 - clampPercent(costPlanner.suppressionRate) / 100)));
+        const safeLeadsHigh = Math.max(0, Math.round(matchedContactsHigh * (1 - clampPercent(costPlanner.suppressionRate) / 100)));
+        const appointmentsLow = Math.max(0, Math.round(safeLeadsLow * (clampPercent(costPlanner.conversionRate) / 100)));
+        const appointmentsHigh = Math.max(0, Math.round(safeLeadsHigh * (clampPercent(costPlanner.conversionRate) / 100)));
+        let fixed = 0;
+        let variable = 0;
+
+        const estimate = {
+          records,
+          matchedContacts: matchedContactsLow,
+          matchedContactsLow,
+          matchedContactsHigh,
+          safeLeads: safeLeadsLow,
+          safeLeadsLow,
+          safeLeadsHigh,
+          appointments: appointmentsLow,
+          appointmentsLow,
+          appointmentsHigh,
+        };
+        costPlanner.items.forEach((item) => {
+          if (!item.enabled) return;
+          fixed += Number(item.monthly || 0);
+          variable += Number(item.perRecord || 0) * recordsForCostMode(item.recordsMode, estimate);
+        });
+
+        return {
+          ...estimate,
+          fixed,
+          variable,
+          total: fixed + variable,
+        };
+      }
+
+      function recordsForCostMode(mode, estimate) {
+        if (mode === "matched") return estimate.matchedContacts;
+        if (mode === "safe") return estimate.safeLeads;
+        if (mode === "none") return 0;
+        return estimate.records;
+      }
+
+      function clampPercent(value) {
+        return Math.min(100, Math.max(0, Number(value || 0)));
+      }
+
+      function money(value) {
+        return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(Number(value || 0));
+      }
+
+      function rangeText(low, high) {
+        const formatter = new Intl.NumberFormat("en-US");
+        return low === high ? formatter.format(low) : `${formatter.format(low)}-${formatter.format(high)}`;
+      }
+
       function render() {
         els.propertyCount.textContent = state.properties.length;
         els.contactCount.textContent = state.contacts.length;
@@ -1897,8 +2547,10 @@ Jordan Lee,91 Pine Acre Rd,91 Pine Acre Rd,27601,27601,NC-5531,919-555-0102,jord
         els.exportStatus.className = `pill ${candidateRows || enrichmentRows ? "warn" : state.leads.length ? "ok" : "info"}`;
         const phoneReady = state.leads.filter((lead) => lead.channels.includes("phone")).length;
         const altReady = state.leads.filter((lead) => lead.channels.includes("email") || lead.channels.includes("postal")).length;
-        els.phoneStatus.textContent = enrichmentRows ? `${enrichmentRows} residential rows are mail-ready; phone/email still need enrichment and scrub.` : candidateRows ? `${candidateRows} candidate rows need DNC/state/internal scrub before outreach.` : `${phoneReady} phone-ready leads after DNC checks.`;
+        els.phoneStatus.textContent = enrichmentRows ? `${enrichmentRows} residential rows are mail-ready; phone/email still need skip trace data and scrub.` : candidateRows ? `${candidateRows} candidate rows need DNC/state/internal scrub before outreach.` : `${phoneReady} phone-ready leads after DNC checks.`;
         els.mailEmailStatus.textContent = `${altReady} email/postal leads available.`;
+        renderLeadTabs();
+        renderCostPlanner();
         renderLeadRows();
         renderAuditRows();
       }

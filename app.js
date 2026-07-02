@@ -33,6 +33,30 @@ const planCatalog = {
   },
 };
 
+const extensionCatalog = [
+  {
+    id: "recruiting",
+    label: "Kira Recruit",
+    price: 99,
+    href: "/recruiting.html",
+    detail: "Job intake, applicant feed, and interview booking.",
+  },
+  {
+    id: "leadgen",
+    label: "Residential Lead Gen",
+    price: 149,
+    href: "/SafeLeadGenerator-Standalone.html",
+    detail: "Texas property imports, BatchLeads skip trace planning, and DNC-safe exports.",
+  },
+  {
+    id: "bundle",
+    label: "Recruit + Lead Gen bundle",
+    price: 199,
+    href: "",
+    detail: "Both background apps connected through the CRM admin hub.",
+  },
+];
+
 const defaultAutomations = [
   {
     key: "next-step-tasks",
@@ -182,6 +206,8 @@ const seedState = {
   })),
   automationTemplates: structuredClone(defaultAutomationTemplates),
   automationRuns: [],
+  appointments: [],
+  schedule: {},
   account: {
     subscription: {
       plan: "starter",
@@ -192,7 +218,7 @@ const seedState = {
     members: [
       {
         id: "member-owner",
-        email: "owner@closepilot.local",
+        email: "owner@kira.local",
         role: "owner",
         status: "active",
       },
@@ -257,19 +283,42 @@ const taskDueChoices = [
 
 const board = document.querySelector("#pipelineBoard");
 const pageTitle = document.querySelector(".topbar h1");
+const subpageNav = document.querySelector("#subpageNav");
 const pipelineHealth = document.querySelector("#pipelineHealth");
 const insightList = document.querySelector("#insightList");
 const sourceReportGrid = document.querySelector("#sourceReportGrid");
 const exportSourceReportButton = document.querySelector("#exportSourceReport");
 const leadBrief = document.querySelector("#leadBrief");
 const contactTable = document.querySelector("#contactTable");
+const contactsPanel = document.querySelector("#contacts");
+const contactProfilePanel = document.querySelector("#contactProfile");
 const contactSummary = document.querySelector("#contactSummary");
 const contactProfileContent = document.querySelector("#contactProfileContent");
+const backToContactsButton = document.querySelector("#backToContacts");
 const contactSortInput = document.querySelector("#contactSort");
 const selectVisibleContactsButton = document.querySelector("#selectVisibleContacts");
 const clearSelectedContactsButton = document.querySelector("#clearSelectedContacts");
 const contactSelectionStatus = document.querySelector("#contactSelectionStatus");
 const exportSelectedContactsButton = document.querySelector("#exportSelectedContacts");
+const pullSafeLeadsButton = document.querySelector("#pullSafeLeadsButton");
+const leadGeneratorStatus = document.querySelector("#leadGeneratorStatus");
+const dialSummary = document.querySelector("#dialSummary");
+const dialActiveLead = document.querySelector("#dialActiveLead");
+const dialOutcomeForm = document.querySelector("#dialOutcomeForm");
+const dialContactMethodInput = document.querySelector("#dialContactMethod");
+const dialOutcomeInput = document.querySelector("#dialOutcome");
+const dialNotesInput = document.querySelector("#dialNotes");
+const dialTextLog = document.querySelector("#dialTextLog");
+const dialTextMessageInput = document.querySelector("#dialTextMessage");
+const appointmentFields = document.querySelector("#appointmentFields");
+const appointmentDateInput = document.querySelector("#appointmentDate");
+const appointmentTimePicker = document.querySelector("#appointmentTimePicker");
+const appointmentCloserInput = document.querySelector("#appointmentCloser");
+const dialMessage = document.querySelector("#dialMessage");
+const appointmentList = document.querySelector("#appointmentList");
+const dialScheduleGrid = document.querySelector("#dialScheduleGrid");
+const scheduleMessage = document.querySelector("#scheduleMessage");
+const calendarBoard = document.querySelector("#calendarBoard");
 const bulkContactTaskButton = document.querySelector("#bulkContactTask");
 const bulkContactWonButton = document.querySelector("#bulkContactWon");
 const bulkContactNextButton = document.querySelector("#bulkContactNext");
@@ -359,6 +408,7 @@ const adminTimezone = document.querySelector("#adminTimezone");
 const adminDefaultSource = document.querySelector("#adminDefaultSource");
 const workspaceProfileSummary = document.querySelector("#workspaceProfileSummary");
 const planSummary = document.querySelector("#planSummary");
+const planAddonList = document.querySelector("#planAddonList");
 const teamSummary = document.querySelector("#teamSummary");
 const openCheckoutButton = document.querySelector("#openCheckout");
 const openBillingPortalButton = document.querySelector("#openBillingPortal");
@@ -373,16 +423,62 @@ const leadDetailModal = document.querySelector("#leadDetailModal");
 const leadDetailContent = document.querySelector("#leadDetailContent");
 const closeLeadDetailModalButton = document.querySelector("#closeLeadDetailModal");
 
-const config = window.ClosePilotConfig || {};
+const config = window.KiraHomeConfig || window.ClosePilotConfig || {};
 const hasSupabaseConfig = Boolean(config.supabaseUrl && config.supabaseAnonKey);
 const pageTitles = {
-  pipeline: "Pipeline command center",
+  pipeline: "Dashboard",
   contacts: "Contacts",
   automation: "Automation",
   tasks: "Tasks",
   activity: "Activity",
+  dial: "Dial floor",
+  calendar: "Calendar",
   admin: "Workspace admin",
 };
+const subpageCatalog = {
+  pipeline: [
+    { id: "overview", label: "Dashboard" },
+    { id: "target", label: "Monthly target" },
+    { id: "insights", label: "Pipeline insights" },
+    { id: "channels", label: "Channel report" },
+    { id: "brief", label: "Lead brief" },
+  ],
+  automation: [
+    { id: "overview", label: "Automations" },
+    { id: "builder", label: "Automation builder" },
+    { id: "templates", label: "Automation templates" },
+    { id: "runs", label: "Automation runs" },
+  ],
+  contacts: [
+    { id: "list", label: "Contacts" },
+    { id: "profile", label: "Contact profile" },
+  ],
+  tasks: [{ id: "list", label: "Tasks" }],
+  activity: [{ id: "feed", label: "Activity feed" }],
+  admin: [
+    { id: "settings", label: "Workspace settings" },
+    { id: "billing", label: "Plan and seats" },
+    { id: "team", label: "Members and invites" },
+    { id: "extensions", label: "Connected apps" },
+    { id: "launch", label: "Production readiness" },
+    { id: "audit", label: "Audit trail" },
+    { id: "backup", label: "Backup center" },
+  ],
+};
+const appointmentTimes = Array.from({ length: 12 }, (_item, index) => {
+  const hour = index + 9;
+  return {
+    value: `${String(hour).padStart(2, "0")}:00`,
+    label: hour < 12 ? `${hour} AM` : hour === 12 ? "12 PM" : `${hour - 12} PM`,
+  };
+});
+const scheduleDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const scheduleHours = Array.from({ length: 16 }, (_item, index) => index + 6);
+let selectedAppointmentTime = "09:00";
+let contactProfileMode = false;
+let dialView = "floor";
+let calendarView = "calendar";
+const subpageState = Object.fromEntries(Object.entries(subpageCatalog).map(([page, pages]) => [page, pages[0].id]));
 
 document.querySelector("#openLeadModal").addEventListener("click", () => {
   openLeadModal();
@@ -450,6 +546,16 @@ exportVisibleActivityButton.addEventListener("click", exportVisibleActivityCsv);
 selectVisibleContactsButton.addEventListener("click", selectVisibleContacts);
 clearSelectedContactsButton.addEventListener("click", clearSelectedContacts);
 exportSelectedContactsButton.addEventListener("click", exportSelectedContactsCsv);
+backToContactsButton.addEventListener("click", () => {
+  contactProfileMode = false;
+  subpageState.contacts = "list";
+  renderContacts();
+  renderRoute();
+});
+pullSafeLeadsButton.addEventListener("click", pullSafeLeadBatch);
+dialOutcomeForm.addEventListener("submit", saveDialOutcome);
+dialOutcomeInput.addEventListener("change", renderAppointmentFields);
+dialContactMethodInput.addEventListener("change", renderDialTextLog);
 bulkContactTaskButton.addEventListener("click", createTasksForSelectedContacts);
 bulkContactWonButton.addEventListener("click", markSelectedContactsWon);
 bulkContactNextButton.addEventListener("click", moveSelectedContactsNext);
@@ -520,6 +626,29 @@ document.querySelectorAll("[data-plan-choice]").forEach((button) => {
   button.addEventListener("click", () => {
     changeSubscriptionPlan(button.dataset.planChoice);
   });
+});
+
+document.querySelectorAll("[data-calendar-view]").forEach((button) => {
+  button.addEventListener("click", () => {
+    calendarView = button.dataset.calendarView;
+    subpageState.calendar = calendarView;
+    renderCalendar();
+    renderSubpages();
+  });
+});
+
+document.querySelectorAll("[data-dial-view]").forEach((button) => {
+  button.addEventListener("click", () => {
+    dialView = button.dataset.dialView;
+    subpageState.dial = dialView;
+    renderDialWorkspace();
+  });
+});
+
+subpageNav.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-subpage-choice]");
+  if (!button) return;
+  setSubpage(activePage, button.dataset.subpageChoice);
 });
 
 window.addEventListener("hashchange", () => {
@@ -750,6 +879,8 @@ function render() {
   renderAutomations();
   renderActivityFeed();
   renderContacts();
+  renderDialWorkspace();
+  renderCalendar();
   renderTasks();
   renderWorkspaceBackup();
   renderSaasAdmin();
@@ -772,15 +903,128 @@ function renderRoute() {
     group.hidden = !pages.includes(activePage);
   });
 
+  renderDialView();
+  renderSubpages();
+
   document.querySelectorAll("[data-nav-page]").forEach((link) => {
     link.classList.toggle("active", link.dataset.navPage === activePage);
   });
 
   document.body.dataset.activePage = activePage;
   pageTitle.textContent = pageTitles[activePage] || pageTitles.pipeline;
+  applyContactPageMode();
   if (window.location.hash !== `#${activePage}`) {
     history.replaceState(null, "", `#${activePage}`);
   }
+}
+
+function setSubpage(page, subpage) {
+  if (!subpageCatalog[page]?.some((item) => item.id === subpage)) return;
+  subpageState[page] = subpage;
+  if (page === "dial") dialView = subpage;
+  if (page === "calendar") calendarView = subpage;
+  if (page === "contacts") contactProfileMode = subpage === "profile";
+  renderRoute();
+  if (page === "dial") renderDialWorkspace();
+  if (page === "calendar") renderCalendar();
+}
+
+function renderSubpages() {
+  const pages = subpageCatalog[activePage] || [];
+  const activeSubpage = subpageState[activePage] || pages[0]?.id;
+  subpageNav.hidden = pages.length <= 1;
+  subpageNav.innerHTML = pages
+    .map(
+      (page) => `
+        <button class="${page.id === activeSubpage ? "active" : ""}" data-subpage-choice="${page.id}" type="button">
+          ${escapeHtml(page.label)}
+        </button>
+      `,
+    )
+    .join("");
+
+  renderPipelineSubpage(activeSubpage);
+  renderAutomationSubpage(activeSubpage);
+  renderContactSubpage(activeSubpage);
+  renderAdminSubpage(activeSubpage);
+}
+
+function showOnly(selectors, visibleSelector) {
+  selectors.forEach((selector) => {
+    document.querySelectorAll(selector).forEach((element) => {
+      element.hidden = selector !== visibleSelector;
+    });
+  });
+}
+
+function setHidden(selector, hidden) {
+  document.querySelectorAll(selector).forEach((element) => {
+    element.hidden = hidden;
+  });
+}
+
+function renderPipelineSubpage(activeSubpage) {
+  const pipelineSelectors = {
+    overview: ['.metrics[data-page="pipeline"]', "#pipeline"],
+    target: ["#revenueGoal"],
+    setup: ["#onboardingPanel"],
+    insights: ["#insightsPanel"],
+    channels: ["#sourceReport"],
+    brief: ['.selected-panel[data-page="pipeline"]'],
+  };
+  if (activePage !== "pipeline") return;
+  Object.values(pipelineSelectors)
+    .flat()
+    .forEach((selector) => setHidden(selector, true));
+  Object.entries(pipelineSelectors).forEach(([subpage, selectors]) => {
+    selectors.forEach((selector) => setHidden(selector, subpage !== activeSubpage));
+  });
+  document.querySelector('.workspace-grid[data-page-group~="pipeline"]')?.toggleAttribute("hidden", !["overview", "brief"].includes(activeSubpage));
+}
+
+function renderAutomationSubpage(activeSubpage) {
+  const selectors = [
+    "#automation .automation-summary",
+    "#automation .automation-actions",
+    "#automationList",
+    "#automation .automation-builder",
+    "#automation .automation-template-section",
+    "#automation .automation-run-section",
+  ];
+  if (activePage !== "automation") return;
+  selectors.forEach((selector) => setHidden(selector, true));
+  const visible = {
+    overview: ["#automation .automation-summary", "#automation .automation-actions", "#automationList"],
+    builder: ["#automation .automation-builder"],
+    templates: ["#automation .automation-template-section"],
+    runs: ["#automation .automation-run-section"],
+  }[activeSubpage] || [];
+  visible.forEach((selector) => setHidden(selector, false));
+}
+
+function renderContactSubpage(activeSubpage) {
+  if (activePage !== "contacts") return;
+  contactProfileMode = activeSubpage === "profile" && state.selectedLeadId;
+  applyContactPageMode();
+}
+
+function renderAdminSubpage(activeSubpage) {
+  if (activePage !== "admin") return;
+  workspaceBackupPanelVisibility(activeSubpage);
+  setHidden("#saasAdmin", activeSubpage === "backup");
+  document.querySelectorAll("[data-admin-subpage]").forEach((card) => {
+    card.hidden = card.dataset.adminSubpage !== activeSubpage;
+  });
+}
+
+function workspaceBackupPanelVisibility(activeSubpage) {
+  setHidden("#workspaceBackup", activeSubpage !== "backup");
+}
+
+function applyContactPageMode() {
+  if (activePage !== "contacts") return;
+  contactsPanel.hidden = contactProfileMode;
+  contactProfilePanel.hidden = !contactProfileMode;
 }
 
 function setActivePage(page) {
@@ -930,7 +1174,18 @@ function renderSaasAdmin() {
       <strong>${formatShortDate(subscription.trialEndsAt)}</strong>
       <small>${plan.detail}</small>
     </article>
+    <article class="plan-addon-summary">
+      <span>App add-ons</span>
+      <strong>${formatter.format(plan.price + extensionCatalog[2].price)}/mo</strong>
+      <small>CRM + both apps estimate</small>
+    </article>
   `;
+
+  const extensionPricing = extensionCatalog
+    .map((extension) => `${escapeHtml(extension.label)} ${formatter.format(extension.price)}/mo`)
+    .join(" · ");
+
+  planAddonList.innerHTML = extensionPricing;
 
   document.querySelectorAll("[data-plan-choice]").forEach((button) => {
     const planId = button.dataset.planChoice;
@@ -2192,7 +2447,10 @@ function renderContacts() {
   contactTable.querySelectorAll("[data-contact-profile]").forEach((button) => {
     button.addEventListener("click", () => {
       state.selectedLeadId = button.dataset.contactProfile;
+      contactProfileMode = true;
+      subpageState.contacts = "profile";
       renderContacts();
+      renderRoute();
     });
   });
 
@@ -2407,6 +2665,451 @@ function renderContactSummary(leads) {
       <strong>${formatter.format(weighted)}</strong>
     </article>
   `;
+}
+
+function renderDialWorkspace() {
+  const queue = dialQueueLeads();
+  const unattempted = unattemptedDialLeads();
+  const lead = activeDialLead();
+  const appointments = state.appointments || [];
+  const blocked = unattempted.length > 0;
+
+  pullSafeLeadsButton.disabled = blocked;
+  if (blocked) {
+    leadGeneratorStatus.textContent = `Finish ${unattempted.length} pulled ${unattempted.length === 1 ? "lead" : "leads"} before pulling 5 more.`;
+  }
+
+  dialSummary.innerHTML = `
+    <article>
+      <span>Ready to call</span>
+      <strong>${queue.length}</strong>
+    </article>
+    <article>
+      <span>Needs attempt</span>
+      <strong>${unattempted.length}</strong>
+    </article>
+    <article>
+      <span>Appointments</span>
+      <strong>${appointments.length}</strong>
+    </article>
+    <article>
+      <span>Closers</span>
+      <strong>${closerOptions().length}</strong>
+    </article>
+  `;
+
+  renderAppointmentFields();
+  renderDialTextLog();
+  renderAppointmentTimePicker();
+  renderCloserOptions();
+  renderDialLead(lead);
+  renderAppointments();
+  renderDialSchedule();
+  renderDialView();
+}
+
+function renderDialView() {
+  document.querySelectorAll("[data-dial-view]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.dialView === dialView);
+  });
+
+  document.querySelectorAll("[data-dial-panel]").forEach((panel) => {
+    panel.hidden = panel.dataset.dialPanel !== dialView || activePage !== "dial";
+  });
+}
+
+function renderDialLead(lead) {
+  if (!lead) {
+    dialActiveLead.innerHTML = `
+      <div class="empty-state">
+        <strong>No dialer lead selected.</strong>
+        <span>Pull a safe lead batch or choose a new safe-generator lead from Contacts.</span>
+      </div>
+    `;
+    dialOutcomeForm.querySelectorAll("input, select, textarea, button").forEach((field) => {
+      field.disabled = true;
+    });
+    return;
+  }
+
+  dialOutcomeForm.querySelectorAll("input, select, textarea, button").forEach((field) => {
+    field.disabled = false;
+  });
+
+  const details = dialLeadDetails(lead);
+  dialActiveLead.innerHTML = `
+    <div class="dial-lead-hero">
+      <div>
+        <p class="eyebrow">Active call</p>
+        <h3>${escapeHtml(lead.name)}</h3>
+        <span>${escapeHtml(lead.company)}</span>
+      </div>
+      <strong>${lead.score}/100</strong>
+    </div>
+    <div class="dial-info-grid">
+      <article>
+        <span>Phone</span>
+        <strong>${escapeHtml(details.phone || "No phone")}</strong>
+      </article>
+      <article>
+        <span>Email</span>
+        <strong>${escapeHtml(details.email || "No email")}</strong>
+      </article>
+      <article>
+        <span>Source</span>
+        <strong>${escapeHtml(lead.source)}</strong>
+      </article>
+      <article>
+        <span>Status</span>
+        <strong>${escapeHtml(stageLabel(lead.stage))}</strong>
+      </article>
+      <article>
+        <span>County</span>
+        <strong>${escapeHtml(details.county || "Unknown")}</strong>
+      </article>
+      <article>
+        <span>Parcel</span>
+        <strong>${escapeHtml(details.parcel || "Unknown")}</strong>
+      </article>
+    </div>
+    <section class="dial-script-card">
+      <p class="eyebrow">Call prep</p>
+      <p>${escapeHtml(lead.nextAction || "Call and qualify interest, timing, and decision maker.")}</p>
+      <small>${escapeHtml(details.compliance || "Use approved calling rules and internal opt-out process.")}</small>
+    </section>
+    <section class="dial-script-card">
+      <p class="eyebrow">Lead notes</p>
+      <pre>${escapeHtml(lead.notes || "No notes yet.")}</pre>
+    </section>
+  `;
+}
+
+function renderAppointmentFields() {
+  appointmentFields.hidden = dialOutcomeInput.value !== "Appointment set";
+}
+
+function renderDialTextLog() {
+  const needsText = dialContactMethodInput.value.includes("Text");
+  dialTextLog.hidden = !needsText;
+  dialTextMessageInput.required = needsText;
+}
+
+function renderAppointmentTimePicker() {
+  appointmentTimePicker.innerHTML = appointmentTimes
+    .map(
+      (time) => `
+        <button class="time-button ${time.value === selectedAppointmentTime ? "active" : ""}" data-appointment-time="${time.value}" type="button">
+          ${time.label}
+        </button>
+      `,
+    )
+    .join("");
+
+  appointmentTimePicker.querySelectorAll("[data-appointment-time]").forEach((button) => {
+    button.addEventListener("click", () => {
+      selectedAppointmentTime = button.dataset.appointmentTime;
+      renderAppointmentTimePicker();
+    });
+  });
+}
+
+function renderCloserOptions() {
+  const closers = closerOptions();
+  appointmentCloserInput.innerHTML = closers
+    .map((closer) => `<option value="${escapeHtml(closer.email)}">${escapeHtml(closer.email)}</option>`)
+    .join("");
+}
+
+function renderAppointments() {
+  const appointments = [...(state.appointments || [])].sort((left, right) =>
+    String(left.startsAt).localeCompare(String(right.startsAt)),
+  );
+
+  appointmentList.innerHTML = appointments.length
+    ? appointments
+        .map((appointment) => {
+          const lead = state.leads.find((item) => item.id === appointment.leadId);
+          return `
+            <article class="appointment-row">
+              <div>
+                <strong>${escapeHtml(lead?.company || appointment.leadName || "Appointment")}</strong>
+                <span>${escapeHtml(appointment.contactName)} · ${escapeHtml(appointment.assignedTo)}</span>
+              </div>
+              <time>${formatAppointmentDate(appointment.startsAt)}</time>
+            </article>
+          `;
+        })
+        .join("")
+    : "<p class=\"empty-state\">No appointments booked yet.</p>";
+}
+
+function renderDialSchedule() {
+  const schedule = normalizedSchedule(state.schedule);
+  dialScheduleGrid.innerHTML = `
+    <div class="schedule-corner">Day</div>
+    ${scheduleHours.map((hour) => `<div class="schedule-hour">${scheduleHourLabel(hour)}</div>`).join("")}
+    ${scheduleDays
+      .map(
+        (day) => `
+          <div class="schedule-day">${day}</div>
+          ${scheduleHours
+            .map((hour) => {
+              const key = scheduleKey(day, hour);
+              const active = schedule[key];
+              return `<button class="schedule-cell ${active ? "active" : ""}" data-schedule-key="${key}" type="button" aria-label="${day} ${scheduleHourLabel(hour)}">${active ? "On" : ""}</button>`;
+            })
+            .join("")}
+        `,
+      )
+      .join("")}
+  `;
+
+  dialScheduleGrid.querySelectorAll("[data-schedule-key]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const key = button.dataset.scheduleKey;
+      const next = normalizedSchedule(state.schedule);
+      next[key] = !next[key];
+      await store.updateSchedule(next);
+      scheduleMessage.textContent = "Schedule updated.";
+      await reloadState();
+    });
+  });
+}
+
+function renderCalendar() {
+  document.querySelectorAll("[data-calendar-view]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.calendarView === calendarView);
+  });
+
+  const appointments = calendarAppointments();
+  if (!appointments.length) {
+    calendarBoard.innerHTML = "<p class=\"empty-state\">No appointments booked yet.</p>";
+    return;
+  }
+
+  calendarBoard.innerHTML = appointments
+    .map((appointment) => {
+      const lead = state.leads.find((item) => item.id === appointment.leadId);
+      return `
+        <article class="calendar-appointment">
+          <time>${formatAppointmentDate(appointment.startsAt)}</time>
+          <div>
+            <strong>${escapeHtml(lead?.company || appointment.leadName || "Appointment")}</strong>
+            <span>${escapeHtml(appointment.contactName)} · ${escapeHtml(appointment.assignedTo)}</span>
+            ${appointment.notes ? `<p>${escapeHtml(appointment.notes)}</p>` : ""}
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function calendarAppointments() {
+  const appointments = [...(state.appointments || [])].sort((left, right) =>
+    String(left.startsAt).localeCompare(String(right.startsAt)),
+  );
+  if (calendarView !== "mine") return appointments;
+  const mine = currentCloserEmail();
+  return appointments.filter((appointment) => appointment.assignedTo === mine);
+}
+
+function currentCloserEmail() {
+  return currentUser?.email || workspaceSetupSettings().ownerEmail || accountState().members[0]?.email || "owner@kira.local";
+}
+
+function scheduleHourLabel(hour) {
+  if (hour === 12) return "12 PM";
+  return hour < 12 ? `${hour} AM` : `${hour - 12} PM`;
+}
+
+function scheduleKey(day, hour) {
+  return `${day}-${hour}`;
+}
+
+function dialQueueLeads() {
+  return state.leads.filter((lead) => lead.source === "Safe lead generator" && lead.stage === "new");
+}
+
+function unattemptedDialLeads() {
+  const attempted = attemptedDialLeadIds();
+  return dialQueueLeads().filter((lead) => !attempted.has(lead.id));
+}
+
+function attemptedDialLeadIds() {
+  return new Set(
+    (state.activities || [])
+      .filter((activity) => ["call", "text", "outcome"].includes(activity.type))
+      .map((activity) => activity.leadId)
+      .filter(Boolean),
+  );
+}
+
+function activeDialLead() {
+  return (
+    unattemptedDialLeads().find((lead) => lead.id === state.selectedLeadId) ||
+    unattemptedDialLeads()[0] ||
+    state.leads.find((lead) => lead.id === state.selectedLeadId && lead.source === "Safe lead generator") ||
+    state.leads.find((lead) => lead.source === "Safe lead generator") ||
+    null
+  );
+}
+
+function dialLeadDetails(lead) {
+  const lines = String(lead.notes || "").split(/\n+/);
+  return Object.fromEntries(
+    ["phone", "email", "county", "parcel", "compliance"].map((key) => [
+      key,
+      lines
+        .find((line) => line.toLowerCase().startsWith(`${key}:`))
+        ?.replace(/^[^:]+:\s*/, "")
+        .trim() || "",
+    ]),
+  );
+}
+
+async function saveDialOutcome(event) {
+  event.preventDefault();
+  const lead = activeDialLead();
+  if (!lead) return;
+
+  const outcome = dialOutcomeInput.value;
+  const method = dialContactMethodInput.value;
+  const note = dialNotesInput.value.trim();
+  const exactText = dialTextMessageInput.value.trim();
+  const message = note ? `${outcome}: ${note}` : outcome;
+
+  if (method.includes("Text") && !exactText) {
+    dialMessage.textContent = "Log the exact text message before saving a text attempt.";
+    return;
+  }
+
+  if (outcome === "Appointment set" && !appointmentDateInput.value) {
+    dialMessage.textContent = "Choose an appointment date.";
+    return;
+  }
+
+  const activities = [];
+  if (method.includes("Call")) {
+    activities.push({
+      leadId: lead.id,
+      type: "call",
+      message: `Call logged - ${message}`,
+    });
+  }
+  if (method.includes("Text")) {
+    activities.push({
+      leadId: lead.id,
+      type: "text",
+      message: `Text logged - ${exactText}`,
+    });
+  }
+  if (outcome === "Appointment set") {
+    activities.push({
+      leadId: lead.id,
+      type: "outcome",
+      message: `Appointment set - ${note || "No extra notes."}`,
+    });
+  }
+
+  for (const activity of activities) {
+    await store.createActivity(activity);
+  }
+
+  let updatedLead = {
+    ...lead,
+    nextAction: nextDialAction(outcome),
+    notes: [
+      lead.notes,
+      `Dial method: ${method}`,
+      `Dial outcome: ${message}`,
+      exactText ? `Exact text sent: ${exactText}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n"),
+  };
+
+  if (outcome === "Appointment set") {
+    const assignedTo = nextRoundRobinCloser().email;
+    await store.createAppointment({
+      leadId: lead.id,
+      leadName: lead.company,
+      contactName: lead.name,
+      assignedTo,
+      startsAt: appointmentStartsAt().toISOString(),
+      notes: note,
+      outcome,
+    });
+    updatedLead = {
+      ...updatedLead,
+      stage: "qualified",
+      nextAction: `Appointment booked with ${assignedTo}.`,
+    };
+    await store.createTask({
+      text: `Prepare appointment with ${lead.name} at ${lead.company}`,
+      done: false,
+      due: "today",
+    });
+  }
+
+  await store.updateLead(updatedLead);
+  const nextLead = unattemptedDialLeads().find((item) => item.id !== updatedLead.id);
+  state.selectedLeadId = nextLead?.id || updatedLead.id;
+  dialNotesInput.value = "";
+  dialTextMessageInput.value = "";
+  appointmentDateInput.value = "";
+  dialContactMethodInput.value = "Call";
+  dialOutcomeInput.value = "No answer";
+  dialMessage.textContent =
+    outcome === "Appointment set" ? "Appointment booked and assigned round robin." : "Outcome saved.";
+  await reloadState();
+}
+
+function appointmentStartsAt() {
+  return new Date(`${appointmentDateInput.value}T${selectedAppointmentTime}:00`);
+}
+
+function nextDialAction(outcome) {
+  const actions = {
+    "No answer": "Try another call attempt later today.",
+    "Left voicemail": "Follow up after voicemail.",
+    "Call back requested": "Call back at the requested time.",
+    "Not interested": "Review for nurture or close out.",
+    "Bad number": "Verify contact info before another call.",
+    "Appointment set": "Appointment booked.",
+  };
+  return actions[outcome] || "Follow up from dial outcome.";
+}
+
+function closerOptions() {
+  const active = accountState().members.filter((member) => member.status === "active");
+  return active.length
+    ? active.map((member) => ({ email: member.email, role: member.role }))
+    : [{ email: workspaceSetupSettings().ownerEmail, role: "owner" }];
+}
+
+function nextRoundRobinCloser() {
+  const closers = closerOptions();
+  const key = roundRobinKey();
+  const index = Number(localStorage.getItem(key) || 0);
+  const closer = closers[index % closers.length];
+  localStorage.setItem(key, String((index + 1) % closers.length));
+  return closer;
+}
+
+function roundRobinKey() {
+  return `closepilot-round-robin:${workspaceSetupSettings().name}`;
+}
+
+function formatAppointmentDate(value) {
+  if (!value) return "Unscheduled";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Unscheduled";
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 function renderTasks() {
@@ -2787,6 +3490,14 @@ function cloudAutomationRunsKey(workspaceId) {
   return `closepilot-automation-runs-${workspaceId}`;
 }
 
+function cloudAppointmentsKey(workspaceId) {
+  return `closepilot-appointments-${workspaceId}`;
+}
+
+function cloudScheduleKey(workspaceId) {
+  return `closepilot-schedule-${workspaceId}`;
+}
+
 function revenueTarget() {
   const saved = Number(localStorage.getItem(revenueTargetKey()));
   return Number.isFinite(saved) && saved > 0 ? saved : 30000;
@@ -2798,7 +3509,7 @@ function workspaceSetupSettings() {
     name: state.workspaceName || "Personal workspace",
     type: "Personal",
     goal: "Close more follow-ups",
-    ownerEmail: currentUser?.email || account.members[0]?.email || "owner@closepilot.local",
+    ownerEmail: currentUser?.email || account.members[0]?.email || "owner@kira.local",
     industry: "Local services",
     timezone: "America/Chicago",
     defaultSource: "Website",
@@ -2835,7 +3546,7 @@ async function saveAdminWorkspaceSettings(event) {
     name: adminBusinessName.value.trim() || "Personal workspace",
     type: adminWorkspaceType.value,
     goal: adminSalesGoal.value,
-    ownerEmail: adminOwnerEmail.value.trim() || "owner@closepilot.local",
+    ownerEmail: adminOwnerEmail.value.trim() || "owner@kira.local",
     industry: adminIndustry.value.trim() || "Local services",
     timezone: adminTimezone.value,
     defaultSource: adminDefaultSource.value.trim() || "Website",
@@ -2922,9 +3633,9 @@ async function sendInviteEmail(inviteId) {
   const invite = accountState().invites.find((item) => item.id === inviteId);
   if (!invite) return;
 
-  const subject = encodeURIComponent("You're invited to ClosePilot CRM");
+  const subject = encodeURIComponent("You're invited to Kira Home");
   const body = encodeURIComponent(
-    `You've been invited as a ${invite.role} in ClosePilot CRM.\n\nOpen the app and create your account to join the workspace.`,
+    `You've been invited as a ${invite.role} in Kira Home.\n\nOpen the app and create your account to join the workspace.`,
   );
   const mailto = `mailto:${invite.email}?subject=${subject}&body=${body}`;
   window.location.href = mailto;
@@ -3184,7 +3895,7 @@ function exportSourceReportCsv() {
 
 function exportWorkspaceBackup() {
   const payload = {
-    app: "ClosePilot CRM",
+    app: "Kira Home",
     version: 1,
     exportedAt: new Date().toISOString(),
     workspace: workspaceSetupSettings(),
@@ -3194,6 +3905,8 @@ function exportWorkspaceBackup() {
       automations: state.automations,
       automationTemplates: state.automationTemplates,
       automationRuns: state.automationRuns || [],
+      appointments: state.appointments || [],
+      schedule: normalizedSchedule(state.schedule),
       activities: state.activities || [],
       account: accountState(),
     },
@@ -3216,7 +3929,7 @@ async function importWorkspaceBackup(event) {
     backupMessage.textContent = `Imported ${backup.leads.length} leads, ${backup.tasks.length} tasks, and ${backup.activities.length} activities.`;
   } catch (error) {
     console.error(error);
-    backupMessage.textContent = "Backup import failed. Check that the file came from ClosePilot.";
+    backupMessage.textContent = "Backup import failed. Check that the file came from Kira Home.";
   } finally {
     importWorkspaceBackupInput.value = "";
     importWorkspaceBackupButton.disabled = false;
@@ -3258,6 +3971,14 @@ async function restoreWorkspaceBackup(backup) {
     });
   }
 
+  for (const appointment of backup.appointments) {
+    await store.createAppointment({
+      ...appointment,
+      leadId: leadIdMap.get(appointment.leadId) || appointment.leadId,
+    });
+  }
+  await store.updateSchedule(backup.schedule);
+
   await store.replaceAutomationTemplates(backup.automationTemplates);
   await store.replaceAutomationRuns(
     backup.automationRuns.map((run) => ({
@@ -3285,6 +4006,10 @@ function normalizeWorkspaceBackup(payload) {
   const automationRuns = Array.isArray(data.automationRuns)
     ? normalizedAutomationRuns(data.automationRuns)
     : [];
+  const appointments = Array.isArray(data.appointments)
+    ? data.appointments.map(normalizeBackupAppointment).filter(Boolean)
+    : [];
+  const schedule = normalizedSchedule(data.schedule);
   const activities = Array.isArray(data.activities)
     ? data.activities.map(normalizeBackupActivity).filter(Boolean)
     : [];
@@ -3299,7 +4024,7 @@ function normalizeWorkspaceBackup(payload) {
       name: String(workspace.name || state.workspaceName || "Personal workspace").trim() || "Personal workspace",
       type: workspace.type === "Team" ? "Team" : "Personal",
       goal: String(workspace.goal || "Close more follow-ups").trim() || "Close more follow-ups",
-      ownerEmail: String(workspace.ownerEmail || "owner@closepilot.local").trim() || "owner@closepilot.local",
+      ownerEmail: String(workspace.ownerEmail || "owner@kira.local").trim() || "owner@kira.local",
       industry: String(workspace.industry || "Local services").trim() || "Local services",
       timezone: String(workspace.timezone || "America/Chicago"),
       defaultSource: String(workspace.defaultSource || "Website").trim() || "Website",
@@ -3309,6 +4034,8 @@ function normalizeWorkspaceBackup(payload) {
     automations,
     automationTemplates,
     automationRuns,
+    appointments,
+    schedule,
     activities,
     account,
   };
@@ -3358,6 +4085,19 @@ function normalizeBackupActivity(activity) {
   };
 }
 
+function normalizeBackupAppointment(appointment) {
+  if (!appointment?.leadName || !appointment?.startsAt) return null;
+  return {
+    leadId: appointment.leadId || null,
+    leadName: String(appointment.leadName),
+    contactName: String(appointment.contactName || "Contact"),
+    assignedTo: String(appointment.assignedTo || workspaceSetupSettings().ownerEmail),
+    startsAt: String(appointment.startsAt),
+    notes: String(appointment.notes || ""),
+    outcome: String(appointment.outcome || "Appointment set"),
+  };
+}
+
 function selectedContactLeads() {
   return [...selectedContactIds]
     .map((leadId) => state.leads.find((lead) => lead.id === leadId))
@@ -3385,6 +4125,174 @@ function downloadJson(payload, filename) {
   link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
+}
+
+async function pullSafeLeadBatch() {
+  const pending = unattemptedDialLeads();
+  if (pending.length) {
+    leadGeneratorStatus.textContent = `Finish ${pending.length} pulled ${pending.length === 1 ? "lead" : "leads"} before pulling 5 more.`;
+    return;
+  }
+
+  pullSafeLeadsButton.disabled = true;
+  leadGeneratorStatus.textContent = "Pulling phone-ready leads...";
+
+  try {
+    const response = await fetch("lead-generator-outputs/safe-leads.csv", { cache: "no-store" });
+    if (!response.ok) throw new Error("Safe lead output was not found.");
+
+    const safeLeads = parseSafeLeadOutput(await response.text()).filter((lead) => lead.phone);
+    if (!safeLeads.length) {
+      leadGeneratorStatus.textContent = "No phone-ready safe leads found. Generate safe-leads.csv first.";
+      return;
+    }
+
+    const pulled = nextSafeLeadBatch(safeLeads, 5);
+    if (!pulled.length) {
+      leadGeneratorStatus.textContent = "No new safe leads available. The current file has already been pulled.";
+      return;
+    }
+
+    const created = await store.createLeads(pulled.map(safeLeadToCrmLead));
+    await Promise.all(
+      created.map((lead) =>
+        store.createTask({
+          text: `${lead.nextAction} (${lead.company})`,
+          done: false,
+          due: "today",
+        }),
+      ),
+    );
+    await Promise.all(
+      created.map((lead) =>
+        store.createActivity({
+          leadId: lead.id,
+          type: "imported",
+          message: `Dialer lead pulled from safe lead generator for ${lead.company}.`,
+        }),
+      ),
+    );
+    for (const lead of created) {
+      await runAutomationTrigger("new-lead", lead);
+    }
+
+    state.selectedLeadId = created[0]?.id || state.selectedLeadId;
+    store.save?.(state);
+    leadGeneratorStatus.textContent = `Pulled ${created.length} safe leads for calling.`;
+    contactFilter = "new";
+    setActivePage("dial");
+    await reloadState();
+  } catch (error) {
+    console.error(error);
+    leadGeneratorStatus.textContent = "Could not pull safe leads. Run the generator and check safe-leads.csv.";
+  } finally {
+    pullSafeLeadsButton.disabled = unattemptedDialLeads().length > 0;
+  }
+}
+
+function parseSafeLeadOutput(text) {
+  const rows = parseCsvRows(text).filter((row) => row.some((cell) => cell.trim()));
+  if (rows.length < 2) return [];
+
+  const headers = rows[0].map((header) => header.trim().toLowerCase());
+  return rows
+    .slice(1)
+    .map((row) => Object.fromEntries(headers.map((header, index) => [header, row[index] || ""])))
+    .map((record) => ({
+      ownerName: readCsvField(record, ["owner_name", "owner", "name"]),
+      propertyAddress: readCsvField(record, ["property_address", "address"]),
+      mailingAddress: readCsvField(record, ["mailing_address"]),
+      phone: readCsvField(record, ["phone", "phone_number"]),
+      email: readCsvField(record, ["email", "email_address"]),
+      score: clampScore(Number(readCsvField(record, ["score"])) || 70),
+      confidence: readCsvField(record, ["confidence"]),
+      source: readCsvField(record, ["source"]) || "Safe lead generator",
+      county: readCsvField(record, ["county"]),
+      parcelId: readCsvField(record, ["parcel_id", "parcel"]),
+      channels: readCsvField(record, ["channels"]),
+      compliance: readCsvField(record, ["compliance"]),
+      fingerprint: safeLeadFingerprint(record),
+    }))
+    .filter((lead) => lead.ownerName && lead.propertyAddress && lead.fingerprint);
+}
+
+function nextSafeLeadBatch(safeLeads, size) {
+  const pulled = [];
+  const existing = new Set(state.leads.map(existingSafeLeadFingerprint).filter(Boolean));
+  let cursor = Number(localStorage.getItem(safeLeadCursorKey()) || 0);
+  if (!Number.isFinite(cursor) || cursor < 0) cursor = 0;
+
+  for (let step = 0; step < safeLeads.length && pulled.length < size; step += 1) {
+    const index = (cursor + step) % safeLeads.length;
+    const lead = safeLeads[index];
+    if (existing.has(lead.fingerprint)) continue;
+    pulled.push(lead);
+    existing.add(lead.fingerprint);
+  }
+
+  localStorage.setItem(safeLeadCursorKey(), String((cursor + Math.max(pulled.length, 1)) % safeLeads.length));
+  return pulled;
+}
+
+function safeLeadToCrmLead(lead) {
+  const phoneLine = lead.phone ? `Phone: ${lead.phone}` : "";
+  const emailLine = lead.email ? `Email: ${lead.email}` : "";
+  const countyLine = lead.county ? `County: ${lead.county}` : "";
+  const parcelLine = lead.parcelId ? `Parcel: ${lead.parcelId}` : "";
+  const complianceLine = lead.compliance ? `Compliance: ${lead.compliance}` : "";
+
+  return {
+    name: lead.ownerName,
+    company: lead.propertyAddress,
+    stage: "new",
+    value: 0,
+    score: lead.score,
+    source: "Safe lead generator",
+    nextAction: `Call ${lead.phone}`,
+    notes: [
+      "Pulled from safe-leads.csv for a dialer call block.",
+      phoneLine,
+      emailLine,
+      countyLine,
+      parcelLine,
+      complianceLine,
+      `Safe lead fingerprint: ${lead.fingerprint}`,
+    ]
+      .filter(Boolean)
+      .join("\n"),
+  };
+}
+
+function safeLeadFingerprint(record) {
+  const phone = normalizeFingerprint(readCsvField(record, ["phone", "phone_number"]));
+  const parcel = normalizeFingerprint(readCsvField(record, ["parcel_id", "parcel"]));
+  const ownerAddress = normalizeFingerprint(
+    `${readCsvField(record, ["owner_name", "owner", "name"])} ${readCsvField(record, ["property_address", "address"])}`,
+  );
+  return phone || parcel || ownerAddress;
+}
+
+function existingSafeLeadFingerprint(lead) {
+  const match = String(lead.notes || "").match(/Safe lead fingerprint:\s*([a-z0-9]+)/i);
+  return match?.[1] || "";
+}
+
+function readCsvField(record, names) {
+  for (const name of names) {
+    const value = record[name];
+    if (value != null && String(value).trim()) return String(value).trim();
+  }
+  return "";
+}
+
+function normalizeFingerprint(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function safeLeadCursorKey() {
+  return `closepilot-safe-lead-cursor:${workspaceSetupSettings().name}`;
 }
 
 async function importLeadsCsv(event) {
@@ -3606,6 +4514,16 @@ function createLocalStore() {
       this.save(state);
       return created;
     },
+    async createAppointment(appointment) {
+      const created = {
+        id: crypto.randomUUID(),
+        createdAt: new Date().toISOString(),
+        ...appointment,
+      };
+      state.appointments = [created, ...(state.appointments || [])];
+      this.save(state);
+      return created;
+    },
     async createTask(task) {
       const created = { id: crypto.randomUUID(), ...task };
       state.tasks.unshift(created);
@@ -3681,6 +4599,11 @@ function createLocalStore() {
       this.save(state);
       return state.account;
     },
+    async updateSchedule(schedule) {
+      state.schedule = normalizedSchedule(schedule);
+      this.save(state);
+      return state.schedule;
+    },
     async createTeamInvite(invite) {
       const created = {
         id: crypto.randomUUID(),
@@ -3707,6 +4630,8 @@ function createLocalStore() {
       state.leads = [];
       state.tasks = [];
       state.activities = [];
+      state.appointments = [];
+      state.schedule = {};
       state.automationRuns = [];
       state.selectedLeadId = null;
       this.save(state);
@@ -3715,6 +4640,8 @@ function createLocalStore() {
       state.leads = structuredClone(seedState.leads);
       state.tasks = structuredClone(seedState.tasks);
       state.activities = structuredClone(seedState.activities);
+      state.appointments = structuredClone(seedState.appointments);
+      state.schedule = structuredClone(seedState.schedule);
       state.selectedLeadId = seedState.selectedLeadId;
       state.account = normalizedAccount(state.account);
       state.automationTemplates = structuredClone(seedState.automationTemplates);
@@ -3791,6 +4718,8 @@ function createSupabaseStore(client, user) {
         account,
         automationTemplates,
         automationRuns,
+        appointments,
+        schedule,
       ] = await Promise.all([
         client.from("leads").select("*").eq("workspace_id", workspaceId).order("created_at"),
         client.from("tasks").select("*").eq("workspace_id", workspaceId).order("created_at", {
@@ -3801,6 +4730,8 @@ function createSupabaseStore(client, user) {
         this.loadSaasAccount(),
         this.loadAutomationTemplates(),
         this.loadAutomationRuns(),
+        this.loadAppointments(),
+        this.loadSchedule(),
       ]);
       throwIf(leadError);
       throwIf(taskError);
@@ -3815,14 +4746,42 @@ function createSupabaseStore(client, user) {
         account,
         automationTemplates,
         automationRuns,
+        appointments,
+        schedule,
       };
+    },
+    loadAppointments() {
+      const saved = localStorage.getItem(cloudAppointmentsKey(workspaceId));
+      if (!saved) return [];
+      try {
+        return normalizedAppointments(JSON.parse(saved));
+      } catch {
+        localStorage.removeItem(cloudAppointmentsKey(workspaceId));
+        return [];
+      }
+    },
+    saveAppointments(appointments) {
+      localStorage.setItem(cloudAppointmentsKey(workspaceId), JSON.stringify(normalizedAppointments(appointments)));
+    },
+    loadSchedule() {
+      const saved = localStorage.getItem(cloudScheduleKey(workspaceId));
+      if (!saved) return {};
+      try {
+        return normalizedSchedule(JSON.parse(saved));
+      } catch {
+        localStorage.removeItem(cloudScheduleKey(workspaceId));
+        return {};
+      }
+    },
+    saveSchedule(schedule) {
+      localStorage.setItem(cloudScheduleKey(workspaceId), JSON.stringify(normalizedSchedule(schedule)));
     },
     async loadSaasAccount() {
       const fallback = normalizedAccount({
         members: [
           {
             id: user.id,
-            email: user.email || "owner@closepilot.local",
+            email: user.email || "owner@kira.local",
             role: "owner",
             status: "active",
           },
@@ -3978,6 +4937,17 @@ function createSupabaseStore(client, user) {
       throwIf(error);
       return fromActivityRow(data);
     },
+    async createAppointment(appointment) {
+      const created = {
+        id: crypto.randomUUID(),
+        createdAt: new Date().toISOString(),
+        ...appointment,
+      };
+      const appointments = [created, ...this.loadAppointments()];
+      this.saveAppointments(appointments);
+      state.appointments = appointments;
+      return created;
+    },
     async createTask(task) {
       const { data, error } = await client
         .from("tasks")
@@ -4086,6 +5056,12 @@ function createSupabaseStore(client, user) {
       throwIf(error);
       return normalized;
     },
+    async updateSchedule(schedule) {
+      const normalized = normalizedSchedule(schedule);
+      this.saveSchedule(normalized);
+      state.schedule = normalized;
+      return normalized;
+    },
     async createTeamInvite(invite) {
       const { data, error } = await client
         .from("workspace_invitations")
@@ -4149,6 +5125,10 @@ function createSupabaseStore(client, user) {
         .delete()
         .eq("workspace_id", workspaceId);
       if (!isMissingActivitiesTable(activityError)) throwIf(activityError);
+      localStorage.removeItem(cloudAppointmentsKey(workspaceId));
+      localStorage.removeItem(cloudScheduleKey(workspaceId));
+      state.appointments = [];
+      state.schedule = {};
     },
     async seedStarterData() {
       const { count, error } = await client
@@ -4276,6 +5256,8 @@ function normalizeLoadedState() {
   }));
   state.automationTemplates = normalizedAutomationTemplates(state.automationTemplates);
   state.automationRuns = normalizedAutomationRuns(state.automationRuns);
+  state.appointments = normalizedAppointments(state.appointments);
+  state.schedule = normalizedSchedule(state.schedule);
   state.activities ||= [];
   state.account = normalizedAccount(state.account);
 }
@@ -4325,6 +5307,39 @@ function normalizedAutomationRun(run = {}) {
   };
 }
 
+function normalizedAppointments(appointments) {
+  return Array.isArray(appointments) ? appointments.map(normalizedAppointment).filter(Boolean) : [];
+}
+
+function normalizedAppointment(appointment = {}) {
+  if (!appointment.leadName || !appointment.startsAt) return null;
+  return {
+    id: appointment.id || crypto.randomUUID(),
+    leadId: appointment.leadId || null,
+    leadName: String(appointment.leadName),
+    contactName: String(appointment.contactName || "Contact"),
+    assignedTo: String(appointment.assignedTo || workspaceSetupSettings().ownerEmail),
+    startsAt: String(appointment.startsAt),
+    notes: String(appointment.notes || ""),
+    outcome: String(appointment.outcome || "Appointment set"),
+    createdAt: appointment.createdAt || new Date().toISOString(),
+  };
+}
+
+function normalizedSchedule(schedule = {}) {
+  const normalized = {};
+  if (!schedule || typeof schedule !== "object") return normalized;
+  Object.entries(schedule).forEach(([key, value]) => {
+    if (!value) return;
+    const [day, hourText] = String(key).split("-");
+    const hour = Number(hourText);
+    if (scheduleDays.includes(day) && scheduleHours.includes(hour)) {
+      normalized[`${day}-${hour}`] = true;
+    }
+  });
+  return normalized;
+}
+
 function accountState() {
   state.account = normalizedAccount(state.account);
   return state.account;
@@ -4332,7 +5347,7 @@ function accountState() {
 
 function normalizedAccount(account = {}) {
   const plan = planCatalog[account.subscription?.plan] ? account.subscription.plan : "starter";
-  const ownerEmail = currentUser?.email || account.members?.[0]?.email || "owner@closepilot.local";
+  const ownerEmail = currentUser?.email || account.members?.[0]?.email || "owner@kira.local";
   return {
     subscription: {
       plan,
