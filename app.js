@@ -438,6 +438,7 @@ const pageTitles = {
 const subpageCatalog = {
   pipeline: [
     { id: "overview", label: "Dashboard" },
+    { id: "setup", label: "First run" },
     { id: "target", label: "Monthly target" },
     { id: "insights", label: "Pipeline insights" },
     { id: "channels", label: "Channel report" },
@@ -930,8 +931,12 @@ function setSubpage(page, subpage) {
 }
 
 function renderSubpages() {
-  const pages = subpageCatalog[activePage] || [];
-  const activeSubpage = subpageState[activePage] || pages[0]?.id;
+  const pages = availableSubpages(activePage);
+  let activeSubpage = subpageState[activePage] || pages[0]?.id;
+  if (!pages.some((page) => page.id === activeSubpage)) {
+    activeSubpage = pages[0]?.id;
+    subpageState[activePage] = activeSubpage;
+  }
   subpageNav.hidden = pages.length <= 1;
   subpageNav.innerHTML = pages
     .map(
@@ -947,6 +952,12 @@ function renderSubpages() {
   renderAutomationSubpage(activeSubpage);
   renderContactSubpage(activeSubpage);
   renderAdminSubpage(activeSubpage);
+}
+
+function availableSubpages(page) {
+  const pages = subpageCatalog[page] || [];
+  if (page !== "pipeline") return pages;
+  return pages.filter((subpage) => subpage.id !== "setup" || !onboardingPanel.hidden);
 }
 
 function showOnly(selectors, visibleSelector) {

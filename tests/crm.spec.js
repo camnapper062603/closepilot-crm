@@ -20,6 +20,33 @@ async function navigateTo(page, label, hash) {
   await expect(page.locator('.topbar h1')).toHaveText(headings[label] || label);
 }
 
+async function openSubpage(page, label) {
+  const nav = page.locator('#subpageNav');
+  await expect(nav).toContainText(label);
+  await nav.getByRole('button', { name: label, exact: true }).click();
+}
+
+async function openDashboardOverview(page) {
+  await openSubpage(page, 'Dashboard');
+  await expect(page.locator('#pipeline')).toBeVisible();
+}
+
+async function openLeadBrief(page) {
+  await openSubpage(page, 'Lead brief');
+  await expect(page.locator('#leadBrief')).toBeVisible();
+  return page.locator('#leadBrief');
+}
+
+async function openAutomationSubpage(page, label) {
+  await openSubpage(page, label);
+  await expect(page.locator('#automation')).toBeVisible();
+}
+
+async function openBackupCenter(page) {
+  await openSubpage(page, 'Backup center');
+  await expect(page.locator('#workspaceBackup')).toBeVisible();
+}
+
 test('renders the CRM dashboard MVP', async ({ page }) => {
   await expect(page).toHaveTitle(/Kira Home/);
   await expect(page.locator('.topbar h1')).toHaveText('Dashboard');
@@ -88,6 +115,7 @@ test('opens section subpages inside CRM tabs', async ({ page }) => {
 });
 
 test('shows actionable pipeline insights', async ({ page }) => {
+  await openSubpage(page, 'Pipeline insights');
   await expect(page.locator('#insightsPanel')).toContainText('Pipeline insights');
   await expect(page.locator('#insightsPanel')).toContainText('LinkedIn');
   await expect(page.locator('#insightsPanel')).toContainText('$12,600');
@@ -95,10 +123,12 @@ test('shows actionable pipeline insights', async ({ page }) => {
   await expect(page.locator('#insightsPanel')).toContainText('Summit Auto Detail');
 
   await page.locator('#insightsPanel').getByRole('button', { name: /Summit Auto Detail/ }).click();
+  await openLeadBrief(page);
   await expect(page.locator('#leadBrief')).toContainText('Eli Ramirez');
 });
 
 test('shows and exports lead source performance', async ({ page }) => {
+  await openSubpage(page, 'Channel report');
   await expect(page.locator('#sourceReport')).toContainText('Channel report');
   await expect(page.locator('#sourceReport')).toContainText('LinkedIn');
   await expect(page.locator('#sourceReport')).toContainText('$12,600');
@@ -109,8 +139,10 @@ test('shows and exports lead source performance', async ({ page }) => {
   await expect(page.locator('#sourceReport')).toContainText('$8,400');
 
   await page.locator('#sourceReport').getByRole('button', { name: /LinkedIn/ }).click();
+  await openLeadBrief(page);
   await expect(page.locator('#leadBrief')).toContainText('Nia Brooks');
 
+  await openSubpage(page, 'Channel report');
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export source report' }).click();
   const download = await downloadPromise;
@@ -150,7 +182,9 @@ test('builds and runs a custom automation template', async ({ page }) => {
   await navigateTo(page, 'Automation', 'automation');
   const builder = page.locator('#automation');
 
+  await openAutomationSubpage(page, 'Automation templates');
   await expect(builder.locator('#automationTemplateList')).toContainText('Qualified lead follow-up');
+  await openAutomationSubpage(page, 'Automation builder');
   await builder.getByLabel('Template name').fill('Proposal rescue');
   await builder.getByLabel('Trigger').selectOption('stage-proposal');
   await builder.getByLabel('Step 1 task').fill('Send {{company}} a pricing recap.');
@@ -163,6 +197,7 @@ test('builds and runs a custom automation template', async ({ page }) => {
   await builder.getByRole('button', { name: 'Save template' }).click();
 
   await expect(builder.locator('#automationBuilderMessage')).toContainText('Automation template saved.');
+  await openAutomationSubpage(page, 'Automation templates');
   const template = builder.locator('.automation-template-card').filter({ hasText: 'Proposal rescue' });
   await expect(template).toContainText('Moved to Proposal');
   await expect(template).toContainText('3 steps');
@@ -179,23 +214,30 @@ test('builds and runs a custom automation template', async ({ page }) => {
 test('edits, pauses, and deletes automation templates', async ({ page }) => {
   await navigateTo(page, 'Automation', 'automation');
   const builder = page.locator('#automation');
+  await openAutomationSubpage(page, 'Automation templates');
   const qualifiedTemplate = builder.locator('.automation-template-card').filter({ hasText: 'Qualified lead follow-up' });
 
   await qualifiedTemplate.getByRole('button', { name: 'Edit' }).click();
+  await openAutomationSubpage(page, 'Automation builder');
   await expect(builder.getByLabel('Template name')).toHaveValue('Qualified lead follow-up');
   await builder.getByLabel('Template name').fill('Qualified lead follow-up v2');
   await builder.getByLabel('Step 3 task').fill('Send {{company}} the final implementation checklist.');
   await builder.getByRole('button', { name: 'Save template' }).click();
 
+  await openAutomationSubpage(page, 'Automation templates');
   const updatedTemplate = builder.locator('.automation-template-card').filter({ hasText: 'Qualified lead follow-up v2' });
   await expect(updatedTemplate).toContainText('final implementation checklist');
 
   await updatedTemplate.getByRole('button', { name: 'Pause' }).click();
+  await openAutomationSubpage(page, 'Automation builder');
   await expect(builder.locator('#automationBuilderMessage')).toContainText('Qualified lead follow-up v2 paused.');
+  await openAutomationSubpage(page, 'Automation templates');
   await expect(updatedTemplate).toContainText('Paused');
 
   await updatedTemplate.getByRole('button', { name: 'Delete' }).click();
+  await openAutomationSubpage(page, 'Automation builder');
   await expect(builder.locator('#automationBuilderMessage')).toContainText('Qualified lead follow-up v2 deleted.');
+  await openAutomationSubpage(page, 'Automation templates');
   await expect(builder.locator('#automationTemplateList')).not.toContainText('Qualified lead follow-up v2');
 });
 
@@ -213,6 +255,7 @@ test('runs saved automation templates from lead triggers', async ({ page }) => {
   await expect(page.locator('#taskList')).toContainText('Send Bright Path Solar a quick intro and booking link.');
 
   await navigateTo(page, 'Automation', 'automation');
+  await openAutomationSubpage(page, 'Automation runs');
   await expect(page.locator('#automationRunList')).toContainText('Speed-to-lead starter');
   await expect(page.locator('#automationRunList')).toContainText('Bright Path Solar');
 });
@@ -227,6 +270,7 @@ test('runs stage and won automation templates without duplicating automatic runs
   await expect(page.locator('#taskList')).toContainText('Ask Maya Johnson for final objections and decision timing.');
 
   await navigateTo(page, 'Dashboard', 'pipeline');
+  await openLeadBrief(page);
   await page.locator('#leadBrief').getByRole('button', { name: 'Mark won' }).click();
   await navigateTo(page, 'Tasks', 'tasks');
   await page.getByRole('button', { name: /Today/ }).click();
@@ -235,9 +279,11 @@ test('runs stage and won automation templates without duplicating automatic runs
   await expect(page.locator('#taskList')).toContainText('Schedule kickoff with Maya Johnson.');
 
   await navigateTo(page, 'Dashboard', 'pipeline');
+  await openLeadBrief(page);
   await page.locator('#leadBrief').getByRole('button', { name: 'Reopen deal' }).click();
   await page.locator('#leadBrief').getByRole('button', { name: 'Mark won' }).click();
   await navigateTo(page, 'Automation', 'automation');
+  await openAutomationSubpage(page, 'Automation runs');
 
   const wonRuns = page.locator('#automationRunList .automation-run-row').filter({ hasText: 'Won deal onboarding' });
   await expect(wonRuns).toHaveCount(1);
@@ -248,7 +294,9 @@ test('scans no-response automations once per open lead', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Run no-response scan' }).click();
 
+  await openAutomationSubpage(page, 'Automation builder');
   await expect(page.locator('#automationBuilderMessage')).toContainText('No-response scan queued 6 tasks for 3 leads.');
+  await openAutomationSubpage(page, 'Automation runs');
   await expect(page.locator('#automationRunList')).toContainText('No-response check-in');
 
   await navigateTo(page, 'Tasks', 'tasks');
@@ -257,7 +305,9 @@ test('scans no-response automations once per open lead', async ({ page }) => {
   await expect(page.locator('#taskList')).toContainText('Ask Maya Johnson if this should stay open or pause.');
 
   await navigateTo(page, 'Automation', 'automation');
+  await openAutomationSubpage(page, 'Automations');
   await page.getByRole('button', { name: 'Run no-response scan' }).click();
+  await openAutomationSubpage(page, 'Automation builder');
   await expect(page.locator('#automationBuilderMessage')).toContainText('No-response scan is already up to date.');
 });
 
@@ -307,6 +357,7 @@ test('shows a global activity feed and opens related leads', async ({ page }) =>
   await expect(page.locator('#activitySummary')).toHaveText('2 activities shown');
 
   await navigateTo(page, 'Dashboard', 'pipeline');
+  await openLeadBrief(page);
   await page.locator('#leadBrief').getByRole('button', { name: 'Add follow-up' }).click();
   await navigateTo(page, 'Activity', 'activity');
   await activityFilters.getByRole('button', { name: 'Tasks' }).click();
@@ -315,6 +366,7 @@ test('shows a global activity feed and opens related leads', async ({ page }) =>
   await expect(page.locator('#activitySummary')).toHaveText('1 activity shown');
 
   await navigateTo(page, 'Dashboard', 'pipeline');
+  await openLeadBrief(page);
   await page.locator('#leadBrief').getByRole('button', { name: 'Open details' }).click();
   const dialog = page.getByRole('dialog', { name: 'Northstar Roofing' });
   await dialog.getByPlaceholder('Log a call, objection, or update').fill('Customer asked for Tuesday scheduling.');
@@ -351,7 +403,9 @@ test('shows a global activity feed and opens related leads', async ({ page }) =>
   await page.getByPlaceholder('Search activity').fill('');
 
   await navigateTo(page, 'Dashboard', 'pipeline');
+  await openDashboardOverview(page);
   await page.locator('#pipelineBoard').getByText('Harbor Fitness').click();
+  await openLeadBrief(page);
   await expect(page.locator('#leadBrief')).toContainText('Nia Brooks');
 
   await navigateTo(page, 'Activity', 'activity');
@@ -362,6 +416,7 @@ test('shows a global activity feed and opens related leads', async ({ page }) =>
     .getByRole('button', { name: 'View' })
     .click();
 
+  await openLeadBrief(page);
   await expect(page.locator('#leadBrief')).toContainText('Maya Johnson');
 });
 
@@ -390,6 +445,7 @@ test('sets up a new workspace with starter data', async ({ page }) => {
   });
   await page.goto('/?setup-workspace', { waitUntil: 'domcontentloaded' });
 
+  await openSubpage(page, 'First run');
   await expect(page.getByRole('heading', { name: 'Start your sales workspace' })).toBeVisible();
   await page.getByLabel('Business name').fill('Cameron Consulting');
   await page.getByLabel('Workspace type').selectOption('Team');
@@ -398,11 +454,13 @@ test('sets up a new workspace with starter data', async ({ page }) => {
 
   await expect(page.locator('#workspaceNameLabel')).toContainText('Cameron Consulting');
   await expect(page.locator('#workspaceModeLabel')).toContainText('Team workspace - Forecast revenue.');
+  await openDashboardOverview(page);
   await expect(page.locator('#pipelineBoard').getByText('Northstar Roofing')).toBeVisible();
 });
 
 test('exports and imports a workspace backup', async ({ page }) => {
   await navigateTo(page, 'Admin', 'admin');
+  await openBackupCenter(page);
 
   await expect(page.locator('#backupSummary')).toContainText('4');
   await expect(page.locator('#backupSummary')).toContainText('3');
@@ -487,7 +545,9 @@ test('creates a lead and an automated follow-up task', async ({ page }) => {
   await dialog.getByLabel('Notes').fill('Wants a SaaS-ready CRM workflow.');
   await dialog.getByRole('button', { name: 'Create lead' }).click();
 
+  await openDashboardOverview(page);
   await expect(page.locator('#pipelineBoard').getByText('Plus Growth Studio')).toBeVisible();
+  await openLeadBrief(page);
   await expect(page.locator('#leadBrief')).toContainText('Trade show');
   await expect(page.locator('#leadBrief')).toContainText('Book discovery call');
   await expect(page.locator('#leadBrief')).toContainText('Lead created from Trade show.');
@@ -503,6 +563,7 @@ test('moves a lead forward and updates the lead brief', async ({ page }) => {
   const northstarCard = page.locator('article.deal-card').filter({ hasText: 'Northstar Roofing' });
   await northstarCard.getByRole('button', { name: 'Next' }).click();
 
+  await openLeadBrief(page);
   await expect(page.locator('#leadBrief')).toContainText('Proposal');
   await expect(page.locator('#leadBrief')).toContainText('Stage changed to Proposal.');
 
@@ -511,6 +572,7 @@ test('moves a lead forward and updates the lead brief', async ({ page }) => {
 });
 
 test('marks the selected lead won and queues onboarding', async ({ page }) => {
+  await openLeadBrief(page);
   await page.locator('#leadBrief').getByRole('button', { name: 'Mark won' }).click();
 
   await expect(page.locator('#leadBrief')).toContainText('Won');
@@ -523,6 +585,7 @@ test('marks the selected lead won and queues onboarding', async ({ page }) => {
 
 test('reopens a won lead from the detail workspace', async ({ page }) => {
   await page.locator('#pipelineBoard').getByText('Stone & Finch Realty').click();
+  await openLeadBrief(page);
   await page.locator('#leadBrief').getByRole('button', { name: 'Open details' }).click();
 
   const dialog = page.getByRole('dialog', { name: 'Stone & Finch Realty' });
@@ -546,10 +609,12 @@ test('shows a weighted pipeline forecast', async ({ page }) => {
   await expect(page.locator('#pipelineBoard')).toContainText('Harbor Fitness');
 
   await page.locator('#pipelineBoard').getByRole('button', { name: 'Harbor Fitness' }).click();
+  await openLeadBrief(page);
   await expect(page.locator('#leadBrief')).toContainText('Nia Brooks');
 });
 
 test('tracks monthly revenue target progress', async ({ page }) => {
+  await openSubpage(page, 'Monthly target');
   await expect(page.locator('#revenueGoalSummary')).toContainText('Closed');
   await expect(page.locator('#revenueGoalSummary')).toContainText('$5,100');
   await expect(page.locator('#revenueGoalSummary')).toContainText('17% booked');
@@ -568,8 +633,10 @@ test('tracks monthly revenue target progress', async ({ page }) => {
   await expect(page.locator('#revenueGoalSummary')).toContainText('$14,900');
   await expect(page.locator('#revenueProgressBar')).toHaveAttribute('data-progress', '89%');
 
+  await openLeadBrief(page);
   await page.locator('#leadBrief').getByRole('button', { name: 'Mark won' }).click();
 
+  await openSubpage(page, 'Monthly target');
   await expect(page.locator('#revenueGoalSummary')).toContainText('$13,500');
   await expect(page.locator('#revenueGoalSummary')).toContainText('68% booked');
   await expect(page.locator('#revenueGoalSummary')).toContainText('$6,500');
@@ -674,6 +741,7 @@ test('saves an expanded workspace profile for SaaS operations', async ({ page })
 });
 
 test('edits the selected lead', async ({ page }) => {
+  await openLeadBrief(page);
   await page.locator('#leadBrief').getByRole('button', { name: 'Edit lead' }).click();
   await expect(page.getByRole('dialog', { name: 'Edit lead' })).toBeVisible();
   await page.getByLabel('Company').fill('Northstar Exterior Group');
@@ -681,18 +749,22 @@ test('edits the selected lead', async ({ page }) => {
   await page.getByRole('button', { name: 'Save lead' }).click();
 
   await expect(page.locator('#leadBrief')).toContainText('Northstar Exterior Group');
+  await openDashboardOverview(page);
   await expect(page.locator('#pipelineBoard').getByText('Northstar Exterior Group')).toBeVisible();
   await expect(page.locator('#pipelineValue')).toContainText('$32,300');
 });
 
 test('deletes the selected lead', async ({ page }) => {
+  await openLeadBrief(page);
   await page.locator('#leadBrief').getByRole('button', { name: 'Delete lead' }).click();
 
+  await openDashboardOverview(page);
   await expect(page.locator('#pipelineBoard').getByText('Northstar Roofing')).toHaveCount(0);
   await expect(page.locator('#pipelineValue')).toContainText('$20,900');
 });
 
 test('creates a follow-up task from the selected lead', async ({ page }) => {
+  await openLeadBrief(page);
   await page.locator('#leadBrief').getByRole('button', { name: 'Add follow-up' }).click();
 
   await expect(page.locator('#taskList')).toContainText(
@@ -702,6 +774,7 @@ test('creates a follow-up task from the selected lead', async ({ page }) => {
 });
 
 test('shows and applies sales assistant recommendations', async ({ page }) => {
+  await openLeadBrief(page);
   await expect(page.locator('#leadBrief')).toContainText('Sales assistant');
   await expect(page.locator('#leadBrief')).toContainText('Convert interest into a decision path');
 
@@ -717,6 +790,7 @@ test('shows and applies sales assistant recommendations', async ({ page }) => {
 });
 
 test('opens a full lead detail workspace', async ({ page }) => {
+  await openLeadBrief(page);
   await page.locator('#leadBrief').getByRole('button', { name: 'Open details' }).click();
 
   const dialog = page.getByRole('dialog', { name: 'Northstar Roofing' });
@@ -729,6 +803,7 @@ test('opens a full lead detail workspace', async ({ page }) => {
 });
 
 test('runs lead detail quick actions', async ({ page }) => {
+  await openLeadBrief(page);
   await page.locator('#leadBrief').getByRole('button', { name: 'Open details' }).click();
   const dialog = page.getByRole('dialog', { name: 'Northstar Roofing' });
 
@@ -741,6 +816,7 @@ test('runs lead detail quick actions', async ({ page }) => {
 });
 
 test('logs manual notes in the lead detail workspace', async ({ page }) => {
+  await openLeadBrief(page);
   await page.locator('#leadBrief').getByRole('button', { name: 'Open details' }).click();
   const dialog = page.getByRole('dialog', { name: 'Northstar Roofing' });
 
@@ -763,6 +839,7 @@ test('filters tasks by today, upcoming, done, and all', async ({ page }) => {
   await expect(page.locator('#taskList')).not.toContainText('Call Maya before 3 PM');
 
   await navigateTo(page, 'Dashboard', 'pipeline');
+  await openLeadBrief(page);
   await page.locator('#leadBrief').getByRole('button', { name: 'Start sequence' }).click();
   await navigateTo(page, 'Tasks', 'tasks');
   await taskFilters.getByRole('button', { name: /Upcoming/ }).click();
@@ -1007,6 +1084,7 @@ test('duplicates and deletes selected tasks in bulk', async ({ page }) => {
 });
 
 test('starts an automated follow-up sequence for the selected lead', async ({ page }) => {
+  await openLeadBrief(page);
   await expect(page.locator('#leadBrief')).toContainText('Suggested sequence');
   await page.locator('#leadBrief').getByRole('button', { name: 'Start sequence' }).click();
 
@@ -1043,7 +1121,9 @@ test('imports leads from CSV', async ({ page }) => {
   await expect(page.getByRole('dialog', { name: 'Import leads' })).toContainText('Signal Labs');
   await page.getByRole('button', { name: 'Import 1 lead' }).click();
 
+  await openDashboardOverview(page);
   await expect(page.locator('#pipelineBoard').getByText('Signal Labs')).toBeVisible();
+  await openLeadBrief(page);
   await expect(page.locator('#leadBrief')).toContainText('Schedule demo');
   await expect(page.locator('#pipelineValue')).toContainText('$36,500');
 });
@@ -1281,6 +1361,7 @@ test('selects and opens leads from the contact list', async ({ page }) => {
 
   await harborRow.getByRole('button', { name: 'View' }).click();
   await expect(page).toHaveURL(/#pipeline/);
+  await openLeadBrief(page);
   await expect(page.locator('#leadBrief')).toContainText('Nia Brooks');
   await expect(page.locator('#leadBrief')).toContainText('Harbor Fitness');
 
@@ -1318,6 +1399,7 @@ test('manages a contact profile workspace from the contacts page', async ({ page
   await expect(profile).toBeHidden();
 
   await navigateTo(page, 'Dashboard', 'pipeline');
+  await openLeadBrief(page);
   await expect(page.locator('#leadBrief')).toContainText('Harbor Fitness');
   await expect(page.locator('#leadBrief')).toContainText('Confirm rollout date and billing owner.');
 });
@@ -1331,6 +1413,7 @@ test('creates follow-up tasks from the contact list', async ({ page }) => {
   await expect(page.locator('#taskList')).toContainText(
     'Review proposal pricing and implementation timeline. (Harbor Fitness)',
   );
+  await openLeadBrief(page);
   await expect(page.locator('#leadBrief')).toContainText('Nia Brooks');
   await expect(page.locator('#leadBrief')).toContainText('Follow-up task added.');
 });
@@ -1358,6 +1441,7 @@ test('creates follow-up tasks for selected contacts', async ({ page }) => {
   await expect(page.locator('#taskList')).toContainText(
     'Review proposal pricing and implementation timeline. (Harbor Fitness)',
   );
+  await openLeadBrief(page);
   await expect(page.locator('#leadBrief')).toContainText('Nia Brooks');
 
   await navigateTo(page, 'Contacts', 'contacts');
@@ -1420,6 +1504,7 @@ test('marks selected contacts won in bulk', async ({ page }) => {
   await expect(page.locator('[data-stage="won"]')).toContainText('Harbor Fitness');
   await expect(page.locator('#taskList')).toContainText('Send onboarding checklist to Summit Auto Detail');
   await expect(page.locator('#taskList')).toContainText('Send onboarding checklist to Harbor Fitness');
+  await openLeadBrief(page);
   await expect(page.locator('#leadBrief')).toContainText('Nia Brooks');
 
   await navigateTo(page, 'Contacts', 'contacts');
@@ -1442,6 +1527,7 @@ test('moves selected contacts to the next stage in bulk', async ({ page }) => {
   await expect(page.locator('[data-stage="proposal"]')).toContainText('Northstar Roofing');
   await expect(page.locator('#taskList')).toContainText('Follow up with Eli Ramirez after moving to Qualified');
   await expect(page.locator('#taskList')).toContainText('Follow up with Maya Johnson after moving to Proposal');
+  await openLeadBrief(page);
   await expect(page.locator('#leadBrief')).toContainText('Maya Johnson');
 
   await navigateTo(page, 'Contacts', 'contacts');
@@ -1456,6 +1542,7 @@ test('marks contacts won from the contact list', async ({ page }) => {
 
   await harborRow.getByRole('button', { name: 'Won' }).click();
 
+  await openLeadBrief(page);
   await expect(page.locator('#leadBrief')).toContainText('Nia Brooks');
   await expect(page.locator('#leadBrief')).toContainText('Won');
   await expect(page.locator('#leadBrief')).toContainText('Deal marked Won.');
@@ -1469,6 +1556,7 @@ test('moves leads forward from the contact list', async ({ page }) => {
 
   await summitRow.getByRole('button', { name: 'Next stage' }).click();
 
+  await openLeadBrief(page);
   await expect(page.locator('#leadBrief')).toContainText('Eli Ramirez');
   await expect(page.locator('#leadBrief')).toContainText('Qualified');
   await expect(page.locator('#leadBrief')).toContainText('Stage changed to Qualified.');
