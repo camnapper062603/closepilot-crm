@@ -2930,6 +2930,192 @@ button.insight-card:hover {
     width: 100%;
   }
 
+  .automation-row,
+  .task-item,
+  .activity-feed-item,
+  .automation-run-row,
+  .team-row,
+  .launch-check,
+  .audit-row,
+  .extension-grid article,
+  .calendar-appointment {
+    align-items: center;
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .automation-row,
+  .activity-feed-item,
+  .automation-run-row,
+  .extension-grid article {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .task-item {
+    grid-template-columns: 20px 20px minmax(0, 1fr) auto;
+  }
+
+  .contact-row {
+    align-items: center;
+    gap: 6px;
+    grid-template-columns: 18px minmax(60px, 1.35fr) minmax(36px, 0.72fr) minmax(36px, 0.62fr) 26px minmax(36px, 0.58fr);
+    padding: 8px;
+  }
+
+  .contact-row > * {
+    min-width: 0;
+  }
+
+  .contact-actions {
+    grid-column: 1 / -1;
+  }
+
+  .calendar-appointment {
+    grid-template-columns: minmax(72px, 0.52fr) minmax(0, 1fr);
+  }
+
+  .team-row,
+  .launch-check,
+  .audit-row,
+  .appointment-row {
+    align-items: center;
+    flex-direction: row;
+  }
+
+  .appointment-row {
+    gap: 8px;
+    justify-content: space-between;
+    padding: 8px;
+  }
+
+  .contact-row p,
+  .task-item p,
+  .automation-row p,
+  .activity-feed-item strong,
+  .team-row strong,
+  .extension-grid strong,
+  .launch-check strong,
+  .audit-row strong,
+  .calendar-appointment strong,
+  .appointment-row strong {
+    font-size: 0.72rem;
+    line-height: 1.18;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .contact-row span,
+  .task-item span,
+  .automation-row span,
+  .activity-feed-item span,
+  .activity-feed-item time,
+  .team-row span,
+  .extension-grid span,
+  .launch-check small,
+  .audit-row span,
+  .audit-row time,
+  .calendar-appointment span,
+  .calendar-appointment p,
+  .appointment-row span,
+  .appointment-row time {
+    font-size: 0.62rem;
+    line-height: 1.2;
+  }
+
+  .contact-select input,
+  .task-select input,
+  .task-item > input {
+    height: 14px;
+    width: 14px;
+  }
+
+  .contact-score,
+  .score-pill,
+  .count-pill,
+  .status-pill {
+    font-size: 0.58rem;
+    min-width: 24px;
+    padding: 3px 5px;
+  }
+
+  .contact-actions,
+  .task-actions,
+  .automation-template-actions {
+    align-items: center;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 3px;
+    justify-content: flex-end;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .contact-actions::-webkit-scrollbar,
+  .task-actions::-webkit-scrollbar,
+  .automation-template-actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .contact-actions button,
+  .task-actions button,
+  .activity-feed-item button,
+  .automation-row button,
+  .automation-template-actions button,
+  .extension-grid a.primary-button {
+    flex: 0 0 auto;
+    font-size: 0.58rem;
+    min-height: 26px;
+    padding: 2px 5px;
+    white-space: nowrap;
+    width: auto;
+  }
+
+  .automation-template-card {
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .automation-template-card > div:first-child {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .automation-template-card > div:first-child p {
+    grid-column: 1 / -1;
+  }
+
+  .automation-template-card ol {
+    gap: 4px;
+    padding-left: 16px;
+  }
+
+  .automation-template-card li {
+    font-size: 0.66rem;
+    line-height: 1.25;
+  }
+
+  .contact-profile-hero,
+  .detail-hero,
+  .dial-lead-hero {
+    align-items: center;
+    flex-direction: row;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .contact-profile-hero h3,
+  .detail-hero h3,
+  .dial-lead-hero h3 {
+    font-size: 0.95rem;
+  }
+
+  .contact-profile-hero > strong,
+  .detail-hero > strong,
+  .dial-lead-hero > strong {
+    font-size: 0.88rem;
+    white-space: nowrap;
+  }
+
   .extension-grid a.primary-button,
   .assistant-card .secondary-button,
   .note-form button,
@@ -2977,7 +3163,59 @@ button.insight-card:hover {
 
   .insight-list,
   .source-report-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .calendar-appointment {
+    align-items: center;
+  }
+
+  .contact-profile-hero,
+  .detail-hero,
+  .dial-lead-hero,
+  .appointment-row {
+    align-items: center;
+    flex-direction: row;
+  }
+
+  .detail-hero > strong {
+    white-space: nowrap;
+  }
+
+  .brief-actions,
+  .detail-actions,
+  .contact-profile-actions,
+  .automation-builder-actions,
+  .billing-actions,
+  .plan-options {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .brief-actions::-webkit-scrollbar,
+  .detail-actions::-webkit-scrollbar,
+  .contact-profile-actions::-webkit-scrollbar,
+  .automation-builder-actions::-webkit-scrollbar,
+  .billing-actions::-webkit-scrollbar,
+  .plan-options::-webkit-scrollbar {
+    display: none;
+  }
+
+  .brief-actions > *,
+  .detail-actions > *,
+  .contact-profile-actions > *,
+  .automation-builder-actions > *,
+  .billing-actions > *,
+  .plan-options > * {
+    flex: 0 0 auto;
+    font-size: 0.62rem;
+    min-height: 28px;
+    padding: 4px 7px;
+    white-space: nowrap;
+    width: auto;
   }
 
   h1 {
