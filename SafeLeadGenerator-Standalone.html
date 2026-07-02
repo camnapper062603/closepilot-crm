@@ -540,13 +540,37 @@
         }
 
         .metric-grid {
-          grid-template-columns: 1fr;
+          gap: 6px;
+          grid-template-columns: repeat(5, minmax(0, 1fr));
         }
 
         .cost-controls,
-        .cost-row,
-        .cost-summary {
+        .cost-row {
           grid-template-columns: 1fr;
+        }
+
+        .cost-summary {
+          gap: 6px;
+          grid-template-columns: repeat(6, minmax(0, 1fr));
+        }
+
+        .metric,
+        .cost-summary article {
+          min-width: 0;
+          overflow-wrap: anywhere;
+          padding: 8px;
+        }
+
+        .metric span,
+        .cost-summary span {
+          font-size: 0.58rem;
+          line-height: 1.2;
+        }
+
+        .metric strong,
+        .cost-summary strong {
+          font-size: 0.82rem;
+          line-height: 1.15;
         }
 
         .topbar,

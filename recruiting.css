@@ -494,6 +494,27 @@ textarea {
     font-size: 1.45rem;
   }
 
+  .metrics {
+    gap: 6px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .metrics article {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    padding: 8px;
+  }
+
+  .metrics span {
+    font-size: 0.62rem;
+    line-height: 1.2;
+  }
+
+  .metrics strong {
+    font-size: 0.98rem;
+    line-height: 1.15;
+  }
+
   .topbar,
   .panel-heading,
   .candidate-head,

@@ -2760,6 +2760,114 @@ button.insight-card:hover {
     width: 100%;
   }
 
+  .metrics,
+  .contact-summary,
+  .dial-summary,
+  .pipeline-health,
+  .task-summary,
+  .backup-summary,
+  .plan-summary,
+  .team-summary,
+  .contact-profile-stats {
+    gap: 6px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .source-report-grid,
+  .insight-list,
+  .dial-info-grid,
+  .detail-grid,
+  .goal-summary,
+  .brief-grid,
+  .automation-summary,
+  .forecast-summary,
+  .workspace-profile-summary {
+    gap: 6px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .forecast-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .metrics article,
+  .contact-summary article,
+  .dial-summary article,
+  .dial-info-grid article,
+  .pipeline-health article,
+  .task-summary article,
+  .backup-summary article,
+  .plan-summary article,
+  .team-summary article,
+  .workspace-profile-summary article,
+  .contact-profile-stats article,
+  .goal-summary article,
+  .forecast-summary article,
+  .brief-grid div,
+  .detail-grid article,
+  .source-card-main,
+  .source-card-meta,
+  .insight-card {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    padding: 8px;
+  }
+
+  .metrics span,
+  .contact-summary span,
+  .dial-summary span,
+  .dial-info-grid span,
+  .pipeline-health span,
+  .task-summary span,
+  .backup-summary span,
+  .plan-summary span,
+  .team-summary span,
+  .workspace-profile-summary span,
+  .contact-profile-stats span,
+  .goal-summary span,
+  .goal-summary small,
+  .source-card-main span,
+  .source-card-main small,
+  .source-card-meta span,
+  .insight-card span,
+  .insight-card p,
+  .brief-grid span,
+  .detail-grid span {
+    font-size: 0.62rem;
+    line-height: 1.2;
+  }
+
+  .metrics strong,
+  .contact-summary strong,
+  .dial-summary strong,
+  .dial-info-grid strong,
+  .pipeline-health strong,
+  .task-summary strong,
+  .backup-summary strong,
+  .plan-summary strong,
+  .team-summary strong,
+  .workspace-profile-summary strong,
+  .contact-profile-stats strong,
+  .goal-summary strong,
+  .forecast-summary strong,
+  .source-card-main strong,
+  .insight-card strong,
+  .brief-grid strong,
+  .detail-grid strong {
+    font-size: 0.86rem;
+    line-height: 1.15;
+  }
+
+  .metrics strong,
+  .source-card-main strong,
+  .insight-card b {
+    font-size: 0.98rem;
+  }
+
+  .insight-card {
+    min-height: 0;
+  }
+
   .subpage-nav button,
   .segmented-control button {
     min-height: 30px;
