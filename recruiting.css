@@ -454,14 +454,28 @@ textarea {
   }
 
   .subpage-nav {
+    align-items: center;
+    flex-direction: row;
     flex-wrap: nowrap;
+    gap: 3px;
+    justify-content: flex-start;
     max-width: 100%;
     overflow-x: auto;
+    padding: 3px;
+    scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
+  }
+
+  .subpage-nav::-webkit-scrollbar {
+    display: none;
   }
 
   .subpage-nav button {
     flex: 0 0 auto;
+    font-size: 0.78rem;
+    min-height: 30px;
+    padding: 0 9px;
+    white-space: nowrap;
   }
 }
 
@@ -511,6 +525,13 @@ textarea {
   .secondary-button {
     min-height: 42px;
     white-space: normal;
+  }
+
+  .subpage-nav button {
+    min-height: 30px;
+    padding: 0 9px;
+    white-space: nowrap;
+    width: auto;
   }
 
   .board-stats {

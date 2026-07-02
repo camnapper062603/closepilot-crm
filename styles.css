@@ -2525,15 +2525,29 @@ button.insight-card:hover {
   }
 
   .nav-links {
+    align-items: center;
     display: flex;
-    gap: 8px;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 6px;
     overflow-x: auto;
     padding-bottom: 2px;
+    scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
+  }
+
+  .nav-links::-webkit-scrollbar,
+  .subpage-nav::-webkit-scrollbar,
+  .segmented-control::-webkit-scrollbar {
+    display: none;
   }
 
   .nav-links a {
     flex: 0 0 auto;
+    font-size: 0.82rem;
+    min-height: 34px;
+    padding: 8px 10px;
+    white-space: nowrap;
   }
 
   .workspace-card {
@@ -2571,15 +2585,25 @@ button.insight-card:hover {
 
   .subpage-nav,
   .segmented-control {
+    align-items: center;
+    flex-direction: row;
     flex-wrap: nowrap;
+    gap: 3px;
+    justify-content: flex-start;
     max-width: 100%;
     overflow-x: auto;
+    padding: 3px;
+    scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
   }
 
   .subpage-nav button,
   .segmented-control button {
     flex: 0 0 auto;
+    font-size: 0.78rem;
+    min-height: 30px;
+    padding: 0 9px;
+    white-space: nowrap;
   }
 
   .contact-controls,
@@ -2734,6 +2758,14 @@ button.insight-card:hover {
     padding: 8px 12px;
     white-space: normal;
     width: 100%;
+  }
+
+  .subpage-nav button,
+  .segmented-control button {
+    min-height: 30px;
+    padding: 0 9px;
+    white-space: nowrap;
+    width: auto;
   }
 
   .goal-form,

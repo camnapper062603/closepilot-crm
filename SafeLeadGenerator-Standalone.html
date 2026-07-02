@@ -483,14 +483,28 @@
         }
 
         .tab-switcher {
+          align-items: center;
+          flex-direction: row;
           flex-wrap: nowrap;
+          gap: 3px;
+          justify-content: flex-start;
           max-width: 100%;
           overflow-x: auto;
+          padding: 3px;
+          scrollbar-width: none;
           -webkit-overflow-scrolling: touch;
+        }
+
+        .tab-switcher::-webkit-scrollbar {
+          display: none;
         }
 
         .tab-switcher button {
           flex: 0 0 auto;
+          font-size: 0.78rem;
+          min-height: 30px;
+          padding: 0 9px;
+          white-space: nowrap;
         }
 
         .cost-controls {
@@ -545,6 +559,13 @@
         .tab-switcher,
         .template-links {
           width: 100%;
+        }
+
+        .tab-switcher button {
+          min-height: 30px;
+          padding: 0 9px;
+          white-space: nowrap;
+          width: auto;
         }
 
         .actions > *,
