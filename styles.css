@@ -2495,6 +2495,14 @@ button.insight-card:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .forecast-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .forecast-row .secondary-button {
+    justify-self: stretch;
+  }
+
   .goal-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -2510,8 +2518,22 @@ button.insight-card:hover {
   }
 
   .sidebar {
+    gap: 16px;
     height: auto;
+    padding: 16px;
     position: static;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .nav-links a {
+    flex: 0 0 auto;
   }
 
   .workspace-card {
@@ -2527,6 +2549,49 @@ button.insight-card:hover {
 
   .panel-actions {
     justify-content: flex-start;
+  }
+
+  .topbar-actions,
+  .panel-actions,
+  .contact-actions,
+  .task-actions,
+  .brief-actions,
+  .detail-actions,
+  .contact-profile-actions,
+  .automation-builder-actions,
+  .automation-template-actions {
+    width: 100%;
+  }
+
+  .topbar-actions > *,
+  .panel-actions > *,
+  .search {
+    width: 100%;
+  }
+
+  .subpage-nav,
+  .segmented-control {
+    flex-wrap: nowrap;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .subpage-nav button,
+  .segmented-control button {
+    flex: 0 0 auto;
+  }
+
+  .contact-controls,
+  .activity-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .contact-controls > *,
+  .activity-actions > * {
+    margin-left: 0;
+    width: 100%;
   }
 
   .goal-form {
@@ -2553,8 +2618,24 @@ button.insight-card:hover {
   .task-summary,
   .plan-summary,
   .team-summary,
+  .workspace-profile-summary,
+  .source-report-grid,
+  .backup-summary,
+  .automation-summary,
+  .forecast-summary,
+  .contact-profile-stats,
   .right-rail {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .automation-step-grid,
+  .appointment-time-picker,
+  .task-edit-form {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .forecast-view {
+    min-width: 0;
   }
 
   .onboarding-panel {
@@ -2576,6 +2657,29 @@ button.insight-card:hover {
 }
 
 @media (max-width: 560px) {
+  .auth-panel {
+    padding: 14px;
+  }
+
+  .auth-card,
+  .panel,
+  .topbar,
+  .onboarding-panel {
+    padding: 14px;
+  }
+
+  .brand {
+    align-items: flex-start;
+  }
+
+  h1 {
+    font-size: 1.42rem;
+  }
+
+  h2 {
+    font-size: 1.12rem;
+  }
+
   .modal-backdrop {
     align-items: flex-start;
     overflow-y: auto;
@@ -2596,15 +2700,115 @@ button.insight-card:hover {
   .activity-feed-item,
   .detail-grid,
   .goal-summary,
+  .source-report-grid,
+  .insight-list,
+  .brief-grid,
+  .backup-summary,
+  .automation-summary,
+  .automation-actions,
+  .automation-step-grid,
+  .automation-run-row,
+  .forecast-summary,
+  .forecast-row,
+  .contact-profile-stats,
+  .contact-next-form,
   .import-preview-list article,
   .task-controls,
   .task-form,
   .task-edit-form,
+  .calendar-appointment,
+  .appointment-time-picker,
   .invite-form,
   .plan-summary,
   .team-summary,
+  .workspace-profile-summary,
   .auth-actions {
     grid-template-columns: 1fr;
+  }
+
+  .primary-button,
+  .secondary-button,
+  .danger-button,
+  .task-form button {
+    min-height: 42px;
+    padding: 8px 12px;
+    white-space: normal;
+    width: 100%;
+  }
+
+  .goal-form,
+  .onboarding-actions,
+  .billing-actions,
+  .plan-options,
+  .contact-profile-actions,
+  .detail-actions,
+  .brief-actions,
+  .automation-builder-actions,
+  .automation-template-actions {
+    flex-direction: column;
+  }
+
+  .goal-form label,
+  .goal-form input,
+  .onboarding-actions > *,
+  .billing-actions > *,
+  .plan-options > *,
+  .contact-profile-actions > *,
+  .detail-actions > *,
+  .brief-actions > *,
+  .automation-builder-actions > *,
+  .automation-template-actions > * {
+    width: 100%;
+  }
+
+  .team-row,
+  .extension-grid article,
+  .launch-check,
+  .audit-row,
+  .automation-row,
+  .activity-feed-item,
+  .task-item,
+  .contact-row {
+    align-items: stretch;
+    grid-template-columns: 1fr;
+  }
+
+  .contact-select,
+  .task-select {
+    justify-content: flex-start;
+  }
+
+  .contact-actions,
+  .task-actions {
+    justify-content: stretch;
+  }
+
+  .contact-actions button,
+  .task-actions button,
+  .activity-feed-item button,
+  .automation-row button {
+    width: 100%;
+  }
+
+  .extension-grid a.primary-button,
+  .assistant-card .secondary-button,
+  .note-form button,
+  .forecast-row .secondary-button {
+    justify-self: stretch;
+  }
+
+  .calendar-appointment {
+    align-items: start;
+  }
+
+  .schedule-grid {
+    grid-template-columns: 76px repeat(16, minmax(58px, 1fr));
+  }
+
+  .schedule-corner,
+  .schedule-day,
+  .schedule-hour {
+    padding: 0 6px;
   }
 
   .modal-actions {

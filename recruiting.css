@@ -452,9 +452,34 @@ textarea {
   .crm-panel {
     grid-column: auto;
   }
+
+  .subpage-nav {
+    flex-wrap: nowrap;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .subpage-nav button {
+    flex: 0 0 auto;
+  }
 }
 
 @media (max-width: 680px) {
+  .recruit-main {
+    gap: 14px;
+    padding: 14px;
+  }
+
+  .topbar,
+  .panel {
+    padding: 14px;
+  }
+
+  .topbar h1 {
+    font-size: 1.45rem;
+  }
+
   .topbar,
   .panel-heading,
   .candidate-head,
@@ -479,6 +504,22 @@ textarea {
   .panel-actions > *,
   .primary-button,
   .secondary-button {
+    width: 100%;
+  }
+
+  .primary-button,
+  .secondary-button {
+    min-height: 42px;
+    white-space: normal;
+  }
+
+  .board-stats {
+    justify-items: start;
+  }
+
+  .schedule-pill,
+  .mode-pill {
+    justify-content: center;
     width: 100%;
   }
 }

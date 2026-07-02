@@ -55,6 +55,12 @@
         min-height: 100vh;
       }
 
+      .sidebar,
+      .main,
+      .panel {
+        min-width: 0;
+      }
+
       body[data-lead-tab="costs"] .app {
         grid-template-columns: 1fr;
       }
@@ -475,9 +481,50 @@
         .metric-grid {
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }
+
+        .tab-switcher {
+          flex-wrap: nowrap;
+          max-width: 100%;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        .tab-switcher button {
+          flex: 0 0 auto;
+        }
+
+        .cost-controls {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .cost-row {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .cost-row > :first-child {
+          grid-column: 1 / -1;
+        }
+
+        .cost-summary {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
       }
 
       @media (max-width: 680px) {
+        .sidebar,
+        .main {
+          padding: 14px;
+        }
+
+        .panel,
+        .topbar {
+          padding: 14px;
+        }
+
+        h1 {
+          font-size: 1.38rem;
+        }
+
         .metric-grid {
           grid-template-columns: 1fr;
         }
@@ -490,8 +537,38 @@
 
         .topbar,
         .panel-header {
-          align-items: start;
+          align-items: stretch;
           display: grid;
+        }
+
+        .actions,
+        .tab-switcher,
+        .template-links {
+          width: 100%;
+        }
+
+        .actions > *,
+        .template-links button,
+        .template-links a,
+        .button {
+          flex: 1 1 100%;
+          min-height: 42px;
+          white-space: normal;
+          width: 100%;
+        }
+
+        .cost-row > :first-child {
+          grid-column: auto;
+        }
+
+        .cost-group-header {
+          align-items: stretch;
+          display: grid;
+        }
+
+        .cost-group-total,
+        .pill {
+          white-space: normal;
         }
       }
     </style>
