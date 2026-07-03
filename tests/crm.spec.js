@@ -171,9 +171,13 @@ test('opens primary sidebar items as separate app pages', async ({ page }) => {
   await expect(page.locator('#activity')).toBeVisible();
   await expect(page.locator('#tasks')).toBeHidden();
 
+  await navigateTo(page, 'Communications', 'communications');
+  await expect(page.locator('#communicationsPage')).toBeVisible();
+  await expect(page.locator('#activity')).toBeHidden();
+
   await navigateTo(page, 'Dial', 'dial');
   await expect(page.locator('#dial')).toBeVisible();
-  await expect(page.locator('#activity')).toBeHidden();
+  await expect(page.locator('#communicationsPage')).toBeHidden();
 
   await navigateTo(page, 'Calendar', 'calendar');
   await expect(page.locator('#calendar')).toBeVisible();
@@ -182,6 +186,73 @@ test('opens primary sidebar items as separate app pages', async ({ page }) => {
   await navigateTo(page, 'Admin', 'admin');
   await expect(page.locator('#saasAdmin')).toBeVisible();
   await expect(page.locator('#calendar')).toBeHidden();
+});
+
+test('runs the unified communications center', async ({ page }) => {
+  await navigateTo(page, 'Communications', 'communications');
+
+  await expect(page.locator('#communicationsPage')).toBeVisible();
+  await expect(page.locator('#conversationList').locator('.conversation-item')).toHaveCount(4);
+  await expect(page.locator('#communicationSearch')).toBeVisible();
+  await expect(page.locator('.communication-filters')).toContainText('Unread');
+  await expect(page.locator('.communication-filters')).toContainText('Calls');
+  await expect(page.locator('.communication-filters')).toContainText('Texts');
+  await expect(page.locator('.communication-filters')).toContainText('Emails');
+  await expect(page.locator('.communication-filters')).toContainText('Appointments');
+  await expect(page.locator('.communication-filters')).toContainText('Pinned');
+
+  await expect(page.locator('#conversationTimeline')).toContainText('Incoming Text');
+  await expect(page.locator('#conversationTimeline')).toContainText('Outgoing Text');
+  await expect(page.locator('#conversationTimeline')).toContainText('Call Log');
+  await expect(page.locator('#conversationTimeline')).toContainText('Voicemail');
+  await expect(page.locator('#conversationTimeline')).toContainText('Email');
+  await expect(page.locator('#conversationTimeline')).toContainText('Appointment');
+  await expect(page.locator('#conversationTimeline')).toContainText('System Notes');
+
+  await expect(page.locator('#messageComposer')).toContainText('Text');
+  await expect(page.locator('#messageComposer')).toContainText('Email');
+  await expect(page.locator('#messageComposer')).toContainText('Internal Note');
+  await expect(page.locator('#messageComposer')).toContainText('Emoji picker');
+  await expect(page.locator('#messageComposer')).toContainText('Templates');
+  await expect(page.locator('#messageComposer')).toContainText('Quick replies');
+  await expect(page.getByRole('button', { name: 'Schedule message' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Save draft' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Attachments' })).toBeVisible();
+
+  await expect(page.locator('#callControls')).toContainText('Call Timer');
+  await expect(page.locator('#callControls')).toContainText('Mute');
+  await expect(page.locator('#callControls')).toContainText('Speaker');
+  await expect(page.locator('#callControls')).toContainText('Hold');
+  await expect(page.locator('#callControls')).toContainText('Transfer');
+  await expect(page.locator('#callControls')).toContainText('Record');
+  await expect(page.locator('#callControls')).toContainText('End Call');
+
+  await expect(page.locator('#customerSidebar')).toContainText('Customer Information');
+  await expect(page.locator('#customerSidebar')).toContainText('Lead Score');
+  await expect(page.locator('#customerSidebar')).toContainText('Open Full Profile');
+  await expect(page.locator('#aiAssistantPanel')).toContainText('Suggested Reply');
+  await expect(page.locator('#aiAssistantPanel')).toContainText('Suggested Next Step');
+  await expect(page.locator('#aiAssistantPanel')).toContainText('Objection Handling Tips');
+  await expect(page.locator('#aiAssistantPanel')).toContainText('Recommended Questions');
+  await expect(page.locator('#aiAssistantPanel')).toContainText('Sentiment Analysis');
+  await expect(page.locator('#quickActionsPanel')).toContainText('Schedule Estimate');
+  await expect(page.locator('#quickActionsPanel')).toContainText('Collect Deposit');
+  await expect(page.locator('#communicationNotificationFeed')).toContainText('Incoming message');
+  await expect(page.locator('#communicationNotificationFeed')).toContainText('Missed call');
+  await expect(page.locator('#communicationNotificationFeed')).toContainText('New voicemail');
+  await expect(page.locator('#communicationNotificationFeed')).toContainText('Appointment reminder');
+
+  await page.locator('#communicationComposerInput').fill('This is a unified inbox test text.');
+  await page.getByRole('button', { name: 'Send Text' }).click();
+  await expect(page.locator('#conversationTimeline')).toContainText('This is a unified inbox test text.');
+  await expect(page.locator('#communicationsStatus')).toContainText('sent');
+  await expect(page.locator('#communicationToastRegion')).toContainText('Outgoing Text sent');
+
+  await page.locator('#communicationCallButton').click();
+  await expect(page.locator('#communicationsStatus')).toContainText('Calling');
+  await expect(page.locator('#communicationEndCallButton')).toBeEnabled();
+  await page.locator('#communicationEndCallButton').click();
+  await expect(page.locator('#conversationTimeline')).toContainText('Call completed');
 });
 
 test('opens section subpages inside CRM tabs', async ({ page }) => {

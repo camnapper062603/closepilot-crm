@@ -1944,6 +1944,599 @@ button.insight-card:hover {
   min-height: 1.25rem;
 }
 
+.communications-page {
+  display: grid;
+  gap: 12px;
+}
+
+.communications-shell {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(260px, 0.72fr) minmax(420px, 1.45fr) minmax(280px, 0.82fr);
+  min-height: min(76vh, 860px);
+}
+
+.communications-column {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.conversation-list-column,
+.customer-info-column {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.conversation-list-column {
+  align-content: start;
+}
+
+.conversation-window-column {
+  display: grid;
+  grid-template-rows: auto auto minmax(260px, 1fr) auto;
+}
+
+.communications-column-heading,
+.conversation-window-header,
+.conversation-timeline-heading {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.conversation-window-header {
+  border-bottom: 1px solid var(--line);
+  padding: 16px;
+}
+
+.conversation-window-header span,
+.communications-column-heading span,
+.conversation-timeline-heading span,
+.conversation-preview small,
+.conversation-preview em,
+.customer-detail-grid span,
+.ai-assistant-grid span,
+.communication-notification-feed span,
+.composer-tool span,
+.composer-status,
+.communications-status {
+  color: var(--muted);
+}
+
+.conversation-header-meta {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.communication-search,
+.composer-input-label {
+  color: var(--muted);
+  display: grid;
+  font-size: 0.82rem;
+  font-weight: 800;
+  gap: 6px;
+}
+
+.communication-search input,
+.composer-input-label textarea,
+.composer-tool select {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  font: inherit;
+  min-height: 40px;
+  padding: 10px;
+}
+
+.communication-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.communication-filters button,
+.composer-tabs button,
+.quick-replies button,
+.emoji-picker button,
+.call-control-grid button {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--navy);
+  font-size: 0.78rem;
+  font-weight: 850;
+  min-height: 32px;
+  padding: 0 10px;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.communication-filters button.active,
+.composer-tabs button.active,
+.call-control-grid button.active {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: #ffffff;
+}
+
+.communication-filters button:hover,
+.composer-tabs button:hover,
+.quick-replies button:hover,
+.emoji-picker button:hover,
+.call-control-grid button:hover {
+  border-color: var(--navy);
+  box-shadow: 0 8px 18px var(--ring);
+  transform: translateY(-1px);
+}
+
+.conversation-list {
+  display: grid;
+  gap: 8px;
+  max-height: calc(76vh - 168px);
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.conversation-item {
+  align-items: start;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: inherit;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  padding: 10px;
+  text-align: left;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+  width: 100%;
+}
+
+.conversation-item.active,
+.conversation-item:hover {
+  background: #f4f8ff;
+  border-color: rgba(11, 47, 99, 0.28);
+  box-shadow: 0 12px 28px rgba(11, 47, 99, 0.1);
+  transform: translateY(-1px);
+}
+
+.conversation-avatar,
+.customer-photo {
+  align-items: center;
+  background: var(--black);
+  border-radius: 50%;
+  color: #ffffff;
+  display: inline-flex;
+  font-weight: 900;
+  justify-content: center;
+}
+
+.conversation-avatar {
+  height: 42px;
+  width: 42px;
+}
+
+.conversation-preview {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.conversation-preview > span {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.conversation-preview strong,
+.conversation-preview em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conversation-preview em {
+  display: block;
+  font-style: normal;
+}
+
+.conversation-preview time {
+  color: var(--muted);
+  flex: 0 0 auto;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.conversation-meta {
+  align-items: end;
+  display: grid;
+  gap: 5px;
+  justify-items: end;
+}
+
+.unread-badge,
+.pin-badge,
+.stage-pill,
+.customer-tags span {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.68rem;
+  font-weight: 900;
+  padding: 4px 7px;
+  white-space: nowrap;
+}
+
+.unread-badge {
+  background: #0f7a4f;
+  color: #ffffff;
+}
+
+.pin-badge,
+.customer-tags span {
+  background: #eef4ff;
+  color: var(--navy);
+}
+
+.stage-dot {
+  border-radius: 50%;
+  display: inline-block;
+  height: 10px;
+  width: 10px;
+}
+
+.stage-pill {
+  background: #eef4ff;
+  color: var(--navy);
+}
+
+.stage-new {
+  background: #5f8edb;
+}
+
+.stage-qualified {
+  background: #0f7a4f;
+}
+
+.stage-proposal {
+  background: #a16207;
+}
+
+.stage-won {
+  background: #111827;
+}
+
+.stage-pill.stage-new,
+.stage-pill.stage-qualified,
+.stage-pill.stage-proposal,
+.stage-pill.stage-won {
+  color: #ffffff;
+}
+
+.call-controls {
+  background: #f8fafc;
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(180px, 0.65fr) minmax(0, 1fr);
+  padding: 14px 16px;
+}
+
+.call-primary {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+}
+
+.call-primary span,
+.call-primary strong {
+  display: block;
+}
+
+.call-primary span {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.call-primary strong {
+  font-size: 1.25rem;
+}
+
+.call-button {
+  background: var(--navy);
+  border: 0;
+  border-radius: 50%;
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 900;
+  height: 76px;
+  width: 76px;
+}
+
+.call-control-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.call-control-grid button {
+  min-height: 42px;
+}
+
+.call-control-grid button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
+
+.end-call-button {
+  background: #b42318 !important;
+  border-color: #b42318 !important;
+  color: #ffffff !important;
+}
+
+.conversation-timeline {
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  display: grid;
+  gap: 12px;
+  overflow: auto;
+  padding: 16px;
+}
+
+.message-thread {
+  display: grid;
+  gap: 10px;
+}
+
+.message-bubble {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  max-width: min(86%, 680px);
+  padding: 12px;
+}
+
+.message-bubble.incoming {
+  background: #ffffff;
+  justify-self: start;
+}
+
+.message-bubble.outgoing {
+  background: #eef4ff;
+  border-color: rgba(11, 47, 99, 0.18);
+  justify-self: end;
+}
+
+.message-bubble.system {
+  background: #f8fafc;
+  justify-self: center;
+  max-width: min(92%, 760px);
+}
+
+.message-bubble-header,
+.message-bubble-footer {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.message-bubble-header span {
+  color: var(--navy);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.message-bubble-header time,
+.message-bubble-footer span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.message-bubble p {
+  margin-bottom: 0;
+}
+
+.message-composer {
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 12px;
+  padding: 14px 16px;
+}
+
+.composer-tabs,
+.composer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.composer-tool-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(120px, 0.48fr) minmax(160px, 0.55fr) minmax(0, 1fr);
+}
+
+.composer-tool {
+  align-content: start;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+}
+
+.composer-tool span,
+.composer-tool label {
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.emoji-picker,
+.quick-replies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.customer-info-column {
+  max-height: min(76vh, 860px);
+  overflow: auto;
+}
+
+.customer-sidebar,
+.ai-assistant-panel,
+.quick-actions-panel,
+.communication-notifications {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+}
+
+.customer-profile-card {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.customer-photo {
+  height: 54px;
+  width: 54px;
+}
+
+.customer-profile-card strong,
+.customer-profile-card span,
+.customer-detail-grid strong,
+.customer-detail-grid span {
+  display: block;
+}
+
+.customer-detail-grid,
+.ai-assistant-grid,
+.quick-action-grid,
+.communication-notification-feed {
+  display: grid;
+  gap: 8px;
+}
+
+.customer-detail-grid article,
+.ai-assistant-grid article,
+.communication-notification-feed article {
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+}
+
+.customer-detail-grid span,
+.ai-assistant-grid span,
+.communication-notification-feed span {
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.ai-assistant-grid p,
+.ai-assistant-grid ul {
+  margin: 0;
+}
+
+.ai-assistant-grid ul {
+  padding-left: 18px;
+}
+
+.customer-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.quick-action-grid {
+  grid-template-columns: 1fr;
+}
+
+.communication-notification-feed article {
+  animation: dashboard-rise 220ms ease both;
+}
+
+.communications-status {
+  font-size: 0.9rem;
+  font-weight: 800;
+  min-height: 1.25rem;
+}
+
+.toast-region {
+  bottom: 18px;
+  display: grid;
+  gap: 8px;
+  max-width: min(360px, calc(100vw - 32px));
+  position: fixed;
+  right: 18px;
+  z-index: 40;
+}
+
+.communication-toast {
+  animation: toast-enter 180ms ease both;
+  background: var(--black);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  box-shadow: var(--shadow-soft);
+  color: #ffffff;
+  display: grid;
+  gap: 3px;
+  padding: 12px 14px;
+}
+
+.communication-toast span {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.82rem;
+}
+
+.communication-toast.leaving {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+@keyframes toast-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .dial-grid {
   display: grid;
   gap: 18px;
@@ -3655,6 +4248,14 @@ button.insight-card:hover {
   .lead-intelligence-panel,
   .score-breakdown li,
   .flow-score-breakdown li,
+  .communications-column,
+  .conversation-item,
+  .message-bubble.incoming,
+  .message-composer,
+  .customer-sidebar,
+  .ai-assistant-panel,
+  .quick-actions-panel,
+  .communication-notifications,
   .contact-summary article,
   .task-summary article,
   .pipeline-health article,
@@ -3671,12 +4272,40 @@ button.insight-card:hover {
 
   .subpage-nav button,
   .search input,
+  .communication-search input,
+  .composer-input-label textarea,
+  .composer-tool select,
+  .communication-filters button,
+  .composer-tabs button,
+  .quick-replies button,
+  .emoji-picker button,
+  .call-control-grid button,
   .deal-card,
   .schedule-cell,
   .flow-talking-points,
   .flow-savings-message {
     background: var(--surface);
     color: var(--ink);
+  }
+
+  .conversation-item.active,
+  .conversation-item:hover,
+  .call-controls,
+  .conversation-timeline,
+  .message-bubble.system,
+  .customer-detail-grid article,
+  .ai-assistant-grid article,
+  .communication-notification-feed article,
+  .composer-tool {
+    background: var(--soft);
+  }
+
+  .message-bubble.outgoing,
+  .pin-badge,
+  .customer-tags span,
+  .stage-pill {
+    background: rgba(95, 142, 219, 0.16);
+    color: #a9c8ff;
   }
 
   .follow-up-reasons span,
@@ -3770,6 +4399,7 @@ button.insight-card:hover {
   .workspace-grid,
   .lower-grid,
   .dial-grid,
+  .communications-shell,
   .saas-grid {
     grid-template-columns: 1fr;
   }
@@ -3825,6 +4455,25 @@ button.insight-card:hover {
   }
 
   .flow-action-buttons {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .conversation-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-height: none;
+    overflow: visible;
+  }
+
+  .customer-info-column {
+    max-height: none;
+  }
+
+  .call-controls,
+  .composer-tool-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .call-control-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
@@ -3889,6 +4538,7 @@ button.insight-card:hover {
   .brief-actions,
   .detail-actions,
   .contact-profile-actions,
+  .composer-actions,
   .automation-builder-actions,
   .automation-template-actions {
     width: 100%;
@@ -3953,6 +4603,8 @@ button.insight-card:hover {
 
   .metrics,
   .contact-summary,
+  .customer-detail-grid,
+  .ai-assistant-grid,
   .dial-summary,
   .dial-info-grid,
   .pipeline-health,
@@ -3973,6 +4625,7 @@ button.insight-card:hover {
 
   .automation-step-grid,
   .appointment-time-picker,
+  .call-control-grid,
   .task-edit-form {
     grid-template-columns: 1fr 1fr;
   }
@@ -4003,8 +4656,17 @@ button.insight-card:hover {
   .dashboard-follow-up-card,
   .time-saved-widget,
   .dashboard-section,
-  .flow-mode-panel {
+  .flow-mode-panel,
+  .communications-column {
     padding: 16px;
+  }
+
+  .conversation-window-column {
+    padding: 0;
+  }
+
+  .conversation-list {
+    grid-template-columns: 1fr;
   }
 
   .section-heading {
@@ -4052,6 +4714,8 @@ button.insight-card:hover {
 
   .metrics,
   .contact-summary,
+  .customer-detail-grid,
+  .ai-assistant-grid,
   .dial-summary,
   .dial-info-grid,
   .pipeline-health,
@@ -4219,13 +4883,34 @@ button.insight-card:hover {
   .flow-progress-stats,
   .flow-results,
   .flow-lead-grid,
-  .flow-action-buttons {
+  .flow-action-buttons,
+  .call-control-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .flow-step-card,
   .flow-mode-header {
     grid-template-columns: 1fr;
+  }
+
+  .message-bubble,
+  .message-bubble.system {
+    max-width: 100%;
+  }
+
+  .conversation-window-header,
+  .call-primary,
+  .message-bubble-header,
+  .message-bubble-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .toast-region {
+    bottom: 12px;
+    left: 12px;
+    max-width: calc(100vw - 24px);
+    right: 12px;
   }
 
   .forecast-row {
@@ -4253,6 +4938,12 @@ button.insight-card:hover {
   .follow-up-item,
   .follow-up-queue-summary article,
   .follow-up-item-grid article,
+  .conversation-item,
+  .message-bubble,
+  .customer-detail-grid article,
+  .ai-assistant-grid article,
+  .communication-notification-feed article,
+  .composer-tool,
   .suggested-message,
   .flow-progress-stats article,
   .flow-results article,
@@ -4292,6 +4983,11 @@ button.insight-card:hover {
   .source-card-meta span,
   .insight-card span,
   .insight-card p,
+  .conversation-preview small,
+  .conversation-preview em,
+  .message-bubble-footer span,
+  .customer-detail-grid span,
+  .ai-assistant-grid span,
   .follow-up-queue-summary span,
   .follow-up-item-grid span,
   .suggested-message span,

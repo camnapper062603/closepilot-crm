@@ -284,6 +284,19 @@ let selectedContactIds = new Set();
 let selectedTaskIds = new Set();
 let activePage = "pipeline";
 let editingAutomationTemplateId = null;
+let selectedConversationId = null;
+let communicationFilter = "recent";
+let communicationComposerMode = "text";
+let communicationDrafts = {};
+let communicationCallTimer = null;
+let communicationCallState = {
+  active: false,
+  leadId: null,
+  startedAt: null,
+  muted: false,
+  speaker: false,
+  hold: false,
+};
 
 const formatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -340,6 +353,20 @@ const exportSourceReportButton = document.querySelector("#exportSourceReport");
 const followUpQueueSummary = document.querySelector("#followUpQueueSummary");
 const followUpQueueList = document.querySelector("#followUpQueueList");
 const followUpQueueMessage = document.querySelector("#followUpQueueMessage");
+const communicationsPage = document.querySelector("#communicationsPage");
+const conversationCount = document.querySelector("#conversationCount");
+const communicationSearchInput = document.querySelector("#communicationSearch");
+const conversationList = document.querySelector("#conversationList");
+const conversationWindowHeader = document.querySelector("#conversationWindowHeader");
+const callControls = document.querySelector("#callControls");
+const conversationTimeline = document.querySelector("#conversationTimeline");
+const messageComposer = document.querySelector("#messageComposer");
+const customerSidebar = document.querySelector("#customerSidebar");
+const aiAssistantPanel = document.querySelector("#aiAssistantPanel");
+const quickActionsPanel = document.querySelector("#quickActionsPanel");
+const communicationNotificationFeed = document.querySelector("#communicationNotificationFeed");
+const communicationsStatus = document.querySelector("#communicationsStatus");
+const communicationToastRegion = document.querySelector("#communicationToastRegion");
 const leadBrief = document.querySelector("#leadBrief");
 const contactTable = document.querySelector("#contactTable");
 const contactsPanel = document.querySelector("#contacts");
@@ -483,6 +510,7 @@ const pageTitles = {
   automation: "Automation",
   tasks: "Tasks",
   activity: "Activity",
+  communications: "Communications",
   dial: "Dial floor",
   calendar: "Calendar",
   admin: "Workspace admin",
@@ -682,6 +710,15 @@ document.querySelectorAll("[data-contact-filter]").forEach((button) => {
 contactSortInput.addEventListener("change", () => {
   contactSort = contactSortInput.value;
   renderContacts();
+});
+
+communicationSearchInput.addEventListener("input", renderCommunicationsPage);
+
+document.querySelectorAll("[data-communication-filter]").forEach((button) => {
+  button.addEventListener("click", () => {
+    communicationFilter = button.dataset.communicationFilter;
+    renderCommunicationsPage();
+  });
 });
 
 document.querySelectorAll("[data-plan-choice]").forEach((button) => {
@@ -943,6 +980,7 @@ function render() {
   renderAutomations();
   renderActivityFeed();
   renderContacts();
+  renderCommunicationsPage();
   renderDialWorkspace();
   renderCalendar();
   renderTasks();
@@ -4094,6 +4132,1038 @@ function renderContactSummary(leads) {
   `;
 }
 
+const communicationMessageTypeLabels = {
+  "incoming-text": "Incoming Text",
+  "outgoing-text": "Outgoing Text",
+  "call-log": "Call Log",
+  voicemail: "Voicemail",
+  email: "Email",
+  appointment: "Appointment",
+  "system-note": "System Notes",
+};
+
+const communicationComposerTabs = [
+  { id: "text", label: "Text" },
+  { id: "email", label: "Email" },
+  { id: "note", label: "Internal Note" },
+];
+
+const communicationTemplates = {
+  text: [
+    "Quick estimate check-in",
+    "Appointment confirmation",
+    "Missed call follow-up",
+  ],
+  email: [
+    "Estimate recap email",
+    "Project scope summary",
+    "Deposit request email",
+  ],
+  note: [
+    "Objection summary",
+    "Decision maker note",
+    "Follow-up context",
+  ],
+};
+
+const communicationTemplateCopy = {
+  "Quick estimate check-in": "Hi {{name}}, wanted to check in on the estimate for {{projectType}}. Any questions I can clear up today?",
+  "Appointment confirmation": "Hi {{name}}, confirming your estimate appointment. Does the current time still work for you?",
+  "Missed call follow-up": "Hi {{name}}, sorry I missed you. I can help with {{projectType}} when you have a minute.",
+  "Estimate recap email": "Hi {{name}},\n\nHere is a quick recap for {{projectType}} at {{address}}. The projected value is {{value}} and the next step is {{nextAction}}.\n\nBest,\nCameron",
+  "Project scope summary": "Hi {{name}},\n\nI captured the project scope, timeline, and next steps for {{projectType}}. Reply with anything you want adjusted before we move forward.",
+  "Deposit request email": "Hi {{name}},\n\nTo reserve the project window, you can place the deposit today. I can resend the secure payment link if helpful.",
+  "Objection summary": "{{name}} raised questions about pricing, timing, and project scope. Next best move: {{nextAction}}",
+  "Decision maker note": "{{name}} appears to be the primary contact. Confirm if anyone else needs to approve the project.",
+  "Follow-up context": "Follow-up should reference {{projectType}}, the quoted value of {{value}}, and the current stage: {{stage}}.",
+};
+
+const communicationQuickReplies = [
+  "Can I call you now?",
+  "Want me to resend the quote?",
+  "What time works best today?",
+  "I can get that scheduled.",
+];
+
+function renderCommunicationsPage() {
+  if (!communicationsPage) return;
+
+  const conversations = communicationConversations();
+  const filtered = filteredCommunicationConversations(conversations);
+  if (!selectedConversationId || !conversations.some((conversation) => conversation.id === selectedConversationId)) {
+    selectedConversationId = filtered[0]?.id || conversations[0]?.id || null;
+  }
+  const selected =
+    conversations.find((conversation) => conversation.id === selectedConversationId) ||
+    filtered[0] ||
+    conversations[0] ||
+    null;
+
+  if (selected) selectedConversationId = selected.id;
+
+  renderConversationList(filtered);
+  renderConversationWindow(selected);
+  renderCustomerSidebar(selected);
+  renderAIAssistantPanel(selected);
+  renderQuickActionsPanel(selected);
+  renderCommunicationNotifications(selected);
+
+  document.querySelectorAll("[data-communication-filter]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.communicationFilter === communicationFilter);
+  });
+}
+
+function communicationConversations() {
+  const savedMessages = communicationMessageState();
+  return state.leads
+    .map((lead, index) => {
+      const profile = communicationCustomerProfile(lead, index);
+      const messages = [
+        ...defaultCommunicationMessages(lead, profile, index),
+        ...(savedMessages[lead.id] || []).map(normalizedCommunicationMessage),
+      ].sort((left, right) => new Date(left.createdAt) - new Date(right.createdAt));
+      const lastMessage = messages[messages.length - 1];
+      const unreadCount = messages.filter((message) => !message.read && message.direction === "incoming").length;
+      const intelligence = calculateLeadIntelligence(lead);
+      return {
+        id: lead.id,
+        lead,
+        profile,
+        messages,
+        lastMessage,
+        unreadCount,
+        intelligence,
+        pinned: ["lead-1", "lead-3"].includes(lead.id) || lead.score >= 88,
+      };
+    })
+    .sort((left, right) => {
+      if (left.pinned !== right.pinned) return left.pinned ? -1 : 1;
+      return new Date(right.lastMessage?.createdAt || 0) - new Date(left.lastMessage?.createdAt || 0);
+    });
+}
+
+function filteredCommunicationConversations(conversations) {
+  const query = communicationSearchInput.value.trim().toLowerCase();
+  return conversations.filter((conversation) => {
+    const searchable = [
+      conversation.lead.name,
+      conversation.lead.company,
+      conversation.profile.phone,
+      conversation.profile.email,
+      conversation.profile.address,
+      conversation.lastMessage?.body,
+    ]
+      .join(" ")
+      .toLowerCase();
+    const matchesSearch = !query || searchable.includes(query);
+    if (!matchesSearch) return false;
+    if (communicationFilter === "unread") return conversation.unreadCount > 0;
+    if (communicationFilter === "calls") return conversation.messages.some((message) => ["call-log", "voicemail"].includes(message.type));
+    if (communicationFilter === "texts") return conversation.messages.some((message) => ["incoming-text", "outgoing-text"].includes(message.type));
+    if (communicationFilter === "emails") return conversation.messages.some((message) => message.type === "email");
+    if (communicationFilter === "appointments") return conversation.messages.some((message) => message.type === "appointment");
+    if (communicationFilter === "pinned") return conversation.pinned;
+    return true;
+  });
+}
+
+function renderConversationList(conversations) {
+  conversationCount.textContent = `${conversations.length} shown`;
+  if (!conversations.length) {
+    conversationList.innerHTML = "<p class=\"empty-state\">No conversations match this view.</p>";
+    return;
+  }
+
+  conversationList.innerHTML = conversations
+    .map((conversation) => {
+      const lastMessage = conversation.lastMessage;
+      const typeLabel = lastMessage ? communicationMessageTypeLabels[lastMessage.type] : "No messages";
+      return `
+        <button class="conversation-item ${conversation.id === selectedConversationId ? "active" : ""}" data-conversation-id="${conversation.id}" type="button">
+          <span class="conversation-avatar">${escapeHtml(initialsForName(conversation.lead.name))}</span>
+          <span class="conversation-preview">
+            <span>
+              <strong>${escapeHtml(conversation.lead.name)}</strong>
+              <time>${lastMessage ? formatConversationTime(lastMessage.createdAt) : "New"}</time>
+            </span>
+            <small>${escapeHtml(conversation.lead.company)}</small>
+            <em>${escapeHtml(typeLabel)} · ${escapeHtml(lastMessage?.body || "Start the conversation.")}</em>
+          </span>
+          <span class="conversation-meta">
+            ${conversation.unreadCount ? `<b class="unread-badge">${conversation.unreadCount}</b>` : ""}
+            <span class="stage-dot stage-${conversation.lead.stage}" aria-label="${escapeHtml(stageLabel(conversation.lead.stage))} stage"></span>
+            ${conversation.pinned ? "<span class=\"pin-badge\">Pinned</span>" : ""}
+          </span>
+        </button>
+      `;
+    })
+    .join("");
+
+  conversationList.querySelectorAll("[data-conversation-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      selectedConversationId = button.dataset.conversationId;
+      renderCommunicationsPage();
+    });
+  });
+}
+
+function renderConversationWindow(conversation) {
+  if (!conversation) {
+    conversationWindowHeader.innerHTML = `
+      <div>
+        <p class="eyebrow">Conversation window</p>
+        <h2>Conversation Timeline</h2>
+        <span>No customer selected.</span>
+      </div>
+    `;
+    callControls.innerHTML = "";
+    conversationTimeline.innerHTML = "<p class=\"empty-state\">Add leads to start communicating from one place.</p>";
+    messageComposer.innerHTML = "";
+    return;
+  }
+
+  conversationWindowHeader.innerHTML = `
+    <div>
+      <p class="eyebrow">Conversation window</p>
+      <h2>${escapeHtml(conversation.lead.name)}</h2>
+      <span>${escapeHtml(conversation.profile.phone)} · ${escapeHtml(conversation.profile.email)}</span>
+    </div>
+    <div class="conversation-header-meta">
+      ${leadIntelligenceBadge(conversation.lead, "conversation-score")}
+      <span class="stage-pill stage-${conversation.lead.stage}">${escapeHtml(stageLabel(conversation.lead.stage))}</span>
+    </div>
+  `;
+
+  renderCallControls(conversation);
+  renderConversationTimeline(conversation);
+  renderMessageComposer(conversation);
+}
+
+function renderConversationTimeline(conversation) {
+  conversationTimeline.innerHTML = `
+    <div class="conversation-timeline-heading">
+      <div>
+        <p class="eyebrow">History</p>
+        <h3>Conversation Timeline</h3>
+      </div>
+      <span>${conversation.messages.length} events</span>
+    </div>
+    <div class="message-thread">
+      ${conversation.messages.map(renderConversationMessage).join("")}
+    </div>
+  `;
+}
+
+function renderConversationMessage(message) {
+  const attachments = normalizedMessageAttachments(message.attachments);
+  return `
+    <article class="message-bubble ${message.type} ${message.direction || "system"}">
+      <div class="message-bubble-header">
+        <span>${escapeHtml(communicationMessageTypeLabels[message.type] || "Message")}</span>
+        <time>${formatActivityDate(message.createdAt)}</time>
+      </div>
+      <p>${escapeHtml(message.body)}</p>
+      <div class="message-bubble-footer">
+        <span>Status: ${escapeHtml(message.status || "Logged")}</span>
+        <span>${message.read ? "Read" : "Unread"}</span>
+        ${attachments.length ? `<span>Attachments: ${attachments.map(escapeHtml).join(", ")}</span>` : "<span>Attachments: none</span>"}
+      </div>
+    </article>
+  `;
+}
+
+function renderMessageComposer(conversation) {
+  const draft = communicationDraftValue(conversation.lead.id, communicationComposerMode);
+  const templates = communicationTemplates[communicationComposerMode] || [];
+  const sendLabel =
+    communicationComposerMode === "email"
+      ? "Send Email"
+      : communicationComposerMode === "note"
+        ? "Save Internal Note"
+        : "Send Text";
+
+  messageComposer.innerHTML = `
+    <div class="composer-tabs" role="tablist" aria-label="Composer type">
+      ${communicationComposerTabs
+        .map(
+          (tab) => `
+            <button class="${tab.id === communicationComposerMode ? "active" : ""}" data-composer-mode="${tab.id}" type="button">
+              ${escapeHtml(tab.label)}
+            </button>
+          `,
+        )
+        .join("")}
+    </div>
+    <label class="composer-input-label">
+      ${escapeHtml(communicationComposerTabs.find((tab) => tab.id === communicationComposerMode)?.label || "Message")}
+      <textarea id="communicationComposerInput" rows="4" placeholder="Write a message, email, or internal note">${escapeHtml(draft)}</textarea>
+    </label>
+    <div class="composer-tool-grid">
+      <div class="composer-tool">
+        <span>Emoji picker</span>
+        <div class="emoji-picker" aria-label="Emoji picker">
+          <button data-communication-emoji="👍" type="button">👍</button>
+          <button data-communication-emoji="😊" type="button">😊</button>
+          <button data-communication-emoji="✅" type="button">✅</button>
+        </div>
+      </div>
+      <label class="composer-tool">
+        Templates
+        <select id="communicationTemplateSelect">
+          <option value="">Choose template</option>
+          ${templates.map((template) => `<option value="${escapeHtml(template)}">${escapeHtml(template)}</option>`).join("")}
+        </select>
+      </label>
+      <div class="composer-tool">
+        <span>Quick replies</span>
+        <div class="quick-replies">
+          ${communicationQuickReplies
+            .map((reply) => `<button data-quick-reply="${escapeHtml(reply)}" type="button">${escapeHtml(reply)}</button>`)
+            .join("")}
+        </div>
+      </div>
+    </div>
+    <div class="composer-actions">
+      <button class="secondary-button" data-composer-action="attach" type="button">Attachments</button>
+      <button class="secondary-button" data-composer-action="schedule" type="button">Schedule message</button>
+      <button class="secondary-button" data-composer-action="draft" type="button">Save draft</button>
+      <button class="primary-button" data-composer-action="send" type="button">${escapeHtml(sendLabel)}</button>
+    </div>
+    <p class="composer-status" id="communicationComposerStatus" role="status"></p>
+  `;
+
+  messageComposer.querySelectorAll("[data-composer-mode]").forEach((button) => {
+    button.addEventListener("click", () => {
+      communicationComposerMode = button.dataset.composerMode;
+      renderMessageComposer(conversation);
+    });
+  });
+
+  const input = messageComposer.querySelector("#communicationComposerInput");
+  input.addEventListener("input", () => {
+    setCommunicationDraftValue(conversation.lead.id, communicationComposerMode, input.value);
+  });
+
+  messageComposer.querySelector("#communicationTemplateSelect").addEventListener("change", (event) => {
+    const template = event.target.value;
+    if (!template) return;
+    setComposerText(conversation, personalizeCommunicationCopy(communicationTemplateCopy[template], conversation));
+  });
+
+  messageComposer.querySelectorAll("[data-communication-emoji]").forEach((button) => {
+    button.addEventListener("click", () => {
+      appendComposerText(conversation, button.dataset.communicationEmoji);
+    });
+  });
+
+  messageComposer.querySelectorAll("[data-quick-reply]").forEach((button) => {
+    button.addEventListener("click", () => {
+      setComposerText(conversation, button.dataset.quickReply);
+    });
+  });
+
+  messageComposer.querySelectorAll("[data-composer-action]").forEach((button) => {
+    button.addEventListener("click", () => {
+      handleComposerAction(button.dataset.composerAction, conversation);
+    });
+  });
+}
+
+function renderCallControls(conversation) {
+  const isActive = communicationCallState.active && communicationCallState.leadId === conversation.lead.id;
+  callControls.innerHTML = `
+    <div class="call-primary">
+      <button class="call-button" id="communicationCallButton" type="button">${isActive ? "Calling" : "Call"}</button>
+      <div>
+        <span>Call Timer</span>
+        <strong id="communicationCallTimer">${isActive ? activeCallDurationLabel() : "00:00"}</strong>
+      </div>
+    </div>
+    <div class="call-control-grid">
+      <button class="${communicationCallState.muted ? "active" : ""}" data-call-control="mute" type="button">Mute</button>
+      <button class="${communicationCallState.speaker ? "active" : ""}" data-call-control="speaker" type="button">Speaker</button>
+      <button class="${communicationCallState.hold ? "active" : ""}" data-call-control="hold" type="button">Hold</button>
+      <button data-call-control="transfer" type="button">Transfer</button>
+      <button data-call-control="record" type="button">Record</button>
+      <button class="end-call-button" id="communicationEndCallButton" type="button" ${isActive ? "" : "disabled"}>End Call</button>
+    </div>
+  `;
+
+  callControls.querySelector("#communicationCallButton").addEventListener("click", () => {
+    if (isActive) return;
+    startCommunicationCall(conversation);
+  });
+
+  callControls.querySelector("#communicationEndCallButton").addEventListener("click", () => {
+    endCommunicationCall(conversation);
+  });
+
+  callControls.querySelectorAll("[data-call-control]").forEach((button) => {
+    button.addEventListener("click", () => handleCallControl(button.dataset.callControl, conversation));
+  });
+
+  syncCommunicationCallTimer();
+}
+
+function renderCustomerSidebar(conversation) {
+  if (!conversation) {
+    customerSidebar.innerHTML = `
+      <p class="eyebrow">Customer information</p>
+      <h2>Customer Information</h2>
+      <p class="empty-state">Select a conversation to view customer details.</p>
+    `;
+    return;
+  }
+
+  const lastContact = conversation.lastMessage ? formatShortDate(conversation.lastMessage.createdAt) : "None";
+  const nextFollowUp = nextCommunicationFollowUp(conversation);
+  customerSidebar.innerHTML = `
+    <p class="eyebrow">Customer information</p>
+    <h2>Customer Information</h2>
+    <div class="customer-profile-card">
+      <span class="customer-photo">${escapeHtml(initialsForName(conversation.lead.name))}</span>
+      <div>
+        <strong>${escapeHtml(conversation.lead.name)}</strong>
+        <span>${escapeHtml(conversation.lead.company)}</span>
+      </div>
+    </div>
+    <div class="customer-detail-grid">
+      <article><span>Lead Score</span><strong>${conversation.intelligence.score}/100 ${escapeHtml(conversation.intelligence.label)}</strong></article>
+      <article><span>Phone</span><strong>${escapeHtml(conversation.profile.phone)}</strong></article>
+      <article><span>Email</span><strong>${escapeHtml(conversation.profile.email)}</strong></article>
+      <article><span>Address</span><strong>${escapeHtml(conversation.profile.address)}</strong></article>
+      <article><span>Project Type</span><strong>${escapeHtml(conversation.profile.projectType)}</strong></article>
+      <article><span>Pipeline Stage</span><strong>${escapeHtml(stageLabel(conversation.lead.stage))}</strong></article>
+      <article><span>Revenue Value</span><strong>${formatter.format(conversation.lead.value)}</strong></article>
+      <article><span>Last Contact</span><strong>${escapeHtml(lastContact)}</strong></article>
+      <article><span>Next Follow-Up</span><strong>${escapeHtml(nextFollowUp)}</strong></article>
+    </div>
+    <div class="customer-tags" aria-label="Tags">
+      ${conversation.profile.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}
+    </div>
+    <button class="primary-button" data-open-customer-profile="${conversation.lead.id}" type="button">Open Full Profile</button>
+  `;
+
+  customerSidebar.querySelector("[data-open-customer-profile]").addEventListener("click", () => {
+    state.selectedLeadId = conversation.lead.id;
+    contactProfileMode = true;
+    subpageState.contacts = "profile";
+    setActivePage("contacts");
+    render();
+  });
+}
+
+function renderAIAssistantPanel(conversation) {
+  if (!conversation) {
+    aiAssistantPanel.innerHTML = `
+      <p class="eyebrow">AI assistant</p>
+      <h2>AI Assistant Panel</h2>
+      <p class="empty-state">AI suggestions appear when a customer is selected.</p>
+    `;
+    return;
+  }
+
+  const ai = communicationAssistantForConversation(conversation);
+  aiAssistantPanel.innerHTML = `
+    <p class="eyebrow">AI assistant</p>
+    <h2>AI Assistant Panel</h2>
+    <div class="ai-assistant-grid">
+      <article>
+        <span>Suggested Reply</span>
+        <p>${escapeHtml(ai.suggestedReply)}</p>
+      </article>
+      <article>
+        <span>Suggested Next Step</span>
+        <p>${escapeHtml(ai.nextStep)}</p>
+      </article>
+      <article>
+        <span>Objection Handling Tips</span>
+        <ul>${ai.objectionTips.map((tip) => `<li>${escapeHtml(tip)}</li>`).join("")}</ul>
+      </article>
+      <article>
+        <span>Recommended Questions</span>
+        <ul>${ai.questions.map((question) => `<li>${escapeHtml(question)}</li>`).join("")}</ul>
+      </article>
+      <article>
+        <span>Sentiment Analysis</span>
+        <strong>${escapeHtml(ai.sentiment)}</strong>
+      </article>
+    </div>
+  `;
+}
+
+function renderQuickActionsPanel(conversation) {
+  if (!conversation) {
+    quickActionsPanel.innerHTML = `
+      <p class="eyebrow">Quick actions</p>
+      <h2>Quick Actions</h2>
+      <p class="empty-state">Select a customer to use quick actions.</p>
+    `;
+    return;
+  }
+
+  const actions = [
+    ["schedule-estimate", "Schedule Estimate"],
+    ["create-task", "Create Task"],
+    ["send-quote", "Send Quote"],
+    ["request-review", "Request Review"],
+    ["collect-deposit", "Collect Deposit"],
+  ];
+  quickActionsPanel.innerHTML = `
+    <p class="eyebrow">Quick actions</p>
+    <h2>Quick Actions</h2>
+    <div class="quick-action-grid">
+      ${actions
+        .map(([id, label], index) => {
+          const buttonClass = index === 0 ? "primary-button" : "secondary-button";
+          return `<button class="${buttonClass}" data-communication-quick-action="${id}" type="button">${label}</button>`;
+        })
+        .join("")}
+    </div>
+  `;
+
+  quickActionsPanel.querySelectorAll("[data-communication-quick-action]").forEach((button) => {
+    button.addEventListener("click", () => handleCommunicationQuickAction(button.dataset.communicationQuickAction, conversation));
+  });
+}
+
+function renderCommunicationNotifications(conversation) {
+  const name = conversation?.lead.name || "Maya Johnson";
+  communicationNotificationFeed.innerHTML = [
+    ["Incoming message", `${name} replied about the estimate.`],
+    ["Missed call", "A homeowner called while the line was busy."],
+    ["New voicemail", "Voicemail transcribed and attached to the timeline."],
+    ["Appointment reminder", "Estimate appointment starts in 2 hours."],
+  ]
+    .map(
+      ([title, detail]) => `
+        <article>
+          <strong>${escapeHtml(title)}</strong>
+          <span>${escapeHtml(detail)}</span>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function communicationCustomerProfile(lead, index = 0) {
+  const phones = ["(214) 555-0192", "(512) 555-0174", "(713) 555-0148", "(817) 555-0133"];
+  const addresses = [
+    "4821 Maple Ridge Dr, Dallas, TX",
+    "11808 Oak Bend Ln, Austin, TX",
+    "903 Harbor Point Ct, Houston, TX",
+    "64 Finch Trail, Fort Worth, TX",
+  ];
+  const projectTypes = ["Roof replacement", "Solar consultation", "Window upgrade", "HVAC estimate"];
+  const emailName = lead.name.toLowerCase().replace(/[^a-z0-9]+/g, ".").replace(/^\.+|\.+$/g, "");
+  const tags = [
+    stageLabel(lead.stage),
+    lead.source || "Manual",
+    lead.value >= 8000 ? "High value" : "Standard value",
+  ];
+
+  return {
+    phone: phones[index % phones.length],
+    email: `${emailName || "customer"}@example.com`,
+    address: addresses[index % addresses.length],
+    projectType: projectTypes[index % projectTypes.length],
+    tags,
+  };
+}
+
+function defaultCommunicationMessages(lead, profile, index = 0) {
+  const offset = index % 3;
+  return [
+    {
+      id: `default-${lead.id}-system`,
+      type: "system-note",
+      direction: "system",
+      body: `${lead.company} moved into ${stageLabel(lead.stage)}. ${lead.nextAction}`,
+      createdAt: communicationTimestamp(5 + offset, 9, 15),
+      status: "Logged",
+      attachments: [],
+      read: true,
+    },
+    {
+      id: `default-${lead.id}-incoming`,
+      type: "incoming-text",
+      direction: "incoming",
+      body: `Hi Cameron, I am looking at ${profile.projectType.toLowerCase()} options and want to understand timing.`,
+      createdAt: communicationTimestamp(3 + offset, 10, 20),
+      status: "Received",
+      attachments: [],
+      read: index !== 1,
+    },
+    {
+      id: `default-${lead.id}-outgoing`,
+      type: "outgoing-text",
+      direction: "outgoing",
+      body: `Thanks ${lead.name}. I can help with ${profile.projectType.toLowerCase()} and send next steps today.`,
+      createdAt: communicationTimestamp(3 + offset, 10, 28),
+      status: "Delivered",
+      attachments: [],
+      read: true,
+    },
+    {
+      id: `default-${lead.id}-call`,
+      type: "call-log",
+      direction: "outgoing",
+      body: `Call logged with ${lead.name}. Discussed scope, budget, and next follow-up.`,
+      createdAt: communicationTimestamp(2 + offset, 14, 5),
+      status: "Completed",
+      attachments: [],
+      read: true,
+    },
+    {
+      id: `default-${lead.id}-voicemail`,
+      type: "voicemail",
+      direction: "incoming",
+      body: `${lead.name} left a voicemail asking for appointment windows.`,
+      createdAt: communicationTimestamp(1 + offset, 8, 42),
+      status: "Transcribed",
+      attachments: [`voicemail-${lead.id}.mp3`],
+      read: index !== 2,
+    },
+    {
+      id: `default-${lead.id}-email`,
+      type: "email",
+      direction: "outgoing",
+      body: `Estimate recap sent for ${profile.projectType.toLowerCase()} at ${profile.address}.`,
+      createdAt: communicationTimestamp(1, 15, 10 + offset),
+      status: "Opened",
+      attachments: [`estimate-${lead.id}.pdf`],
+      read: true,
+    },
+    {
+      id: `default-${lead.id}-appointment`,
+      type: "appointment",
+      direction: "system",
+      body: `Appointment placeholder: ${profile.projectType} review with ${lead.name}.`,
+      createdAt: communicationTimestamp(0, 9 + offset, 0),
+      status: "Scheduled",
+      attachments: [],
+      read: true,
+    },
+  ].map(normalizedCommunicationMessage);
+}
+
+function communicationAssistantForConversation(conversation) {
+  const topFactor = conversation.intelligence.factors[0]?.label || "Follow-up context";
+  const sentiment = conversation.intelligence.score >= 85 ? "Positive buying intent" : conversation.intelligence.score >= 70 ? "Curious but needs clarity" : "Needs nurturing";
+  return {
+    suggestedReply: `Hi ${conversation.lead.name}, I can help with ${conversation.profile.projectType.toLowerCase()}. Want me to confirm the next available estimate window?`,
+    nextStep: conversation.intelligence.recommendedAction,
+    objectionTips: [
+      `Anchor the reply around ${topFactor.toLowerCase()}.`,
+      "Ask for one clear next commitment.",
+      "Keep pricing answers tied to project scope.",
+    ],
+    questions: [
+      "What timeline are you hoping for?",
+      "Is anyone else helping make the decision?",
+      "Would a morning or afternoon estimate work better?",
+    ],
+    sentiment,
+  };
+}
+
+function nextCommunicationFollowUp(conversation) {
+  const linkedTask = leadTasks(conversation.lead).find((task) => !task.done);
+  if (linkedTask) return linkedTask.due;
+  const followUp = buildSmartFollowUpQueue().find((item) => item.lead.id === conversation.lead.id);
+  return followUp?.reason || "Tomorrow 9:00 AM";
+}
+
+function normalizedCommunicationMessage(message = {}) {
+  const type = communicationMessageTypeLabels[message.type] ? message.type : "system-note";
+  return {
+    id: message.id || crypto.randomUUID(),
+    type,
+    direction: message.direction || communicationDirectionForType(type),
+    body: String(message.body || "").trim() || "Communication logged.",
+    createdAt: message.createdAt || new Date().toISOString(),
+    status: message.status || "Logged",
+    attachments: normalizedMessageAttachments(message.attachments),
+    read: message.read !== false,
+  };
+}
+
+function normalizedMessageAttachments(attachments) {
+  return Array.isArray(attachments) ? attachments.map((attachment) => String(attachment)).filter(Boolean) : [];
+}
+
+function communicationDirectionForType(type) {
+  if (type === "incoming-text" || type === "voicemail") return "incoming";
+  if (type === "outgoing-text" || type === "email" || type === "call-log") return "outgoing";
+  return "system";
+}
+
+function communicationMessageState() {
+  const saved = localStorage.getItem(communicationMessagesKey());
+  if (!saved) return {};
+  try {
+    return JSON.parse(saved);
+  } catch {
+    localStorage.removeItem(communicationMessagesKey());
+    return {};
+  }
+}
+
+function saveCommunicationMessageState(value) {
+  localStorage.setItem(communicationMessagesKey(), JSON.stringify(value));
+}
+
+function communicationDraftState() {
+  const saved = localStorage.getItem(communicationDraftsKey());
+  if (!saved) return {};
+  try {
+    return JSON.parse(saved);
+  } catch {
+    localStorage.removeItem(communicationDraftsKey());
+    return {};
+  }
+}
+
+function saveCommunicationDraftState(value) {
+  communicationDrafts = value;
+  localStorage.setItem(communicationDraftsKey(), JSON.stringify(value));
+}
+
+function communicationDraftKey(leadId, mode) {
+  return `${leadId}:${mode}`;
+}
+
+function communicationDraftValue(leadId, mode) {
+  communicationDrafts = { ...communicationDraftState(), ...communicationDrafts };
+  return communicationDrafts[communicationDraftKey(leadId, mode)] || "";
+}
+
+function setCommunicationDraftValue(leadId, mode, value) {
+  const drafts = { ...communicationDraftState(), ...communicationDrafts };
+  drafts[communicationDraftKey(leadId, mode)] = value;
+  saveCommunicationDraftState(drafts);
+}
+
+function addCommunicationMessage(leadId, message) {
+  const saved = communicationMessageState();
+  const created = normalizedCommunicationMessage({
+    id: crypto.randomUUID(),
+    createdAt: new Date().toISOString(),
+    ...message,
+  });
+  saved[leadId] = [...(saved[leadId] || []), created].slice(-60);
+  saveCommunicationMessageState(saved);
+  return created;
+}
+
+async function handleComposerAction(action, conversation) {
+  const input = messageComposer.querySelector("#communicationComposerInput");
+  const status = messageComposer.querySelector("#communicationComposerStatus");
+  const body = input?.value.trim() || "";
+
+  if (action === "attach") {
+    status.textContent = "Attachment placeholder added. Files will connect when storage is live.";
+    showCommunicationToast("Attachment ready", "Placeholder attachment added to the draft.");
+    return;
+  }
+
+  if (action === "draft") {
+    setCommunicationDraftValue(conversation.lead.id, communicationComposerMode, body);
+    status.textContent = "Draft saved.";
+    showCommunicationToast("Draft saved", `${conversation.lead.name}'s draft is saved locally.`);
+    return;
+  }
+
+  if (action === "schedule") {
+    const scheduledBody = body || personalizeCommunicationCopy("Hi {{name}}, following up on {{projectType}} tomorrow morning.", conversation);
+    addCommunicationMessage(conversation.lead.id, {
+      type: communicationComposerMode === "email" ? "email" : "outgoing-text",
+      direction: "outgoing",
+      body: `Scheduled for tomorrow at 9:00 AM: ${scheduledBody}`,
+      status: "Scheduled",
+      attachments: [],
+      read: true,
+    });
+    clearCommunicationDraft(conversation.lead.id, communicationComposerMode);
+    communicationsStatus.textContent = "Message scheduled for tomorrow at 9:00 AM.";
+    showCommunicationToast("Message scheduled", `${conversation.lead.name} will receive it tomorrow morning.`);
+    renderCommunicationsPage();
+    return;
+  }
+
+  if (action === "send") {
+    if (!body) {
+      status.textContent = "Write a message before sending.";
+      return;
+    }
+
+    const messageType =
+      communicationComposerMode === "email"
+        ? "email"
+        : communicationComposerMode === "note"
+          ? "system-note"
+          : "outgoing-text";
+    const sent = addCommunicationMessage(conversation.lead.id, {
+      type: messageType,
+      direction: communicationComposerMode === "note" ? "system" : "outgoing",
+      body,
+      status: communicationComposerMode === "note" ? "Logged" : "Sent",
+      attachments: communicationComposerMode === "email" ? [`${conversation.lead.company.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-attachment.pdf`] : [],
+      read: true,
+    });
+    clearCommunicationDraft(conversation.lead.id, communicationComposerMode);
+    await store.createActivity({
+      leadId: conversation.lead.id,
+      type: "communication",
+      message: `${communicationMessageTypeLabels[sent.type]} logged from Communications.`,
+    });
+    communicationsStatus.textContent = `${communicationMessageTypeLabels[sent.type]} sent for ${conversation.lead.name}.`;
+    showCommunicationToast(`${communicationMessageTypeLabels[sent.type]} sent`, `${conversation.lead.name}'s timeline was updated.`);
+    renderCommunicationsPage();
+  }
+}
+
+function setComposerText(conversation, value) {
+  const text = value || "";
+  const input = messageComposer.querySelector("#communicationComposerInput");
+  input.value = text;
+  setCommunicationDraftValue(conversation.lead.id, communicationComposerMode, text);
+}
+
+function appendComposerText(conversation, value) {
+  const input = messageComposer.querySelector("#communicationComposerInput");
+  const next = `${input.value}${input.value ? " " : ""}${value}`;
+  input.value = next;
+  setCommunicationDraftValue(conversation.lead.id, communicationComposerMode, next);
+}
+
+function clearCommunicationDraft(leadId, mode) {
+  const drafts = { ...communicationDraftState(), ...communicationDrafts };
+  delete drafts[communicationDraftKey(leadId, mode)];
+  saveCommunicationDraftState(drafts);
+}
+
+function personalizeCommunicationCopy(copy, conversation) {
+  return String(copy || "")
+    .replaceAll("{{name}}", conversation.lead.name)
+    .replaceAll("{{company}}", conversation.lead.company)
+    .replaceAll("{{projectType}}", conversation.profile.projectType.toLowerCase())
+    .replaceAll("{{address}}", conversation.profile.address)
+    .replaceAll("{{value}}", formatter.format(conversation.lead.value))
+    .replaceAll("{{nextAction}}", conversation.lead.nextAction)
+    .replaceAll("{{stage}}", stageLabel(conversation.lead.stage));
+}
+
+function startCommunicationCall(conversation) {
+  communicationCallState = {
+    active: true,
+    leadId: conversation.lead.id,
+    startedAt: Date.now(),
+    muted: false,
+    speaker: false,
+    hold: false,
+  };
+  communicationsStatus.textContent = `Calling ${conversation.lead.name}.`;
+  showCommunicationToast("Call started", `${conversation.profile.phone} is dialing.`);
+  renderCallControls(conversation);
+}
+
+function endCommunicationCall(conversation) {
+  if (!communicationCallState.active) return;
+  const seconds = Math.max(1, Math.round((Date.now() - communicationCallState.startedAt) / 1000));
+  addCommunicationMessage(conversation.lead.id, {
+    type: "call-log",
+    direction: "outgoing",
+    body: `Call completed with ${conversation.lead.name}. Duration ${formatCallDuration(seconds)}.`,
+    status: "Completed",
+    attachments: [],
+    read: true,
+  });
+  communicationCallState = {
+    active: false,
+    leadId: null,
+    startedAt: null,
+    muted: false,
+    speaker: false,
+    hold: false,
+  };
+  clearCommunicationCallTimer();
+  communicationsStatus.textContent = `Call with ${conversation.lead.name} logged.`;
+  showCommunicationToast("Call logged", `${formatCallDuration(seconds)} call added to the timeline.`);
+  renderCommunicationsPage();
+}
+
+function handleCallControl(control, conversation) {
+  if (control === "transfer") {
+    communicationsStatus.textContent = "Transfer placeholder ready for connected phone provider.";
+    showCommunicationToast("Transfer placeholder", "Transfer will connect once telephony is live.");
+    return;
+  }
+  if (control === "record") {
+    communicationsStatus.textContent = "Recording placeholder ready. Consent controls will be required before launch.";
+    showCommunicationToast("Recording placeholder", "Call recording is displayed as a future integration.");
+    return;
+  }
+  if (!communicationCallState.active || communicationCallState.leadId !== conversation.lead.id) return;
+  communicationCallState = {
+    ...communicationCallState,
+    [control]: !communicationCallState[control],
+  };
+  renderCallControls(conversation);
+}
+
+async function handleCommunicationQuickAction(action, conversation) {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(10, 0, 0, 0);
+
+  if (action === "schedule-estimate") {
+    await store.createAppointment({
+      leadId: conversation.lead.id,
+      leadName: conversation.lead.name,
+      company: conversation.lead.company,
+      startsAt: tomorrow.toISOString(),
+      closer: "Avery Brooks",
+      notes: `${conversation.profile.projectType} estimate from Communications quick action.`,
+    });
+    addCommunicationMessage(conversation.lead.id, {
+      type: "appointment",
+      direction: "system",
+      body: `Schedule Estimate created for ${formatActivityDate(tomorrow.toISOString())}.`,
+      status: "Booked",
+    });
+    communicationsStatus.textContent = "Estimate appointment scheduled.";
+    showCommunicationToast("Estimate scheduled", `${conversation.lead.name} is booked for tomorrow.`);
+  }
+
+  if (action === "create-task") {
+    await store.createTask({
+      text: `Follow up with ${conversation.lead.name} about ${conversation.profile.projectType.toLowerCase()}`,
+      done: false,
+      due: "today",
+    });
+    addCommunicationMessage(conversation.lead.id, {
+      type: "system-note",
+      direction: "system",
+      body: "Create Task quick action added a follow-up task for today.",
+      status: "Logged",
+    });
+    communicationsStatus.textContent = "Task created from Communications.";
+    showCommunicationToast("Task created", "Follow-up task added for today.");
+  }
+
+  if (action === "send-quote") {
+    addCommunicationMessage(conversation.lead.id, {
+      type: "email",
+      direction: "outgoing",
+      body: `Quote sent for ${conversation.profile.projectType.toLowerCase()} at ${conversation.profile.address}.`,
+      status: "Sent",
+      attachments: [`quote-${conversation.lead.id}.pdf`],
+    });
+    communicationsStatus.textContent = "Quote sent.";
+    showCommunicationToast("Quote sent", `${conversation.lead.name}'s quote was added to the timeline.`);
+  }
+
+  if (action === "request-review") {
+    addCommunicationMessage(conversation.lead.id, {
+      type: "outgoing-text",
+      direction: "outgoing",
+      body: `Hi ${conversation.lead.name}, when the project wraps up, would you be open to leaving us a quick review?`,
+      status: "Sent",
+    });
+    communicationsStatus.textContent = "Review request sent.";
+    showCommunicationToast("Review requested", "Review request text sent.");
+  }
+
+  if (action === "collect-deposit") {
+    addCommunicationMessage(conversation.lead.id, {
+      type: "email",
+      direction: "outgoing",
+      body: `Deposit request sent for ${formatter.format(Math.round(conversation.lead.value * 0.2))}.`,
+      status: "Sent",
+      attachments: ["deposit-link-placeholder.txt"],
+    });
+    communicationsStatus.textContent = "Deposit request sent.";
+    showCommunicationToast("Deposit request sent", "Payment collection placeholder logged.");
+  }
+
+  renderCommunicationsPage();
+}
+
+function syncCommunicationCallTimer() {
+  clearCommunicationCallTimer();
+  if (!communicationCallState.active) return;
+  communicationCallTimer = window.setInterval(updateCommunicationCallTimerDisplay, 1000);
+  updateCommunicationCallTimerDisplay();
+}
+
+function clearCommunicationCallTimer() {
+  if (communicationCallTimer) {
+    window.clearInterval(communicationCallTimer);
+    communicationCallTimer = null;
+  }
+}
+
+function updateCommunicationCallTimerDisplay() {
+  const timer = document.querySelector("#communicationCallTimer");
+  if (!timer || !communicationCallState.active) return;
+  timer.textContent = activeCallDurationLabel();
+}
+
+function activeCallDurationLabel() {
+  if (!communicationCallState.startedAt) return "00:00";
+  return formatCallDuration(Math.max(0, Math.round((Date.now() - communicationCallState.startedAt) / 1000)));
+}
+
+function formatCallDuration(seconds) {
+  const minutes = Math.floor(seconds / 60);
+  const remaining = seconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(remaining).padStart(2, "0")}`;
+}
+
+function showCommunicationToast(title, detail) {
+  if (!communicationToastRegion) return;
+  const toast = document.createElement("article");
+  toast.className = "communication-toast";
+  toast.innerHTML = `
+    <strong>${escapeHtml(title)}</strong>
+    <span>${escapeHtml(detail)}</span>
+  `;
+  communicationToastRegion.append(toast);
+  window.setTimeout(() => {
+    toast.classList.add("leaving");
+    window.setTimeout(() => toast.remove(), 180);
+  }, 4200);
+}
+
+function communicationTimestamp(daysAgo, hour, minute) {
+  const date = new Date();
+  date.setDate(date.getDate() - daysAgo);
+  date.setHours(hour, minute, 0, 0);
+  return date.toISOString();
+}
+
+function formatConversationTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Now";
+  if (isToday(value)) {
+    return new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(date);
+  }
+  return formatShortDate(value);
+}
+
+function initialsForName(name) {
+  return String(name || "CP")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+}
+
 function renderDialWorkspace() {
   const queue = dialQueueLeads();
   const unattempted = unattemptedDialLeads();
@@ -4903,6 +5973,14 @@ function workspaceSetupKey() {
 
 function revenueTargetKey() {
   return currentUser ? `closepilot-revenue-target-${currentUser.id}` : "closepilot-revenue-target-demo";
+}
+
+function communicationMessagesKey() {
+  return currentUser ? `closepilot-communication-messages-${currentUser.id}` : "closepilot-communication-messages-demo";
+}
+
+function communicationDraftsKey() {
+  return currentUser ? `closepilot-communication-drafts-${currentUser.id}` : "closepilot-communication-drafts-demo";
 }
 
 function cloudSaasAccountKey(workspaceId) {

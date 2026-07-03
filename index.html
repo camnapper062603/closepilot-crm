@@ -61,6 +61,7 @@
           <a data-nav-page="automation" href="#automation">Automation</a>
           <a data-nav-page="tasks" href="#tasks">Tasks</a>
           <a data-nav-page="activity" href="#activity">Activity</a>
+          <a data-nav-page="communications" href="#communications">Communications</a>
           <a data-nav-page="dial" href="#dial">Dial</a>
           <a data-nav-page="calendar" href="#calendar">Calendar</a>
           <a data-nav-page="admin" href="#admin">Admin</a>
@@ -701,6 +702,68 @@
           </section>
         </section>
 
+        <section class="communications-page" id="communicationsPage" data-page="communications" aria-labelledby="communicationsHeading">
+          <div class="communications-shell">
+            <aside class="communications-column conversation-list-column" aria-labelledby="conversationListHeading">
+              <div class="communications-column-heading">
+                <div>
+                  <p class="eyebrow">Unified inbox</p>
+                  <h2 id="conversationListHeading">Conversations</h2>
+                </div>
+                <span class="soft-pill" id="conversationCount">0 active</span>
+              </div>
+              <label class="communication-search" for="communicationSearch">
+                Search conversations
+                <input id="communicationSearch" type="search" placeholder="Search customer, phone, email, message" />
+              </label>
+              <div class="communication-filters" role="group" aria-label="Conversation filters">
+                <button class="active" data-communication-filter="recent" type="button">Recent</button>
+                <button data-communication-filter="unread" type="button">Unread</button>
+                <button data-communication-filter="calls" type="button">Calls</button>
+                <button data-communication-filter="texts" type="button">Texts</button>
+                <button data-communication-filter="emails" type="button">Emails</button>
+                <button data-communication-filter="appointments" type="button">Appointments</button>
+                <button data-communication-filter="pinned" type="button">Pinned</button>
+              </div>
+              <div class="conversation-list" id="conversationList" aria-live="polite"></div>
+            </aside>
+
+            <section class="communications-column conversation-window-column" aria-labelledby="conversationWindowHeading">
+              <div class="conversation-window-header" id="conversationWindowHeader">
+                <div>
+                  <p class="eyebrow">Conversation window</p>
+                  <h2 id="conversationWindowHeading">Conversation Timeline</h2>
+                </div>
+              </div>
+
+              <section class="call-controls" id="callControls" aria-label="Call controls"></section>
+              <div class="conversation-timeline" id="conversationTimeline" aria-live="polite"></div>
+              <section class="message-composer" id="messageComposer" aria-label="Message composer"></section>
+            </section>
+
+            <aside class="communications-column customer-info-column" aria-label="Customer information">
+              <section class="customer-sidebar" id="customerSidebar" aria-labelledby="customerSidebarHeading">
+                <p class="eyebrow">Customer information</p>
+                <h2 id="customerSidebarHeading">Customer Information</h2>
+              </section>
+              <section class="ai-assistant-panel" id="aiAssistantPanel" aria-labelledby="aiAssistantHeading">
+                <p class="eyebrow">AI assistant</p>
+                <h2 id="aiAssistantHeading">AI Assistant Panel</h2>
+              </section>
+              <section class="quick-actions-panel" id="quickActionsPanel" aria-labelledby="quickActionsHeading">
+                <p class="eyebrow">Quick actions</p>
+                <h2 id="quickActionsHeading">Quick Actions</h2>
+              </section>
+              <section class="communication-notifications" aria-labelledby="communicationNotificationsHeading">
+                <p class="eyebrow">Notifications</p>
+                <h2 id="communicationNotificationsHeading">Notifications</h2>
+                <div id="communicationNotificationFeed" class="communication-notification-feed"></div>
+              </section>
+            </aside>
+          </div>
+          <p class="communications-status" id="communicationsStatus" role="status"></p>
+        </section>
+
         <section class="dial-grid" data-page-group="dial">
           <section class="panel dial-switch-panel" data-page="dial" aria-label="Dial page switcher">
             <div class="panel-heading compact">
@@ -1046,6 +1109,8 @@
         <div id="leadDetailContent" class="lead-detail-content"></div>
       </section>
     </div>
+
+    <div class="toast-region" id="communicationToastRegion" aria-live="polite" aria-label="Communication notifications"></div>
 
     <script type="module" src="app.js"></script>
   </body>
