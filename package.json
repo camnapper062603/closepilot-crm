@@ -5,9 +5,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node build.js",
+    "assets:icons": "node scripts/generate-app-icons.mjs",
+    "build": "npm run assets:icons && node build.js",
     "start": "node server.js",
     "lead:generate": "node safe-lead-generator-batch.js",
+    "mobile:add:android": "npm run build && npx cap add android",
+    "mobile:add:ios": "npm run build && npx cap add ios",
+    "mobile:open:android": "npx cap open android",
+    "mobile:open:ios": "npx cap open ios",
+    "mobile:sync": "npm run build && npx cap sync",
     "test": "playwright test",
     "test:ui": "playwright test --ui"
   },
@@ -20,7 +26,13 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@capacitor/android": "^7.6.7",
+    "@capacitor/cli": "^7.6.7",
+    "@capacitor/ios": "^7.6.7",
     "@playwright/test": "^1.61.0",
     "@types/node": "^26.0.0"
+  },
+  "dependencies": {
+    "@capacitor/core": "^7.6.7"
   }
 }

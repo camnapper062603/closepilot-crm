@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Kira Home app icon</title>
+  <desc id="desc">A navy Kira Home monogram inside a white rounded square.</desc>
+  <rect width="1024" height="1024" fill="#050505"/>
+  <rect x="158" y="158" width="708" height="708" rx="152" fill="#ffffff"/>
+  <path fill="#0b2f63" d="M292 724V300h86v166l151-166h108L474 477l176 247H543L413 540l-35 38v146h-86Z"/>
+  <path fill="#0b2f63" d="M610 724V300h86v424h-86Z"/>
+  <path fill="#071f42" d="M292 764h404v42H292v-42Z"/>
+</svg>

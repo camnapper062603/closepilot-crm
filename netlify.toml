@@ -1,6 +1,16 @@
 [build]
-  publish = "."
+  publish = "dist"
   command = "npm run build"
+
+[[redirects]]
+  from = "/recruiting"
+  to = "/recruiting.html"
+  status = 200
+
+[[redirects]]
+  from = "/lead-generator"
+  to = "/SafeLeadGenerator-Standalone.html"
+  status = 200
 
 [[redirects]]
   from = "/*"

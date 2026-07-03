@@ -42,9 +42,23 @@ npm test
 4. Import the GitHub repository.
 5. Use these settings:
    - Framework Preset: **Other**
-   - Build Command: leave blank
-   - Output Directory: `.`
+   - Build Command: `npm run build`
+   - Output Directory: `dist`
 6. Deploy.
+
+The included `vercel.json` already applies those settings and routes `/recruiting` and `/lead-generator` to the companion apps.
+
+## Mobile App Store Packaging
+
+The CRM, Kira Recruit, and Lead Generator are packaged as one Capacitor app suite named Kira Home.
+
+```bash
+npm run mobile:sync
+npm run mobile:open:android
+npm run mobile:open:ios
+```
+
+Android builds open in Android Studio from `android/`. iOS builds open in Xcode from `ios/` and need CocoaPods/Xcode on a Mac for final signing and App Store upload. See `mobile-store-readiness.md` for the store checklist.
 
 ## Supabase Setup
 
@@ -74,7 +88,7 @@ Without those variables, the app runs in demo mode using browser storage.
 4. Import the GitHub repository.
 5. Use these settings:
    - Build command: `npm run build`
-   - Publish directory: `.`
+   - Publish directory: `dist`
 6. Deploy.
 
 ## What This Version Stores
