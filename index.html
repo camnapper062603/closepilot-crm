@@ -139,6 +139,19 @@
             <button class="primary-button command-start-button" id="startMyDayButton" type="button">Start My Day</button>
           </section>
 
+          <section class="dashboard-follow-up-card" id="dashboardFollowUpQueueCard" aria-labelledby="dashboardFollowUpHeading">
+            <div>
+              <p class="eyebrow">Follow-Ups Due</p>
+              <h2 id="dashboardFollowUpHeading">Smart Follow-Up Queue</h2>
+              <p id="dashboardFollowUpUrgency">ClosePilot is checking today’s follow-up risk.</p>
+            </div>
+            <div class="dashboard-follow-up-count">
+              <span>Due today</span>
+              <strong id="dashboardFollowUpQueueCount">0</strong>
+            </div>
+            <button class="primary-button" id="openFollowUpQueueButton" type="button">Open Follow-Up Queue</button>
+          </section>
+
           <section class="time-saved-widget" id="timeSavedWidget" aria-labelledby="timeSavedHeading">
             <div class="time-saved-hero">
               <div>
@@ -397,6 +410,18 @@
             <button class="secondary-button" id="exportSourceReport" type="button">Export source report</button>
           </div>
           <div class="source-report-grid" id="sourceReportGrid" aria-label="Lead channel report"></div>
+        </section>
+
+        <section class="panel follow-up-queue-panel" id="followUpQueue" data-page="pipeline" aria-labelledby="followUpQueueHeading">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Smart follow-up engine</p>
+              <h2 id="followUpQueueHeading">Follow-Up Queue</h2>
+            </div>
+            <div class="follow-up-queue-summary" id="followUpQueueSummary" aria-label="Follow-up queue summary"></div>
+          </div>
+          <div class="follow-up-queue-list" id="followUpQueueList" aria-live="polite"></div>
+          <p class="follow-up-queue-message" id="followUpQueueMessage" role="status"></p>
         </section>
 
         <section class="workspace-grid" data-page-group="pipeline automation activity">

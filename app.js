@@ -307,6 +307,9 @@ const startMyDayButton = document.querySelector("#startMyDayButton");
 const dashboardRecommendations = document.querySelector("#dashboardRecommendations");
 const dashboardActivityFeed = document.querySelector("#dashboardActivityFeed");
 const dashboardSchedule = document.querySelector("#dashboardSchedule");
+const dashboardFollowUpQueueCount = document.querySelector("#dashboardFollowUpQueueCount");
+const dashboardFollowUpUrgency = document.querySelector("#dashboardFollowUpUrgency");
+const openFollowUpQueueButton = document.querySelector("#openFollowUpQueueButton");
 const dashboardTimeSavedToday = document.querySelector("#dashboardTimeSavedToday");
 const dashboardTimeSavedWeek = document.querySelector("#dashboardTimeSavedWeek");
 const dashboardTimeSavedMonth = document.querySelector("#dashboardTimeSavedMonth");
@@ -334,6 +337,9 @@ const flowCompleteNextButton = document.querySelector("#flowCompleteNext");
 const restartFlowButton = document.querySelector("#restartFlowButton");
 const sourceReportGrid = document.querySelector("#sourceReportGrid");
 const exportSourceReportButton = document.querySelector("#exportSourceReport");
+const followUpQueueSummary = document.querySelector("#followUpQueueSummary");
+const followUpQueueList = document.querySelector("#followUpQueueList");
+const followUpQueueMessage = document.querySelector("#followUpQueueMessage");
 const leadBrief = document.querySelector("#leadBrief");
 const contactTable = document.querySelector("#contactTable");
 const contactsPanel = document.querySelector("#contacts");
@@ -487,6 +493,7 @@ const subpageCatalog = {
     { id: "setup", label: "First run" },
     { id: "target", label: "Monthly target" },
     { id: "insights", label: "Pipeline insights" },
+    { id: "followups", label: "Follow-Up Queue" },
     { id: "channels", label: "Channel report" },
     { id: "brief", label: "Lead brief" },
   ],
@@ -612,6 +619,7 @@ searchInput.addEventListener("input", render);
 exportSourceReportButton.addEventListener("click", exportSourceReportCsv);
 revenueGoalForm.addEventListener("submit", saveRevenueTarget);
 startMyDayButton.addEventListener("click", startMyDay);
+openFollowUpQueueButton.addEventListener("click", openFollowUpQueue);
 flowCompleteNextButton.addEventListener("click", completeCurrentFlowAction);
 restartFlowButton.addEventListener("click", startMyDay);
 document.querySelectorAll("[data-flow-outcome]").forEach((button) => {
@@ -929,6 +937,7 @@ function render() {
   renderOnboarding();
   renderInsights();
   renderSourceReport();
+  renderFollowUpQueue();
   renderPipeline();
   renderLeadBrief();
   renderAutomations();
@@ -1034,6 +1043,7 @@ function renderPipelineSubpage(activeSubpage) {
     target: ["#revenueGoal"],
     setup: ["#onboardingPanel"],
     insights: ["#insightsPanel"],
+    followups: ["#followUpQueue"],
     channels: ["#sourceReport"],
     brief: ['.selected-panel[data-page="pipeline"]'],
   };
@@ -1149,6 +1159,7 @@ function renderDailyCommandCenter() {
   document.querySelector("#dashboardCloseRate").textContent = `${stats.closeRate}%`;
   document.querySelector("#dashboardWinRate").textContent = `${stats.winRate}%`;
 
+  renderDashboardFollowUpCard(stats.followUpQueue);
   renderDashboardRecommendations(stats);
   renderDashboardTimeSaved(stats);
   renderDashboardActivity(stats);
@@ -1162,7 +1173,8 @@ function dailyCommandStats() {
     .filter((lead) => lead.score >= 80)
     .sort((left, right) => right.score - left.score || right.value - left.value);
   const tasksDueToday = state.tasks.filter((task) => task.due === "today" && !task.done);
-  const followUpsDue = tasksDueToday.filter((task) => /call|follow|send|review|draft/i.test(task.text)).length;
+  const followUpQueue = buildSmartFollowUpQueue();
+  const followUpsDue = followUpQueue.length;
   const appointments = state.appointments || [];
   const appointmentsToday = appointments.filter((appointment) => isToday(appointment.startsAt));
   const dealsAtRisk = openLeads
@@ -1190,6 +1202,7 @@ function dailyCommandStats() {
     openLeads,
     hotLeads,
     tasksDueToday,
+    followUpQueue,
     followUpsDue,
     appointmentsToday,
     dealsAtRisk,
@@ -1202,6 +1215,208 @@ function dailyCommandStats() {
     closeRate,
     winRate,
   };
+}
+
+function renderDashboardFollowUpCard(queue = buildSmartFollowUpQueue()) {
+  const critical = queue.filter((item) => item.priorityLevel === "Critical").length;
+  const high = queue.filter((item) => item.priorityLevel === "High").length;
+  dashboardFollowUpQueueCount.textContent = queue.length;
+  dashboardFollowUpUrgency.textContent = queue.length
+    ? `${critical ? `${critical} critical · ` : ""}${high} high priority · ${queue[0].reason}`
+    : "No follow-ups need action right now.";
+  openFollowUpQueueButton.disabled = queue.length === 0;
+}
+
+function buildSmartFollowUpQueue() {
+  const queueState = followUpQueueState();
+  return state.leads
+    .filter((lead) => lead.stage !== "won")
+    .map(createSmartFollowUpItem)
+    .filter(Boolean)
+    .filter((item) => !isFollowUpItemSuppressed(item, queueState))
+    .sort((left, right) => right.priorityScore - left.priorityScore || right.lead.value - left.lead.value);
+}
+
+function createSmartFollowUpItem(lead) {
+  const intelligence = calculateLeadIntelligence(lead);
+  const lastActivity = latestLeadActivity(lead.id);
+  const daysQuiet = daysSinceActivity(lastActivity);
+  const appointment = appointmentTomorrow(lead.id);
+  const reasons = followUpReasonsForLead(lead, intelligence, lastActivity, daysQuiet, appointment);
+  if (!reasons.length) return null;
+
+  const dominant = reasons[0];
+  const recommendedAction = recommendedFollowUpAction(dominant.key, lead);
+  const priorityLevel = followUpPriorityLevel(dominant.weight, intelligence.score, lead.value);
+  const suggestedMessage = suggestedFollowUpMessage(lead, dominant.key, appointment);
+
+  return {
+    id: `follow-up-${lead.id}`,
+    lead,
+    intelligence,
+    reason: dominant.label,
+    reasons,
+    recommendedAction,
+    suggestedMessage,
+    priorityLevel,
+    lastContactedAt: lastActivity?.createdAt || "",
+    lastContactedLabel: lastActivity ? formatShortDate(lastActivity.createdAt) : "No contact logged",
+    priorityScore: dominant.weight * 100 + intelligence.score + lead.value / 100,
+    defaultOutcome: followUpDefaultOutcome(recommendedAction),
+  };
+}
+
+function followUpReasonsForLead(lead, intelligence, lastActivity, daysQuiet, appointment) {
+  const reasons = [];
+  const estimateSent = lead.stage === "proposal" || /estimate|proposal|quote/i.test(`${lead.notes} ${lead.nextAction}`);
+
+  if (!lastActivity || daysQuiet >= 3) {
+    reasons.push({
+      key: "no-contact",
+      label: "No contact in 3+ days",
+      weight: 72 + Math.min(daysQuiet, 10),
+    });
+  }
+  if (estimateSent && lead.stage !== "won") {
+    reasons.push({
+      key: "estimate-follow-up",
+      label: "Estimate sent but not closed",
+      weight: 88,
+    });
+  }
+  if (appointment) {
+    reasons.push({
+      key: "appointment-tomorrow",
+      label: "Appointment tomorrow",
+      weight: 94,
+    });
+  }
+  if (leadHasMissedCallSignal(lead.id)) {
+    reasons.push({
+      key: "missed-call",
+      label: "Missed call",
+      weight: 86,
+    });
+  }
+  if (intelligence.score >= 85 && (!lastActivity || daysQuiet >= 1)) {
+    reasons.push({
+      key: "hot-lead",
+      label: "Hot lead not contacted",
+      weight: 91,
+    });
+  }
+  if (lead.score < 80 || daysQuiet >= 7) {
+    reasons.push({
+      key: "deal-at-risk",
+      label: "Deal at risk",
+      weight: lead.value >= 8000 ? 90 : 78,
+    });
+  }
+  if (estimateSent && lead.score >= 80) {
+    reasons.push({
+      key: "opened-estimate",
+      label: "Customer opened estimate placeholder",
+      weight: 92,
+    });
+  }
+
+  return reasons.sort((left, right) => right.weight - left.weight);
+}
+
+function recommendedFollowUpAction(reasonKey, lead) {
+  const actions = {
+    "appointment-tomorrow": "Send appointment confirmation",
+    "estimate-follow-up": "Send estimate follow-up",
+    "opened-estimate": "Call now",
+    "missed-call": "Call now",
+    "hot-lead": lead.score >= 90 ? "Call now" : "Send hot lead check-in",
+    "deal-at-risk": "Send re-engagement message",
+    "no-contact": "Send follow-up text",
+  };
+  return actions[reasonKey] || "Send follow-up text";
+}
+
+function followUpPriorityLevel(reasonWeight, intelligenceScore, dealValue) {
+  if (reasonWeight >= 92 || intelligenceScore >= 92 || dealValue >= 12000) return "Critical";
+  if (reasonWeight >= 84 || intelligenceScore >= 80) return "High";
+  if (reasonWeight >= 72) return "Medium";
+  return "Low";
+}
+
+function suggestedFollowUpMessage(lead, reasonKey, appointment) {
+  const firstName = lead.name.split(" ")[0] || lead.name;
+  const messages = {
+    "appointment-tomorrow": `Hi ${firstName}, confirming tomorrow's appointment for ${lead.company}. Does the same time still work?`,
+    "estimate-follow-up": `Hi ${firstName}, quick follow-up on the estimate for ${lead.company}. Any questions I can answer before we lock in the next step?`,
+    "opened-estimate": `Hi ${firstName}, saw the estimate is back on your radar. Want me to walk through the numbers and timing today?`,
+    "missed-call": `Hi ${firstName}, sorry I missed you. I can help with ${lead.company}'s next step whenever you have a minute.`,
+    "hot-lead": `Hi ${firstName}, wanted to catch you while this is still fresh. Is today a good day to talk through next steps for ${lead.company}?`,
+    "deal-at-risk": `Hi ${firstName}, checking back in on ${lead.company}. Should we keep this moving, adjust the plan, or pause it for now?`,
+    "no-contact": `Hi ${firstName}, quick check-in on ${lead.company}. Are you still open to moving forward with the next step?`,
+  };
+  if (reasonKey === "appointment-tomorrow" && appointment?.startsAt) {
+    return `Hi ${firstName}, confirming our appointment tomorrow at ${formatAppointmentTime(appointment.startsAt)} for ${lead.company}. Does that still work?`;
+  }
+  return messages[reasonKey] || messages["no-contact"];
+}
+
+function followUpDefaultOutcome(recommendedAction) {
+  if (/call/i.test(recommendedAction)) return "call";
+  if (/email/i.test(recommendedAction)) return "follow-up";
+  return "text";
+}
+
+function appointmentTomorrow(leadId) {
+  return (state.appointments || []).find((appointment) => appointment.leadId === leadId && isTomorrow(appointment.startsAt));
+}
+
+function leadHasMissedCallSignal(leadId) {
+  return (state.activities || []).some(
+    (activity) =>
+      activity.leadId === leadId &&
+      /missed call|no answer|voicemail|left voicemail/i.test(`${activity.type} ${activity.message}`),
+  );
+}
+
+function followUpQueueState() {
+  try {
+    return JSON.parse(localStorage.getItem(followUpQueueStateKey()) || "{}");
+  } catch (_error) {
+    return {};
+  }
+}
+
+function saveFollowUpQueueState(stateValue) {
+  localStorage.setItem(followUpQueueStateKey(), JSON.stringify(stateValue));
+}
+
+function followUpQueueStateKey() {
+  return `closepilot-follow-up-queue:${workspaceSetupSettings().name}`;
+}
+
+function isFollowUpItemSuppressed(item, queueState = followUpQueueState()) {
+  const completedAt = queueState.completed?.[item.id];
+  const snoozedUntil = queueState.snoozed?.[item.id];
+  if (completedAt && isToday(completedAt)) return true;
+  if (snoozedUntil && new Date(snoozedUntil).getTime() > Date.now()) return true;
+  return false;
+}
+
+function setFollowUpItemComplete(itemId) {
+  const queueState = followUpQueueState();
+  queueState.completed ||= {};
+  queueState.completed[itemId] = new Date().toISOString();
+  saveFollowUpQueueState(queueState);
+}
+
+function snoozeFollowUpItem(itemId) {
+  const queueState = followUpQueueState();
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(8, 0, 0, 0);
+  queueState.snoozed ||= {};
+  queueState.snoozed[itemId] = tomorrow.toISOString();
+  saveFollowUpQueueState(queueState);
 }
 
 function renderDashboardTimeSaved(stats) {
@@ -1652,6 +1867,7 @@ async function completeFlowAction(outcome) {
     flowSession.results.timeSaved += savings.minutes;
     trackFlowRevenueInfluence(action);
     incrementFlowResult(outcome);
+    if (action.followUpItem) setFollowUpItemComplete(action.followUpItem.id);
     await logFlowCompletion(action, outcome, savings);
     if (outcome === "appointment") {
       await bookFlowAppointment(action);
@@ -1714,11 +1930,40 @@ function flowAppointmentStartsAt() {
 function buildPriorityFlowActions() {
   const openLeads = state.leads.filter((lead) => lead.stage !== "won");
   const leads = openLeads.length ? openLeads : state.leads;
-  const actions = leads.flatMap((lead) => flowActionProfiles().map((profile) => createFlowAction(lead, profile)));
+  const followUpActions = buildSmartFollowUpQueue().map(createFollowUpFlowAction);
+  const actions = [
+    ...followUpActions,
+    ...leads.flatMap((lead) => flowActionProfiles().map((profile) => createFlowAction(lead, profile))),
+  ];
 
   return actions
     .sort((left, right) => right.priorityScore - left.priorityScore || right.lead.score - left.lead.score)
     .slice(0, 18);
+}
+
+function createFollowUpFlowAction(item) {
+  return {
+    id: `flow-${item.id}`,
+    leadId: item.lead.id,
+    lead: item.lead,
+    type: "smart-follow-up",
+    defaultOutcome: item.defaultOutcome,
+    recommendedOutcomeLabel: item.recommendedAction,
+    priorityScore: 12000 + item.priorityScore,
+    title: `Follow up with ${item.lead.name}`,
+    why: `Follow-up reason: ${item.reason}. ${item.recommendedAction} is recommended so this deal does not sit untouched today.`,
+    talkingPoints: [
+      item.suggestedMessage,
+      `Lead score is ${item.intelligence.score}/100 (${item.intelligence.label}).`,
+      `Reference the reason: ${item.reason.toLowerCase()}.`,
+      "Ask for the next concrete step before ending the conversation.",
+    ],
+    intelligence: item.intelligence,
+    dueToday: true,
+    daysQuiet: daysSinceActivity(latestLeadActivity(item.lead.id)),
+    appointmentUrgency: item.reason === "Appointment tomorrow" ? 100 : 0,
+    followUpItem: item,
+  };
 }
 
 function flowActionProfiles() {
@@ -1927,6 +2172,13 @@ function flowOutcomeLabel(outcome) {
 function primaryDashboardLead() {
   const stats = dailyCommandStats();
   return stats.hotLeads[0] || stats.openLeads[0] || null;
+}
+
+function openFollowUpQueue() {
+  setActivePage("pipeline");
+  subpageState.pipeline = "followups";
+  render();
+  document.querySelector("#followUpQueue")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function openDashboardLead(leadId) {
@@ -2290,6 +2542,145 @@ function renderSourceReport() {
       render();
     });
   });
+}
+
+function renderFollowUpQueue() {
+  const items = buildSmartFollowUpQueue();
+  const critical = items.filter((item) => item.priorityLevel === "Critical").length;
+  const high = items.filter((item) => item.priorityLevel === "High").length;
+
+  followUpQueueSummary.innerHTML = `
+    <article>
+      <span>Due today</span>
+      <strong>${items.length}</strong>
+    </article>
+    <article>
+      <span>Critical</span>
+      <strong>${critical}</strong>
+    </article>
+    <article>
+      <span>High priority</span>
+      <strong>${high}</strong>
+    </article>
+  `;
+
+  if (!items.length) {
+    followUpQueueList.innerHTML = "<p class=\"empty-state\">No smart follow-ups are due right now.</p>";
+    followUpQueueMessage.textContent = "Queue is clear.";
+    return;
+  }
+
+  followUpQueueList.innerHTML = items.map(renderFollowUpQueueItem).join("");
+  followUpQueueMessage.textContent = `${items.length} ${items.length === 1 ? "follow-up needs" : "follow-ups need"} action today.`;
+
+  followUpQueueList.querySelectorAll("[data-follow-up-action]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      await handleFollowUpQueueAction(button.dataset.followUpAction, button.dataset.followUpItem);
+    });
+  });
+}
+
+function renderFollowUpQueueItem(item) {
+  return `
+    <article class="follow-up-item ${item.priorityLevel.toLowerCase()}">
+      <div class="follow-up-item-main">
+        <div>
+          <span class="priority-pill ${item.priorityLevel.toLowerCase()}">${escapeHtml(item.priorityLevel)}</span>
+          <h3>${escapeHtml(item.lead.name)}</h3>
+          <p>${escapeHtml(item.lead.company)} · ${formatter.format(item.lead.value)}</p>
+        </div>
+        ${leadIntelligenceBadge(item.lead, "follow-up-score")}
+      </div>
+      <div class="follow-up-item-grid">
+        <article>
+          <span>Last contacted</span>
+          <strong>${escapeHtml(item.lastContactedLabel)}</strong>
+        </article>
+        <article>
+          <span>Follow-up reason</span>
+          <strong>${escapeHtml(item.reason)}</strong>
+        </article>
+        <article>
+          <span>Recommended action</span>
+          <strong>${escapeHtml(item.recommendedAction)}</strong>
+        </article>
+        <article>
+          <span>Lead score</span>
+          <strong>${item.intelligence.score}/100 ${escapeHtml(item.intelligence.label)}</strong>
+        </article>
+      </div>
+      <div class="follow-up-reasons" aria-label="Follow-up reasons">
+        ${item.reasons.map((reason) => `<span>${escapeHtml(reason.label)}</span>`).join("")}
+      </div>
+      <section class="suggested-message" aria-label="Suggested message">
+        <span>Suggested message</span>
+        <p>${escapeHtml(item.suggestedMessage)}</p>
+      </section>
+      <div class="follow-up-actions">
+        <button class="secondary-button" data-follow-up-action="text" data-follow-up-item="${item.id}" type="button">Send Text</button>
+        <button class="secondary-button" data-follow-up-action="email" data-follow-up-item="${item.id}" type="button">Send Email</button>
+        <button class="primary-button" data-follow-up-action="complete" data-follow-up-item="${item.id}" type="button">Mark Complete</button>
+        <button class="secondary-button" data-follow-up-action="snooze" data-follow-up-item="${item.id}" type="button">Snooze</button>
+        <button class="secondary-button" data-follow-up-action="call" data-follow-up-item="${item.id}" type="button">Call Now</button>
+        <button class="secondary-button" data-follow-up-action="open" data-follow-up-item="${item.id}" type="button">Open Lead</button>
+      </div>
+    </article>
+  `;
+}
+
+async function handleFollowUpQueueAction(actionType, itemId) {
+  const item = buildSmartFollowUpQueue().find((queueItem) => queueItem.id === itemId);
+  if (!item) {
+    followUpQueueMessage.textContent = "That follow-up is no longer due.";
+    renderFollowUpQueue();
+    return;
+  }
+
+  if (actionType === "open") {
+    state.selectedLeadId = item.lead.id;
+    subpageState.pipeline = "brief";
+    setActivePage("pipeline");
+    render();
+    return;
+  }
+
+  if (actionType === "snooze") {
+    snoozeFollowUpItem(item.id);
+    await store.createActivity({
+      leadId: item.lead.id,
+      type: "follow-up-snoozed",
+      message: `Smart follow-up snoozed - ${item.reason}.`,
+    });
+    const status = `${item.lead.name} snoozed until tomorrow.`;
+    await reloadState();
+    followUpQueueMessage.textContent = status;
+    return;
+  }
+
+  const completed = ["complete", "text", "email", "call"].includes(actionType);
+  const activityLabels = {
+    complete: "marked complete",
+    text: "text sent",
+    email: "email sent",
+    call: "call started",
+  };
+  const savedMinutes = timeSavedRates.flowFollowUpCompleted + timeSavedRates.aiTalkingPointsGenerated;
+  await store.createActivity({
+    leadId: item.lead.id,
+    type: `smart-follow-up-${actionType}`,
+    message: `Smart follow-up ${activityLabels[actionType]} - ${item.reason}.`,
+    savedMinutes,
+    timeSavedSource: "automatedFollowUps",
+    timeSavedSources: [
+      { source: "automatedFollowUps", minutes: timeSavedRates.flowFollowUpCompleted },
+      { source: "aiTalkingPoints", minutes: timeSavedRates.aiTalkingPointsGenerated },
+    ],
+  });
+
+  if (completed) setFollowUpItemComplete(item.id);
+  const status = `${item.lead.name} follow-up ${activityLabels[actionType]}. +${formatSavedMinutes(savedMinutes)} saved.`;
+  await reloadState();
+  followUpQueueMessage.textContent = status;
 }
 
 function sourcePerformanceRows() {
@@ -6581,6 +6972,18 @@ function isToday(value) {
     date.getFullYear() === today.getFullYear() &&
     date.getMonth() === today.getMonth() &&
     date.getDate() === today.getDate()
+  );
+}
+
+function isTomorrow(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return (
+    date.getFullYear() === tomorrow.getFullYear() &&
+    date.getMonth() === tomorrow.getMonth() &&
+    date.getDate() === tomorrow.getDate()
   );
 }
 

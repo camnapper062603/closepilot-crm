@@ -53,6 +53,9 @@ test('renders the CRM dashboard MVP', async ({ page }) => {
   await expect(page.locator('#dailyCommandCenter')).toContainText('Good Morning, Cameron');
   await expect(page.locator('#dailyCommandCenter')).toContainText("Today's focus");
   await expect(page.getByRole('button', { name: 'Start My Day' })).toBeVisible();
+  await expect(page.locator('#dashboardFollowUpQueueCard')).toContainText('Follow-Ups Due');
+  await expect(page.locator('#dashboardFollowUpQueueCount')).toHaveText(/\d+/);
+  await expect(page.getByRole('button', { name: 'Open Follow-Up Queue' })).toBeVisible();
   await expect(page.locator('#timeSavedWidget')).toContainText('Time Saved');
   await expect(page.locator('#dashboardTimeSavedToday')).toHaveText(/\d+(h( \d+m)?|m)/);
   await expect(page.locator('#dashboardTimeSavedSources')).toContainText('Smart Lead Prioritization');
@@ -82,6 +85,8 @@ test('guides Start My Day through Flow Mode actions', async ({ page }) => {
 
   await expect(page.locator('#flowModePanel')).toBeVisible();
   await expect(page.locator('#flowProgressLabel')).toHaveText('1 of 18 priority actions');
+  await expect(page.locator('#flowActionTitle')).toContainText(/Follow up with/);
+  await expect(page.locator('#flowActionWhy')).toContainText('Follow-up reason:');
   await expect(page.locator('#flowActionButtons')).toContainText('Call Lead');
   await expect(page.locator('#flowActionButtons')).toContainText('Send Text');
   await expect(page.locator('#flowActionButtons')).toContainText('Book Appointment');
@@ -122,6 +127,28 @@ test('guides Start My Day through Flow Mode actions', async ({ page }) => {
   await expect(page.locator('#flowCompletionResults')).toContainText('Appointments booked');
   await expect(page.locator('#flowCompletionResults')).toContainText('Total estimated time saved');
   await expect(page.locator('#flowCompletionResults')).toContainText('Estimated revenue influenced');
+});
+
+test('opens and completes smart follow-ups from the queue', async ({ page }) => {
+  await page.getByRole('button', { name: 'Open Follow-Up Queue' }).click();
+
+  const queue = page.locator('#followUpQueue');
+  await expect(queue).toBeVisible();
+  await expect(page.locator('#pipeline')).toBeHidden();
+  await expect(queue).toContainText('Follow-Up Queue');
+  await expect(queue.locator('.follow-up-item')).toHaveCount(3);
+  await expect(queue).toContainText(/No contact in 3\+ days|Estimate sent but not closed|Hot lead not contacted|Customer opened estimate placeholder/);
+  await expect(queue).toContainText('Suggested message');
+  await expect(queue).toContainText('Recommended action');
+  await expect(queue).toContainText('Lead score');
+  await expect(queue).toContainText(/Critical|High|Medium/);
+
+  const firstItem = queue.locator('.follow-up-item').first();
+  await firstItem.getByRole('button', { name: 'Mark Complete' }).click();
+
+  await expect(page.locator('#followUpQueueMessage')).toContainText('follow-up marked complete');
+  await expect(page.locator('#followUpQueueMessage')).toContainText('saved');
+  await expect(queue.locator('.follow-up-item')).toHaveCount(2);
 });
 
 test('opens primary sidebar items as separate app pages', async ({ page }) => {
