@@ -139,6 +139,61 @@
             <button class="primary-button command-start-button" id="startMyDayButton" type="button">Start My Day</button>
           </section>
 
+          <section class="flow-mode-panel" id="flowModePanel" aria-labelledby="flowModeHeading" hidden>
+            <div class="flow-mode-header">
+              <div>
+                <p class="eyebrow">Flow mode</p>
+                <h2 id="flowModeHeading">Today's Sales Flow</h2>
+                <p id="flowProgressLabel">1 of 18 priority actions</p>
+              </div>
+              <div class="flow-progress-stats" aria-label="Flow progress">
+                <article>
+                  <span>Calls completed</span>
+                  <strong id="flowCallsCompleted">0</strong>
+                </article>
+                <article>
+                  <span>Follow-ups completed</span>
+                  <strong id="flowFollowUpsCompleted">0</strong>
+                </article>
+                <article>
+                  <span>Appointments booked</span>
+                  <strong id="flowAppointmentsBooked">0</strong>
+                </article>
+              </div>
+            </div>
+
+            <div class="flow-step-card" id="flowActiveStep">
+              <section class="flow-action-main" aria-labelledby="flowActionTitle">
+                <p class="eyebrow">Current recommendation</p>
+                <h3 id="flowActionTitle">Recommended action</h3>
+                <p id="flowActionWhy">ClosePilot is building today's highest-impact queue.</p>
+                <div class="flow-talking-points">
+                  <h4>AI talking points</h4>
+                  <ul id="flowTalkingPoints"></ul>
+                </div>
+              </section>
+              <aside class="flow-lead-card" id="flowLeadDetails" aria-label="Lead details"></aside>
+            </div>
+
+            <div class="flow-action-buttons" id="flowActionButtons" aria-label="Flow actions">
+              <button class="secondary-button" id="flowCallLead" data-flow-outcome="call" type="button">Call Lead</button>
+              <button class="secondary-button" id="flowSendText" data-flow-outcome="text" type="button">Send Text</button>
+              <button class="secondary-button" id="flowBookAppointment" data-flow-outcome="appointment" type="button">Book Appointment</button>
+              <button class="secondary-button" id="flowMarkFollowedUp" data-flow-outcome="follow-up" type="button">Mark Followed Up</button>
+              <button class="secondary-button" id="flowSkip" data-flow-outcome="skip" type="button">Skip</button>
+              <button class="primary-button" id="flowCompleteNext" type="button">Complete &amp; Next</button>
+            </div>
+            <p class="flow-action-status" id="flowActionStatus" role="status"></p>
+
+            <div class="flow-completion" id="flowCompletionState" hidden>
+              <p class="eyebrow">Flow complete</p>
+              <h3>Mission Complete</h3>
+              <p id="flowCompletionSummary">Today's priority actions are done.</p>
+              <div class="flow-results" id="flowCompletionResults"></div>
+              <button class="secondary-button" id="restartFlowButton" type="button">Run Flow Again</button>
+            </div>
+          </section>
+
           <section class="dashboard-section" aria-labelledby="aiRecommendationsHeading">
             <div class="section-heading">
               <div>

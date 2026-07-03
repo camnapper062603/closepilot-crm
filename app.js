@@ -290,6 +290,23 @@ const startMyDayButton = document.querySelector("#startMyDayButton");
 const dashboardRecommendations = document.querySelector("#dashboardRecommendations");
 const dashboardActivityFeed = document.querySelector("#dashboardActivityFeed");
 const dashboardSchedule = document.querySelector("#dashboardSchedule");
+const flowModePanel = document.querySelector("#flowModePanel");
+const flowProgressLabel = document.querySelector("#flowProgressLabel");
+const flowCallsCompleted = document.querySelector("#flowCallsCompleted");
+const flowFollowUpsCompleted = document.querySelector("#flowFollowUpsCompleted");
+const flowAppointmentsBooked = document.querySelector("#flowAppointmentsBooked");
+const flowActiveStep = document.querySelector("#flowActiveStep");
+const flowActionTitle = document.querySelector("#flowActionTitle");
+const flowActionWhy = document.querySelector("#flowActionWhy");
+const flowTalkingPoints = document.querySelector("#flowTalkingPoints");
+const flowLeadDetails = document.querySelector("#flowLeadDetails");
+const flowActionButtons = document.querySelector("#flowActionButtons");
+const flowActionStatus = document.querySelector("#flowActionStatus");
+const flowCompletionState = document.querySelector("#flowCompletionState");
+const flowCompletionSummary = document.querySelector("#flowCompletionSummary");
+const flowCompletionResults = document.querySelector("#flowCompletionResults");
+const flowCompleteNextButton = document.querySelector("#flowCompleteNext");
+const restartFlowButton = document.querySelector("#restartFlowButton");
 const sourceReportGrid = document.querySelector("#sourceReportGrid");
 const exportSourceReportButton = document.querySelector("#exportSourceReport");
 const leadBrief = document.querySelector("#leadBrief");
@@ -483,6 +500,7 @@ let selectedAppointmentTime = "09:00";
 let contactProfileMode = false;
 let dialView = "floor";
 let calendarView = "calendar";
+let flowSession = createFlowSession();
 const subpageState = Object.fromEntries(Object.entries(subpageCatalog).map(([page, pages]) => [page, pages[0].id]));
 
 document.querySelector("#openLeadModal").addEventListener("click", () => {
@@ -569,6 +587,11 @@ searchInput.addEventListener("input", render);
 exportSourceReportButton.addEventListener("click", exportSourceReportCsv);
 revenueGoalForm.addEventListener("submit", saveRevenueTarget);
 startMyDayButton.addEventListener("click", startMyDay);
+flowCompleteNextButton.addEventListener("click", completeCurrentFlowAction);
+restartFlowButton.addEventListener("click", startMyDay);
+document.querySelectorAll("[data-flow-outcome]").forEach((button) => {
+  button.addEventListener("click", () => selectFlowOutcome(button.dataset.flowOutcome));
+});
 
 authForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -1104,6 +1127,7 @@ function renderDailyCommandCenter() {
   renderDashboardRecommendations(stats);
   renderDashboardActivity(stats);
   renderDashboardSchedule(stats);
+  renderFlowMode();
 }
 
 function dailyCommandStats() {
@@ -1289,14 +1313,352 @@ function dailyFocusSummary(stats) {
 }
 
 function startMyDay() {
-  const lead = primaryDashboardLead();
-  if (!lead) {
-    setActivePage("tasks");
-    render();
+  const actions = buildPriorityFlowActions();
+  flowSession = createFlowSession(actions);
+  flowSession.active = true;
+  state.selectedLeadId = actions[0]?.leadId || state.selectedLeadId;
+  subpageState.pipeline = "overview";
+  setActivePage("pipeline");
+  render();
+  flowModePanel.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function createFlowSession(actions = []) {
+  return {
+    active: false,
+    actions,
+    currentIndex: 0,
+    pendingOutcome: "",
+    status: "",
+    results: {
+      calls: 0,
+      followUps: 0,
+      appointments: 0,
+      skipped: 0,
+      completed: 0,
+    },
+  };
+}
+
+function renderFlowMode() {
+  flowModePanel.hidden = !flowSession.active;
+  if (!flowSession.active) return;
+
+  const isComplete = flowSession.currentIndex >= flowSession.actions.length || flowSession.actions.length === 0;
+  flowCallsCompleted.textContent = flowSession.results.calls;
+  flowFollowUpsCompleted.textContent = flowSession.results.followUps;
+  flowAppointmentsBooked.textContent = flowSession.results.appointments;
+  flowActiveStep.hidden = isComplete;
+  flowActionButtons.hidden = isComplete;
+  flowCompletionState.hidden = !isComplete;
+
+  if (isComplete) {
+    renderFlowCompletion();
     return;
   }
 
-  openDashboardLead(lead.id);
+  const action = currentFlowAction();
+  flowProgressLabel.textContent = `${flowSession.currentIndex + 1} of ${flowSession.actions.length} priority actions`;
+  flowActionTitle.textContent = action.title;
+  flowActionWhy.textContent = action.why;
+  flowTalkingPoints.innerHTML = action.talkingPoints.map((point) => `<li>${escapeHtml(point)}</li>`).join("");
+  flowLeadDetails.innerHTML = renderFlowLeadDetails(action);
+  flowActionStatus.textContent =
+    flowSession.status || `${action.recommendedOutcomeLabel} is recommended. Choose an action, then complete it when done.`;
+
+  document.querySelectorAll("[data-flow-outcome]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.flowOutcome === flowSession.pendingOutcome);
+  });
+}
+
+function renderFlowCompletion() {
+  const total = flowSession.actions.length;
+  flowProgressLabel.textContent = `${total} of ${total} priority actions`;
+  flowCompletionSummary.textContent =
+    total > 0
+      ? `You cleared ${flowSession.results.completed} priority actions and skipped ${flowSession.results.skipped}.`
+      : "No priority actions are open right now. Add fresh leads or tasks to build the next flow.";
+  flowCompletionResults.innerHTML = `
+    <article>
+      <span>Calls completed</span>
+      <strong>${flowSession.results.calls}</strong>
+    </article>
+    <article>
+      <span>Follow-ups completed</span>
+      <strong>${flowSession.results.followUps}</strong>
+    </article>
+    <article>
+      <span>Appointments booked</span>
+      <strong>${flowSession.results.appointments}</strong>
+    </article>
+    <article>
+      <span>Skipped</span>
+      <strong>${flowSession.results.skipped}</strong>
+    </article>
+  `;
+  flowActionStatus.textContent = "Mission Complete";
+}
+
+function currentFlowAction() {
+  return flowSession.actions[flowSession.currentIndex];
+}
+
+function selectFlowOutcome(outcome) {
+  if (!flowSession.active || !currentFlowAction()) return;
+  if (outcome === "skip") {
+    completeFlowAction("skip");
+    return;
+  }
+
+  flowSession.pendingOutcome = outcome;
+  flowSession.status = `${flowOutcomeLabel(outcome)} selected. Finish the step, then press Complete & Next.`;
+  renderFlowMode();
+}
+
+async function completeCurrentFlowAction() {
+  if (!flowSession.active || !currentFlowAction()) return;
+  await completeFlowAction(flowSession.pendingOutcome || currentFlowAction().defaultOutcome);
+}
+
+async function completeFlowAction(outcome) {
+  const action = currentFlowAction();
+  if (!action) return;
+
+  if (outcome === "skip") {
+    flowSession.results.skipped += 1;
+    flowSession.status = `Skipped ${action.lead.name}. Moving to the next best action.`;
+  } else {
+    flowSession.results.completed += 1;
+    incrementFlowResult(outcome);
+    await logFlowCompletion(action, outcome);
+    if (outcome === "appointment") {
+      await bookFlowAppointment(action);
+    }
+    flowSession.status = `${flowOutcomeLabel(outcome)} completed for ${action.lead.name}.`;
+  }
+
+  flowSession.currentIndex += 1;
+  flowSession.pendingOutcome = "";
+  const nextAction = currentFlowAction();
+  if (nextAction) state.selectedLeadId = nextAction.leadId;
+  render();
+}
+
+function incrementFlowResult(outcome) {
+  if (outcome === "call") flowSession.results.calls += 1;
+  if (outcome === "appointment") flowSession.results.appointments += 1;
+  if (["text", "follow-up", "score", "risk"].includes(outcome)) flowSession.results.followUps += 1;
+}
+
+async function logFlowCompletion(action, outcome) {
+  await store.createActivity({
+    leadId: action.leadId,
+    type: `flow-${outcome}`,
+    message: `Flow Mode ${flowOutcomeLabel(outcome).toLowerCase()} - ${action.title}.`,
+  });
+}
+
+async function bookFlowAppointment(action) {
+  const assignedTo = nextRoundRobinCloser().email;
+  await store.createAppointment({
+    leadId: action.leadId,
+    leadName: action.lead.company,
+    contactName: action.lead.name,
+    assignedTo,
+    startsAt: flowAppointmentStartsAt().toISOString(),
+    notes: `Booked from Flow Mode: ${action.title}`,
+    outcome: "Appointment set",
+  });
+}
+
+function flowAppointmentStartsAt() {
+  const date = new Date();
+  date.setHours(Math.min(20, date.getHours() + 2), 0, 0, 0);
+  return date;
+}
+
+function buildPriorityFlowActions() {
+  const openLeads = state.leads.filter((lead) => lead.stage !== "won");
+  const leads = openLeads.length ? openLeads : state.leads;
+  const actions = leads.flatMap((lead) => flowActionProfiles().map((profile) => createFlowAction(lead, profile)));
+
+  return actions
+    .sort((left, right) => right.priorityScore - left.priorityScore || right.lead.score - left.lead.score)
+    .slice(0, 18);
+}
+
+function flowActionProfiles() {
+  return [
+    {
+      key: "call",
+      defaultOutcome: "call",
+      label: "Call Lead",
+      weight: 80,
+      title: (lead) => `Call ${lead.name} first`,
+      why: (lead) => `${lead.company} is a ${lead.score}/100 lead with an open next step. A fast call protects the buying window.`,
+    },
+    {
+      key: "follow-up",
+      defaultOutcome: "follow-up",
+      label: "Mark Followed Up",
+      weight: 72,
+      title: (lead) => `Complete today's follow-up for ${lead.company}`,
+      why: (lead) => `This account has work due today. Clearing it keeps the deal from going quiet.`,
+    },
+    {
+      key: "text",
+      defaultOutcome: "text",
+      label: "Send Text",
+      weight: 58,
+      title: (lead) => `Send ${lead.name} a short text`,
+      why: (lead) => `A concise text gives ${lead.name} an easy way to respond before the next call block.`,
+    },
+    {
+      key: "appointment",
+      defaultOutcome: "appointment",
+      label: "Book Appointment",
+      weight: 42,
+      title: (lead) => `Book the next appointment for ${lead.company}`,
+      why: (lead) => `A calendar hold turns interest into a committed next step and gives the closer a clean handoff.`,
+    },
+    {
+      key: "risk",
+      defaultOutcome: "risk",
+      label: "Mark Followed Up",
+      weight: 34,
+      title: (lead) => `Rescue the at-risk deal with ${lead.name}`,
+      why: (lead) => `This deal needs a fresh touch based on score, stage, or contact recency.`,
+    },
+    {
+      key: "score",
+      defaultOutcome: "score",
+      label: "Mark Followed Up",
+      weight: 24,
+      title: (lead) => `Review the score jump for ${lead.company}`,
+      why: (lead) => `Lead score changes are buying signals. Confirm the signal before it cools off.`,
+    },
+  ];
+}
+
+function createFlowAction(lead, profile) {
+  const dueToday = leadHasTaskDueToday(lead);
+  const lastActivity = latestLeadActivity(lead.id);
+  const daysQuiet = daysSinceActivity(lastActivity);
+  const appointmentUrgency = profile.key === "appointment" ? leadAppointmentUrgency(lead) : 0;
+  const priorityScore =
+    lead.score * 100 +
+    lead.value / 500 +
+    (dueToday ? 140 : 0) +
+    Math.min(daysQuiet, 30) * 2 +
+    appointmentUrgency +
+    profile.weight;
+
+  return {
+    id: `${lead.id}-${profile.key}`,
+    leadId: lead.id,
+    lead,
+    type: profile.key,
+    defaultOutcome: profile.defaultOutcome,
+    recommendedOutcomeLabel: profile.label,
+    priorityScore,
+    title: profile.title(lead),
+    why: profile.why(lead),
+    talkingPoints: flowTalkingPointsFor(lead, profile.key, dueToday, daysQuiet),
+    dueToday,
+    daysQuiet,
+    appointmentUrgency,
+  };
+}
+
+function leadHasTaskDueToday(lead) {
+  return leadTasks(lead).some((task) => task.due === "today" && !task.done);
+}
+
+function leadAppointmentUrgency(lead) {
+  const appointment = (state.appointments || []).find((item) => item.leadId === lead.id);
+  if (appointment && isToday(appointment.startsAt)) return 120;
+  if (lead.stage === "proposal") return 20;
+  if (lead.stage === "qualified") return 10;
+  return 0;
+}
+
+function daysSinceActivity(activity) {
+  if (!activity?.createdAt) return 30;
+  const elapsed = Date.now() - new Date(activity.createdAt).getTime();
+  if (!Number.isFinite(elapsed)) return 30;
+  return Math.max(0, Math.floor(elapsed / 86400000));
+}
+
+function flowTalkingPointsFor(lead, type, dueToday, daysQuiet) {
+  const points = [
+    `Open with the reason for the call: ${lead.nextAction}`,
+    `Anchor the value: ${formatter.format(lead.value)} potential deal in ${stageLabel(lead.stage)}.`,
+    `Ask for the next concrete step before ending the conversation.`,
+  ];
+
+  if (type === "text") {
+    points[0] = `Text opener: "Hi ${lead.name}, quick follow-up on ${lead.company}. Is today still good to talk next steps?"`;
+  }
+  if (type === "appointment") {
+    points[0] = `Offer two appointment windows and confirm who needs to be on the call.`;
+  }
+  if (type === "risk") {
+    points.push(`It has been ${daysQuiet} days since the last logged touch, so keep the message direct.`);
+  }
+  if (dueToday) {
+    points.push("There is a due-today follow-up tied to this account.");
+  }
+
+  return points.slice(0, 4);
+}
+
+function renderFlowLeadDetails(action) {
+  const details = dialLeadDetails(action.lead);
+  const lastActivity = latestLeadActivity(action.leadId);
+  const dueTasks = leadTasks(action.lead).filter((task) => task.due === "today" && !task.done);
+
+  return `
+    <div class="flow-lead-hero">
+      <div>
+        <span>${escapeHtml(stageLabel(action.lead.stage))}</span>
+        <strong>${escapeHtml(action.lead.company)}</strong>
+        <p>${escapeHtml(action.lead.name)}</p>
+      </div>
+      <b>${action.lead.score}/100</b>
+    </div>
+    <div class="flow-lead-grid">
+      <article>
+        <span>Deal value</span>
+        <strong>${formatter.format(action.lead.value)}</strong>
+      </article>
+      <article>
+        <span>Last contact</span>
+        <strong>${lastActivity ? formatShortDate(lastActivity.createdAt) : "No touch"}</strong>
+      </article>
+      <article>
+        <span>Due today</span>
+        <strong>${dueTasks.length}</strong>
+      </article>
+      <article>
+        <span>Phone</span>
+        <strong>${escapeHtml(details.phone || "Not logged")}</strong>
+      </article>
+    </div>
+    <p>${escapeHtml(action.lead.notes || "No notes yet.")}</p>
+  `;
+}
+
+function flowOutcomeLabel(outcome) {
+  const labels = {
+    call: "Call Lead",
+    text: "Send Text",
+    appointment: "Book Appointment",
+    "follow-up": "Mark Followed Up",
+    risk: "Mark Followed Up",
+    score: "Mark Followed Up",
+    skip: "Skip",
+  };
+  return labels[outcome] || "Complete";
 }
 
 function primaryDashboardLead() {

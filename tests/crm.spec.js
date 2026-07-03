@@ -59,11 +59,51 @@ test('renders the CRM dashboard MVP', async ({ page }) => {
   await expect(page.locator('#pipelineBoard').getByText('Northstar Roofing')).toBeVisible();
 
   await page.getByRole('button', { name: 'Start My Day' }).click();
-  await expect(page.locator('#leadBrief')).toContainText('Maya Johnson');
-  await openSubpage(page, 'Dashboard');
+  await expect(page.locator('#flowModePanel')).toBeVisible();
+  await expect(page.locator('#flowModePanel')).toContainText("Today's Sales Flow");
+  await expect(page.locator('#flowProgressLabel')).toContainText('1 of 18 priority actions');
+  await expect(page.locator('#flowTalkingPoints')).toContainText('Ask for the next concrete step');
 
   await navigateTo(page, 'Automation', 'automation');
   await expect(page.getByText('Create next-step tasks')).toBeVisible();
+});
+
+test('guides Start My Day through Flow Mode actions', async ({ page }) => {
+  await page.getByRole('button', { name: 'Start My Day' }).click();
+
+  await expect(page.locator('#flowModePanel')).toBeVisible();
+  await expect(page.locator('#flowProgressLabel')).toHaveText('1 of 18 priority actions');
+  await expect(page.locator('#flowActionButtons')).toContainText('Call Lead');
+  await expect(page.locator('#flowActionButtons')).toContainText('Send Text');
+  await expect(page.locator('#flowActionButtons')).toContainText('Book Appointment');
+  await expect(page.locator('#flowLeadDetails')).toContainText('Deal value');
+
+  await page.getByRole('button', { name: 'Call Lead' }).click();
+  await expect(page.locator('#flowActionStatus')).toContainText('Call Lead selected');
+  await page.getByRole('button', { name: 'Complete & Next' }).click();
+  await expect(page.locator('#flowCallsCompleted')).toHaveText('1');
+  await expect(page.locator('#flowProgressLabel')).toHaveText('2 of 18 priority actions');
+
+  await page.getByRole('button', { name: 'Send Text' }).click();
+  await page.getByRole('button', { name: 'Complete & Next' }).click();
+  await expect(page.locator('#flowFollowUpsCompleted')).toHaveText('1');
+  await expect(page.locator('#flowProgressLabel')).toHaveText('3 of 18 priority actions');
+
+  await page.getByRole('button', { name: 'Book Appointment' }).click();
+  await page.getByRole('button', { name: 'Complete & Next' }).click();
+  await expect(page.locator('#flowAppointmentsBooked')).toHaveText('1');
+  await expect(page.locator('#flowProgressLabel')).toHaveText('4 of 18 priority actions');
+
+  await page.getByRole('button', { name: 'Skip' }).click();
+  await expect(page.locator('#flowProgressLabel')).toHaveText('5 of 18 priority actions');
+
+  for (let index = 0; index < 14; index += 1) {
+    await page.getByRole('button', { name: 'Complete & Next' }).click();
+  }
+
+  await expect(page.locator('#flowCompletionState')).toBeVisible();
+  await expect(page.locator('#flowCompletionState')).toContainText('Mission Complete');
+  await expect(page.locator('#flowCompletionResults')).toContainText('Appointments booked');
 });
 
 test('opens primary sidebar items as separate app pages', async ({ page }) => {
