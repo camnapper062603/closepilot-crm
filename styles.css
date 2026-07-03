@@ -3954,6 +3954,332 @@ button.insight-card:hover {
   min-height: 1.25rem;
 }
 
+.workflow-builder-panel,
+.workflow-templates-panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+}
+
+.workflow-builder-toolbar {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.workflow-builder-toolbar h3,
+.workflow-templates-panel h4,
+.node-palette h4,
+.properties-panel h4,
+.ai-workflow-assistant h4 {
+  margin: 0;
+}
+
+.workflow-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.autosave-pill {
+  background: #eef4ff;
+  border: 1px solid rgba(11, 47, 99, 0.16);
+  border-radius: 999px;
+  color: var(--navy);
+  font-size: 0.72rem;
+  font-weight: 900;
+  padding: 7px 9px;
+  white-space: nowrap;
+}
+
+.workflow-designer-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 230px minmax(420px, 1fr) 260px;
+}
+
+.node-palette,
+.properties-panel,
+.workflow-canvas-viewport,
+.ai-workflow-assistant,
+.automation-analytics,
+.execution-log {
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.node-palette,
+.properties-panel,
+.ai-workflow-assistant {
+  align-content: start;
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+}
+
+.node-palette-group {
+  display: grid;
+  gap: 6px;
+}
+
+.node-group-heading {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  padding: 0;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.node-palette-group > div {
+  display: grid;
+  gap: 6px;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.palette-node,
+.workflow-node {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: inherit;
+  display: grid;
+  gap: 3px;
+  padding: 9px;
+  text-align: left;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.palette-node:hover,
+.workflow-node:hover,
+.workflow-node.active {
+  border-color: var(--navy);
+  box-shadow: 0 10px 22px var(--ring);
+  transform: translateY(-1px);
+}
+
+.palette-node span,
+.workflow-node span,
+.workflow-properties-card span,
+.ai-workflow-assistant label,
+.execution-log-heading span,
+.execution-log-row span,
+.execution-log-row time,
+.automation-analytics span,
+.workflow-template-card span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.palette-node.trigger,
+.workflow-node.trigger {
+  border-left: 4px solid #0f7a4f;
+}
+
+.palette-node.condition,
+.workflow-node.condition {
+  border-left: 4px solid #a16207;
+}
+
+.palette-node.action,
+.workflow-node.action {
+  border-left: 4px solid var(--navy);
+}
+
+.workflow-canvas-viewport {
+  min-height: 560px;
+  overflow: hidden;
+  position: relative;
+}
+
+.workflow-canvas {
+  background:
+    linear-gradient(#edf1f6 1px, transparent 1px),
+    linear-gradient(90deg, #edf1f6 1px, transparent 1px),
+    #ffffff;
+  background-size: 28px 28px;
+  height: 100%;
+  min-height: 560px;
+  overflow: hidden;
+  position: relative;
+}
+
+.workflow-canvas-inner {
+  height: 560px;
+  position: relative;
+  transform-origin: top left;
+  transition: transform 160ms ease;
+  width: 960px;
+}
+
+.workflow-connections {
+  height: 560px;
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  width: 960px;
+}
+
+.workflow-connections path {
+  fill: none;
+  marker-end: url(#workflowArrow);
+  stroke: var(--navy);
+  stroke-linecap: round;
+  stroke-width: 2.5;
+}
+
+.workflow-connections marker path {
+  fill: var(--navy);
+}
+
+.workflow-canvas-nodes {
+  inset: 0;
+  position: absolute;
+}
+
+.workflow-node {
+  cursor: grab;
+  min-height: 76px;
+  position: absolute;
+  width: 178px;
+}
+
+.workflow-node:active {
+  cursor: grabbing;
+}
+
+.workflow-node small {
+  color: var(--muted);
+  line-height: 1.25;
+}
+
+.workflow-properties-card {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+}
+
+.workflow-properties-card label,
+.ai-workflow-assistant label {
+  display: grid;
+  gap: 6px;
+}
+
+.workflow-properties-card input,
+.workflow-properties-card textarea,
+.ai-workflow-assistant textarea {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  font: inherit;
+  min-height: 38px;
+  padding: 9px;
+}
+
+.workflow-properties-card p,
+.ai-workflow-message {
+  color: var(--muted);
+  margin: 0;
+}
+
+.ai-workflow-assistant {
+  grid-template-columns: minmax(180px, 0.55fr) minmax(280px, 1fr) auto;
+}
+
+.ai-workflow-message {
+  grid-column: 1 / -1;
+  min-height: 1.25rem;
+}
+
+.workflow-template-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.workflow-template-card {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  padding: 10px;
+}
+
+.workflow-template-card div {
+  display: grid;
+  gap: 3px;
+}
+
+.automation-analytics {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 10px;
+}
+
+.automation-analytics article {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+}
+
+.execution-log {
+  display: grid;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 10px;
+}
+
+.execution-log-heading,
+.execution-log-row {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(180px, 1.3fr) minmax(140px, 1fr) 96px 110px 90px 92px;
+  min-width: 800px;
+}
+
+.execution-log-heading {
+  padding: 0 8px;
+}
+
+.execution-log-row {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.execution-log-row.success {
+  border-left: 4px solid var(--teal);
+}
+
+.execution-log-row.failure {
+  border-left: 4px solid var(--danger);
+}
+
 .automation-run-list {
   display: grid;
   gap: 8px;
@@ -4691,6 +5017,18 @@ button.insight-card:hover {
   .lead-intelligence-panel,
   .score-breakdown li,
   .flow-score-breakdown li,
+  .workflow-builder-panel,
+  .workflow-templates-panel,
+  .node-palette,
+  .properties-panel,
+  .workflow-canvas-viewport,
+  .workflow-properties-card,
+  .ai-workflow-assistant,
+  .automation-analytics,
+  .automation-analytics article,
+  .execution-log,
+  .execution-log-row,
+  .workflow-template-card,
   .manager-kpi-card,
   .leaderboard-row,
   .manager-insight-card,
@@ -4730,6 +5068,11 @@ button.insight-card:hover {
   .composer-tool select,
   .communication-filters button,
   .manager-analytics-tabs button,
+  .palette-node,
+  .workflow-node,
+  .workflow-properties-card input,
+  .workflow-properties-card textarea,
+  .ai-workflow-assistant textarea,
   .composer-tabs button,
   .quick-replies button,
   .emoji-picker button,
@@ -4756,8 +5099,15 @@ button.insight-card:hover {
 
   .manager-bar,
   .manager-stage-bar,
-  .analytics-bar-track {
+  .analytics-bar-track,
+  .workflow-canvas {
     background: var(--soft-strong);
+  }
+
+  .autosave-pill {
+    background: rgba(95, 142, 219, 0.16);
+    border-color: rgba(138, 180, 255, 0.28);
+    color: #a9c8ff;
   }
 
   .message-bubble.outgoing,
@@ -4919,13 +5269,21 @@ button.insight-card:hover {
   }
 
   .manager-grid-two,
-  .coaching-panel {
+  .coaching-panel,
+  .workflow-designer-grid,
+  .ai-workflow-assistant {
     grid-template-columns: 1fr;
   }
 
   .manager-kpi-grid,
-  .manager-ai-insights {
+  .manager-ai-insights,
+  .workflow-template-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .node-palette-group > div {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-height: none;
   }
 
   .conversation-list {
@@ -5010,6 +5368,7 @@ button.insight-card:hover {
   .contact-profile-actions,
   .manager-hero-actions,
   .composer-actions,
+  .workflow-toolbar-actions,
   .automation-builder-actions,
   .automation-template-actions {
     width: 100%;
@@ -5082,6 +5441,8 @@ button.insight-card:hover {
   .manager-pipeline-health,
   .coaching-grid,
   .manager-actions,
+  .automation-analytics,
+  .workflow-template-grid,
   .dial-summary,
   .dial-info-grid,
   .pipeline-health,
@@ -5136,6 +5497,8 @@ button.insight-card:hover {
   .flow-mode-panel,
   .manager-hero,
   .manager-section,
+  .workflow-builder-panel,
+  .workflow-templates-panel,
   .communications-column {
     padding: 16px;
   }
@@ -5145,6 +5508,15 @@ button.insight-card:hover {
   .coaching-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .workflow-builder-toolbar {
+    align-items: flex-start;
+    grid-template-columns: 1fr;
+  }
+
+  .workflow-toolbar-actions {
+    justify-content: flex-start;
   }
 
   .conversation-window-column {
@@ -5204,6 +5576,8 @@ button.insight-card:hover {
   .ai-assistant-grid,
   .coaching-grid,
   .manager-actions,
+  .automation-analytics,
+  .workflow-template-grid,
   .dial-summary,
   .dial-info-grid,
   .pipeline-health,
@@ -5222,6 +5596,9 @@ button.insight-card:hover {
   .automation-summary,
   .automation-actions,
   .automation-step-grid,
+  .workflow-builder-toolbar,
+  .workflow-designer-grid,
+  .ai-workflow-assistant,
   .automation-run-row,
   .forecast-summary,
   .forecast-row,
@@ -5270,6 +5647,16 @@ button.insight-card:hover {
   .ai-recommendations-grid {
     gap: 6px;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .workflow-canvas-viewport,
+  .workflow-canvas {
+    min-height: 420px;
+  }
+
+  .workflow-canvas-inner,
+  .workflow-connections {
+    height: 480px;
   }
 
   .focus-grid article,
@@ -5430,6 +5817,12 @@ button.insight-card:hover {
   .follow-up-item,
   .follow-up-queue-summary article,
   .follow-up-item-grid article,
+  .palette-node,
+  .workflow-node,
+  .workflow-properties-card,
+  .workflow-template-card,
+  .automation-analytics article,
+  .execution-log-row,
   .manager-kpi-card,
   .manager-insight-card,
   .forecast-chart-card,
@@ -5483,6 +5876,13 @@ button.insight-card:hover {
   .source-card-meta span,
   .insight-card span,
   .insight-card p,
+  .palette-node span,
+  .workflow-node span,
+  .workflow-node small,
+  .workflow-properties-card span,
+  .workflow-template-card span,
+  .automation-analytics span,
+  .execution-log-row span,
   .manager-kpi-card span,
   .manager-kpi-card small,
   .manager-insight-card p,

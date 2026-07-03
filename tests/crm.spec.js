@@ -76,7 +76,7 @@ test('renders the CRM dashboard MVP', async ({ page }) => {
   await expect(page.locator('#flowLeadDetails')).toContainText('Recommended action');
   await expect(page.locator('#flowLeadDetails')).toContainText('Top score factors');
 
-  await navigateTo(page, 'Automation', 'automation');
+  await navigateTo(page, 'Automations', 'automation');
   await expect(page.getByText('Create next-step tasks')).toBeVisible();
 });
 
@@ -163,7 +163,7 @@ test('opens primary sidebar items as separate app pages', async ({ page }) => {
   await expect(page.locator('#contacts')).toBeVisible();
   await expect(page.locator('#aiSalesManagerPage')).toBeHidden();
 
-  await navigateTo(page, 'Automation', 'automation');
+  await navigateTo(page, 'Automations', 'automation');
   await expect(page.locator('#automation')).toBeVisible();
   await expect(page.locator('#contacts')).toBeHidden();
 
@@ -351,7 +351,7 @@ test('opens section subpages inside CRM tabs', async ({ page }) => {
   await expect(page.locator('#leadBrief')).toBeVisible();
   await expect(page.locator('#pipeline')).toBeHidden();
 
-  await navigateTo(page, 'Automation', 'automation');
+  await navigateTo(page, 'Automations', 'automation');
   await page.getByRole('button', { name: 'Automation builder' }).click();
   await expect(page.locator('#automation .automation-builder')).toBeVisible();
   await expect(page.locator('#automationTemplateList')).toBeHidden();
@@ -406,31 +406,100 @@ test('shows and exports lead source performance', async ({ page }) => {
 });
 
 test('manages automation status in bulk', async ({ page }) => {
-  await navigateTo(page, 'Automation', 'automation');
+  await navigateTo(page, 'Automations', 'automation');
 
-  await expect(page.locator('#automationSummary')).toContainText('2/3');
-  await expect(page.locator('#automationSummary')).toContainText('7h');
-  await expect(page.locator('#automationSummary')).toContainText('1');
+  await expect(page.locator('#automationSummary')).toContainText('Active Automations');
+  await expect(page.locator('#automationSummary')).toContainText('Paused');
+  await expect(page.locator('#automationSummary')).toContainText('Drafts');
+  await expect(page.locator('#automationSummary')).toContainText('Runs Today');
+  await expect(page.locator('#automationSummary')).toContainText('Success Rate');
+  await expect(page.locator('#automationSummary')).toContainText('Failed Runs');
+  await expect(page.locator('#automationSummary')).toContainText('3');
+  await expect(page.locator('#automationSummary')).toContainText('2');
   await expect(page.locator('#automationList')).toContainText('Win-back reminders');
   await expect(page.locator('#automationSaved')).toContainText('7h');
+  await expect(page.getByRole('button', { name: '+ New Automation' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Enable all' }).click();
 
-  await expect(page.locator('#automationSummary')).toContainText('3/3');
-  await expect(page.locator('#automationSummary')).toContainText('9h');
-  await expect(page.locator('#automationSummary')).toContainText('0');
+  await expect(page.locator('#automationSummary')).toContainText('4');
+  await expect(page.locator('#automationSummary')).toContainText('1');
   await expect(page.locator('#automationSaved')).toContainText('9h');
 
   await page.getByRole('button', { name: 'Reset defaults' }).click();
 
-  await expect(page.locator('#automationSummary')).toContainText('2/3');
-  await expect(page.locator('#automationSummary')).toContainText('7h');
-  await expect(page.locator('#automationSummary')).toContainText('1');
+  await expect(page.locator('#automationSummary')).toContainText('3');
+  await expect(page.locator('#automationSummary')).toContainText('2');
   await expect(page.locator('#automationSaved')).toContainText('7h');
 });
 
+test('builds visual no-code automation workflows', async ({ page }) => {
+  await navigateTo(page, 'Automations', 'automation');
+  await openAutomationSubpage(page, 'Automation builder');
+
+  await expect(page.locator('#workflowBuilderPanel')).toContainText('Workflow Canvas');
+  await expect(page.locator('#nodePalette')).toContainText('Trigger Nodes');
+  await expect(page.locator('#nodePalette')).toContainText('New Lead');
+  await expect(page.locator('#nodePalette')).toContainText('Appointment Booked');
+  await expect(page.locator('#nodePalette')).toContainText('Incoming Text');
+  await expect(page.locator('#nodePalette')).toContainText('Condition Nodes');
+  await expect(page.locator('#nodePalette')).toContainText('If Lead Value >');
+  await expect(page.locator('#nodePalette')).toContainText('If No Response');
+  await expect(page.locator('#nodePalette')).toContainText('If AI Score >');
+  await expect(page.locator('#nodePalette')).toContainText('Action Nodes');
+  await expect(page.locator('#nodePalette')).toContainText('Send SMS');
+  await expect(page.locator('#nodePalette')).toContainText('Webhook');
+  await expect(page.locator('#nodePalette')).toContainText('End Workflow');
+  await expect(page.locator('#workflowCanvasNodes').locator('.workflow-node')).toHaveCount(5);
+  await expect(page.locator('#workflowConnections .workflow-connection-path')).toHaveCount(4);
+  await expect(page.locator('#propertiesPanel')).toContainText('Properties Panel');
+  await expect(page.locator('#workflowAutosaveStatus')).toContainText('Autosaved');
+
+  await page.locator('[data-node-palette="webhook"]').click();
+  await expect(page.locator('#workflowCanvasNodes')).toContainText('Webhook');
+  await expect(page.locator('#workflowCanvasNodes').locator('.workflow-node')).toHaveCount(6);
+
+  await page.getByRole('button', { name: 'Zoom In' }).click();
+  await page.getByRole('button', { name: 'Pan Right' }).click();
+  await expect(page.locator('#workflowAutosaveStatus')).toContainText('Autosaved');
+
+  await openAutomationSubpage(page, 'Automation templates');
+  await expect(page.locator('#workflowTemplateList')).toContainText('New Lead Follow-Up');
+  await expect(page.locator('#workflowTemplateList')).toContainText('Missed Appointment Recovery');
+  await expect(page.locator('#workflowTemplateList')).toContainText('Estimate Reminder');
+  await expect(page.locator('#workflowTemplateList')).toContainText('Review Request');
+  await expect(page.locator('#workflowTemplateList')).toContainText('Referral Campaign');
+  await expect(page.locator('#workflowTemplateList')).toContainText('Reactivation Campaign');
+  await expect(page.locator('#workflowTemplateList')).toContainText('Deposit Reminder');
+  await expect(page.locator('#workflowTemplateList')).toContainText('Job Completion');
+  await page.locator('#workflowTemplateList').getByRole('button', { name: 'Use Template' }).first().click();
+  await expect(page.locator('#workflowBuilderPanel')).toBeVisible();
+  await expect(page.locator('#automationBuilderMessage')).toContainText('loaded into the workflow canvas');
+
+  await page.locator('#aiWorkflowPrompt').fill("When someone hasn't replied in 3 days, send a text, wait 2 days, then notify my sales manager.");
+  await page.getByRole('button', { name: 'Generate Workflow' }).click();
+  await expect(page.locator('#aiWorkflowMessage')).toContainText('AI converted the prompt');
+  await expect(page.locator('#workflowCanvasNodes')).toContainText('If No Response');
+  await expect(page.locator('#workflowCanvasNodes')).toContainText('Notify Manager');
+
+  await openAutomationSubpage(page, 'Automation runs');
+  await expect(page.locator('#automationAnalytics')).toContainText('Runs');
+  await expect(page.locator('#automationAnalytics')).toContainText('Success %');
+  await expect(page.locator('#automationAnalytics')).toContainText('Average Execution Time');
+  await expect(page.locator('#automationAnalytics')).toContainText('Time Saved');
+  await expect(page.locator('#automationAnalytics')).toContainText('Revenue Generated');
+  await expect(page.locator('#executionLog')).toContainText('Workflow Name');
+  await expect(page.locator('#executionLog')).toContainText('Customer');
+  await expect(page.locator('#executionLog')).toContainText('Status');
+  await expect(page.locator('#executionLog')).toContainText('Execution Time');
+  await expect(page.locator('#executionLog')).toContainText('Success');
+  await expect(page.locator('#executionLog')).toContainText('Failure');
+  await page.locator('#executionLog').getByRole('button', { name: 'Retry' }).first().click();
+  await expect(page.locator('#automationBuilderMessage')).toContainText('Workflow retry queued');
+});
+
 test('builds and runs a custom automation template', async ({ page }) => {
-  await navigateTo(page, 'Automation', 'automation');
+  await navigateTo(page, 'Automations', 'automation');
   const builder = page.locator('#automation');
 
   await openAutomationSubpage(page, 'Automation templates');
@@ -463,7 +532,7 @@ test('builds and runs a custom automation template', async ({ page }) => {
 });
 
 test('edits, pauses, and deletes automation templates', async ({ page }) => {
-  await navigateTo(page, 'Automation', 'automation');
+  await navigateTo(page, 'Automations', 'automation');
   const builder = page.locator('#automation');
   await openAutomationSubpage(page, 'Automation templates');
   const qualifiedTemplate = builder.locator('.automation-template-card').filter({ hasText: 'Qualified lead follow-up' });
@@ -505,7 +574,7 @@ test('runs saved automation templates from lead triggers', async ({ page }) => {
   await expect(page.locator('#taskList')).toContainText('Call Avery Price at Bright Path Solar within 15 minutes.');
   await expect(page.locator('#taskList')).toContainText('Send Bright Path Solar a quick intro and booking link.');
 
-  await navigateTo(page, 'Automation', 'automation');
+  await navigateTo(page, 'Automations', 'automation');
   await openAutomationSubpage(page, 'Automation runs');
   await expect(page.locator('#automationRunList')).toContainText('Speed-to-lead starter');
   await expect(page.locator('#automationRunList')).toContainText('Bright Path Solar');
@@ -533,7 +602,7 @@ test('runs stage and won automation templates without duplicating automatic runs
   await openLeadBrief(page);
   await page.locator('#leadBrief').getByRole('button', { name: 'Reopen deal' }).click();
   await page.locator('#leadBrief').getByRole('button', { name: 'Mark won' }).click();
-  await navigateTo(page, 'Automation', 'automation');
+  await navigateTo(page, 'Automations', 'automation');
   await openAutomationSubpage(page, 'Automation runs');
 
   const wonRuns = page.locator('#automationRunList .automation-run-row').filter({ hasText: 'Won deal onboarding' });
@@ -541,7 +610,7 @@ test('runs stage and won automation templates without duplicating automatic runs
 });
 
 test('scans no-response automations once per open lead', async ({ page }) => {
-  await navigateTo(page, 'Automation', 'automation');
+  await navigateTo(page, 'Automations', 'automation');
 
   await page.getByRole('button', { name: 'Run no-response scan' }).click();
 
@@ -555,7 +624,7 @@ test('scans no-response automations once per open lead', async ({ page }) => {
   await page.getByRole('button', { name: /Upcoming/ }).click();
   await expect(page.locator('#taskList')).toContainText('Ask Maya Johnson if this should stay open or pause.');
 
-  await navigateTo(page, 'Automation', 'automation');
+  await navigateTo(page, 'Automations', 'automation');
   await openAutomationSubpage(page, 'Automations');
   await page.getByRole('button', { name: 'Run no-response scan' }).click();
   await openAutomationSubpage(page, 'Automation builder');
@@ -778,7 +847,8 @@ test('exports and imports a workspace backup', async ({ page }) => {
   await expect(page.locator('#pipelineBoard')).not.toContainText('Northstar Roofing');
   await expect(page.locator('#taskList')).toContainText('Call restored lead');
   await expect(page.locator('#activityFeed')).toContainText('Backup note restored.');
-  await expect(page.locator('#automationSummary')).toContainText('3/3');
+  await expect(page.locator('#automationSummary')).toContainText('Active Automations');
+  await expect(page.locator('#automationSummary')).toContainText('4');
   await expect(page.locator('#backupSummary')).toContainText('1');
   await expect(page.locator('#backupMessage')).toContainText('Imported 1 leads, 1 tasks, and 1 activities.');
 });

@@ -146,6 +146,107 @@ const defaultAutomationTemplates = [
   },
 ];
 
+const workflowNodeCatalog = {
+  triggers: [
+    "New Lead",
+    "Lead Updated",
+    "Appointment Booked",
+    "Appointment Completed",
+    "Estimate Sent",
+    "Estimate Accepted",
+    "Invoice Paid",
+    "Missed Call",
+    "Incoming Text",
+    "Incoming Email",
+    "Tag Added",
+    "Status Changed",
+    "Date Reached",
+    "Manual Trigger",
+  ].map((label) => workflowNodeDefinition(label, "trigger")),
+  conditions: [
+    "If Lead Value >",
+    "If City Equals",
+    "If Tag Exists",
+    "If No Response",
+    "If Appointment Missed",
+    "If Revenue >",
+    "If Sales Rep Equals",
+    "If Source Equals",
+    "If AI Score >",
+  ].map((label) => workflowNodeDefinition(label, "condition")),
+  actions: [
+    "Send SMS",
+    "Send Email",
+    "Create Task",
+    "Assign Sales Rep",
+    "Change Pipeline Stage",
+    "Apply Tag",
+    "Remove Tag",
+    "Schedule Follow-Up",
+    "Create Estimate",
+    "Create Invoice",
+    "Request Review",
+    "Send Internal Notification",
+    "Notify Manager",
+    "Webhook",
+    "Delay",
+    "Wait Until Date",
+    "Loop",
+    "End Workflow",
+  ].map((label) => workflowNodeDefinition(label, "action")),
+};
+
+const workflowTemplateCatalog = [
+  {
+    id: "new-lead-follow-up",
+    name: "New Lead Follow-Up",
+    detail: "Text, wait, task, and manager notification for fresh homeowners.",
+    nodes: ["New Lead", "Send SMS", "Delay", "Create Task", "Notify Manager"],
+  },
+  {
+    id: "missed-appointment-recovery",
+    name: "Missed Appointment Recovery",
+    detail: "Recover missed appointments with text, email, and task follow-up.",
+    nodes: ["Appointment Completed", "If Appointment Missed", "Send SMS", "Send Email", "Create Task"],
+  },
+  {
+    id: "estimate-reminder",
+    name: "Estimate Reminder",
+    detail: "Follow up after estimates until the homeowner responds.",
+    nodes: ["Estimate Sent", "If No Response", "Delay", "Send SMS", "Notify Manager"],
+  },
+  {
+    id: "review-request",
+    name: "Review Request",
+    detail: "Ask happy customers for reviews after job completion.",
+    nodes: ["Status Changed", "Request Review", "Send Internal Notification", "End Workflow"],
+  },
+  {
+    id: "referral-campaign",
+    name: "Referral Campaign",
+    detail: "Tag won customers and ask for neighbor referrals.",
+    nodes: ["Estimate Accepted", "Apply Tag", "Send Email", "Request Review"],
+  },
+  {
+    id: "reactivation-campaign",
+    name: "Reactivation Campaign",
+    detail: "Restart quiet leads with SMS, delay, and rep assignment.",
+    nodes: ["Date Reached", "If No Response", "Send SMS", "Assign Sales Rep", "Schedule Follow-Up"],
+  },
+  {
+    id: "deposit-reminder",
+    name: "Deposit Reminder",
+    detail: "Prompt deposit payment before a project window expires.",
+    nodes: ["Estimate Accepted", "Create Invoice", "Delay", "Send SMS", "Notify Manager"],
+  },
+  {
+    id: "job-completion",
+    name: "Job Completion",
+    detail: "Complete the customer loop with invoice, review request, and internal note.",
+    nodes: ["Status Changed", "Create Invoice", "Request Review", "Send Internal Notification", "End Workflow"],
+  },
+];
+
 const timeSavedRates = {
   smartPrioritizedLead: 2,
   aiTalkingPointsGenerated: 3,
@@ -284,6 +385,10 @@ let selectedContactIds = new Set();
 let selectedTaskIds = new Set();
 let activePage = "pipeline";
 let editingAutomationTemplateId = null;
+let selectedWorkflowId = null;
+let selectedWorkflowNodeId = null;
+let workflowZoom = 1;
+let workflowPan = { x: 0, y: 0 };
 let managerAnalyticsView = "revenue";
 let managerInsightsVersion = 0;
 let selectedConversationId = null;
@@ -435,6 +540,7 @@ const selectedTaskDueInput = document.querySelector("#selectedTaskDue");
 const applySelectedTaskDueButton = document.querySelector("#applySelectedTaskDue");
 const duplicateSelectedTasksButton = document.querySelector("#duplicateSelectedTasks");
 const deleteSelectedTasksButton = document.querySelector("#deleteSelectedTasks");
+const newWorkflowButton = document.querySelector("#newWorkflowButton");
 const automationList = document.querySelector("#automationList");
 const automationSummary = document.querySelector("#automationSummary");
 const enableAllAutomationsButton = document.querySelector("#enableAllAutomations");
@@ -452,6 +558,19 @@ const automationStep3TextInput = document.querySelector("#automationStep3Text");
 const resetAutomationBuilderButton = document.querySelector("#resetAutomationBuilder");
 const automationPreview = document.querySelector("#automationPreview");
 const automationBuilderMessage = document.querySelector("#automationBuilderMessage");
+const workflowAutosaveStatus = document.querySelector("#workflowAutosaveStatus");
+const nodePalette = document.querySelector("#nodePalette");
+const workflowCanvas = document.querySelector("#workflowCanvas");
+const workflowCanvasInner = document.querySelector("#workflowCanvasInner");
+const workflowConnections = document.querySelector("#workflowConnections");
+const workflowCanvasNodes = document.querySelector("#workflowCanvasNodes");
+const propertiesPanel = document.querySelector("#propertiesPanel");
+const aiWorkflowPrompt = document.querySelector("#aiWorkflowPrompt");
+const generateWorkflowFromAIButton = document.querySelector("#generateWorkflowFromAI");
+const aiWorkflowMessage = document.querySelector("#aiWorkflowMessage");
+const workflowTemplateList = document.querySelector("#workflowTemplateList");
+const automationAnalytics = document.querySelector("#automationAnalytics");
+const executionLog = document.querySelector("#executionLog");
 const automationTemplateList = document.querySelector("#automationTemplateList");
 const automationRunList = document.querySelector("#automationRunList");
 const activityFeed = document.querySelector("#activityFeed");
@@ -524,7 +643,7 @@ const pageTitles = {
   pipeline: "Dashboard",
   manager: "AI Sales Manager",
   contacts: "Contacts",
-  automation: "Automation",
+  automation: "Automations",
   tasks: "Tasks",
   activity: "Activity",
   communications: "Communications",
@@ -618,11 +737,39 @@ snoozeSelectedTasksButton.addEventListener("click", snoozeSelectedTasks);
 applySelectedTaskDueButton.addEventListener("click", applySelectedTaskDue);
 duplicateSelectedTasksButton.addEventListener("click", duplicateSelectedTasks);
 deleteSelectedTasksButton.addEventListener("click", deleteSelectedTasks);
+newWorkflowButton.addEventListener("click", createNewWorkflow);
 enableAllAutomationsButton.addEventListener("click", enableAllAutomations);
 resetAutomationsButton.addEventListener("click", resetAutomationsToDefaults);
 runNoResponseScanButton.addEventListener("click", runNoResponseScan);
 automationBuilderForm.addEventListener("submit", saveAutomationTemplateFromBuilder);
 resetAutomationBuilderButton.addEventListener("click", resetAutomationBuilder);
+generateWorkflowFromAIButton.addEventListener("click", generateWorkflowFromAI);
+
+workflowCanvas.addEventListener("dragover", (event) => {
+  event.preventDefault();
+});
+
+workflowCanvas.addEventListener("drop", (event) => {
+  event.preventDefault();
+  const paletteNodeId = event.dataTransfer.getData("workflow-node-type");
+  const movingNodeId = event.dataTransfer.getData("workflow-node-id");
+  const rect = workflowCanvas.getBoundingClientRect();
+  const x = Math.round((event.clientX - rect.left - workflowPan.x) / workflowZoom);
+  const y = Math.round((event.clientY - rect.top - workflowPan.y) / workflowZoom);
+  if (movingNodeId) {
+    moveWorkflowNode(movingNodeId, x, y);
+    return;
+  }
+  if (paletteNodeId) addWorkflowNode(paletteNodeId, x, y);
+});
+
+document.querySelectorAll("[data-workflow-zoom]").forEach((button) => {
+  button.addEventListener("click", () => adjustWorkflowZoom(button.dataset.workflowZoom));
+});
+
+document.querySelectorAll("[data-workflow-pan]").forEach((button) => {
+  button.addEventListener("click", () => adjustWorkflowPan(button.dataset.workflowPan));
+});
 [
   automationTemplateNameInput,
   automationTriggerInput,
@@ -3222,8 +3369,11 @@ function renderAutomations() {
 
 function renderAutomationBuilder() {
   renderAutomationPreview();
+  renderWorkflowBuilder();
+  renderAutomationAnalytics();
   renderAutomationTemplates();
   renderAutomationRuns();
+  renderExecutionLog();
 }
 
 function renderAutomationPreview() {
@@ -3250,6 +3400,227 @@ function renderAutomationPreview() {
         : "<p class=\"empty-state\">Add at least one task step to preview the sequence.</p>"}
     </div>
   `;
+}
+
+function renderWorkflowBuilder() {
+  const workflows = automationWorkflowState();
+  const workflow = selectedWorkflow(workflows);
+  if (!workflow) return;
+  renderNodePalette();
+  renderWorkflowCanvas(workflow);
+  renderPropertiesPanel(workflow);
+  renderWorkflowTemplates();
+  workflowAutosaveStatus.textContent = `Autosaved ${formatConversationTime(workflow.updatedAt)}`;
+}
+
+function renderNodePalette() {
+  nodePalette.innerHTML = `
+    <h4 id="nodePaletteHeading">Node Palette</h4>
+    ${Object.entries(workflowNodeCatalog)
+      .map(
+        ([group, nodes]) => `
+          <section class="node-palette-group">
+            <button class="node-group-heading" data-node-group="${group}" type="button">${escapeHtml(workflowNodeGroupLabel(group))}</button>
+            <div>
+              ${nodes
+                .map(
+                  (node) => `
+                    <button class="palette-node ${node.type}" draggable="true" data-node-palette="${node.id}" type="button">
+                      <span>${escapeHtml(node.type)}</span>
+                      <strong>${escapeHtml(node.label)}</strong>
+                    </button>
+                  `,
+                )
+                .join("")}
+            </div>
+          </section>
+        `,
+      )
+      .join("")}
+  `;
+
+  nodePalette.querySelectorAll("[data-node-palette]").forEach((button) => {
+    button.addEventListener("dragstart", (event) => {
+      event.dataTransfer.setData("workflow-node-type", button.dataset.nodePalette);
+    });
+    button.addEventListener("click", () => addWorkflowNode(button.dataset.nodePalette));
+  });
+}
+
+function renderWorkflowCanvas(workflow) {
+  workflowCanvasInner.style.transform = `translate(${workflowPan.x}px, ${workflowPan.y}px) scale(${workflowZoom})`;
+  workflowConnections.setAttribute("viewBox", "0 0 960 560");
+  workflowConnections.innerHTML = workflow.connections
+    .map((connection) => {
+      const from = workflow.nodes.find((node) => node.id === connection.from);
+      const to = workflow.nodes.find((node) => node.id === connection.to);
+      if (!from || !to) return "";
+      const startX = from.x + 176;
+      const startY = from.y + 38;
+      const endX = to.x;
+      const endY = to.y + 38;
+      const midX = Math.round((startX + endX) / 2);
+      return `
+        <path class="workflow-connection-path" d="M ${startX} ${startY} C ${midX} ${startY}, ${midX} ${endY}, ${endX} ${endY}" marker-end="url(#workflowArrow)" />
+      `;
+    })
+    .join("");
+
+  workflowConnections.insertAdjacentHTML(
+    "afterbegin",
+    `<defs><marker id="workflowArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" /></marker></defs>`,
+  );
+
+  workflowCanvasNodes.innerHTML = workflow.nodes
+    .map(
+      (node) => `
+        <button class="workflow-node ${node.type} ${node.id === selectedWorkflowNodeId ? "active" : ""}" draggable="true" data-workflow-node="${node.id}" style="left:${node.x}px; top:${node.y}px" type="button">
+          <span>${escapeHtml(node.type)}</span>
+          <strong>${escapeHtml(node.label)}</strong>
+          <small>${escapeHtml(node.detail)}</small>
+        </button>
+      `,
+    )
+    .join("");
+
+  workflowCanvasNodes.querySelectorAll("[data-workflow-node]").forEach((button) => {
+    button.addEventListener("click", () => {
+      selectedWorkflowNodeId = button.dataset.workflowNode;
+      renderWorkflowBuilder();
+    });
+    button.addEventListener("dragstart", (event) => {
+      event.dataTransfer.setData("workflow-node-id", button.dataset.workflowNode);
+    });
+  });
+}
+
+function renderPropertiesPanel(workflow) {
+  const selected = workflow.nodes.find((node) => node.id === selectedWorkflowNodeId) || workflow.nodes[0];
+  selectedWorkflowNodeId = selected?.id || null;
+  if (!selected) {
+    propertiesPanel.innerHTML = `
+      <h4 id="propertiesPanelHeading">Properties Panel</h4>
+      <p class="empty-state">Add a node to edit workflow properties.</p>
+    `;
+    return;
+  }
+
+  propertiesPanel.innerHTML = `
+    <h4 id="propertiesPanelHeading">Properties Panel</h4>
+    <div class="workflow-properties-card">
+      <span>${escapeHtml(selected.type)}</span>
+      <strong>${escapeHtml(selected.label)}</strong>
+      <p>${escapeHtml(selected.detail)}</p>
+      <label>
+        Node Name
+        <input id="workflowNodeName" type="text" value="${escapeHtml(selected.label)}" />
+      </label>
+      <label>
+        Notes
+        <textarea id="workflowNodeNotes" rows="4">${escapeHtml(selected.notes || defaultNodeNotes(selected))}</textarea>
+      </label>
+      <button class="secondary-button" id="saveWorkflowNodeProperties" type="button">Save Node</button>
+      <button class="danger-button" id="deleteWorkflowNode" type="button">Delete Node</button>
+    </div>
+    <section class="workflow-properties-card">
+      <span>Workflow</span>
+      <strong>${escapeHtml(workflow.name)}</strong>
+      <p>Status: ${escapeHtml(workflow.status)} · ${workflow.nodes.length} nodes · ${workflow.connections.length} arrows</p>
+    </section>
+  `;
+
+  propertiesPanel.querySelector("#saveWorkflowNodeProperties").addEventListener("click", () => {
+    updateWorkflowNode(selected.id, {
+      label: propertiesPanel.querySelector("#workflowNodeName").value.trim() || selected.label,
+      notes: propertiesPanel.querySelector("#workflowNodeNotes").value.trim(),
+    });
+  });
+
+  propertiesPanel.querySelector("#deleteWorkflowNode").addEventListener("click", () => deleteWorkflowNode(selected.id));
+}
+
+function renderWorkflowTemplates() {
+  workflowTemplateList.innerHTML = workflowTemplateCatalog
+    .map(
+      (template) => `
+        <article class="workflow-template-card">
+          <div>
+            <strong>${escapeHtml(template.name)}</strong>
+            <span>${escapeHtml(template.detail)}</span>
+          </div>
+          <button class="secondary-button" data-load-workflow-template="${template.id}" type="button">Use Template</button>
+        </article>
+      `,
+    )
+    .join("");
+
+  workflowTemplateList.querySelectorAll("[data-load-workflow-template]").forEach((button) => {
+    button.addEventListener("click", () => loadWorkflowTemplate(button.dataset.loadWorkflowTemplate));
+  });
+}
+
+function renderAutomationAnalytics() {
+  const workflows = automationWorkflowState();
+  const runs = automationExecutionRows();
+  const success = runs.filter((run) => run.status === "Success").length;
+  const failed = runs.filter((run) => run.status === "Failure").length;
+  const successRate = Math.round((success / Math.max(1, runs.length)) * 100);
+  const averageExecution = Math.round(runs.reduce((sum, run) => sum + run.executionSeconds, 0) / Math.max(1, runs.length));
+  const timeSaved = workflows.length * 18 + success * 6;
+  const revenueGenerated = workflows.reduce((sum, workflow) => sum + workflow.revenueGenerated, 0);
+
+  automationAnalytics.innerHTML = [
+    ["Runs", runs.length],
+    ["Success %", `${successRate}%`],
+    ["Average Execution Time", `${averageExecution}s`],
+    ["Time Saved", formatSavedMinutes(timeSaved)],
+    ["Revenue Generated", formatter.format(revenueGenerated)],
+    ["Failed Runs", failed],
+  ]
+    .map(
+      ([label, value]) => `
+        <article>
+          <span>${escapeHtml(label)}</span>
+          <strong>${escapeHtml(value)}</strong>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function renderExecutionLog() {
+  const rows = automationExecutionRows();
+  executionLog.innerHTML = `
+    <div class="execution-log-heading">
+      <span>Workflow Name</span>
+      <span>Customer</span>
+      <span>Status</span>
+      <span>Execution Time</span>
+      <span>Result</span>
+      <span>Retry</span>
+    </div>
+    ${rows
+      .map(
+        (row) => `
+          <article class="execution-log-row ${row.status.toLowerCase()}">
+            <strong>${escapeHtml(row.workflowName)}</strong>
+            <span>${escapeHtml(row.customer)}</span>
+            <span>${escapeHtml(row.status)}</span>
+            <time>${row.executionSeconds}s</time>
+            <span>${row.status === "Success" ? "Success" : "Failure"}</span>
+            <button class="secondary-button" data-retry-workflow="${row.id}" type="button">Retry</button>
+          </article>
+        `,
+      )
+      .join("")}
+  `;
+
+  executionLog.querySelectorAll("[data-retry-workflow]").forEach((button) => {
+    button.addEventListener("click", () => {
+      automationBuilderMessage.textContent = "Workflow retry queued with placeholder execution engine.";
+      showCommunicationToast("Workflow retry queued", "The execution log will update when the backend runner is connected.");
+    });
+  });
 }
 
 function renderAutomationTemplates() {
@@ -3332,33 +3703,365 @@ function renderAutomationRuns() {
 
 function renderAutomationSummary() {
   const active = state.automations.filter((automation) => automation.enabled);
-  const savedHours = active.reduce((sum, automation) => sum + automation.savedHours, 0);
+  const workflows = automationWorkflowState();
   const paused = state.automations.length - active.length;
   const activeTemplates = normalizedAutomationTemplates(state.automationTemplates).filter((template) => template.active);
   const runs = normalizedAutomationRuns(state.automationRuns);
+  const executionRows = automationExecutionRows();
+  const runsToday = executionRows.filter((row) => isToday(row.createdAt)).length;
+  const successRate = Math.round(
+    (executionRows.filter((row) => row.status === "Success").length / Math.max(1, executionRows.length)) * 100,
+  );
+  const failedRuns = executionRows.filter((row) => row.status === "Failure").length;
+  const drafts = workflows.filter((workflow) => workflow.status === "draft").length;
 
   automationSummary.innerHTML = `
     <article>
-      <span>Active</span>
-      <strong>${active.length}/${state.automations.length}</strong>
-    </article>
-    <article>
-      <span>Saved</span>
-      <strong>${savedHours}h</strong>
+      <span>Active Automations</span>
+      <strong>${active.length + workflows.filter((workflow) => workflow.status === "active").length}</strong>
     </article>
     <article>
       <span>Paused</span>
-      <strong>${paused}</strong>
+      <strong>${paused + workflows.filter((workflow) => workflow.status === "paused").length}</strong>
     </article>
     <article>
-      <span>Templates</span>
+      <span>Drafts</span>
+      <strong>${drafts}</strong>
+    </article>
+    <article>
+      <span>Runs Today</span>
+      <strong>${runsToday}</strong>
+    </article>
+    <article>
+      <span>Success Rate</span>
+      <strong>${successRate}%</strong>
+    </article>
+    <article>
+      <span>Failed Runs</span>
+      <strong>${failedRuns}</strong>
+    </article>
+    <article>
+      <span>Saved Templates</span>
       <strong>${activeTemplates.length}</strong>
     </article>
     <article>
-      <span>Runs</span>
+      <span>Legacy Runs</span>
       <strong>${runs.length}</strong>
     </article>
   `;
+}
+
+function automationWorkflowState() {
+  const saved = localStorage.getItem(automationWorkflowsKey());
+  if (!saved) return defaultAutomationWorkflows();
+  try {
+    const workflows = JSON.parse(saved);
+    return normalizeAutomationWorkflows(workflows);
+  } catch {
+    localStorage.removeItem(automationWorkflowsKey());
+    return defaultAutomationWorkflows();
+  }
+}
+
+function saveAutomationWorkflowState(workflows) {
+  localStorage.setItem(automationWorkflowsKey(), JSON.stringify(normalizeAutomationWorkflows(workflows)));
+}
+
+function selectedWorkflow(workflows = automationWorkflowState()) {
+  const workflow =
+    workflows.find((item) => item.id === selectedWorkflowId) ||
+    workflows.find((item) => item.status === "active") ||
+    workflows[0] ||
+    null;
+  selectedWorkflowId = workflow?.id || null;
+  selectedWorkflowNodeId ||= workflow?.nodes[0]?.id || null;
+  return workflow;
+}
+
+function createNewWorkflow() {
+  const workflows = automationWorkflowState();
+  const workflow = workflowFromNodeLabels({
+    id: crypto.randomUUID(),
+    name: `Draft Automation ${workflows.length + 1}`,
+    status: "draft",
+    nodes: ["Manual Trigger", "If AI Score >", "Send SMS", "Create Task", "End Workflow"],
+  });
+  saveAutomationWorkflowState([workflow, ...workflows]);
+  selectedWorkflowId = workflow.id;
+  selectedWorkflowNodeId = workflow.nodes[0]?.id || null;
+  subpageState.automation = "builder";
+  automationBuilderMessage.textContent = "New automation draft created and autosaved.";
+  render();
+}
+
+function addWorkflowNode(nodeDefinitionId, x = null, y = null) {
+  const definition = workflowNodeById(nodeDefinitionId);
+  if (!definition) return;
+  const workflows = automationWorkflowState();
+  const workflow = selectedWorkflow(workflows);
+  const index = workflow.nodes.length;
+  const node = {
+    id: crypto.randomUUID(),
+    type: definition.type,
+    label: definition.label,
+    detail: definition.detail,
+    notes: defaultNodeNotes(definition),
+    x: Number.isFinite(x) ? clampCanvasPoint(x, 24, 760) : 72 + index * 118,
+    y: Number.isFinite(y) ? clampCanvasPoint(y, 34, 410) : 86 + (index % 3) * 116,
+  };
+  const previous = workflow.nodes.at(-1);
+  workflow.nodes.push(node);
+  if (previous) workflow.connections.push({ from: previous.id, to: node.id });
+  workflow.updatedAt = new Date().toISOString();
+  selectedWorkflowNodeId = node.id;
+  saveAutomationWorkflowState(workflows);
+  renderWorkflowBuilder();
+}
+
+function moveWorkflowNode(nodeId, x, y) {
+  const workflows = automationWorkflowState();
+  const workflow = selectedWorkflow(workflows);
+  const node = workflow.nodes.find((item) => item.id === nodeId);
+  if (!node) return;
+  node.x = clampCanvasPoint(x, 24, 760);
+  node.y = clampCanvasPoint(y, 34, 430);
+  workflow.updatedAt = new Date().toISOString();
+  selectedWorkflowNodeId = node.id;
+  saveAutomationWorkflowState(workflows);
+  renderWorkflowBuilder();
+}
+
+function updateWorkflowNode(nodeId, updates) {
+  const workflows = automationWorkflowState();
+  const workflow = selectedWorkflow(workflows);
+  const node = workflow.nodes.find((item) => item.id === nodeId);
+  if (!node) return;
+  Object.assign(node, updates);
+  workflow.updatedAt = new Date().toISOString();
+  saveAutomationWorkflowState(workflows);
+  automationBuilderMessage.textContent = "Workflow node autosaved.";
+  renderWorkflowBuilder();
+}
+
+function deleteWorkflowNode(nodeId) {
+  const workflows = automationWorkflowState();
+  const workflow = selectedWorkflow(workflows);
+  workflow.nodes = workflow.nodes.filter((node) => node.id !== nodeId);
+  workflow.connections = workflow.connections.filter((connection) => connection.from !== nodeId && connection.to !== nodeId);
+  selectedWorkflowNodeId = workflow.nodes[0]?.id || null;
+  workflow.updatedAt = new Date().toISOString();
+  saveAutomationWorkflowState(workflows);
+  automationBuilderMessage.textContent = "Workflow node removed.";
+  renderWorkflowBuilder();
+}
+
+function loadWorkflowTemplate(templateId) {
+  const template = workflowTemplateCatalog.find((item) => item.id === templateId);
+  if (!template) return;
+  const workflows = automationWorkflowState();
+  const workflow = workflowFromNodeLabels({
+    id: crypto.randomUUID(),
+    name: template.name,
+    status: "draft",
+    nodes: template.nodes,
+  });
+  saveAutomationWorkflowState([workflow, ...workflows]);
+  selectedWorkflowId = workflow.id;
+  selectedWorkflowNodeId = workflow.nodes[0]?.id || null;
+  subpageState.automation = "builder";
+  automationBuilderMessage.textContent = `${template.name} loaded into the workflow canvas.`;
+  render();
+}
+
+function generateWorkflowFromAI() {
+  const prompt = aiWorkflowPrompt.value.trim();
+  const workflows = automationWorkflowState();
+  const workflow = workflowFromNodeLabels({
+    id: crypto.randomUUID(),
+    name: "AI No Response Sequence",
+    status: "draft",
+    nodes: ["If No Response", "Send SMS", "Delay", "Notify Manager", "End Workflow"],
+    prompt,
+  });
+  workflow.aiGenerated = true;
+  workflow.prompt = prompt || "When someone hasn't replied in 3 days, send a text, wait 2 days, then notify my sales manager.";
+  saveAutomationWorkflowState([workflow, ...workflows]);
+  selectedWorkflowId = workflow.id;
+  selectedWorkflowNodeId = workflow.nodes[0]?.id || null;
+  aiWorkflowMessage.textContent = "AI converted the prompt into a draft workflow.";
+  automationBuilderMessage.textContent = "AI workflow draft autosaved.";
+  renderWorkflowBuilder();
+  renderAutomationSummary();
+}
+
+function adjustWorkflowZoom(direction) {
+  if (direction === "reset") {
+    workflowZoom = 1;
+    workflowPan = { x: 0, y: 0 };
+  } else if (direction === "in") {
+    workflowZoom = Math.min(1.4, workflowZoom + 0.1);
+  } else {
+    workflowZoom = Math.max(0.72, workflowZoom - 0.1);
+  }
+  renderWorkflowBuilder();
+}
+
+function adjustWorkflowPan(direction) {
+  workflowPan.x += direction === "left" ? -40 : 40;
+  renderWorkflowBuilder();
+}
+
+function automationExecutionRows() {
+  const workflows = automationWorkflowState();
+  const selected = selectedLead();
+  const baseRows = workflows.slice(0, 5).map((workflow, index) => ({
+    id: workflow.id,
+    workflowName: workflow.name,
+    customer: state.leads[index % Math.max(1, state.leads.length)]?.company || selected?.company || "Sample customer",
+    status: index % 4 === 3 ? "Failure" : "Success",
+    executionSeconds: 8 + index * 3,
+    createdAt: workflow.updatedAt,
+  }));
+  return [
+    ...baseRows,
+    {
+      id: "mock-retry-1",
+      workflowName: "Missed Appointment Recovery",
+      customer: selected?.company || "Johnson Project",
+      status: "Failure",
+      executionSeconds: 19,
+      createdAt: new Date().toISOString(),
+    },
+  ];
+}
+
+function defaultAutomationWorkflows() {
+  return [
+    workflowFromNodeLabels({
+      id: "workflow-new-lead-follow-up",
+      name: "New Lead Follow-Up",
+      status: "active",
+      nodes: ["New Lead", "Send SMS", "Delay", "Create Task", "Notify Manager"],
+      revenueGenerated: 12400,
+    }),
+    workflowFromNodeLabels({
+      id: "workflow-estimate-reminder",
+      name: "Estimate Reminder",
+      status: "paused",
+      nodes: ["Estimate Sent", "If No Response", "Delay", "Send Email", "Notify Manager"],
+      revenueGenerated: 8600,
+    }),
+  ];
+}
+
+function normalizeAutomationWorkflows(workflows) {
+  const source = Array.isArray(workflows) && workflows.length ? workflows : defaultAutomationWorkflows();
+  return source.map((workflow) => ({
+    id: workflow.id || crypto.randomUUID(),
+    name: String(workflow.name || "Untitled Workflow"),
+    status: ["active", "paused", "draft"].includes(workflow.status) ? workflow.status : "draft",
+    nodes: Array.isArray(workflow.nodes) ? workflow.nodes.map(normalizedWorkflowNode) : [],
+    connections: Array.isArray(workflow.connections) ? workflow.connections : [],
+    updatedAt: workflow.updatedAt || new Date().toISOString(),
+    aiGenerated: Boolean(workflow.aiGenerated),
+    prompt: workflow.prompt || "",
+    revenueGenerated: Number(workflow.revenueGenerated || 0),
+  }));
+}
+
+function workflowFromNodeLabels({ id, name, status, nodes, prompt = "", revenueGenerated = 0 }) {
+  const workflowNodes = nodes.map((label, index) => {
+    const definition = workflowNodeByLabel(label) || workflowNodeDefinition(label, index === 0 ? "trigger" : "action");
+    return {
+      id: `${id}-node-${index + 1}`,
+      type: definition.type,
+      label: definition.label,
+      detail: definition.detail,
+      notes: defaultNodeNotes(definition),
+      x: 64 + index * 172,
+      y: index % 2 === 0 ? 96 : 210,
+    };
+  });
+  return {
+    id,
+    name,
+    status,
+    nodes: workflowNodes,
+    connections: workflowNodes.slice(0, -1).map((node, index) => ({
+      from: node.id,
+      to: workflowNodes[index + 1].id,
+    })),
+    updatedAt: new Date().toISOString(),
+    prompt,
+    revenueGenerated,
+  };
+}
+
+function normalizedWorkflowNode(node) {
+  return {
+    id: node.id || crypto.randomUUID(),
+    type: ["trigger", "condition", "action"].includes(node.type) ? node.type : "action",
+    label: String(node.label || "Workflow node"),
+    detail: String(node.detail || "Configured workflow step."),
+    notes: String(node.notes || ""),
+    x: clampCanvasPoint(Number(node.x || 80), 24, 760),
+    y: clampCanvasPoint(Number(node.y || 100), 34, 430),
+  };
+}
+
+function workflowNodeDefinition(label, type) {
+  return {
+    id: label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+    label,
+    type,
+    detail: workflowNodeDetail(label, type),
+  };
+}
+
+function workflowNodeById(nodeId) {
+  return Object.values(workflowNodeCatalog)
+    .flat()
+    .find((node) => node.id === nodeId);
+}
+
+function workflowNodeByLabel(label) {
+  return Object.values(workflowNodeCatalog)
+    .flat()
+    .find((node) => node.label === label);
+}
+
+function workflowNodeDetail(label, type) {
+  const details = {
+    trigger: "Starts the workflow when this business event happens.",
+    condition: "Branches the workflow when this rule evaluates true.",
+    action: "Performs this automated task in the customer journey.",
+  };
+  return `${details[type] || "Workflow step."} ${label}`;
+}
+
+function defaultNodeNotes(node) {
+  if (node.type === "trigger") return "Choose which event should start this automation.";
+  if (node.type === "condition") return "Set the condition value, comparison, and branch behavior.";
+  return "Configure message copy, assignment, timing, or integration settings.";
+}
+
+function clampCanvasPoint(value, min, max) {
+  return Math.max(min, Math.min(max, Math.round(value)));
+}
+
+function titleCase(value) {
+  return String(value)
+    .replace(/[-_]/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function workflowNodeGroupLabel(group) {
+  const labels = {
+    triggers: "Trigger Nodes",
+    conditions: "Condition Nodes",
+    actions: "Action Nodes",
+  };
+  return labels[group] || titleCase(group);
 }
 
 async function saveAutomationTemplateFromBuilder(event) {
@@ -6587,6 +7290,10 @@ function communicationMessagesKey() {
 
 function communicationDraftsKey() {
   return currentUser ? `closepilot-communication-drafts-${currentUser.id}` : "closepilot-communication-drafts-demo";
+}
+
+function automationWorkflowsKey() {
+  return currentUser ? `closepilot-automation-workflows-${currentUser.id}` : "closepilot-automation-workflows-demo";
 }
 
 function cloudSaasAccountKey(workspaceId) {

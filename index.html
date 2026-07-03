@@ -59,7 +59,7 @@
           <a class="active" data-nav-page="pipeline" href="#pipeline">Dashboard</a>
           <a data-nav-page="manager" href="#manager">AI Sales Manager</a>
           <a data-nav-page="contacts" href="#contacts">Contacts</a>
-          <a data-nav-page="automation" href="#automation">Automation</a>
+          <a data-nav-page="automation" href="#automation">Automations</a>
           <a data-nav-page="tasks" href="#tasks">Tasks</a>
           <a data-nav-page="activity" href="#activity">Activity</a>
           <a data-nav-page="communications" href="#communications">Communications</a>
@@ -462,6 +462,7 @@
               </div>
               <div class="automation-summary" id="automationSummary" aria-label="Automation summary"></div>
               <div class="automation-actions">
+                <button class="primary-button" id="newWorkflowButton" type="button">+ New Automation</button>
                 <button class="secondary-button" id="enableAllAutomations" type="button">Enable all</button>
                 <button class="secondary-button" id="resetAutomations" type="button">Reset defaults</button>
                 <button class="secondary-button" id="runNoResponseScan" type="button">Run no-response scan</button>
@@ -537,6 +538,54 @@
                 </form>
                 <div class="automation-preview" id="automationPreview" aria-label="Automation preview"></div>
                 <p class="automation-builder-message" id="automationBuilderMessage" role="status"></p>
+                <section class="workflow-builder-panel" id="workflowBuilderPanel" aria-labelledby="workflowCanvasHeading">
+                  <div class="workflow-builder-toolbar">
+                    <div>
+                      <p class="eyebrow">No-code workflow canvas</p>
+                      <h3 id="workflowCanvasHeading">Workflow Canvas</h3>
+                    </div>
+                    <div class="workflow-toolbar-actions" aria-label="Workflow canvas controls">
+                      <button class="secondary-button" data-workflow-zoom="out" type="button">Zoom Out</button>
+                      <button class="secondary-button" data-workflow-zoom="reset" type="button">Reset View</button>
+                      <button class="secondary-button" data-workflow-zoom="in" type="button">Zoom In</button>
+                      <button class="secondary-button" data-workflow-pan="left" type="button">Pan Left</button>
+                      <button class="secondary-button" data-workflow-pan="right" type="button">Pan Right</button>
+                    </div>
+                    <span class="autosave-pill" id="workflowAutosaveStatus">Autosaved</span>
+                  </div>
+
+                  <div class="workflow-designer-grid">
+                    <aside class="node-palette" id="nodePalette" aria-labelledby="nodePaletteHeading">
+                      <h4 id="nodePaletteHeading">Node Palette</h4>
+                    </aside>
+
+                    <div class="workflow-canvas-viewport" id="workflowCanvasViewport">
+                      <div class="workflow-canvas" id="workflowCanvas" aria-label="Drag-and-drop workflow canvas">
+                        <div class="workflow-canvas-inner" id="workflowCanvasInner">
+                          <svg class="workflow-connections" id="workflowConnections" aria-hidden="true"></svg>
+                          <div class="workflow-canvas-nodes" id="workflowCanvasNodes"></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <aside class="properties-panel" id="propertiesPanel" aria-labelledby="propertiesPanelHeading">
+                      <h4 id="propertiesPanelHeading">Properties Panel</h4>
+                    </aside>
+                  </div>
+
+                  <section class="ai-workflow-assistant" id="aiWorkflowAssistant" aria-labelledby="aiWorkflowAssistantHeading">
+                    <div>
+                      <p class="eyebrow">AI workflow assistant</p>
+                      <h4 id="aiWorkflowAssistantHeading">AI Workflow Assistant</h4>
+                    </div>
+                    <label>
+                      Describe an automation
+                      <textarea id="aiWorkflowPrompt" rows="3" placeholder="When someone hasn't replied in 3 days, send a text, wait 2 days, then notify my sales manager."></textarea>
+                    </label>
+                    <button class="primary-button" id="generateWorkflowFromAI" type="button">Generate Workflow</button>
+                    <p class="ai-workflow-message" id="aiWorkflowMessage" role="status"></p>
+                  </section>
+                </section>
               </section>
               <section class="automation-template-section" aria-labelledby="automationTemplatesHeading">
                 <div class="panel-heading compact">
@@ -545,6 +594,13 @@
                     <h3 id="automationTemplatesHeading">Automation templates</h3>
                   </div>
                 </div>
+                <section class="workflow-templates-panel" aria-labelledby="workflowTemplatesHeading">
+                  <div>
+                    <p class="eyebrow">Workflow templates</p>
+                    <h4 id="workflowTemplatesHeading">Workflow Templates</h4>
+                  </div>
+                  <div id="workflowTemplateList" class="workflow-template-grid"></div>
+                </section>
                 <div id="automationTemplateList" class="automation-template-list"></div>
               </section>
               <section class="automation-run-section" aria-labelledby="automationRunsHeading">
@@ -554,6 +610,8 @@
                     <h3 id="automationRunsHeading">Automation runs</h3>
                   </div>
                 </div>
+                <div id="automationAnalytics" class="automation-analytics" aria-label="Automation analytics"></div>
+                <div id="executionLog" class="execution-log" aria-label="Execution Log"></div>
                 <div id="automationRunList" class="automation-run-list"></div>
               </section>
             </section>
