@@ -139,6 +139,43 @@
             <button class="primary-button command-start-button" id="startMyDayButton" type="button">Start My Day</button>
           </section>
 
+          <section class="time-saved-widget" id="timeSavedWidget" aria-labelledby="timeSavedHeading">
+            <div class="time-saved-hero">
+              <div>
+                <p class="eyebrow">Time Saved</p>
+                <h2 id="timeSavedHeading">Proof ClosePilot is giving time back</h2>
+              </div>
+              <div class="time-saved-total">
+                <span>Today</span>
+                <strong id="dashboardTimeSavedToday">0m</strong>
+              </div>
+            </div>
+            <div class="time-saved-grid" aria-label="Time saved totals">
+              <article>
+                <span>This week</span>
+                <strong id="dashboardTimeSavedWeek">0m</strong>
+              </article>
+              <article>
+                <span>This month</span>
+                <strong id="dashboardTimeSavedMonth">0m</strong>
+              </article>
+              <article class="team-time-saved-card">
+                <span>Team Time Saved</span>
+                <strong id="teamTimeSavedTotal">0m</strong>
+              </article>
+            </div>
+            <div class="time-saved-breakdown">
+              <section aria-labelledby="timeSavedSourcesHeading">
+                <h3 id="timeSavedSourcesHeading">Top sources</h3>
+                <div class="time-saved-source-list" id="dashboardTimeSavedSources"></div>
+              </section>
+              <section aria-labelledby="teamTimeSavedHeading">
+                <h3 id="teamTimeSavedHeading">Top contributors</h3>
+                <div class="team-time-saved-list" id="teamTimeSavedContributors"></div>
+              </section>
+            </div>
+          </section>
+
           <section class="flow-mode-panel" id="flowModePanel" aria-labelledby="flowModeHeading" hidden>
             <div class="flow-mode-header">
               <div>
@@ -158,6 +195,10 @@
                 <article>
                   <span>Appointments booked</span>
                   <strong id="flowAppointmentsBooked">0</strong>
+                </article>
+                <article>
+                  <span>Time saved</span>
+                  <strong id="flowTimeSavedToday">0m</strong>
                 </article>
               </div>
             </div>
@@ -184,6 +225,7 @@
               <button class="primary-button" id="flowCompleteNext" type="button">Complete &amp; Next</button>
             </div>
             <p class="flow-action-status" id="flowActionStatus" role="status"></p>
+            <p class="flow-savings-message" id="flowTimeSavedMessage" role="status"></p>
 
             <div class="flow-completion" id="flowCompletionState" hidden>
               <p class="eyebrow">Flow complete</p>

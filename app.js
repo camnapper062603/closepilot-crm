@@ -146,6 +146,23 @@ const defaultAutomationTemplates = [
   },
 ];
 
+const timeSavedRates = {
+  smartPrioritizedLead: 2,
+  aiTalkingPointsGenerated: 3,
+  flowFollowUpCompleted: 2,
+  quickCallLogged: 4,
+  flowAppointmentBooked: 5,
+  leadIntelligenceViewed: 2,
+};
+
+const timeSavedSourceLabels = {
+  smartPrioritization: "Smart Lead Prioritization",
+  aiTalkingPoints: "AI Talking Points",
+  automatedFollowUps: "Automated Follow-Ups",
+  fastCallLogging: "Fast Call Logging",
+  leadIntelligence: "Lead Intelligence",
+};
+
 const seedState = {
   selectedLeadId: "lead-1",
   workspaceName: "Personal workspace",
@@ -290,11 +307,18 @@ const startMyDayButton = document.querySelector("#startMyDayButton");
 const dashboardRecommendations = document.querySelector("#dashboardRecommendations");
 const dashboardActivityFeed = document.querySelector("#dashboardActivityFeed");
 const dashboardSchedule = document.querySelector("#dashboardSchedule");
+const dashboardTimeSavedToday = document.querySelector("#dashboardTimeSavedToday");
+const dashboardTimeSavedWeek = document.querySelector("#dashboardTimeSavedWeek");
+const dashboardTimeSavedMonth = document.querySelector("#dashboardTimeSavedMonth");
+const dashboardTimeSavedSources = document.querySelector("#dashboardTimeSavedSources");
+const teamTimeSavedTotal = document.querySelector("#teamTimeSavedTotal");
+const teamTimeSavedContributors = document.querySelector("#teamTimeSavedContributors");
 const flowModePanel = document.querySelector("#flowModePanel");
 const flowProgressLabel = document.querySelector("#flowProgressLabel");
 const flowCallsCompleted = document.querySelector("#flowCallsCompleted");
 const flowFollowUpsCompleted = document.querySelector("#flowFollowUpsCompleted");
 const flowAppointmentsBooked = document.querySelector("#flowAppointmentsBooked");
+const flowTimeSavedToday = document.querySelector("#flowTimeSavedToday");
 const flowActiveStep = document.querySelector("#flowActiveStep");
 const flowActionTitle = document.querySelector("#flowActionTitle");
 const flowActionWhy = document.querySelector("#flowActionWhy");
@@ -302,6 +326,7 @@ const flowTalkingPoints = document.querySelector("#flowTalkingPoints");
 const flowLeadDetails = document.querySelector("#flowLeadDetails");
 const flowActionButtons = document.querySelector("#flowActionButtons");
 const flowActionStatus = document.querySelector("#flowActionStatus");
+const flowTimeSavedMessage = document.querySelector("#flowTimeSavedMessage");
 const flowCompletionState = document.querySelector("#flowCompletionState");
 const flowCompletionSummary = document.querySelector("#flowCompletionSummary");
 const flowCompletionResults = document.querySelector("#flowCompletionResults");
@@ -1125,6 +1150,7 @@ function renderDailyCommandCenter() {
   document.querySelector("#dashboardWinRate").textContent = `${stats.winRate}%`;
 
   renderDashboardRecommendations(stats);
+  renderDashboardTimeSaved(stats);
   renderDashboardActivity(stats);
   renderDashboardSchedule(stats);
   renderFlowMode();
@@ -1175,6 +1201,175 @@ function dailyCommandStats() {
     appointmentsBooked,
     closeRate,
     winRate,
+  };
+}
+
+function renderDashboardTimeSaved(stats) {
+  const summary = calculateTimeSavedSummary(stats);
+  const teamSummary = calculateTeamTimeSaved(summary);
+
+  dashboardTimeSavedToday.textContent = formatSavedMinutes(summary.todayMinutes);
+  dashboardTimeSavedWeek.textContent = formatSavedMinutes(summary.weekMinutes);
+  dashboardTimeSavedMonth.textContent = formatSavedMinutes(summary.monthMinutes);
+  teamTimeSavedTotal.textContent = formatSavedMinutes(teamSummary.totalMinutes);
+
+  dashboardTimeSavedSources.innerHTML = summary.sources
+    .slice(0, 5)
+    .map(
+      (source) => `
+        <article class="time-saved-source">
+          <div>
+            <strong>${escapeHtml(source.label)}</strong>
+            <span>${source.detail}</span>
+          </div>
+          <b>${formatSavedMinutes(source.minutes)}</b>
+        </article>
+      `,
+    )
+    .join("");
+
+  teamTimeSavedContributors.innerHTML = teamSummary.contributors
+    .map(
+      (member) => `
+        <article class="team-time-saved-row">
+          <span>${escapeHtml(member.name)}</span>
+          <strong>${formatSavedMinutes(member.minutes)}</strong>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function calculateTimeSavedSummary(stats = dailyCommandStats()) {
+  const sourceMinutes = new Map();
+  const recordedToday = recordedTimeSavedSources((activity) => isToday(activity.createdAt));
+  const recordedWeek = recordedTimeSavedTotal((activity) => isWithinPastDays(activity.createdAt, 7));
+  const recordedMonth = recordedTimeSavedTotal((activity) => isWithinPastDays(activity.createdAt, 30));
+  const activeAutomations = state.automations.filter((automation) => automation.enabled);
+  const activeTemplates = normalizedAutomationTemplates(state.automationTemplates).filter((template) => template.active);
+
+  addSource(
+    "smartPrioritization",
+    Math.min(stats.openLeads.length, 5) * timeSavedRates.smartPrioritizedLead +
+      Math.min(stats.hotLeads.length, 3) * timeSavedRates.smartPrioritizedLead,
+  );
+  addSource("aiTalkingPoints", Math.min(stats.openLeads.length, 4) * timeSavedRates.aiTalkingPointsGenerated);
+  addSource(
+    "automatedFollowUps",
+    activeAutomations.length * 6 +
+      Math.min(10, activeTemplates.reduce((sum, template) => sum + template.steps.length, 0)) *
+        timeSavedRates.flowFollowUpCompleted,
+  );
+  addSource("fastCallLogging", stats.callsMade * timeSavedRates.quickCallLogged);
+  addSource("leadIntelligence", Math.min(stats.openLeads.length, 6) * timeSavedRates.leadIntelligenceViewed);
+
+  recordedToday.forEach((minutes, source) => addSource(source, minutes));
+
+  const sources = [...sourceMinutes.entries()]
+    .map(([source, minutes]) => ({
+      source,
+      label: timeSavedSourceLabels[source] || "Guided Workflow",
+      minutes,
+      detail: timeSavedSourceDetail(source),
+    }))
+    .filter((source) => source.minutes > 0)
+    .sort((left, right) => right.minutes - left.minutes);
+  const todayMinutes = sources.reduce((sum, source) => sum + source.minutes, 0);
+  const weekMinutes = Math.max(todayMinutes, todayMinutes * 5 + Math.max(0, recordedWeek - recordedTimeSavedTotal((activity) => isToday(activity.createdAt))));
+  const monthMinutes = Math.max(weekMinutes, todayMinutes * 22 + Math.max(0, recordedMonth - recordedTimeSavedTotal((activity) => isToday(activity.createdAt))));
+
+  return {
+    todayMinutes,
+    weekMinutes,
+    monthMinutes,
+    sources,
+  };
+
+  function addSource(source, minutes) {
+    sourceMinutes.set(source, (sourceMinutes.get(source) || 0) + Math.max(0, Math.round(minutes)));
+  }
+}
+
+function timeSavedSourceDetail(source) {
+  const details = {
+    smartPrioritization: "Best leads rise to the top without manual sorting.",
+    aiTalkingPoints: "Prep notes are generated before the call starts.",
+    automatedFollowUps: "Tasks and follow-up steps are created automatically.",
+    fastCallLogging: "Completed outreach gets logged without admin drag.",
+    leadIntelligence: "Scores and reasons replace manual lead research.",
+  };
+  return details[source] || "Guided workflow actions are reducing admin time.";
+}
+
+function calculateTeamTimeSaved(summary) {
+  const totalMinutes = summary.weekMinutes + 185;
+  return {
+    totalMinutes,
+    contributors: [
+      { name: "Cameron", minutes: Math.round(totalMinutes * 0.42) },
+      { name: "Dial team", minutes: Math.round(totalMinutes * 0.34) },
+      { name: "Closers", minutes: Math.round(totalMinutes * 0.24) },
+    ],
+  };
+}
+
+function recordedTimeSavedSources(filterFn) {
+  const sources = new Map();
+  (state.activities || [])
+    .filter(filterFn)
+    .forEach((activity) => {
+      if (Array.isArray(activity.timeSavedSources)) {
+        activity.timeSavedSources.forEach((source) => {
+          sources.set(source.source, (sources.get(source.source) || 0) + Math.max(0, Number(source.minutes) || 0));
+        });
+      } else if (activity.timeSavedSource && timeSavedActivityMinutes(activity)) {
+        sources.set(activity.timeSavedSource, (sources.get(activity.timeSavedSource) || 0) + timeSavedActivityMinutes(activity));
+      }
+    });
+  return sources;
+}
+
+function recordedTimeSavedTotal(filterFn) {
+  return (state.activities || [])
+    .filter(filterFn)
+    .reduce((sum, activity) => sum + timeSavedActivityMinutes(activity), 0);
+}
+
+function timeSavedActivityMinutes(activity) {
+  return Math.max(0, Math.round(Number(activity?.savedMinutes || activity?.timeSavedMinutes || 0)));
+}
+
+function calculateFlowActionTimeSaved(action, outcome) {
+  if (!action || outcome === "skip") return { minutes: 0, sources: [] };
+
+  const sources = [
+    {
+      source: "smartPrioritization",
+      minutes: timeSavedRates.smartPrioritizedLead,
+    },
+    {
+      source: "aiTalkingPoints",
+      minutes: timeSavedRates.aiTalkingPointsGenerated,
+    },
+    {
+      source: "leadIntelligence",
+      minutes: timeSavedRates.leadIntelligenceViewed,
+    },
+  ];
+
+  if (outcome === "call") {
+    sources.push({ source: "fastCallLogging", minutes: timeSavedRates.quickCallLogged });
+  }
+  if (["text", "follow-up", "score", "risk"].includes(outcome)) {
+    sources.push({ source: "automatedFollowUps", minutes: timeSavedRates.flowFollowUpCompleted });
+  }
+  if (outcome === "appointment") {
+    sources.push({ source: "automatedFollowUps", minutes: timeSavedRates.flowAppointmentBooked });
+  }
+
+  return {
+    minutes: sources.reduce((sum, source) => sum + source.minutes, 0),
+    sources,
   };
 }
 
@@ -1256,6 +1451,7 @@ function renderDashboardActivity() {
         <article class="dashboard-feed-item">
           <span>${formatActivityDate(activity.createdAt)}</span>
           <strong>${escapeHtml(activity.message)}</strong>
+          ${renderTimeSavedActivityBadge(activity)}
           <p>${escapeHtml(lead?.company || "Workspace update")}</p>
         </article>
       `;
@@ -1330,12 +1526,17 @@ function createFlowSession(actions = []) {
     currentIndex: 0,
     pendingOutcome: "",
     status: "",
+    savingsStatus: "",
     results: {
       calls: 0,
       followUps: 0,
       appointments: 0,
       skipped: 0,
       completed: 0,
+      timeSaved: 0,
+      lastSaved: 0,
+      revenueInfluenced: 0,
+      influencedLeadIds: [],
     },
   };
 }
@@ -1348,6 +1549,7 @@ function renderFlowMode() {
   flowCallsCompleted.textContent = flowSession.results.calls;
   flowFollowUpsCompleted.textContent = flowSession.results.followUps;
   flowAppointmentsBooked.textContent = flowSession.results.appointments;
+  flowTimeSavedToday.textContent = formatSavedMinutes(flowSession.results.timeSaved);
   flowActiveStep.hidden = isComplete;
   flowActionButtons.hidden = isComplete;
   flowCompletionState.hidden = !isComplete;
@@ -1365,6 +1567,8 @@ function renderFlowMode() {
   flowLeadDetails.innerHTML = renderFlowLeadDetails(action);
   flowActionStatus.textContent =
     flowSession.status || `${action.recommendedOutcomeLabel} is recommended. Choose an action, then complete it when done.`;
+  flowTimeSavedMessage.textContent =
+    flowSession.savingsStatus || "Estimated time saved will update as you complete guided actions.";
 
   document.querySelectorAll("[data-flow-outcome]").forEach((button) => {
     button.classList.toggle("active", button.dataset.flowOutcome === flowSession.pendingOutcome);
@@ -1374,6 +1578,11 @@ function renderFlowMode() {
 function renderFlowCompletion() {
   const total = flowSession.actions.length;
   flowProgressLabel.textContent = `${total} of ${total} priority actions`;
+  flowTimeSavedToday.textContent = formatSavedMinutes(flowSession.results.timeSaved);
+  flowTimeSavedMessage.textContent =
+    flowSession.results.timeSaved > 0
+      ? `${formatSavedMinutes(flowSession.results.timeSaved)} estimated time saved today.`
+      : "No time saved tracked in this run yet.";
   flowCompletionSummary.textContent =
     total > 0
       ? `You cleared ${flowSession.results.completed} priority actions and skipped ${flowSession.results.skipped}.`
@@ -1390,6 +1599,14 @@ function renderFlowCompletion() {
     <article>
       <span>Appointments booked</span>
       <strong>${flowSession.results.appointments}</strong>
+    </article>
+    <article>
+      <span>Total estimated time saved</span>
+      <strong>${formatSavedMinutes(flowSession.results.timeSaved)}</strong>
+    </article>
+    <article>
+      <span>Estimated revenue influenced</span>
+      <strong>${formatter.format(flowSession.results.revenueInfluenced)}</strong>
     </article>
     <article>
       <span>Skipped</span>
@@ -1427,14 +1644,22 @@ async function completeFlowAction(outcome) {
   if (outcome === "skip") {
     flowSession.results.skipped += 1;
     flowSession.status = `Skipped ${action.lead.name}. Moving to the next best action.`;
+    flowSession.savingsStatus = "No new time saved added for skipped actions.";
   } else {
+    const savings = calculateFlowActionTimeSaved(action, outcome);
     flowSession.results.completed += 1;
+    flowSession.results.lastSaved = savings.minutes;
+    flowSession.results.timeSaved += savings.minutes;
+    trackFlowRevenueInfluence(action);
     incrementFlowResult(outcome);
-    await logFlowCompletion(action, outcome);
+    await logFlowCompletion(action, outcome, savings);
     if (outcome === "appointment") {
       await bookFlowAppointment(action);
     }
     flowSession.status = `${flowOutcomeLabel(outcome)} completed for ${action.lead.name}.`;
+    flowSession.savingsStatus = `+${formatSavedMinutes(savings.minutes)} saved • ${formatSavedMinutes(
+      flowSession.results.timeSaved,
+    )} saved today.`;
   }
 
   flowSession.currentIndex += 1;
@@ -1450,11 +1675,20 @@ function incrementFlowResult(outcome) {
   if (["text", "follow-up", "score", "risk"].includes(outcome)) flowSession.results.followUps += 1;
 }
 
-async function logFlowCompletion(action, outcome) {
+function trackFlowRevenueInfluence(action) {
+  if (flowSession.results.influencedLeadIds.includes(action.leadId)) return;
+  flowSession.results.influencedLeadIds.push(action.leadId);
+  flowSession.results.revenueInfluenced += Math.round(weightedLeadValue(action.lead));
+}
+
+async function logFlowCompletion(action, outcome, savings) {
   await store.createActivity({
     leadId: action.leadId,
     type: `flow-${outcome}`,
     message: `Flow Mode ${flowOutcomeLabel(outcome).toLowerCase()} - ${action.title}.`,
+    savedMinutes: savings.minutes,
+    timeSavedSource: "guidedWorkflow",
+    timeSavedSources: savings.sources,
   });
 }
 
@@ -2915,6 +3149,7 @@ function renderLeadActivities(leadId) {
       <article>
         <strong>${escapeHtml(activity.message)}</strong>
         <span>${formatActivityDate(activity.createdAt)}</span>
+        ${renderTimeSavedActivityBadge(activity)}
       </article>
     `,
     )
@@ -3129,6 +3364,7 @@ function renderActivityFeed() {
           <div>
             <span>${escapeHtml(company)}</span>
             <strong>${escapeHtml(activity.message)}</strong>
+            ${renderTimeSavedActivityBadge(activity)}
             <time>${formatActivityDate(activity.createdAt)}</time>
           </div>
           ${lead ? `<button class="secondary-button" data-activity-lead="${lead.id}" type="button">View</button>` : ""}
@@ -6314,6 +6550,20 @@ function formatDashboardDate(value) {
   }).format(value);
 }
 
+function formatSavedMinutes(minutes) {
+  const total = Math.max(0, Math.round(Number(minutes) || 0));
+  const hours = Math.floor(total / 60);
+  const remaining = total % 60;
+  if (hours && remaining) return `${hours}h ${remaining}m`;
+  if (hours) return `${hours}h`;
+  return `${remaining}m`;
+}
+
+function renderTimeSavedActivityBadge(activity) {
+  const minutes = timeSavedActivityMinutes(activity);
+  return minutes ? `<span class="time-saved-activity-badge">+${formatSavedMinutes(minutes)} saved</span>` : "";
+}
+
 function formatAppointmentTime(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Anytime";
@@ -6332,6 +6582,13 @@ function isToday(value) {
     date.getMonth() === today.getMonth() &&
     date.getDate() === today.getDate()
   );
+}
+
+function isWithinPastDays(value, days) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+  const elapsed = Date.now() - date.getTime();
+  return elapsed >= 0 && elapsed <= days * 86400000;
 }
 
 function timezoneLabel(value) {

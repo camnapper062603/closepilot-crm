@@ -53,6 +53,10 @@ test('renders the CRM dashboard MVP', async ({ page }) => {
   await expect(page.locator('#dailyCommandCenter')).toContainText('Good Morning, Cameron');
   await expect(page.locator('#dailyCommandCenter')).toContainText("Today's focus");
   await expect(page.getByRole('button', { name: 'Start My Day' })).toBeVisible();
+  await expect(page.locator('#timeSavedWidget')).toContainText('Time Saved');
+  await expect(page.locator('#dashboardTimeSavedToday')).toHaveText(/\d+(h( \d+m)?|m)/);
+  await expect(page.locator('#dashboardTimeSavedSources')).toContainText('Smart Lead Prioritization');
+  await expect(page.locator('#timeSavedWidget')).toContainText('Team Time Saved');
   await expect(page.locator('#dashboardRecommendations')).toContainText('Call this homeowner first');
   await expect(page.locator('#dashboardRecommendations')).toContainText('This estimate is likely to close');
   await expect(page.locator('#dashboardSchedule')).toContainText('Focus block');
@@ -62,6 +66,7 @@ test('renders the CRM dashboard MVP', async ({ page }) => {
   await expect(page.locator('#flowModePanel')).toBeVisible();
   await expect(page.locator('#flowModePanel')).toContainText("Today's Sales Flow");
   await expect(page.locator('#flowProgressLabel')).toContainText('1 of 18 priority actions');
+  await expect(page.locator('#flowTimeSavedToday')).toHaveText('0m');
   await expect(page.locator('#flowTalkingPoints')).toContainText('Ask for the next concrete step');
   await expect(page.locator('#flowLeadDetails')).toContainText('Lead Intelligence Score');
   await expect(page.locator('#flowLeadDetails')).toContainText(/Hot|Warm|Nurture|Cold/);
@@ -84,11 +89,15 @@ test('guides Start My Day through Flow Mode actions', async ({ page }) => {
   await expect(page.locator('#flowLeadDetails')).toContainText('Lead Intelligence Score');
   await expect(page.locator('#flowLeadDetails')).toContainText('Recommended action');
   await expect(page.locator('#flowLeadDetails')).toContainText(/Hot|Warm|Nurture|Cold/);
+  await expect(page.locator('#flowTimeSavedToday')).toHaveText('0m');
 
   await page.getByRole('button', { name: 'Call Lead' }).click();
   await expect(page.locator('#flowActionStatus')).toContainText('Call Lead selected');
   await page.getByRole('button', { name: 'Complete & Next' }).click();
   await expect(page.locator('#flowCallsCompleted')).toHaveText('1');
+  await expect(page.locator('#flowTimeSavedMessage')).toContainText(/\+\d+m saved/);
+  await expect(page.locator('#flowTimeSavedMessage')).toContainText('saved today');
+  await expect(page.locator('#flowTimeSavedToday')).not.toHaveText('0m');
   await expect(page.locator('#flowProgressLabel')).toHaveText('2 of 18 priority actions');
 
   await page.getByRole('button', { name: 'Send Text' }).click();
@@ -111,6 +120,8 @@ test('guides Start My Day through Flow Mode actions', async ({ page }) => {
   await expect(page.locator('#flowCompletionState')).toBeVisible();
   await expect(page.locator('#flowCompletionState')).toContainText('Mission Complete');
   await expect(page.locator('#flowCompletionResults')).toContainText('Appointments booked');
+  await expect(page.locator('#flowCompletionResults')).toContainText('Total estimated time saved');
+  await expect(page.locator('#flowCompletionResults')).toContainText('Estimated revenue influenced');
 });
 
 test('opens primary sidebar items as separate app pages', async ({ page }) => {

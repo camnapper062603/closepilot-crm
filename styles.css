@@ -389,6 +389,7 @@ h2 {
 
 .dashboard-greeting,
 .today-focus-card,
+.time-saved-widget,
 .dashboard-section {
   background: var(--surface-elevated);
   border: 1px solid var(--line);
@@ -509,6 +510,152 @@ h2 {
   padding-inline: 26px;
 }
 
+.time-saved-widget {
+  display: grid;
+  gap: 14px;
+  overflow: hidden;
+  padding: 20px;
+  position: relative;
+}
+
+.time-saved-widget::before {
+  background: linear-gradient(90deg, var(--navy), rgba(11, 47, 99, 0));
+  content: "";
+  height: 3px;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+.time-saved-hero {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.time-saved-hero h2 {
+  font-size: clamp(1.35rem, 1.8vw, 1.8rem);
+  line-height: 1.05;
+}
+
+.time-saved-total {
+  background: var(--black);
+  border-radius: 8px;
+  color: #ffffff;
+  min-width: 180px;
+  padding: 14px;
+}
+
+.time-saved-total span,
+.time-saved-grid span,
+.time-saved-source span,
+.team-time-saved-row span {
+  color: var(--muted);
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.time-saved-total span {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.time-saved-total strong {
+  display: block;
+  font-size: 1.8rem;
+  line-height: 1;
+  margin-top: 6px;
+}
+
+.time-saved-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.time-saved-grid article,
+.time-saved-source,
+.team-time-saved-row {
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.time-saved-grid strong {
+  display: block;
+  font-size: 1.25rem;
+  line-height: 1.1;
+  margin-top: 7px;
+}
+
+.time-saved-breakdown {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr);
+}
+
+.time-saved-breakdown h3 {
+  font-size: 0.82rem;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+}
+
+.time-saved-source-list,
+.team-time-saved-list {
+  display: grid;
+  gap: 8px;
+}
+
+.time-saved-source {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.time-saved-source strong {
+  display: block;
+}
+
+.time-saved-source b {
+  color: var(--navy);
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
+.team-time-saved-row {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.team-time-saved-row strong {
+  color: var(--navy);
+  white-space: nowrap;
+}
+
+.time-saved-activity-badge {
+  align-items: center;
+  background: var(--navy-soft);
+  border: 1px solid rgba(11, 47, 99, 0.18);
+  border-radius: 999px;
+  color: var(--navy);
+  display: inline-flex;
+  font-size: 0.72rem;
+  font-weight: 900;
+  justify-self: start;
+  line-height: 1;
+  padding: 5px 8px;
+  width: fit-content;
+}
+
 .dashboard-section {
   display: grid;
   gap: 14px;
@@ -623,6 +770,14 @@ button.ai-card:hover {
   margin: 0;
 }
 
+.dashboard-feed-item .time-saved-activity-badge,
+.activity-feed-item .time-saved-activity-badge,
+.activity-timeline .time-saved-activity-badge {
+  color: var(--navy);
+  display: inline-flex;
+  margin: 2px 0;
+}
+
 .dashboard-feed-item span,
 .dashboard-schedule-item time {
   font-size: 0.78rem;
@@ -678,7 +833,7 @@ button.ai-card:hover {
 }
 
 .flow-progress-stats {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .flow-results,
@@ -870,6 +1025,17 @@ button.ai-card:hover {
   font-weight: 800;
   margin: 0;
   min-height: 1.2rem;
+}
+
+.flow-savings-message {
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--navy);
+  font-weight: 900;
+  margin: 0;
+  min-height: 42px;
+  padding: 11px 12px;
 }
 
 .flow-completion {
@@ -3245,6 +3411,7 @@ button.insight-card:hover {
   .auth-card,
   .dashboard-greeting,
   .today-focus-card,
+  .time-saved-widget,
   .dashboard-section,
   .flow-mode-panel {
     background: var(--surface-elevated);
@@ -3254,6 +3421,9 @@ button.insight-card:hover {
   .mode-pill,
   .dashboard-weather,
   .focus-grid article,
+  .time-saved-grid article,
+  .time-saved-source,
+  .team-time-saved-row,
   .sales-activity-grid article,
   .revenue-snapshot-grid article,
   .ai-card,
@@ -3288,9 +3458,26 @@ button.insight-card:hover {
   .search input,
   .deal-card,
   .schedule-cell,
-  .flow-talking-points {
+  .flow-talking-points,
+  .flow-savings-message {
     background: var(--surface);
     color: var(--ink);
+  }
+
+  .time-saved-total {
+    background: #05070b;
+  }
+
+  .time-saved-activity-badge {
+    background: rgba(95, 142, 219, 0.16);
+    border-color: rgba(138, 180, 255, 0.28);
+    color: #a9c8ff;
+  }
+
+  .dashboard-feed-item .time-saved-activity-badge,
+  .activity-feed-item .time-saved-activity-badge,
+  .activity-timeline .time-saved-activity-badge {
+    color: #a9c8ff;
   }
 
   .intelligence-badge.hot {
@@ -3385,6 +3572,7 @@ button.insight-card:hover {
   .dashboard-greeting,
   .today-focus-card,
   .dashboard-split,
+  .time-saved-breakdown,
   .flow-mode-header,
   .flow-step-card {
     grid-template-columns: 1fr;
@@ -3572,6 +3760,7 @@ button.insight-card:hover {
 
   .dashboard-greeting,
   .today-focus-card,
+  .time-saved-widget,
   .dashboard-section,
   .flow-mode-panel {
     padding: 16px;
@@ -3680,6 +3869,7 @@ button.insight-card:hover {
   }
 
   .focus-grid,
+  .time-saved-grid,
   .sales-activity-grid,
   .revenue-snapshot-grid,
   .ai-recommendations-grid {
@@ -3688,6 +3878,7 @@ button.insight-card:hover {
   }
 
   .focus-grid article,
+  .time-saved-grid article,
   .sales-activity-grid article,
   .revenue-snapshot-grid article,
   .ai-card,
@@ -3699,6 +3890,7 @@ button.insight-card:hover {
   }
 
   .focus-grid span,
+  .time-saved-grid span,
   .sales-activity-grid span,
   .revenue-snapshot-grid span,
   .dashboard-weather span,
@@ -3708,6 +3900,7 @@ button.insight-card:hover {
   }
 
   .focus-grid strong,
+  .time-saved-grid strong,
   .sales-activity-grid strong,
   .revenue-snapshot-grid strong,
   .dashboard-weather strong,
@@ -3776,6 +3969,7 @@ button.insight-card:hover {
   .sales-activity-grid,
   .focus-grid,
   .ai-recommendations-grid,
+  .time-saved-grid,
   .flow-intelligence-summary,
   .flow-progress-stats,
   .flow-results,
@@ -3819,6 +4013,9 @@ button.insight-card:hover {
   .flow-action-main,
   .flow-lead-card,
   .flow-talking-points,
+  .flow-savings-message,
+  .time-saved-source,
+  .team-time-saved-row,
   .flow-score-breakdown,
   .lead-intelligence-panel,
   .score-breakdown li,
@@ -3851,6 +4048,8 @@ button.insight-card:hover {
   .flow-progress-stats span,
   .flow-results span,
   .flow-lead-grid span,
+  .time-saved-source span,
+  .team-time-saved-row span,
   .flow-intelligence-summary span,
   .flow-intelligence-summary li,
   .score-breakdown li small,
@@ -3882,6 +4081,8 @@ button.insight-card:hover {
   .flow-progress-stats strong,
   .flow-results strong,
   .flow-lead-grid strong,
+  .time-saved-source strong,
+  .team-time-saved-row strong,
   .flow-intelligence-summary strong,
   .lead-intelligence-header h3,
   .flow-lead-hero strong {
@@ -3893,6 +4094,19 @@ button.insight-card:hover {
   .source-card-main strong,
   .insight-card b {
     font-size: 0.98rem;
+  }
+
+  .time-saved-hero {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .time-saved-total {
+    min-width: 0;
+  }
+
+  .time-saved-breakdown {
+    grid-template-columns: 1fr;
   }
 
   .insight-card {
