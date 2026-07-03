@@ -155,9 +155,13 @@ test('opens primary sidebar items as separate app pages', async ({ page }) => {
   await expect(page.locator('#pipeline')).toBeVisible();
   await expect(page.locator('#contacts')).toBeHidden();
 
+  await navigateTo(page, 'AI Sales Manager', 'manager');
+  await expect(page.locator('#aiSalesManagerPage')).toBeVisible();
+  await expect(page.locator('#pipeline')).toBeHidden();
+
   await navigateTo(page, 'Contacts', 'contacts');
   await expect(page.locator('#contacts')).toBeVisible();
-  await expect(page.locator('#pipeline')).toBeHidden();
+  await expect(page.locator('#aiSalesManagerPage')).toBeHidden();
 
   await navigateTo(page, 'Automation', 'automation');
   await expect(page.locator('#automation')).toBeVisible();
@@ -186,6 +190,87 @@ test('opens primary sidebar items as separate app pages', async ({ page }) => {
   await navigateTo(page, 'Admin', 'admin');
   await expect(page.locator('#saasAdmin')).toBeVisible();
   await expect(page.locator('#calendar')).toBeHidden();
+});
+
+test('shows the AI Sales Manager owner dashboard', async ({ page }) => {
+  await navigateTo(page, 'AI Sales Manager', 'manager');
+
+  await expect(page.locator('#aiSalesManagerPage')).toBeVisible();
+  await expect(page.locator('#managerKpiGrid')).toContainText("Today's Revenue");
+  await expect(page.locator('#managerKpiGrid')).toContainText('Revenue This Month');
+  await expect(page.locator('#managerKpiGrid')).toContainText('Appointments Set');
+  await expect(page.locator('#managerKpiGrid')).toContainText('Closing Rate');
+  await expect(page.locator('#managerKpiGrid')).toContainText('Average Deal Size');
+  await expect(page.locator('#managerKpiGrid')).toContainText('Pipeline Value');
+  await expect(page.locator('#managerKpiGrid')).toContainText('Deals at Risk');
+  await expect(page.locator('#managerKpiGrid')).toContainText('Average Response Time');
+
+  await expect(page.locator('#salesLeaderboard')).toContainText('John Carter');
+  await expect(page.locator('#salesLeaderboard')).toContainText('Revenue Closed');
+  await expect(page.locator('#salesLeaderboard')).toContainText('AI Performance Score');
+  await expect(page.locator('#salesLeaderboard')).toContainText('Trend Indicator');
+
+  await expect(page.locator('#managerAIInsights')).toContainText("John has a 92% close rate this week.");
+  await expect(page.locator('#managerAIInsights')).toContainText('leads have gone untouched for 3 days');
+  await expect(page.locator('#managerAIInsights')).toContainText('Roofing pipeline is slowing');
+  await expect(page.locator('#managerAIInsights')).toContainText('Bathroom remodels are closing 21% higher');
+
+  await expect(page.locator('#forecastCharts')).toContainText('Expected Revenue');
+  await expect(page.locator('#forecastCharts')).toContainText('Likely Revenue');
+  await expect(page.locator('#forecastCharts')).toContainText('Best Case');
+  await expect(page.locator('#forecastCharts')).toContainText('Worst Case');
+  await expect(page.locator('#forecastCharts')).toContainText('Next 30 Days');
+  await expect(page.locator('#forecastCharts')).toContainText('Next 90 Days');
+
+  await expect(page.locator('#managerPipelineHealth')).toContainText('New Leads');
+  await expect(page.locator('#managerPipelineHealth')).toContainText('Qualified');
+  await expect(page.locator('#managerPipelineHealth')).toContainText('Quoted');
+  await expect(page.locator('#managerPipelineHealth')).toContainText('Negotiating');
+  await expect(page.locator('#managerPipelineHealth')).toContainText('Won');
+  await expect(page.locator('#managerPipelineHealth')).toContainText('Lost');
+  await expect(page.locator('#managerPipelineHealth')).toContainText('Stalled');
+
+  await expect(page.locator('#coachingPanel')).toContainText('Strengths');
+  await expect(page.locator('#coachingPanel')).toContainText('Weaknesses');
+  await expect(page.locator('#coachingPanel')).toContainText('Recommended Focus');
+  await expect(page.locator('#coachingPanel')).toContainText('Suggested Script Improvements');
+  await expect(page.locator('#coachingPanel')).toContainText('Objection Coaching');
+  await expect(page.locator('#coachingPanel')).toContainText('Follow-up Score');
+
+  await expect(page.locator('#riskCenter')).toContainText('Deals likely to be lost');
+  await expect(page.locator('#riskCenter')).toContainText('Inactive leads');
+  await expect(page.locator('#riskCenter')).toContainText('Overdue follow-ups');
+  await expect(page.locator('#riskCenter')).toContainText('Missed appointments');
+  await expect(page.locator('#riskCenter')).toContainText('Declining sales reps');
+  await expect(page.locator('#riskCenter')).toContainText('Missing estimates');
+
+  await expect(page.locator('#managerActionsPanel')).toContainText('Assign Leads');
+  await expect(page.locator('#managerActionsPanel')).toContainText('Reassign Leads');
+  await expect(page.locator('#managerActionsPanel')).toContainText('Send Coaching Message');
+  await expect(page.locator('#managerActionsPanel')).toContainText('Create Team Challenge');
+  await expect(page.locator('#managerActionsPanel')).toContainText('Schedule Meeting');
+
+  await expect(page.locator('#managerNotifications')).toContainText('Large deal created');
+  await expect(page.locator('#managerNotifications')).toContainText('High-value lead inactive');
+  await expect(page.locator('#managerNotifications')).toContainText('Sales rep falling behind');
+  await expect(page.locator('#managerNotifications')).toContainText('Pipeline goal reached');
+  await expect(page.locator('#managerNotifications')).toContainText('Revenue milestone');
+
+  await expect(page.locator('#managerAnalyticsTabs')).toContainText('Revenue');
+  await expect(page.locator('#managerAnalyticsTabs')).toContainText('Appointments');
+  await expect(page.locator('#managerAnalyticsTabs')).toContainText('Close Rate');
+  await expect(page.locator('#managerAnalyticsTabs')).toContainText('Lead Sources');
+  await expect(page.locator('#managerAnalyticsTabs')).toContainText('Rep Performance');
+  await expect(page.locator('#managerAnalyticsTabs')).toContainText('Customer Response Time');
+
+  await page.getByRole('button', { name: 'Lead Sources' }).click();
+  await expect(page.locator('#managerAnalyticsChart')).toContainText('Best source mix by pipeline value');
+
+  await page.getByRole('button', { name: 'Assign Leads', exact: true }).click();
+  await expect(page.locator('#managerStatus')).toContainText('Assign Leads queued');
+
+  await page.getByRole('button', { name: 'Refresh AI Insights' }).click();
+  await expect(page.locator('#managerStatus')).toContainText('AI insights refreshed');
 });
 
 test('runs the unified communications center', async ({ page }) => {

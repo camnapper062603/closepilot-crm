@@ -284,6 +284,8 @@ let selectedContactIds = new Set();
 let selectedTaskIds = new Set();
 let activePage = "pipeline";
 let editingAutomationTemplateId = null;
+let managerAnalyticsView = "revenue";
+let managerInsightsVersion = 0;
 let selectedConversationId = null;
 let communicationFilter = "recent";
 let communicationComposerMode = "text";
@@ -353,6 +355,20 @@ const exportSourceReportButton = document.querySelector("#exportSourceReport");
 const followUpQueueSummary = document.querySelector("#followUpQueueSummary");
 const followUpQueueList = document.querySelector("#followUpQueueList");
 const followUpQueueMessage = document.querySelector("#followUpQueueMessage");
+const aiSalesManagerPage = document.querySelector("#aiSalesManagerPage");
+const managerRefreshInsightsButton = document.querySelector("#managerRefreshInsights");
+const managerKpiGrid = document.querySelector("#managerKpiGrid");
+const salesLeaderboard = document.querySelector("#salesLeaderboard");
+const managerAIInsights = document.querySelector("#managerAIInsights");
+const forecastCharts = document.querySelector("#forecastCharts");
+const managerPipelineHealth = document.querySelector("#managerPipelineHealth");
+const coachingPanel = document.querySelector("#coachingPanel");
+const riskCenter = document.querySelector("#riskCenter");
+const managerActionsPanel = document.querySelector("#managerActionsPanel");
+const managerStatus = document.querySelector("#managerStatus");
+const managerNotifications = document.querySelector("#managerNotifications");
+const managerAnalyticsTabs = document.querySelector("#managerAnalyticsTabs");
+const managerAnalyticsChart = document.querySelector("#managerAnalyticsChart");
 const communicationsPage = document.querySelector("#communicationsPage");
 const conversationCount = document.querySelector("#conversationCount");
 const communicationSearchInput = document.querySelector("#communicationSearch");
@@ -506,6 +522,7 @@ const config = window.KiraHomeConfig || window.ClosePilotConfig || {};
 const hasSupabaseConfig = Boolean(config.supabaseUrl && config.supabaseAnonKey);
 const pageTitles = {
   pipeline: "Dashboard",
+  manager: "AI Sales Manager",
   contacts: "Contacts",
   automation: "Automation",
   tasks: "Tasks",
@@ -710,6 +727,12 @@ document.querySelectorAll("[data-contact-filter]").forEach((button) => {
 contactSortInput.addEventListener("change", () => {
   contactSort = contactSortInput.value;
   renderContacts();
+});
+
+managerRefreshInsightsButton.addEventListener("click", () => {
+  managerInsightsVersion += 1;
+  renderAISalesManagerPage();
+  managerStatus.textContent = "AI insights refreshed with the latest placeholder signals.";
 });
 
 communicationSearchInput.addEventListener("input", renderCommunicationsPage);
@@ -977,6 +1000,7 @@ function render() {
   renderFollowUpQueue();
   renderPipeline();
   renderLeadBrief();
+  renderAISalesManagerPage();
   renderAutomations();
   renderActivityFeed();
   renderContacts();
@@ -4130,6 +4154,588 @@ function renderContactSummary(leads) {
       <strong>${formatter.format(weighted)}</strong>
     </article>
   `;
+}
+
+const managerAnalyticsViews = [
+  { id: "revenue", label: "Revenue" },
+  { id: "appointments", label: "Appointments" },
+  { id: "close-rate", label: "Close Rate" },
+  { id: "lead-sources", label: "Lead Sources" },
+  { id: "rep-performance", label: "Rep Performance" },
+  { id: "response-time", label: "Customer Response Time" },
+];
+
+function renderAISalesManagerPage() {
+  if (!aiSalesManagerPage) return;
+  const report = buildAISalesManagerReport();
+  renderExecutiveDashboard(report);
+  renderSalesLeaderboard(report);
+  renderManagerAIInsights(report);
+  renderForecastCharts(report);
+  renderManagerPipelineHealth(report);
+  renderCoachingPanel(report);
+  renderRiskCenter(report);
+  renderManagerActions(report);
+  renderManagerNotifications(report);
+  renderAnalyticsSection(report);
+}
+
+function buildAISalesManagerReport() {
+  const leads = state.leads || [];
+  const appointments = state.appointments || [];
+  const activities = state.activities || [];
+  const followUps = buildSmartFollowUpQueue();
+  const reps = managerSalesReps(leads, appointments, activities);
+  const pipelineValue = leads.reduce((sum, lead) => sum + Number(lead.value || 0), 0);
+  const weighted = leads.reduce((sum, lead) => sum + weightedLeadValue(lead), 0);
+  const wonLeads = leads.filter((lead) => lead.stage === "won");
+  const activeDeals = leads.filter((lead) => lead.stage !== "won");
+  const atRisk = followUps.filter((item) => ["Critical", "High"].includes(item.priorityLevel));
+  const revenueMonth = wonLeads.reduce((sum, lead) => sum + Number(lead.value || 0), 0) + 18500;
+  const appointmentsSet = appointments.length + reps.reduce((sum, rep) => sum + rep.appointmentsSet, 0);
+  const closingRate = Math.round(
+    (wonLeads.length + reps.reduce((sum, rep) => sum + rep.closeRate, 0) / 100) /
+      Math.max(1, activeDeals.length + wonLeads.length + reps.length) *
+      100,
+  );
+  const averageDealSize = Math.round((pipelineValue + revenueMonth) / Math.max(1, leads.length + wonLeads.length));
+  const averageResponseTime = Math.round(reps.reduce((sum, rep) => sum + rep.leadResponseMinutes, 0) / Math.max(1, reps.length));
+
+  return {
+    leads,
+    appointments,
+    activities,
+    followUps,
+    reps,
+    pipelineValue,
+    weighted,
+    revenueMonth,
+    todayRevenue: Math.max(4200, Math.round(weighted * 0.18)),
+    appointmentsSet,
+    closingRate,
+    averageDealSize,
+    dealsAtRisk: atRisk.length,
+    averageResponseTime,
+    forecast: managerForecastValues(pipelineValue, weighted, revenueMonth),
+    pipelineHealth: managerPipelineHealthData(leads, followUps),
+    risks: managerRisks(leads, followUps, appointments, reps),
+    notifications: managerNotificationsData(leads, reps, pipelineValue, revenueMonth),
+  };
+}
+
+function renderExecutiveDashboard(report) {
+  const kpis = [
+    ["Today's Revenue", formatter.format(report.todayRevenue), "Live booked and influenced revenue"],
+    ["Revenue This Month", formatter.format(report.revenueMonth), "Closed and projected month-to-date"],
+    ["Appointments Set", String(report.appointmentsSet), "Team booked estimates and sales calls"],
+    ["Closing Rate", `${report.closingRate}%`, "Weighted close rate across reps"],
+    ["Average Deal Size", formatter.format(report.averageDealSize), "Average residential project value"],
+    ["Pipeline Value", formatter.format(report.pipelineValue), "Total open and won opportunity value"],
+    ["Deals at Risk", String(report.dealsAtRisk), "AI-flagged deals needing manager attention"],
+    ["Average Response Time", `${report.averageResponseTime}m`, "Lead response time across the team"],
+  ];
+
+  managerKpiGrid.innerHTML = kpis
+    .map(
+      ([label, value, detail], index) => `
+        <article class="manager-kpi-card" style="--delay:${index * 24}ms">
+          <span>${escapeHtml(label)}</span>
+          <strong>${escapeHtml(value)}</strong>
+          <small>${escapeHtml(detail)}</small>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function renderSalesLeaderboard(report) {
+  salesLeaderboard.innerHTML = report.reps
+    .map(
+      (rep, index) => `
+        <article class="leaderboard-row" style="--delay:${index * 28}ms">
+          <div class="rep-profile">
+            <span class="rep-photo">${escapeHtml(initialsForName(rep.name))}</span>
+            <div>
+              <strong>${escapeHtml(rep.name)}</strong>
+              <span>${escapeHtml(rep.role)}</span>
+            </div>
+          </div>
+          <div><span>Revenue Closed</span><strong>${formatter.format(rep.revenueClosed)}</strong></div>
+          <div><span>Appointments Set</span><strong>${rep.appointmentsSet}</strong></div>
+          <div><span>Close Rate</span><strong>${rep.closeRate}%</strong></div>
+          <div><span>Calls Made</span><strong>${rep.callsMade}</strong></div>
+          <div><span>Texts Sent</span><strong>${rep.textsSent}</strong></div>
+          <div><span>Emails Sent</span><strong>${rep.emailsSent}</strong></div>
+          <div><span>Lead Response Time</span><strong>${rep.leadResponseMinutes}m</strong></div>
+          <div><span>AI Performance Score</span><strong>${rep.performanceScore}/100</strong></div>
+          <div class="trend ${rep.trend}">
+            <span>Trend Indicator</span>
+            <strong>${escapeHtml(trendLabel(rep.trend))}</strong>
+          </div>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function renderManagerAIInsights(report) {
+  const untouchedCount = Math.max(14, report.followUps.filter((item) => item.daysQuiet >= 3).length);
+  const sarahLead = report.leads.find((lead) => /johnson/i.test(lead.name)) || report.leads[0];
+  const insights = [
+    "John has a 92% close rate this week.",
+    `${untouchedCount} leads have gone untouched for 3 days.`,
+    `Sarah should follow up with the ${sarahLead?.name?.split(" ").at(-1) || "Johnson"} project today.`,
+    "Roofing pipeline is slowing.",
+    "Bathroom remodels are closing 21% higher this month.",
+    report.dealsAtRisk
+      ? `${report.dealsAtRisk} high-priority deals need manager review before end of day.`
+      : "No critical follow-up risks are currently open.",
+  ];
+  const rotated = insights.slice(managerInsightsVersion % insights.length).concat(insights.slice(0, managerInsightsVersion % insights.length));
+
+  managerAIInsights.innerHTML = rotated
+    .slice(0, 6)
+    .map(
+      (insight, index) => `
+        <article class="manager-insight-card" style="--delay:${index * 26}ms">
+          <span>AI</span>
+          <p>${escapeHtml(insight)}</p>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function renderForecastCharts(report) {
+  const forecast = report.forecast;
+  const maxValue = Math.max(...forecast.map((item) => item.value), 1);
+  forecastCharts.innerHTML = forecast
+    .map(
+      (item, index) => `
+        <article class="forecast-chart-card" style="--delay:${index * 30}ms">
+          <div>
+            <span>${escapeHtml(item.label)}</span>
+            <strong>${formatter.format(item.value)}</strong>
+            <small>${escapeHtml(item.window)}</small>
+          </div>
+          <div class="manager-bar" aria-label="${escapeHtml(item.label)} ${formatter.format(item.value)}">
+            <span style="width:${Math.max(8, Math.round((item.value / maxValue) * 100))}%"></span>
+          </div>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function renderManagerPipelineHealth(report) {
+  const total = report.pipelineHealth.reduce((sum, item) => sum + item.count, 0) || 1;
+  managerPipelineHealth.innerHTML = report.pipelineHealth
+    .map(
+      (stage) => `
+        <article class="manager-stage-card ${stage.id}">
+          <div>
+            <span>${escapeHtml(stage.label)}</span>
+            <strong>${stage.count}</strong>
+          </div>
+          <small>${formatter.format(stage.value)}</small>
+          <div class="manager-stage-bar"><span style="width:${Math.max(7, Math.round((stage.count / total) * 100))}%"></span></div>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function renderCoachingPanel(report) {
+  coachingPanel.innerHTML = report.reps
+    .map(
+      (rep) => `
+        <article class="coaching-card">
+          <div class="coaching-header">
+            <div class="rep-profile">
+              <span class="rep-photo">${escapeHtml(initialsForName(rep.name))}</span>
+              <div>
+                <strong>${escapeHtml(rep.name)}</strong>
+                <span>Follow-up Score ${rep.followUpScore}/100</span>
+              </div>
+            </div>
+            <span class="performance-pill">${rep.performanceScore}/100</span>
+          </div>
+          <div class="coaching-grid">
+            <section>
+              <span>Strengths</span>
+              <p>${escapeHtml(rep.strengths)}</p>
+            </section>
+            <section>
+              <span>Weaknesses</span>
+              <p>${escapeHtml(rep.weaknesses)}</p>
+            </section>
+            <section>
+              <span>Recommended Focus</span>
+              <p>${escapeHtml(rep.recommendedFocus)}</p>
+            </section>
+            <section>
+              <span>Suggested Script Improvements</span>
+              <p>${escapeHtml(rep.scriptImprovements)}</p>
+            </section>
+            <section>
+              <span>Objection Coaching</span>
+              <p>${escapeHtml(rep.objectionCoaching)}</p>
+            </section>
+          </div>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function renderRiskCenter(report) {
+  riskCenter.innerHTML = report.risks
+    .map(
+      (risk) => `
+        <article class="risk-card ${risk.level.toLowerCase()}">
+          <span>${escapeHtml(risk.category)}</span>
+          <strong>${escapeHtml(risk.title)}</strong>
+          <p>${escapeHtml(risk.detail)}</p>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function renderManagerActions() {
+  const actions = [
+    ["assign-leads", "Assign Leads"],
+    ["reassign-leads", "Reassign Leads"],
+    ["send-coaching-message", "Send Coaching Message"],
+    ["create-team-challenge", "Create Team Challenge"],
+    ["schedule-meeting", "Schedule Meeting"],
+  ];
+  managerActionsPanel.innerHTML = actions
+    .map(
+      ([id, label], index) => `
+        <button class="${index === 0 ? "primary-button" : "secondary-button"}" data-manager-action="${id}" type="button">
+          ${escapeHtml(label)}
+        </button>
+      `,
+    )
+    .join("");
+
+  managerActionsPanel.querySelectorAll("[data-manager-action]").forEach((button) => {
+    button.addEventListener("click", () => handleManagerAction(button.dataset.managerAction));
+  });
+}
+
+function renderManagerNotifications(report) {
+  managerNotifications.innerHTML = report.notifications
+    .map(
+      (notification) => `
+        <article class="manager-notification ${notification.level}">
+          <strong>${escapeHtml(notification.title)}</strong>
+          <span>${escapeHtml(notification.detail)}</span>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function renderAnalyticsSection(report) {
+  managerAnalyticsTabs.innerHTML = managerAnalyticsViews
+    .map(
+      (view) => `
+        <button class="${view.id === managerAnalyticsView ? "active" : ""}" data-manager-analytics="${view.id}" type="button">
+          ${escapeHtml(view.label)}
+        </button>
+      `,
+    )
+    .join("");
+
+  managerAnalyticsTabs.querySelectorAll("[data-manager-analytics]").forEach((button) => {
+    button.addEventListener("click", () => {
+      managerAnalyticsView = button.dataset.managerAnalytics;
+      renderAnalyticsSection(report);
+    });
+  });
+
+  const chart = managerAnalyticsData(report, managerAnalyticsView);
+  const maxValue = Math.max(...chart.points.map((point) => point.value), 1);
+  managerAnalyticsChart.innerHTML = `
+    <div class="analytics-chart-heading">
+      <div>
+        <span>${escapeHtml(chart.label)}</span>
+        <strong>${escapeHtml(chart.summary)}</strong>
+      </div>
+      <small>Interactive placeholder chart</small>
+    </div>
+    <div class="analytics-bars">
+      ${chart.points
+        .map(
+          (point) => `
+            <article>
+              <div class="analytics-bar-track">
+                <span style="height:${Math.max(10, Math.round((point.value / maxValue) * 100))}%"></span>
+              </div>
+              <strong>${escapeHtml(String(point.valueLabel || point.value))}</strong>
+              <small>${escapeHtml(point.label)}</small>
+            </article>
+          `,
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function managerSalesReps(leads, appointments, activities) {
+  const openPipeline = leads.reduce((sum, lead) => sum + Number(lead.value || 0), 0);
+  const activityCount = activities.length;
+  return [
+    {
+      name: "John Carter",
+      role: "Senior closer",
+      revenueClosed: 42800 + Math.round(openPipeline * 0.18),
+      appointmentsSet: 18 + appointments.length,
+      closeRate: 92,
+      callsMade: 86 + activityCount,
+      textsSent: 143,
+      emailsSent: 54,
+      leadResponseMinutes: 7,
+      performanceScore: 96,
+      trend: "up",
+      strengths: "Turns booked estimates into clear close plans.",
+      weaknesses: "Needs cleaner notes after long calls.",
+      recommendedFocus: "Document objections before moving deals to quoted.",
+      scriptImprovements: "Ask for the decision date before discussing discounts.",
+      objectionCoaching: "When price comes up, anchor against project urgency and warranty value.",
+      followUpScore: 94,
+    },
+    {
+      name: "Sarah Miller",
+      role: "Field sales",
+      revenueClosed: 31400 + Math.round(openPipeline * 0.12),
+      appointmentsSet: 21,
+      closeRate: 76,
+      callsMade: 72,
+      textsSent: 118,
+      emailsSent: 61,
+      leadResponseMinutes: 12,
+      performanceScore: 88,
+      trend: "up",
+      strengths: "Strong appointment confirmation and referral ask.",
+      weaknesses: "Lets older quotes sit too long.",
+      recommendedFocus: "Follow up with quoted jobs inside 24 hours.",
+      scriptImprovements: "Lead with the homeowner's stated timeline, then ask for the next commitment.",
+      objectionCoaching: "Respond to timing stalls with two concrete scheduling options.",
+      followUpScore: 82,
+    },
+    {
+      name: "Mia Brooks",
+      role: "Appointment setter",
+      revenueClosed: 22600 + Math.round(openPipeline * 0.09),
+      appointmentsSet: 27,
+      closeRate: 64,
+      callsMade: 104,
+      textsSent: 176,
+      emailsSent: 38,
+      leadResponseMinutes: 5,
+      performanceScore: 84,
+      trend: "flat",
+      strengths: "Fast first response and consistent text follow-up.",
+      weaknesses: "Needs stronger qualification before booking.",
+      recommendedFocus: "Confirm budget, decision maker, and project timeline.",
+      scriptImprovements: "Add one budget range question before offering appointment windows.",
+      objectionCoaching: "If the homeowner says they are just shopping, ask what would make the quote worth comparing.",
+      followUpScore: 89,
+    },
+    {
+      name: "Luis Ortega",
+      role: "Junior closer",
+      revenueClosed: 18400 + Math.round(openPipeline * 0.06),
+      appointmentsSet: 13,
+      closeRate: 48,
+      callsMade: 61,
+      textsSent: 84,
+      emailsSent: 29,
+      leadResponseMinutes: 24,
+      performanceScore: 71,
+      trend: "down",
+      strengths: "Builds rapport quickly on warm referrals.",
+      weaknesses: "Slow response time and inconsistent quote follow-up.",
+      recommendedFocus: "Call hot leads first and use Flow Mode before checking low-priority work.",
+      scriptImprovements: "Open with the project pain, then ask one direct closing question.",
+      objectionCoaching: "Practice price objection handling with two warranty and financing anchors.",
+      followUpScore: 63,
+    },
+  ];
+}
+
+function managerForecastValues(pipelineValue, weighted, revenueMonth) {
+  return [
+    { label: "Expected Revenue", value: Math.round(weighted + revenueMonth * 0.24), window: "Next 30 Days" },
+    { label: "Likely Revenue", value: Math.round(weighted * 0.82 + revenueMonth * 0.32), window: "Next 30 Days" },
+    { label: "Best Case", value: Math.round(pipelineValue * 0.78 + revenueMonth * 0.42), window: "Next 90 Days" },
+    { label: "Worst Case", value: Math.round(weighted * 0.42 + revenueMonth * 0.18), window: "Next 30 Days" },
+    { label: "Next 30 Days", value: Math.round(weighted * 0.9 + 14500), window: "Short-range forecast" },
+    { label: "Next 90 Days", value: Math.round(pipelineValue * 1.4 + 38600), window: "Quarter forecast" },
+  ];
+}
+
+function managerPipelineHealthData(leads, followUps) {
+  const quoted = leads.filter((lead) => lead.stage === "proposal");
+  const negotiating = leads.filter((lead) => lead.stage === "qualified" && lead.score >= 80);
+  const stalled = followUps.filter((item) => item.daysQuiet >= 3);
+  const lostValue = Math.round(leads.reduce((sum, lead) => sum + Number(lead.value || 0), 0) * 0.08);
+  return [
+    { id: "new", label: "New Leads", count: leads.filter((lead) => lead.stage === "new").length, value: stageValue(leads, "new") },
+    { id: "qualified", label: "Qualified", count: leads.filter((lead) => lead.stage === "qualified").length, value: stageValue(leads, "qualified") },
+    { id: "quoted", label: "Quoted", count: quoted.length, value: quoted.reduce((sum, lead) => sum + Number(lead.value || 0), 0) },
+    { id: "negotiating", label: "Negotiating", count: negotiating.length, value: negotiating.reduce((sum, lead) => sum + Number(lead.value || 0), 0) },
+    { id: "won", label: "Won", count: leads.filter((lead) => lead.stage === "won").length + 3, value: stageValue(leads, "won") + 18500 },
+    { id: "lost", label: "Lost", count: 2, value: lostValue },
+    { id: "stalled", label: "Stalled", count: Math.max(1, stalled.length), value: stalled.reduce((sum, item) => sum + item.lead.value, 0) },
+  ];
+}
+
+function managerRisks(leads, followUps, appointments, reps) {
+  const topRisk = followUps[0];
+  const inactive = followUps.filter((item) => item.daysQuiet >= 3);
+  const decliningRep = reps.find((rep) => rep.trend === "down");
+  const missingEstimate = leads.find((lead) => lead.stage === "qualified" && !/estimate|quote|proposal/i.test(`${lead.notes} ${lead.nextAction}`));
+  return [
+    {
+      category: "Deals likely to be lost",
+      title: topRisk ? topRisk.lead.company : "No critical deals",
+      detail: topRisk ? topRisk.reason : "AI does not see a critical lost-deal signal right now.",
+      level: topRisk?.priorityLevel || "Medium",
+    },
+    {
+      category: "Inactive leads",
+      title: `${Math.max(14, inactive.length)} leads need a touch`,
+      detail: "Mock AI scan found leads quiet for 3+ days.",
+      level: "High",
+    },
+    {
+      category: "Overdue follow-ups",
+      title: `${followUps.length} follow-ups due`,
+      detail: "Smart Follow-Up Engine has open work for today.",
+      level: followUps.length ? "High" : "Medium",
+    },
+    {
+      category: "Missed appointments",
+      title: `${Math.max(1, Math.max(0, 3 - appointments.length))} appointment recovery needed`,
+      detail: "Placeholder calendar signal flags missed or unconfirmed estimate windows.",
+      level: "Medium",
+    },
+    {
+      category: "Declining sales reps",
+      title: decliningRep ? `${decliningRep.name} is trending down` : "No declining reps",
+      detail: decliningRep ? decliningRep.recommendedFocus : "Team trend indicators are stable.",
+      level: decliningRep ? "High" : "Medium",
+    },
+    {
+      category: "Missing estimates",
+      title: missingEstimate ? `${missingEstimate.company} needs an estimate` : "Estimate coverage looks healthy",
+      detail: missingEstimate ? "Qualified lead has no clear quote or estimate language." : "No missing estimates detected.",
+      level: missingEstimate ? "Medium" : "Low",
+    },
+  ];
+}
+
+function managerNotificationsData(leads, reps, pipelineValue, revenueMonth) {
+  const largestDeal = [...leads].sort((left, right) => right.value - left.value)[0];
+  const laggingRep = reps.find((rep) => rep.trend === "down") || reps.at(-1);
+  return [
+    {
+      title: "Large deal created",
+      detail: `${largestDeal?.company || "Johnson Project"} is now valued at ${formatter.format(largestDeal?.value || 18500)}.`,
+      level: "positive",
+    },
+    {
+      title: "High-value lead inactive",
+      detail: "A high-value homeowner lead has been quiet for 3+ days.",
+      level: "warning",
+    },
+    {
+      title: "Sales rep falling behind",
+      detail: `${laggingRep?.name || "A rep"} needs coaching on response time today.`,
+      level: "danger",
+    },
+    {
+      title: "Pipeline goal reached",
+      detail: `Pipeline value is now ${formatter.format(pipelineValue)}.`,
+      level: "positive",
+    },
+    {
+      title: "Revenue milestone",
+      detail: `${formatter.format(revenueMonth)} month-to-date revenue tracked.`,
+      level: "positive",
+    },
+  ];
+}
+
+function managerAnalyticsData(report, view) {
+  const sourceCounts = sourcePerformanceRows().slice(0, 5);
+  const repPoints = report.reps.map((rep) => ({ label: rep.name.split(" ")[0], value: rep.performanceScore, valueLabel: `${rep.performanceScore}` }));
+  const charts = {
+    revenue: {
+      label: "Revenue",
+      summary: `${formatter.format(report.revenueMonth)} this month`,
+      points: [
+        { label: "Week 1", value: 12400, valueLabel: "$12k" },
+        { label: "Week 2", value: 18300, valueLabel: "$18k" },
+        { label: "Week 3", value: 22100, valueLabel: "$22k" },
+        { label: "Week 4", value: Math.max(24000, report.todayRevenue + 17600), valueLabel: "$24k+" },
+      ],
+    },
+    appointments: {
+      label: "Appointments",
+      summary: `${report.appointmentsSet} appointments set`,
+      points: report.reps.map((rep) => ({ label: rep.name.split(" ")[0], value: rep.appointmentsSet })),
+    },
+    "close-rate": {
+      label: "Close Rate",
+      summary: `${report.closingRate}% blended close rate`,
+      points: report.reps.map((rep) => ({ label: rep.name.split(" ")[0], value: rep.closeRate, valueLabel: `${rep.closeRate}%` })),
+    },
+    "lead-sources": {
+      label: "Lead Sources",
+      summary: "Best source mix by pipeline value",
+      points: sourceCounts.length
+        ? sourceCounts.map((source) => ({ label: source.source, value: source.value, valueLabel: formatter.format(source.value) }))
+        : [{ label: "Website", value: 1 }],
+    },
+    "rep-performance": {
+      label: "Rep Performance",
+      summary: "AI performance score by rep",
+      points: repPoints,
+    },
+    "response-time": {
+      label: "Customer Response Time",
+      summary: `${report.averageResponseTime}m team average`,
+      points: report.reps.map((rep) => ({ label: rep.name.split(" ")[0], value: rep.leadResponseMinutes, valueLabel: `${rep.leadResponseMinutes}m` })),
+    },
+  };
+  return charts[view] || charts.revenue;
+}
+
+function handleManagerAction(action) {
+  const labels = {
+    "assign-leads": "Assign Leads",
+    "reassign-leads": "Reassign Leads",
+    "send-coaching-message": "Send Coaching Message",
+    "create-team-challenge": "Create Team Challenge",
+    "schedule-meeting": "Schedule Meeting",
+  };
+  managerStatus.textContent = `${labels[action] || "Manager action"} queued with placeholder workflow data.`;
+  showCommunicationToast(labels[action] || "Manager action", "AI Sales Manager placeholder workflow queued.");
+}
+
+function stageValue(leads, stage) {
+  return leads.filter((lead) => lead.stage === stage).reduce((sum, lead) => sum + Number(lead.value || 0), 0);
+}
+
+function trendLabel(trend) {
+  if (trend === "up") return "Up";
+  if (trend === "down") return "Down";
+  return "Flat";
 }
 
 const communicationMessageTypeLabels = {

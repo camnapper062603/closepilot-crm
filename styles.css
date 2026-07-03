@@ -1944,6 +1944,447 @@ button.insight-card:hover {
   min-height: 1.25rem;
 }
 
+.ai-sales-manager-page {
+  display: grid;
+  gap: 18px;
+}
+
+.manager-hero,
+.manager-section {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.manager-hero {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  padding: 20px;
+}
+
+.manager-hero p:last-child {
+  color: var(--muted);
+  margin-bottom: 0;
+  max-width: 760px;
+}
+
+.manager-hero-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.manager-section {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.manager-grid-two {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.manager-kpi-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.manager-kpi-card,
+.leaderboard-row,
+.manager-insight-card,
+.forecast-chart-card,
+.manager-stage-card,
+.coaching-card,
+.risk-card,
+.manager-notification,
+.manager-analytics-chart {
+  animation: dashboard-rise 220ms ease both;
+  animation-delay: var(--delay, 0ms);
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.manager-kpi-card {
+  display: grid;
+  gap: 4px;
+  min-height: 112px;
+  padding: 12px;
+}
+
+.manager-kpi-card span,
+.manager-kpi-card small,
+.leaderboard-row span,
+.forecast-chart-card span,
+.forecast-chart-card small,
+.manager-stage-card span,
+.manager-stage-card small,
+.coaching-grid span,
+.risk-card span,
+.manager-notification span,
+.analytics-chart-heading span,
+.analytics-chart-heading small,
+.analytics-bars small {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 850;
+}
+
+.manager-kpi-card span,
+.leaderboard-row span,
+.forecast-chart-card span,
+.manager-stage-card span,
+.coaching-grid span,
+.risk-card span,
+.analytics-chart-heading span {
+  text-transform: uppercase;
+}
+
+.manager-kpi-card strong {
+  font-size: clamp(1.35rem, 2vw, 1.95rem);
+  line-height: 1;
+}
+
+.sales-leaderboard {
+  display: grid;
+  gap: 8px;
+  overflow-x: auto;
+}
+
+.leaderboard-row {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(180px, 1.6fr) repeat(9, minmax(96px, 1fr));
+  min-width: 1180px;
+  padding: 10px;
+}
+
+.rep-profile {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  min-width: 0;
+}
+
+.rep-photo {
+  align-items: center;
+  background: var(--black);
+  border-radius: 50%;
+  color: #ffffff;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-weight: 900;
+  height: 42px;
+  justify-content: center;
+  width: 42px;
+}
+
+.rep-profile strong,
+.rep-profile span,
+.leaderboard-row strong,
+.leaderboard-row span {
+  display: block;
+}
+
+.leaderboard-row strong {
+  font-size: 0.92rem;
+}
+
+.trend strong {
+  align-items: center;
+  display: inline-flex;
+  gap: 4px;
+}
+
+.trend.up strong {
+  color: var(--teal-dark);
+}
+
+.trend.down strong {
+  color: var(--danger);
+}
+
+.trend.flat strong {
+  color: var(--warning);
+}
+
+.manager-ai-insights,
+.forecast-charts,
+.manager-pipeline-health,
+.risk-center,
+.manager-notifications {
+  display: grid;
+  gap: 10px;
+}
+
+.manager-ai-insights {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.manager-insight-card {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.manager-insight-card span,
+.performance-pill {
+  background: var(--navy);
+  border-radius: 999px;
+  color: #ffffff;
+  display: inline-flex;
+  font-size: 0.72rem;
+  font-weight: 900;
+  justify-self: start;
+  padding: 5px 8px;
+}
+
+.manager-insight-card p,
+.risk-card p,
+.coaching-grid p {
+  margin-bottom: 0;
+}
+
+.forecast-charts {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.forecast-chart-card {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+}
+
+.forecast-chart-card strong {
+  display: block;
+  font-size: 1.22rem;
+}
+
+.manager-bar,
+.manager-stage-bar {
+  background: #e8edf4;
+  border-radius: 999px;
+  height: 10px;
+  overflow: hidden;
+}
+
+.manager-bar span,
+.manager-stage-bar span {
+  background: linear-gradient(90deg, var(--navy), var(--teal));
+  border-radius: inherit;
+  display: block;
+  height: 100%;
+}
+
+.manager-stage-card {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.manager-stage-card > div {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.manager-stage-card.new .manager-stage-bar span {
+  background: #5f8edb;
+}
+
+.manager-stage-card.qualified .manager-stage-bar span {
+  background: #0f7a4f;
+}
+
+.manager-stage-card.quoted .manager-stage-bar span {
+  background: #7758d1;
+}
+
+.manager-stage-card.negotiating .manager-stage-bar span {
+  background: #a16207;
+}
+
+.manager-stage-card.won .manager-stage-bar span {
+  background: #111827;
+}
+
+.manager-stage-card.lost .manager-stage-bar span {
+  background: #b42318;
+}
+
+.manager-stage-card.stalled .manager-stage-bar span {
+  background: #64748b;
+}
+
+.coaching-panel {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.coaching-card {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+}
+
+.coaching-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.coaching-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.coaching-grid section {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+}
+
+.risk-card {
+  border-left: 4px solid var(--navy);
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+}
+
+.risk-card.critical,
+.risk-card.high {
+  border-left-color: var(--danger);
+}
+
+.risk-card.medium {
+  border-left-color: var(--warning);
+}
+
+.risk-card.low {
+  border-left-color: var(--teal);
+}
+
+.manager-actions {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.manager-actions .primary-button {
+  grid-column: 1 / -1;
+}
+
+.manager-status {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 800;
+  margin: 0;
+  min-height: 1.25rem;
+}
+
+.manager-notification {
+  border-left: 4px solid var(--teal);
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+}
+
+.manager-notification.warning {
+  border-left-color: var(--warning);
+}
+
+.manager-notification.danger {
+  border-left-color: var(--danger);
+}
+
+.manager-analytics-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.manager-analytics-tabs button {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--navy);
+  font-size: 0.78rem;
+  font-weight: 850;
+  min-height: 34px;
+  padding: 0 10px;
+}
+
+.manager-analytics-tabs button.active,
+.manager-analytics-tabs button:hover {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: #ffffff;
+}
+
+.manager-analytics-chart {
+  display: grid;
+  gap: 14px;
+  padding: 12px;
+}
+
+.analytics-chart-heading {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.analytics-chart-heading strong {
+  display: block;
+}
+
+.analytics-bars {
+  align-items: end;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  min-height: 210px;
+}
+
+.analytics-bars article {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  min-width: 0;
+}
+
+.analytics-bar-track {
+  align-items: end;
+  background: #e8edf4;
+  border-radius: 8px;
+  display: flex;
+  height: 150px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.analytics-bar-track span {
+  background: linear-gradient(180deg, var(--teal), var(--navy));
+  border-radius: inherit inherit 0 0;
+  display: block;
+  transition: height 180ms ease;
+  width: 100%;
+}
+
 .communications-page {
   display: grid;
   gap: 12px;
@@ -4216,7 +4657,9 @@ button.insight-card:hover {
   .dashboard-follow-up-card,
   .time-saved-widget,
   .dashboard-section,
-  .flow-mode-panel {
+  .flow-mode-panel,
+  .manager-hero,
+  .manager-section {
     background: var(--surface-elevated);
   }
 
@@ -4248,6 +4691,16 @@ button.insight-card:hover {
   .lead-intelligence-panel,
   .score-breakdown li,
   .flow-score-breakdown li,
+  .manager-kpi-card,
+  .leaderboard-row,
+  .manager-insight-card,
+  .forecast-chart-card,
+  .manager-stage-card,
+  .coaching-card,
+  .coaching-grid section,
+  .risk-card,
+  .manager-notification,
+  .manager-analytics-chart,
   .communications-column,
   .conversation-item,
   .message-bubble.incoming,
@@ -4276,6 +4729,7 @@ button.insight-card:hover {
   .composer-input-label textarea,
   .composer-tool select,
   .communication-filters button,
+  .manager-analytics-tabs button,
   .composer-tabs button,
   .quick-replies button,
   .emoji-picker button,
@@ -4298,6 +4752,12 @@ button.insight-card:hover {
   .communication-notification-feed article,
   .composer-tool {
     background: var(--soft);
+  }
+
+  .manager-bar,
+  .manager-stage-bar,
+  .analytics-bar-track {
+    background: var(--soft-strong);
   }
 
   .message-bubble.outgoing,
@@ -4458,6 +4918,16 @@ button.insight-card:hover {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .manager-grid-two,
+  .coaching-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .manager-kpi-grid,
+  .manager-ai-insights {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .conversation-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     max-height: none;
@@ -4538,6 +5008,7 @@ button.insight-card:hover {
   .brief-actions,
   .detail-actions,
   .contact-profile-actions,
+  .manager-hero-actions,
   .composer-actions,
   .automation-builder-actions,
   .automation-template-actions {
@@ -4605,6 +5076,12 @@ button.insight-card:hover {
   .contact-summary,
   .customer-detail-grid,
   .ai-assistant-grid,
+  .manager-kpi-grid,
+  .manager-ai-insights,
+  .forecast-charts,
+  .manager-pipeline-health,
+  .coaching-grid,
+  .manager-actions,
   .dial-summary,
   .dial-info-grid,
   .pipeline-health,
@@ -4657,8 +5134,17 @@ button.insight-card:hover {
   .time-saved-widget,
   .dashboard-section,
   .flow-mode-panel,
+  .manager-hero,
+  .manager-section,
   .communications-column {
     padding: 16px;
+  }
+
+  .manager-hero,
+  .analytics-chart-heading,
+  .coaching-header {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .conversation-window-column {
@@ -4716,6 +5202,8 @@ button.insight-card:hover {
   .contact-summary,
   .customer-detail-grid,
   .ai-assistant-grid,
+  .coaching-grid,
+  .manager-actions,
   .dial-summary,
   .dial-info-grid,
   .pipeline-health,
@@ -4877,6 +5365,10 @@ button.insight-card:hover {
   .revenue-snapshot-grid.metrics,
   .sales-activity-grid,
   .focus-grid,
+  .manager-kpi-grid,
+  .manager-ai-insights,
+  .forecast-charts,
+  .manager-pipeline-health,
   .ai-recommendations-grid,
   .time-saved-grid,
   .flow-intelligence-summary,
@@ -4938,6 +5430,14 @@ button.insight-card:hover {
   .follow-up-item,
   .follow-up-queue-summary article,
   .follow-up-item-grid article,
+  .manager-kpi-card,
+  .manager-insight-card,
+  .forecast-chart-card,
+  .manager-stage-card,
+  .coaching-card,
+  .risk-card,
+  .manager-notification,
+  .manager-analytics-chart,
   .conversation-item,
   .message-bubble,
   .customer-detail-grid article,
@@ -4983,6 +5483,18 @@ button.insight-card:hover {
   .source-card-meta span,
   .insight-card span,
   .insight-card p,
+  .manager-kpi-card span,
+  .manager-kpi-card small,
+  .manager-insight-card p,
+  .forecast-chart-card span,
+  .forecast-chart-card small,
+  .manager-stage-card span,
+  .manager-stage-card small,
+  .coaching-grid span,
+  .coaching-grid p,
+  .risk-card p,
+  .manager-notification span,
+  .analytics-bars small,
   .conversation-preview small,
   .conversation-preview em,
   .message-bubble-footer span,
@@ -5008,6 +5520,22 @@ button.insight-card:hover {
   .flow-action-status {
     font-size: 0.62rem;
     line-height: 1.2;
+  }
+
+  .manager-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .manager-actions .primary-button {
+    grid-column: auto;
+  }
+
+  .analytics-bars {
+    min-height: 160px;
+  }
+
+  .analytics-bar-track {
+    height: 108px;
   }
 
   .metrics strong,

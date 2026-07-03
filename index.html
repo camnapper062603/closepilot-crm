@@ -57,6 +57,7 @@
 
         <nav class="nav-links" aria-label="Primary">
           <a class="active" data-nav-page="pipeline" href="#pipeline">Dashboard</a>
+          <a data-nav-page="manager" href="#manager">AI Sales Manager</a>
           <a data-nav-page="contacts" href="#contacts">Contacts</a>
           <a data-nav-page="automation" href="#automation">Automation</a>
           <a data-nav-page="tasks" href="#tasks">Tasks</a>
@@ -699,6 +700,128 @@
             </div>
             <div class="task-summary" id="taskSummary" aria-label="Task summary"></div>
             <div class="task-list" id="taskList"></div>
+          </section>
+        </section>
+
+        <section class="ai-sales-manager-page" id="aiSalesManagerPage" data-page="manager" aria-labelledby="aiSalesManagerHeading">
+          <section class="manager-hero">
+            <div>
+              <p class="eyebrow">Owner command center</p>
+              <h2 id="aiSalesManagerHeading">AI Sales Manager</h2>
+              <p>Team performance, pipeline health, revenue forecasts, and coaching opportunities in one view.</p>
+            </div>
+            <div class="manager-hero-actions">
+              <span class="mode-pill" id="managerForecastWindow">Next 90 days</span>
+              <button class="primary-button" id="managerRefreshInsights" type="button">Refresh AI Insights</button>
+            </div>
+          </section>
+
+          <section class="manager-section executive-dashboard" aria-labelledby="executiveDashboardHeading">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Executive dashboard</p>
+                <h2 id="executiveDashboardHeading">Executive Dashboard</h2>
+              </div>
+            </div>
+            <div class="manager-kpi-grid" id="managerKpiGrid" aria-label="Manager KPI cards"></div>
+          </section>
+
+          <section class="manager-section leaderboard-section" aria-labelledby="salesLeaderboardHeading">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Team scoreboard</p>
+                <h2 id="salesLeaderboardHeading">Sales Leaderboard</h2>
+              </div>
+            </div>
+            <div class="sales-leaderboard" id="salesLeaderboard"></div>
+          </section>
+
+          <section class="manager-section ai-insights-section" aria-labelledby="managerAIInsightsHeading">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">AI insights</p>
+                <h2 id="managerAIInsightsHeading">Today's AI Insights</h2>
+              </div>
+            </div>
+            <div class="manager-ai-insights" id="managerAIInsights"></div>
+          </section>
+
+          <section class="manager-grid-two">
+            <section class="manager-section forecast-section" aria-labelledby="forecastChartsHeading">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Revenue forecast</p>
+                  <h2 id="forecastChartsHeading">Revenue Forecast</h2>
+                </div>
+              </div>
+              <div class="forecast-charts" id="forecastCharts"></div>
+            </section>
+
+            <section class="manager-section pipeline-health-section" aria-labelledby="managerPipelineHealthHeading">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Pipeline health</p>
+                  <h2 id="managerPipelineHealthHeading">Pipeline Health</h2>
+                </div>
+              </div>
+              <div class="manager-pipeline-health" id="managerPipelineHealth"></div>
+            </section>
+          </section>
+
+          <section class="manager-section coaching-section" aria-labelledby="coachingPanelHeading">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">AI coaching</p>
+                <h2 id="coachingPanelHeading">AI Coaching</h2>
+              </div>
+            </div>
+            <div class="coaching-panel" id="coachingPanel"></div>
+          </section>
+
+          <section class="manager-grid-two">
+            <section class="manager-section risk-section" aria-labelledby="riskCenterHeading">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Risk center</p>
+                  <h2 id="riskCenterHeading">Risk Center</h2>
+                </div>
+              </div>
+              <div class="risk-center" id="riskCenter"></div>
+            </section>
+
+            <section class="manager-section manager-actions-section" aria-labelledby="managerActionsHeading">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Manager actions</p>
+                  <h2 id="managerActionsHeading">Manager Actions</h2>
+                </div>
+              </div>
+              <div class="manager-actions" id="managerActionsPanel"></div>
+              <p class="manager-status" id="managerStatus" role="status"></p>
+            </section>
+          </section>
+
+          <section class="manager-grid-two">
+            <section class="manager-section manager-notifications-section" aria-labelledby="managerNotificationsHeading">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Notifications</p>
+                  <h2 id="managerNotificationsHeading">Notifications</h2>
+                </div>
+              </div>
+              <div class="manager-notifications" id="managerNotifications"></div>
+            </section>
+
+            <section class="manager-section manager-analytics-section" aria-labelledby="managerAnalyticsHeading">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Analytics</p>
+                  <h2 id="managerAnalyticsHeading">Analytics</h2>
+                </div>
+              </div>
+              <div class="manager-analytics-tabs" id="managerAnalyticsTabs" role="group" aria-label="Manager analytics views"></div>
+              <div class="manager-analytics-chart" id="managerAnalyticsChart"></div>
+            </section>
           </section>
         </section>
 
