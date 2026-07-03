@@ -286,6 +286,10 @@ const pageTitle = document.querySelector(".topbar h1");
 const subpageNav = document.querySelector("#subpageNav");
 const pipelineHealth = document.querySelector("#pipelineHealth");
 const insightList = document.querySelector("#insightList");
+const startMyDayButton = document.querySelector("#startMyDayButton");
+const dashboardRecommendations = document.querySelector("#dashboardRecommendations");
+const dashboardActivityFeed = document.querySelector("#dashboardActivityFeed");
+const dashboardSchedule = document.querySelector("#dashboardSchedule");
 const sourceReportGrid = document.querySelector("#sourceReportGrid");
 const exportSourceReportButton = document.querySelector("#exportSourceReport");
 const leadBrief = document.querySelector("#leadBrief");
@@ -564,6 +568,7 @@ bulkContactNextButton.addEventListener("click", moveSelectedContactsNext);
 searchInput.addEventListener("input", render);
 exportSourceReportButton.addEventListener("click", exportSourceReportCsv);
 revenueGoalForm.addEventListener("submit", saveRevenueTarget);
+startMyDayButton.addEventListener("click", startMyDay);
 
 authForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -871,6 +876,7 @@ function sortedContactLeads(leads) {
 function render() {
   renderWorkspaceIdentity();
   renderMetrics();
+  renderDailyCommandCenter();
   renderRevenueGoal();
   renderOnboarding();
   renderInsights();
@@ -976,7 +982,7 @@ function setHidden(selector, hidden) {
 
 function renderPipelineSubpage(activeSubpage) {
   const pipelineSelectors = {
-    overview: ['.metrics[data-page="pipeline"]', "#pipeline"],
+    overview: ["#dailyCommandCenter", "#pipeline"],
     target: ["#revenueGoal"],
     setup: ["#onboardingPanel"],
     insights: ["#insightsPanel"],
@@ -1074,6 +1080,236 @@ function renderMetrics() {
   document.querySelector("#hotLeadCount").textContent = hotLeads;
   document.querySelector("#automationSaved").textContent = `${saved}h`;
   document.querySelector("#dueToday").textContent = dueToday;
+}
+
+function renderDailyCommandCenter() {
+  const stats = dailyCommandStats();
+  const now = new Date();
+
+  document.querySelector("#dashboardDate").textContent = formatDashboardDate(now);
+  document.querySelector("#dashboardWeather").textContent = "72°F · clear";
+  document.querySelector("#dailyMessage").textContent = dailyMotivation(stats);
+  document.querySelector("#todayFocusSummary").textContent = dailyFocusSummary(stats);
+  document.querySelector("#dashboardFollowUpsDue").textContent = stats.followUpsDue;
+  document.querySelector("#dashboardAppointmentsToday").textContent = stats.appointmentsToday.length;
+  document.querySelector("#dashboardDealsAtRisk").textContent = stats.dealsAtRisk.length;
+  document.querySelector("#dashboardRevenueGoal").textContent = formatter.format(stats.revenueGoal);
+  document.querySelector("#dashboardProjectedRevenue").textContent = formatter.format(stats.projectedRevenue);
+  document.querySelector("#dashboardClosedMonth").textContent = formatter.format(stats.closedThisMonth);
+  document.querySelector("#dashboardCallsMade").textContent = stats.callsMade;
+  document.querySelector("#dashboardAppointmentsBooked").textContent = stats.appointmentsBooked;
+  document.querySelector("#dashboardCloseRate").textContent = `${stats.closeRate}%`;
+  document.querySelector("#dashboardWinRate").textContent = `${stats.winRate}%`;
+
+  renderDashboardRecommendations(stats);
+  renderDashboardActivity(stats);
+  renderDashboardSchedule(stats);
+}
+
+function dailyCommandStats() {
+  const openLeads = state.leads.filter((lead) => lead.stage !== "won");
+  const hotLeads = openLeads
+    .filter((lead) => lead.score >= 80)
+    .sort((left, right) => right.score - left.score || right.value - left.value);
+  const tasksDueToday = state.tasks.filter((task) => task.due === "today" && !task.done);
+  const followUpsDue = tasksDueToday.filter((task) => /call|follow|send|review|draft/i.test(task.text)).length;
+  const appointments = state.appointments || [];
+  const appointmentsToday = appointments.filter((appointment) => isToday(appointment.startsAt));
+  const dealsAtRisk = openLeads
+    .filter((lead) => lead.score < 80 || !latestLeadActivity(lead.id))
+    .sort((left, right) => left.score - right.score || right.value - left.value);
+  const pipelineValue = state.leads.reduce((sum, lead) => sum + lead.value, 0);
+  const closedThisMonth = state.leads
+    .filter((lead) => lead.stage === "won")
+    .reduce((sum, lead) => sum + lead.value, 0);
+  const projectedRevenue =
+    closedThisMonth +
+    state.leads
+      .filter((lead) => lead.stage !== "won")
+      .reduce((sum, lead) => sum + weightedLeadValue(lead), 0);
+  const callsMade = (state.activities || []).filter((activity) =>
+    /call|dial|voicemail|text logged/i.test(`${activity.type} ${activity.message}`),
+  ).length;
+  const appointmentsBooked = appointments.length;
+  const closeRate = callsMade ? Math.min(100, Math.round((appointmentsBooked / callsMade) * 100)) : 0;
+  const winRate = state.leads.length
+    ? Math.round((state.leads.filter((lead) => lead.stage === "won").length / state.leads.length) * 100)
+    : 0;
+
+  return {
+    openLeads,
+    hotLeads,
+    tasksDueToday,
+    followUpsDue,
+    appointmentsToday,
+    dealsAtRisk,
+    pipelineValue,
+    closedThisMonth,
+    projectedRevenue,
+    revenueGoal: revenueTarget(),
+    callsMade,
+    appointmentsBooked,
+    closeRate,
+    winRate,
+  };
+}
+
+function renderDashboardRecommendations(stats) {
+  const recommendations = dashboardRecommendationCards(stats);
+  dashboardRecommendations.innerHTML = recommendations.map(renderRecommendationCard).join("");
+  dashboardRecommendations.querySelectorAll("[data-dashboard-lead]").forEach((button) => {
+    button.addEventListener("click", () => openDashboardLead(button.dataset.dashboardLead));
+  });
+}
+
+function dashboardRecommendationCards(stats) {
+  const firstCall = stats.hotLeads[0] || stats.openLeads[0];
+  const likelyClose = [...stats.openLeads].sort((left, right) => weightedLeadValue(right) - weightedLeadValue(left))[0];
+  const staleLead = stats.dealsAtRisk[0] || stats.openLeads.find((lead) => !latestLeadActivity(lead.id));
+  const scoreLead = [...state.leads].sort((left, right) => right.score - left.score || right.value - left.value)[0];
+
+  return [
+    {
+      title: "Call this homeowner first",
+      lead: firstCall,
+      value: firstCall ? `${firstCall.score}/100` : "No lead",
+      detail: firstCall ? `${firstCall.name} at ${firstCall.company}` : "Pull or import leads to build today's call list.",
+    },
+    {
+      title: "This estimate is likely to close",
+      lead: likelyClose,
+      value: likelyClose ? formatter.format(weightedLeadValue(likelyClose)) : "$0",
+      detail: likelyClose ? `${stageLabel(likelyClose.stage)} deal with ${Math.round((stageProbabilities[likelyClose.stage] || 0) * 100)}% odds.` : "No open estimates yet.",
+    },
+    {
+      title: "This customer hasn't been contacted",
+      lead: staleLead,
+      value: staleLead ? stageLabel(staleLead.stage) : "Clear",
+      detail: staleLead ? staleLead.nextAction : "Every open lead has a recent touch.",
+    },
+    {
+      title: "This lead score increased",
+      lead: scoreLead,
+      value: scoreLead ? `+${Math.max(1, Math.round(scoreLead.score / 12))}` : "+0",
+      detail: scoreLead ? `${scoreLead.company} is showing the strongest buying signal.` : "Scores will appear once leads are active.",
+    },
+  ];
+}
+
+function renderRecommendationCard(recommendation, index) {
+  const content = `
+    <span>0${index + 1}</span>
+    <strong>${escapeHtml(recommendation.title)}</strong>
+    <b>${escapeHtml(recommendation.value)}</b>
+    <p>${escapeHtml(recommendation.detail)}</p>
+  `;
+
+  if (!recommendation.lead) {
+    return `<article class="ai-card">${content}</article>`;
+  }
+
+  return `
+    <button class="ai-card" data-dashboard-lead="${recommendation.lead.id}" type="button">
+      ${content}
+    </button>
+  `;
+}
+
+function renderDashboardActivity() {
+  const activities = [...(state.activities || [])]
+    .sort((left, right) => activityTime(right) - activityTime(left))
+    .slice(0, 5);
+
+  if (!activities.length) {
+    dashboardActivityFeed.innerHTML = "<p class=\"empty-state\">No team activity yet.</p>";
+    return;
+  }
+
+  dashboardActivityFeed.innerHTML = activities
+    .map((activity) => {
+      const lead = state.leads.find((item) => item.id === activity.leadId);
+      return `
+        <article class="dashboard-feed-item">
+          <span>${formatActivityDate(activity.createdAt)}</span>
+          <strong>${escapeHtml(activity.message)}</strong>
+          <p>${escapeHtml(lead?.company || "Workspace update")}</p>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function renderDashboardSchedule(stats) {
+  const appointmentRows = stats.appointmentsToday.map((appointment) => {
+    const lead = state.leads.find((item) => item.id === appointment.leadId);
+    return {
+      time: formatAppointmentTime(appointment.startsAt),
+      title: lead?.company || appointment.leadName || "Appointment",
+      detail: `${appointment.contactName || "Customer"} · ${appointment.assignedTo || "Unassigned"}`,
+    };
+  });
+  const taskRows = stats.tasksDueToday.slice(0, Math.max(0, 5 - appointmentRows.length)).map((task, index) => ({
+    time: `${9 + index}:00`,
+    title: task.text,
+    detail: "Focus block",
+  }));
+  const rows = [...appointmentRows, ...taskRows];
+
+  if (!rows.length) {
+    dashboardSchedule.innerHTML = "<p class=\"empty-state\">No scheduled work today.</p>";
+    return;
+  }
+
+  dashboardSchedule.innerHTML = rows
+    .map(
+      (row) => `
+        <article class="dashboard-schedule-item">
+          <time>${escapeHtml(row.time)}</time>
+          <div>
+            <strong>${escapeHtml(row.title)}</strong>
+            <span>${escapeHtml(row.detail)}</span>
+          </div>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function dailyMotivation(stats) {
+  if (stats.appointmentsToday.length) return "Protect the calendar. Every booked slot is a closeable moment.";
+  if (stats.hotLeads.length) return "Speed wins today. Start with the warmest lead before the window cools.";
+  if (stats.tasksDueToday.length) return "Clear the open loops. Momentum comes from clean follow-through.";
+  return "Quiet board, clear head. Build tomorrow's pipeline before noon.";
+}
+
+function dailyFocusSummary(stats) {
+  const lead = stats.hotLeads[0] || stats.openLeads[0];
+  if (!lead) return "No open leads yet. Add a lead or pull a fresh batch to start the day.";
+  return `Start with ${lead.name} at ${lead.company}, then clear ${stats.tasksDueToday.length} due ${stats.tasksDueToday.length === 1 ? "task" : "tasks"}.`;
+}
+
+function startMyDay() {
+  const lead = primaryDashboardLead();
+  if (!lead) {
+    setActivePage("tasks");
+    render();
+    return;
+  }
+
+  openDashboardLead(lead.id);
+}
+
+function primaryDashboardLead() {
+  const stats = dailyCommandStats();
+  return stats.hotLeads[0] || stats.openLeads[0] || null;
+}
+
+function openDashboardLead(leadId) {
+  if (!leadId) return;
+  state.selectedLeadId = leadId;
+  subpageState.pipeline = "brief";
+  setActivePage("pipeline");
+  render();
 }
 
 function renderRevenueGoal() {
@@ -5515,6 +5751,34 @@ function formatShortDate(value) {
     month: "short",
     day: "numeric",
   }).format(new Date(value));
+}
+
+function formatDashboardDate(value) {
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  }).format(value);
+}
+
+function formatAppointmentTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Anytime";
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function isToday(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+  const today = new Date();
+  return (
+    date.getFullYear() === today.getFullYear() &&
+    date.getMonth() === today.getMonth() &&
+    date.getDate() === today.getDate()
+  );
 }
 
 function timezoneLabel(value) {

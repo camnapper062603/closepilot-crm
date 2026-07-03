@@ -10,10 +10,18 @@
   --navy-dark: #071f42;
   --navy-soft: #eef4ff;
   --black: #050505;
+  --soft: #f6f8fb;
+  --soft-strong: #eef2f7;
+  --surface-elevated: #ffffff;
+  --success: #0f7a4f;
+  --warning: #a16207;
+  --danger: #b42318;
+  --ring: rgba(11, 47, 99, 0.16);
   --amber: #c57b22;
   --coral: #c85a54;
   --blue: #174b8f;
   --shadow: 0 12px 30px rgba(5, 5, 5, 0.08);
+  --shadow-soft: 0 18px 50px rgba(5, 5, 5, 0.08);
 }
 
 * {
@@ -302,12 +310,18 @@ h2 {
   justify-content: center;
   min-height: 46px;
   padding: 0 20px;
+  transition:
+    background 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
   white-space: nowrap;
 }
 
 .primary-button:hover,
 .task-form button:hover {
   background: var(--navy-dark);
+  box-shadow: 0 12px 24px var(--ring);
+  transform: translateY(-1px);
 }
 
 .secondary-button {
@@ -320,6 +334,8 @@ h2 {
 
 .secondary-button:hover {
   background: var(--navy-dark);
+  box-shadow: 0 10px 20px var(--ring);
+  transform: translateY(-1px);
 }
 
 .mode-pill {
@@ -363,6 +379,275 @@ h2 {
   display: block;
   font-size: 1.8rem;
   margin-top: 6px;
+}
+
+.daily-command-center {
+  animation: dashboard-rise 420ms ease both;
+  display: grid;
+  gap: 18px;
+}
+
+.dashboard-greeting,
+.today-focus-card,
+.dashboard-section {
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow-soft);
+}
+
+.dashboard-greeting {
+  align-items: center;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1.45fr) minmax(180px, 0.45fr) minmax(240px, 0.8fr);
+  padding: 22px;
+}
+
+.dashboard-greeting h2,
+.today-focus-card h2,
+.dashboard-section h2 {
+  letter-spacing: 0;
+}
+
+.dashboard-greeting h2 {
+  font-size: clamp(1.65rem, 2.2vw, 2.35rem);
+  line-height: 1;
+}
+
+#dashboardDate,
+.daily-message {
+  color: var(--muted);
+  margin: 7px 0 0;
+}
+
+.dashboard-weather {
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+}
+
+.dashboard-weather span,
+.soft-pill,
+.focus-grid span,
+.revenue-snapshot-grid span,
+.sales-activity-grid span {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 850;
+  overflow-wrap: anywhere;
+  text-transform: uppercase;
+}
+
+.dashboard-weather strong {
+  font-size: 1.05rem;
+}
+
+.daily-message {
+  border-left: 3px solid var(--navy);
+  font-weight: 750;
+  padding-left: 14px;
+}
+
+.today-focus-card {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.4fr) auto;
+  padding: 22px;
+}
+
+.focus-copy p:last-child {
+  color: var(--muted);
+  line-height: 1.55;
+  margin: 8px 0 0;
+}
+
+.focus-grid,
+.sales-activity-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.focus-grid article,
+.sales-activity-grid article,
+.revenue-snapshot-grid article {
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  min-width: 0;
+  padding: 12px;
+  transition:
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+.focus-grid article:hover,
+.sales-activity-grid article:hover,
+.revenue-snapshot-grid article:hover {
+  border-color: rgba(11, 47, 99, 0.28);
+  transform: translateY(-1px);
+}
+
+.focus-grid strong,
+.sales-activity-grid strong,
+.revenue-snapshot-grid strong {
+  display: block;
+  font-size: 1.4rem;
+  line-height: 1.1;
+  margin-top: 8px;
+}
+
+.command-start-button {
+  align-self: stretch;
+  border-radius: 8px;
+  font-size: 1rem;
+  min-width: 176px;
+  padding-inline: 26px;
+}
+
+.dashboard-section {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.section-heading {
+  align-items: center;
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+}
+
+.ai-recommendations-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.ai-card {
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  display: grid;
+  gap: 9px;
+  min-height: 172px;
+  padding: 16px;
+  text-align: left;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+  width: 100%;
+}
+
+button.ai-card:hover {
+  background: var(--surface-elevated);
+  border-color: rgba(11, 47, 99, 0.32);
+  box-shadow: 0 16px 32px rgba(5, 5, 5, 0.08);
+  transform: translateY(-2px);
+}
+
+.ai-card span {
+  color: var(--navy);
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.ai-card strong,
+.dashboard-feed-item strong,
+.dashboard-schedule-item strong {
+  display: block;
+}
+
+.ai-card b {
+  font-size: 1.45rem;
+}
+
+.ai-card p {
+  color: var(--muted);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.revenue-snapshot-grid {
+  margin-bottom: 0;
+}
+
+.sales-activity-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.dashboard-split {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.82fr);
+}
+
+.soft-pill {
+  align-items: center;
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  display: inline-flex;
+  gap: 6px;
+  padding: 7px 10px;
+  white-space: nowrap;
+}
+
+.dashboard-activity-feed,
+.dashboard-schedule {
+  display: grid;
+  gap: 10px;
+}
+
+.dashboard-feed-item,
+.dashboard-schedule-item {
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+}
+
+.dashboard-feed-item span,
+.dashboard-feed-item p,
+.dashboard-schedule-item span {
+  color: var(--muted);
+  margin: 0;
+}
+
+.dashboard-feed-item span,
+.dashboard-schedule-item time {
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.dashboard-schedule-item {
+  align-items: center;
+  grid-template-columns: 74px minmax(0, 1fr);
+}
+
+.dashboard-schedule-item time {
+  color: var(--navy);
+}
+
+@keyframes dashboard-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .revenue-goal-panel {
@@ -2471,6 +2756,91 @@ button.insight-card:hover {
   width: 38px;
 }
 
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #080a0f;
+    --surface: #0e1118;
+    --surface-elevated: #121722;
+    --ink: #f6f8fb;
+    --muted: #a7b0bf;
+    --line: #273142;
+    --navy: #5f8edb;
+    --navy-dark: #8ab4ff;
+    --navy-soft: #16253d;
+    --black: #05070b;
+    --soft: #171d28;
+    --soft-strong: #202838;
+    --ring: rgba(138, 180, 255, 0.18);
+    --shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+    --shadow-soft: 0 18px 50px rgba(0, 0, 0, 0.32);
+  }
+
+  body {
+    color-scheme: dark;
+  }
+
+  .topbar,
+  .metrics article,
+  .panel,
+  .onboarding-panel,
+  .auth-card,
+  .dashboard-greeting,
+  .today-focus-card,
+  .dashboard-section {
+    background: var(--surface-elevated);
+  }
+
+  .subpage-nav,
+  .mode-pill,
+  .dashboard-weather,
+  .focus-grid article,
+  .sales-activity-grid article,
+  .revenue-snapshot-grid article,
+  .ai-card,
+  .dashboard-feed-item,
+  .dashboard-schedule-item,
+  .contact-summary article,
+  .task-summary article,
+  .pipeline-health article,
+  .stage-column,
+  .calendar-appointment,
+  .automation-summary article {
+    background: var(--soft);
+  }
+
+  .subpage-nav button,
+  .search input,
+  .deal-card,
+  .schedule-cell {
+    background: var(--surface);
+    color: var(--ink);
+  }
+
+  .primary-button,
+  .secondary-button,
+  .task-form button,
+  .card-actions button,
+  .task-item button,
+  .automation-row button {
+    background: #173f78;
+    color: #ffffff;
+  }
+
+  .primary-button:hover,
+  .secondary-button:hover,
+  .task-form button:hover,
+  .card-actions button:hover,
+  .task-item button:hover,
+  .automation-row button:hover {
+    background: #245a9e;
+  }
+
+  .brand-mark {
+    background: #ffffff;
+    color: #071f42;
+  }
+}
+
 @media (max-width: 1180px) {
   .app-shell {
     grid-template-columns: 220px minmax(0, 1fr);
@@ -2509,6 +2879,20 @@ button.insight-card:hover {
 
   .right-rail {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .dashboard-greeting,
+  .today-focus-card,
+  .dashboard-split {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-recommendations-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .focus-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -2678,6 +3062,21 @@ button.insight-card:hover {
   .main {
     padding: 18px;
   }
+
+  .dashboard-greeting,
+  .today-focus-card,
+  .dashboard-section {
+    padding: 16px;
+  }
+
+  .section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .command-start-button {
+    width: 100%;
+  }
 }
 
 @media (max-width: 560px) {
@@ -2750,6 +3149,85 @@ button.insight-card:hover {
     grid-template-columns: 1fr;
   }
 
+  .daily-command-center {
+    gap: 12px;
+  }
+
+  .dashboard-greeting {
+    gap: 10px;
+  }
+
+  .dashboard-greeting h2 {
+    font-size: 1.36rem;
+  }
+
+  #dashboardDate,
+  .daily-message,
+  .focus-copy p:last-child,
+  .ai-card p,
+  .dashboard-feed-item p,
+  .dashboard-schedule-item span {
+    font-size: 0.72rem;
+    line-height: 1.32;
+  }
+
+  .focus-grid,
+  .sales-activity-grid,
+  .revenue-snapshot-grid,
+  .ai-recommendations-grid {
+    gap: 6px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .focus-grid article,
+  .sales-activity-grid article,
+  .revenue-snapshot-grid article,
+  .ai-card,
+  .dashboard-feed-item,
+  .dashboard-schedule-item,
+  .dashboard-weather {
+    min-width: 0;
+    padding: 9px;
+  }
+
+  .focus-grid span,
+  .sales-activity-grid span,
+  .revenue-snapshot-grid span,
+  .dashboard-weather span,
+  .soft-pill {
+    font-size: 0.58rem;
+    line-height: 1.18;
+  }
+
+  .focus-grid strong,
+  .sales-activity-grid strong,
+  .revenue-snapshot-grid strong,
+  .dashboard-weather strong,
+  .ai-card b {
+    font-size: 0.96rem;
+    line-height: 1.12;
+  }
+
+  .ai-card {
+    min-height: 146px;
+  }
+
+  .ai-card strong,
+  .dashboard-feed-item strong,
+  .dashboard-schedule-item strong {
+    font-size: 0.78rem;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  .dashboard-schedule-item {
+    grid-template-columns: 52px minmax(0, 1fr);
+  }
+
+  .dashboard-schedule-item time {
+    font-size: 0.66rem;
+  }
+
   .primary-button,
   .secondary-button,
   .danger-button,
@@ -2784,6 +3262,13 @@ button.insight-card:hover {
   .workspace-profile-summary {
     gap: 6px;
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .revenue-snapshot-grid.metrics,
+  .sales-activity-grid,
+  .focus-grid,
+  .ai-recommendations-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .forecast-row {

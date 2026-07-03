@@ -94,23 +94,137 @@
 
         <nav class="subpage-nav" id="subpageNav" aria-label="Section pages"></nav>
 
-        <section class="metrics" data-page="pipeline" aria-label="CRM summary">
-          <article>
-            <span>Pipeline value</span>
-            <strong id="pipelineValue">$0</strong>
-          </article>
-          <article>
-            <span>Hot leads</span>
-            <strong id="hotLeadCount">0</strong>
-          </article>
-          <article>
-            <span>Automation saved</span>
-            <strong id="automationSaved">0h</strong>
-          </article>
-          <article>
-            <span>Due today</span>
-            <strong id="dueToday">0</strong>
-          </article>
+        <section class="daily-command-center" id="dailyCommandCenter" data-page="pipeline" aria-labelledby="dailyCommandHeading">
+          <section class="dashboard-greeting" aria-labelledby="dailyCommandHeading">
+            <div>
+              <p class="eyebrow">Daily command center</p>
+              <h2 id="dailyCommandHeading">Good Morning, Cameron</h2>
+              <p id="dashboardDate">Today</p>
+            </div>
+            <div class="dashboard-weather" aria-label="Weather placeholder">
+              <span>Weather</span>
+              <strong id="dashboardWeather">72°F · clear</strong>
+            </div>
+            <p class="daily-message" id="dailyMessage">Win the first hour. The rest of the day gets easier.</p>
+          </section>
+
+          <section class="today-focus-card" aria-labelledby="todayFocusHeading">
+            <div class="focus-copy">
+              <p class="eyebrow">Today's focus</p>
+              <h2 id="todayFocusHeading">What should I do next?</h2>
+              <p id="todayFocusSummary">Start with the highest intent lead, then clear every due follow-up.</p>
+            </div>
+            <div class="focus-grid" aria-label="Today's focus metrics">
+              <article>
+                <span>Hot leads needing calls</span>
+                <strong id="hotLeadCount">0</strong>
+              </article>
+              <article>
+                <span>Follow-ups due today</span>
+                <strong id="dashboardFollowUpsDue">0</strong>
+              </article>
+              <article>
+                <span>Appointments today</span>
+                <strong id="dashboardAppointmentsToday">0</strong>
+              </article>
+              <article>
+                <span>Deals at risk</span>
+                <strong id="dashboardDealsAtRisk">0</strong>
+              </article>
+              <article>
+                <span>Tasks due</span>
+                <strong id="dueToday">0</strong>
+              </article>
+            </div>
+            <button class="primary-button command-start-button" id="startMyDayButton" type="button">Start My Day</button>
+          </section>
+
+          <section class="dashboard-section" aria-labelledby="aiRecommendationsHeading">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">AI recommendations</p>
+                <h2 id="aiRecommendationsHeading">Recommended next moves</h2>
+              </div>
+            </div>
+            <div class="ai-recommendations-grid" id="dashboardRecommendations"></div>
+          </section>
+
+          <section class="dashboard-section" aria-labelledby="revenueSnapshotHeading">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Revenue snapshot</p>
+                <h2 id="revenueSnapshotHeading">Revenue movement</h2>
+              </div>
+            </div>
+            <div class="metrics revenue-snapshot-grid" aria-label="Revenue snapshot">
+              <article>
+                <span>Revenue goal</span>
+                <strong id="dashboardRevenueGoal">$0</strong>
+              </article>
+              <article>
+                <span>Projected revenue</span>
+                <strong id="dashboardProjectedRevenue">$0</strong>
+              </article>
+              <article>
+                <span>Closed this month</span>
+                <strong id="dashboardClosedMonth">$0</strong>
+              </article>
+              <article>
+                <span>Pipeline value</span>
+                <strong id="pipelineValue">$0</strong>
+              </article>
+            </div>
+          </section>
+
+          <section class="dashboard-section" aria-labelledby="salesActivityHeading">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Sales activity</p>
+                <h2 id="salesActivityHeading">Daily motion</h2>
+              </div>
+            </div>
+            <div class="sales-activity-grid" aria-label="Sales activity">
+              <article>
+                <span>Calls made</span>
+                <strong id="dashboardCallsMade">0</strong>
+              </article>
+              <article>
+                <span>Appointments booked</span>
+                <strong id="dashboardAppointmentsBooked">0</strong>
+              </article>
+              <article>
+                <span>Close rate</span>
+                <strong id="dashboardCloseRate">0%</strong>
+              </article>
+              <article>
+                <span>Win rate</span>
+                <strong id="dashboardWinRate">0%</strong>
+              </article>
+            </div>
+          </section>
+
+          <section class="dashboard-split">
+            <section class="dashboard-section" aria-labelledby="teamActivityHeading">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Team activity</p>
+                  <h2 id="teamActivityHeading">Recent activity</h2>
+                </div>
+                <span class="soft-pill">Automation saved <strong id="automationSaved">0h</strong></span>
+              </div>
+              <div class="dashboard-activity-feed" id="dashboardActivityFeed"></div>
+            </section>
+
+            <section class="dashboard-section" aria-labelledby="dashboardCalendarHeading">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Calendar</p>
+                  <h2 id="dashboardCalendarHeading">Today's schedule</h2>
+                </div>
+              </div>
+              <div class="dashboard-schedule" id="dashboardSchedule"></div>
+            </section>
+          </section>
         </section>
 
         <section class="panel revenue-goal-panel" id="revenueGoal" data-page="pipeline" aria-labelledby="revenueGoalHeading">

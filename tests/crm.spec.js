@@ -50,7 +50,17 @@ async function openBackupCenter(page) {
 test('renders the CRM dashboard MVP', async ({ page }) => {
   await expect(page).toHaveTitle(/Kira Home/);
   await expect(page.locator('.topbar h1')).toHaveText('Dashboard');
+  await expect(page.locator('#dailyCommandCenter')).toContainText('Good Morning, Cameron');
+  await expect(page.locator('#dailyCommandCenter')).toContainText("Today's focus");
+  await expect(page.getByRole('button', { name: 'Start My Day' })).toBeVisible();
+  await expect(page.locator('#dashboardRecommendations')).toContainText('Call this homeowner first');
+  await expect(page.locator('#dashboardRecommendations')).toContainText('This estimate is likely to close');
+  await expect(page.locator('#dashboardSchedule')).toContainText('Focus block');
   await expect(page.locator('#pipelineBoard').getByText('Northstar Roofing')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Start My Day' }).click();
+  await expect(page.locator('#leadBrief')).toContainText('Maya Johnson');
+  await openSubpage(page, 'Dashboard');
 
   await navigateTo(page, 'Automation', 'automation');
   await expect(page.getByText('Create next-step tasks')).toBeVisible();
