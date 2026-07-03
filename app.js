@@ -1545,8 +1545,9 @@ function createFlowAction(lead, profile) {
   const lastActivity = latestLeadActivity(lead.id);
   const daysQuiet = daysSinceActivity(lastActivity);
   const appointmentUrgency = profile.key === "appointment" ? leadAppointmentUrgency(lead) : 0;
+  const intelligence = calculateLeadIntelligence(lead);
   const priorityScore =
-    lead.score * 100 +
+    intelligence.score * 100 +
     lead.value / 500 +
     (dueToday ? 140 : 0) +
     Math.min(daysQuiet, 30) * 2 +
@@ -1562,8 +1563,11 @@ function createFlowAction(lead, profile) {
     recommendedOutcomeLabel: profile.label,
     priorityScore,
     title: profile.title(lead),
-    why: profile.why(lead),
-    talkingPoints: flowTalkingPointsFor(lead, profile.key, dueToday, daysQuiet),
+    why: `${profile.why(lead)} Intelligence says ${intelligence.recommendedAction.toLowerCase()} because ${
+      intelligence.factors[0]?.label.toLowerCase() || "this lead has active sales signals"
+    }.`,
+    talkingPoints: flowTalkingPointsFor(lead, profile.key, dueToday, daysQuiet, intelligence),
+    intelligence,
     dueToday,
     daysQuiet,
     appointmentUrgency,
@@ -1589,11 +1593,14 @@ function daysSinceActivity(activity) {
   return Math.max(0, Math.floor(elapsed / 86400000));
 }
 
-function flowTalkingPointsFor(lead, type, dueToday, daysQuiet) {
+function flowTalkingPointsFor(lead, type, dueToday, daysQuiet, intelligence = calculateLeadIntelligence(lead)) {
   const points = [
-    `Open with the reason for the call: ${lead.nextAction}`,
+    `${intelligence.recommendedAction}: open with the reason for the touch - ${lead.nextAction}`,
     `Anchor the value: ${formatter.format(lead.value)} potential deal in ${stageLabel(lead.stage)}.`,
-    `Ask for the next concrete step before ending the conversation.`,
+    `Lead Intelligence is ${intelligence.score}/100 (${intelligence.label}); mention ${
+      intelligence.factors[0]?.label.toLowerCase() || "the strongest buying signal"
+    }.`,
+    "Ask for the next concrete step before ending the conversation.",
   ];
 
   if (type === "text") {
@@ -1616,6 +1623,7 @@ function renderFlowLeadDetails(action) {
   const details = dialLeadDetails(action.lead);
   const lastActivity = latestLeadActivity(action.leadId);
   const dueTasks = leadTasks(action.lead).filter((task) => task.due === "today" && !task.done);
+  const intelligence = action.intelligence || calculateLeadIntelligence(action.lead);
 
   return `
     <div class="flow-lead-hero">
@@ -1624,8 +1632,23 @@ function renderFlowLeadDetails(action) {
         <strong>${escapeHtml(action.lead.company)}</strong>
         <p>${escapeHtml(action.lead.name)}</p>
       </div>
-      <b>${action.lead.score}/100</b>
+      ${leadIntelligenceBadge(action.lead, "flow-badge")}
     </div>
+    <section class="flow-intelligence-summary">
+      <div>
+        <span>Lead Intelligence Score</span>
+        <strong>${intelligence.score}/100</strong>
+        <small>${escapeHtml(intelligence.label)}</small>
+      </div>
+      <div>
+        <span>Recommended action</span>
+        <strong>${escapeHtml(intelligence.recommendedAction)}</strong>
+        <small>Based on score factors</small>
+      </div>
+      <ul aria-label="Top score factors">
+        ${intelligence.factors.slice(0, 3).map((factor) => `<li>${escapeHtml(factor.label)}</li>`).join("")}
+      </ul>
+    </section>
     <div class="flow-lead-grid">
       <article>
         <span>Deal value</span>
@@ -1643,6 +1666,12 @@ function renderFlowLeadDetails(action) {
         <span>Phone</span>
         <strong>${escapeHtml(details.phone || "Not logged")}</strong>
       </article>
+    </div>
+    <div class="flow-score-breakdown">
+      <p class="eyebrow">Top score factors</p>
+      <ul>
+        ${intelligence.factors.slice(0, 3).map(renderScoreFactor).join("")}
+      </ul>
     </div>
     <p>${escapeHtml(action.lead.notes || "No notes yet.")}</p>
   `;
@@ -2217,7 +2246,7 @@ function renderDealCard(lead) {
         <span>${escapeHtml(lead.name)}</span>
         <div class="deal-meta">
           <b>${formatter.format(lead.value)}</b>
-          <span class="score-pill">${lead.score}</span>
+          ${leadIntelligenceBadge(lead, "compact")}
         </div>
       </button>
       <div class="card-actions">
@@ -2265,18 +2294,20 @@ function renderLeadBrief() {
     leadBrief.innerHTML = "<p>No lead selected.</p>";
     return;
   }
+  const intelligence = calculateLeadIntelligence(lead);
 
   leadBrief.innerHTML = `
     <div>
       <h3>${escapeHtml(lead.company)}</h3>
-      <p>${escapeHtml(lead.name)} · ${stageLabel(lead.stage)}</p>
+      <p>${escapeHtml(lead.name)} · ${stageLabel(lead.stage)} · ${escapeHtml(lead.source)}</p>
     </div>
     <div class="brief-grid">
       <div><span>Value</span><strong>${formatter.format(lead.value)}</strong></div>
-      <div><span>Lead score</span><strong>${lead.score}/100</strong></div>
-      <div><span>Source</span><strong>${escapeHtml(lead.source)}</strong></div>
-      <div><span>Status</span><strong>${lead.score >= 80 ? "Hot" : "Nurture"}</strong></div>
+      <div><span>Lead Intelligence</span><strong>${intelligence.score}/100</strong></div>
+      <div><span>Score label</span><strong>${escapeHtml(intelligence.label)}</strong></div>
+      <div><span>Recommended</span><strong>${escapeHtml(intelligence.recommendedAction)}</strong></div>
     </div>
+    ${renderLeadIntelligencePanel(lead, "compact")}
     <div class="brief-actions">
       <button class="primary-button" data-follow-up-lead="${lead.id}" type="button">Add follow-up</button>
       <button class="secondary-button" data-open-lead-detail="${lead.id}" type="button">Open details</button>
@@ -2339,6 +2370,7 @@ function closeLeadDetailModal() {
 }
 
 function renderLeadDetail(lead) {
+  const intelligence = calculateLeadIntelligence(lead);
   document.querySelector("#leadDetailHeading").textContent = lead.company;
   leadDetailContent.innerHTML = `
     <div class="detail-hero">
@@ -2351,8 +2383,12 @@ function renderLeadDetail(lead) {
     </div>
     <div class="detail-grid">
       <article>
-        <span>Lead score</span>
-        <strong>${lead.score}/100</strong>
+        <span>Lead Intelligence</span>
+        <strong>${intelligence.score}/100</strong>
+      </article>
+      <article>
+        <span>Score label</span>
+        <strong>${escapeHtml(intelligence.label)}</strong>
       </article>
       <article>
         <span>Forecast value</span>
@@ -2363,6 +2399,7 @@ function renderLeadDetail(lead) {
         <strong>${Math.round((stageProbabilities[lead.stage] || 0) * 100)}%</strong>
       </article>
     </div>
+    ${renderLeadIntelligencePanel(lead)}
     <div class="detail-actions">
       <button class="primary-button" data-detail-follow-up="${lead.id}" type="button">Add follow-up</button>
       <button class="secondary-button" data-detail-sequence="${lead.id}" type="button">Start sequence</button>
@@ -2899,6 +2936,154 @@ function leadTasks(lead) {
   });
 }
 
+function calculateLeadIntelligence(lead, context = leadIntelligenceContext(lead)) {
+  const factors = [];
+  const input = leadScoringInput(lead, context);
+  let score = Math.round((input.engagementLevel || 0) * 42) + 24;
+
+  if (input.status === "won") addFactor("Closed deal", 10, "Account is already won and ready for expansion follow-up.");
+  if (input.status === "proposal") addFactor("Proposal stage", 10, "Proposal-stage deals usually need fast objection handling.");
+  if (input.status === "qualified") addFactor("Hot lead status", 12, "Qualified lead with enough context for a direct sales touch.");
+  if (input.followUpDueAt === "today") addFactor("Follow-up due today", 14, "There is open work tied to this lead today.");
+  if (input.dealValue >= 10000) addFactor("High estimated deal value", 13, `${formatter.format(input.dealValue)} estimated deal value.`);
+  else if (input.dealValue >= 7500) addFactor("Meaningful deal value", 9, `${formatter.format(input.dealValue)} estimated deal value.`);
+  if (input.appointmentAt && isWithinDays(input.appointmentAt, 2)) addFactor("Appointment scheduled soon", 15, "There is an appointment window coming up soon.");
+  if (input.lastContactedAt && daysSinceDate(input.lastContactedAt) <= 3) addFactor("Recent contact activity", 8, "The lead has been touched recently.");
+  if (!input.lastContactedAt || daysSinceDate(input.lastContactedAt) >= 7) {
+    addFactor("Long time since last contact", -7, "This lead needs a fresh touch before it cools off.");
+  }
+  if (input.estimateSent) addFactor("Estimate sent", 8, "The buyer has a concrete offer to react to.");
+  if (input.customerOpenedEstimate) addFactor("Customer opened estimate placeholder", 6, "Mock engagement signal suggests buying interest.");
+  if (input.referralSignal) addFactor("Neighbor/customer referral placeholder", 5, "Referral-style sources tend to convert with warmer outreach.");
+
+  score += factors.reduce((sum, factor) => sum + factor.impact, 0);
+  score = clampScore(score);
+
+  return {
+    score,
+    label: intelligenceLabel(score),
+    factors: factors.sort((left, right) => Math.abs(right.impact) - Math.abs(left.impact)),
+    recommendedAction: recommendedLeadAction(score, input),
+    input,
+  };
+
+  function addFactor(label, impact, detail) {
+    factors.push({ label, impact, detail });
+  }
+}
+
+function leadIntelligenceContext(lead) {
+  const lastActivity = latestLeadActivity(lead.id);
+  const tasks = leadTasks(lead);
+  const appointment = upcomingLeadAppointment(lead.id);
+  return {
+    lastActivity,
+    tasks,
+    appointment,
+  };
+}
+
+function leadScoringInput(lead, context) {
+  const dueToday = context.tasks.some((task) => task.due === "today" && !task.done);
+  const source = String(lead.source || "");
+  const notes = String(lead.notes || "");
+  const estimateSent = lead.stage === "proposal" || /estimate|proposal|quote/i.test(`${notes} ${lead.nextAction}`);
+  const engagementLevel = Math.max(0, Math.min(1, Number(lead.score || 0) / 100));
+
+  return {
+    status: lead.stage,
+    dealValue: Number(lead.value || 0),
+    lastContactedAt: context.lastActivity?.createdAt || "",
+    followUpDueAt: dueToday ? "today" : "",
+    appointmentAt: context.appointment?.startsAt || "",
+    estimateSent,
+    source,
+    engagementLevel,
+    customerOpenedEstimate: estimateSent && lead.score >= 80,
+    referralSignal: /referral|neighbor|customer/i.test(source),
+  };
+}
+
+function recommendedLeadAction(score, input) {
+  if (score >= 90 && input.followUpDueAt === "today") return "Call now";
+  if (input.appointmentAt && isWithinDays(input.appointmentAt, 2)) return "Book appointment";
+  if (input.status === "qualified" && !input.appointmentAt) return "Book appointment";
+  if (input.status === "proposal" || input.estimateSent) return "Send follow-up text";
+  if (input.status === "new" && input.dealValue >= 7000) return "Send estimate";
+  if (score < 40) return "Nurture later";
+  return "Send follow-up text";
+}
+
+function intelligenceLabel(score) {
+  if (score >= 90) return "Hot";
+  if (score >= 70) return "Warm";
+  if (score >= 40) return "Nurture";
+  return "Cold";
+}
+
+function leadIntelligenceBadge(lead, className = "") {
+  const intelligence = calculateLeadIntelligence(lead);
+  return `
+    <span class="intelligence-badge ${intelligence.label.toLowerCase()} ${className}" aria-label="Lead Intelligence ${intelligence.score} ${intelligence.label}">
+      <strong>${intelligence.score}</strong>
+      <span>${intelligence.label}</span>
+    </span>
+  `;
+}
+
+function renderLeadIntelligencePanel(lead, variant = "full") {
+  const intelligence = calculateLeadIntelligence(lead);
+  const factors = intelligence.factors.slice(0, variant === "compact" ? 3 : 5);
+  return `
+    <section class="lead-intelligence-panel ${variant}">
+      <div class="lead-intelligence-header">
+        <div>
+          <p class="eyebrow">Lead intelligence</p>
+          <h3>${intelligence.score}/100 <span>${escapeHtml(intelligence.label)}</span></h3>
+        </div>
+        <div class="lead-intelligence-action">
+          <span>Recommended action</span>
+          <strong>${escapeHtml(intelligence.recommendedAction)}</strong>
+        </div>
+      </div>
+      <div class="score-breakdown">
+        <p class="eyebrow">Why this score?</p>
+        ${factors.length ? `<ul>${factors.map(renderScoreFactor).join("")}</ul>` : "<p>No score factors yet.</p>"}
+      </div>
+    </section>
+  `;
+}
+
+function renderScoreFactor(factor) {
+  const sign = factor.impact >= 0 ? "+" : "";
+  return `
+    <li>
+      <span>${escapeHtml(factor.label)}</span>
+      <strong>${sign}${factor.impact}</strong>
+      <small>${escapeHtml(factor.detail)}</small>
+    </li>
+  `;
+}
+
+function upcomingLeadAppointment(leadId) {
+  return [...(state.appointments || [])]
+    .filter((appointment) => appointment.leadId === leadId)
+    .sort((left, right) => String(left.startsAt).localeCompare(String(right.startsAt)))[0];
+}
+
+function daysSinceDate(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 30;
+  return Math.max(0, Math.floor((Date.now() - date.getTime()) / 86400000));
+}
+
+function isWithinDays(value, days) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+  const distance = date.getTime() - Date.now();
+  return distance >= -86400000 && distance <= days * 86400000;
+}
+
 function renderLeadTaskList(lead) {
   const tasks = leadTasks(lead).slice(0, 5);
   if (!tasks.length) {
@@ -3026,7 +3211,7 @@ function renderContacts() {
         <p><strong>${escapeHtml(lead.name)}</strong><span>${escapeHtml(lead.company)}</span></p>
         <p>${escapeHtml(lead.source)}</p>
         <p>${stageLabel(lead.stage)}</p>
-        <p><span class="score-pill contact-score">${lead.score}</span></p>
+        <p>${leadIntelligenceBadge(lead, "contact-score")}</p>
         <p>${formatter.format(lead.value)}</p>
         <div class="contact-actions">
           <button class="secondary-button" data-contact-profile="${lead.id}" type="button">Profile</button>
@@ -3110,6 +3295,7 @@ function renderContactProfile(leads) {
   const tasks = leadTasks(lead);
   const openTasks = tasks.filter((task) => !task.done);
   const lastActivity = latestLeadActivity(lead.id);
+  const intelligence = calculateLeadIntelligence(lead);
 
   contactProfileContent.innerHTML = `
     <div class="contact-profile-hero">
@@ -3122,8 +3308,12 @@ function renderContactProfile(leads) {
     </div>
     <div class="contact-profile-stats">
       <article>
-        <span>Score</span>
-        <strong>${lead.score}/100</strong>
+        <span>Intelligence</span>
+        <strong>${intelligence.score}/100</strong>
+      </article>
+      <article>
+        <span>Label</span>
+        <strong>${escapeHtml(intelligence.label)}</strong>
       </article>
       <article>
         <span>Open tasks</span>
@@ -3138,6 +3328,7 @@ function renderContactProfile(leads) {
         <strong>${lastActivity ? formatShortDate(lastActivity.createdAt) : "None"}</strong>
       </article>
     </div>
+    ${renderLeadIntelligencePanel(lead, "compact")}
     <form class="contact-next-form" data-contact-next-form="${lead.id}">
       <label>
         Next action

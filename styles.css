@@ -796,6 +796,61 @@ button.ai-card:hover {
   white-space: nowrap;
 }
 
+.flow-badge {
+  box-shadow: 0 10px 22px rgba(5, 5, 5, 0.06);
+}
+
+.flow-intelligence-summary {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(180px, 1.12fr);
+}
+
+.flow-intelligence-summary div,
+.flow-intelligence-summary ul {
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  min-width: 0;
+  padding: 10px;
+}
+
+.flow-intelligence-summary ul {
+  list-style: none;
+}
+
+.flow-intelligence-summary span,
+.flow-intelligence-summary li {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.flow-intelligence-summary strong {
+  color: var(--ink);
+  font-size: 1rem;
+  line-height: 1.15;
+}
+
+.flow-intelligence-summary small {
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.flow-score-breakdown {
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
 .flow-action-buttons {
   display: grid;
   gap: 8px;
@@ -1898,6 +1953,64 @@ button.insight-card:hover {
   color: var(--teal-dark);
 }
 
+.intelligence-badge {
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  display: inline-flex;
+  gap: 6px;
+  justify-content: center;
+  line-height: 1;
+  padding: 5px 9px;
+  white-space: nowrap;
+}
+
+.intelligence-badge strong {
+  color: inherit;
+  font-size: 0.82rem;
+  line-height: 1;
+}
+
+.intelligence-badge span {
+  color: inherit;
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.intelligence-badge.hot {
+  background: #e8f7ef;
+  border-color: rgba(15, 122, 79, 0.28);
+  color: #0d6b46;
+}
+
+.intelligence-badge.warm {
+  background: #fff3d8;
+  border-color: rgba(161, 98, 7, 0.26);
+  color: #88540a;
+}
+
+.intelligence-badge.nurture {
+  background: #eaf1ff;
+  border-color: rgba(11, 47, 99, 0.24);
+  color: var(--navy);
+}
+
+.intelligence-badge.cold {
+  background: #eef2f7;
+  border-color: rgba(39, 49, 66, 0.24);
+  color: #475569;
+}
+
+.intelligence-badge.compact {
+  padding: 4px 8px;
+}
+
+.deal-card .intelligence-badge,
+.contact-row .intelligence-badge {
+  display: inline-flex;
+}
+
 .deal-card {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -1926,15 +2039,25 @@ button.insight-card:hover {
 }
 
 .deal-card strong,
-.deal-card span {
+.deal-card span:not(.intelligence-badge) {
   display: block;
 }
 
-.deal-card span,
+.deal-card span:not(.intelligence-badge),
 .lead-brief p,
 .task-item span,
-.contact-row span {
+.contact-row span:not(.intelligence-badge) {
   color: var(--muted);
+}
+
+.deal-card .intelligence-badge,
+.contact-row .intelligence-badge {
+  display: inline-flex;
+}
+
+.intelligence-badge span {
+  color: inherit;
+  display: inline;
 }
 
 .contact-row p span,
@@ -2046,6 +2169,105 @@ button.insight-card:hover {
   display: grid;
   gap: 8px;
   grid-template-columns: 1fr 1fr;
+}
+
+.lead-intelligence-panel {
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.lead-intelligence-panel.compact {
+  padding: 12px;
+}
+
+.lead-intelligence-header {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.lead-intelligence-header h3 {
+  font-size: 1.34rem;
+  line-height: 1.05;
+  margin: 0;
+}
+
+.lead-intelligence-header h3 span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+  margin-left: 4px;
+  text-transform: uppercase;
+}
+
+.lead-intelligence-action {
+  display: grid;
+  gap: 4px;
+  text-align: right;
+}
+
+.lead-intelligence-action span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.lead-intelligence-action strong {
+  color: var(--navy);
+  font-size: 0.95rem;
+  line-height: 1.2;
+}
+
+.score-breakdown {
+  display: grid;
+  gap: 8px;
+}
+
+.score-breakdown ul,
+.flow-score-breakdown ul {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.score-breakdown li,
+.flow-score-breakdown li {
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 10px;
+}
+
+.score-breakdown li span,
+.flow-score-breakdown li span {
+  color: var(--ink);
+  font-size: 0.88rem;
+  font-weight: 850;
+}
+
+.score-breakdown li strong,
+.flow-score-breakdown li strong {
+  color: var(--navy);
+  font-size: 0.84rem;
+}
+
+.score-breakdown li small,
+.flow-score-breakdown li small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  grid-column: 1 / -1;
+  line-height: 1.35;
 }
 
 .brief-actions {
@@ -2487,12 +2709,17 @@ button.insight-card:hover {
   width: 18px;
 }
 
-.contact-score {
+.contact-score:not(.intelligence-badge) {
   background: var(--navy-soft);
   color: var(--navy-dark);
   display: inline-block;
   min-width: 34px;
   text-align: center;
+}
+
+.intelligence-badge.contact-score {
+  min-width: 58px;
+  text-align: left;
 }
 
 .contact-actions {
@@ -2541,7 +2768,7 @@ button.insight-card:hover {
 .contact-profile-stats {
   display: grid;
   gap: 8px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .contact-profile-stats article,
@@ -3032,17 +3259,28 @@ button.insight-card:hover {
   .ai-card,
   .dashboard-feed-item,
   .dashboard-schedule-item,
+  .flow-intelligence-summary div,
+  .flow-intelligence-summary ul,
   .flow-progress-stats article,
   .flow-results article,
   .flow-lead-grid article,
   .flow-action-main,
   .flow-lead-card,
+  .flow-score-breakdown,
+  .lead-intelligence-panel,
+  .score-breakdown li,
+  .flow-score-breakdown li,
   .contact-summary article,
   .task-summary article,
   .pipeline-health article,
+  .contact-profile-hero,
+  .contact-profile-stats article,
+  .contact-profile-section,
   .stage-column,
   .calendar-appointment,
-  .automation-summary article {
+  .automation-summary article,
+  .assistant-card,
+  .sequence-preview {
     background: var(--soft);
   }
 
@@ -3053,6 +3291,30 @@ button.insight-card:hover {
   .flow-talking-points {
     background: var(--surface);
     color: var(--ink);
+  }
+
+  .intelligence-badge.hot {
+    background: rgba(15, 122, 79, 0.18);
+    border-color: rgba(64, 196, 136, 0.28);
+    color: #7ee2ad;
+  }
+
+  .intelligence-badge.warm {
+    background: rgba(161, 98, 7, 0.18);
+    border-color: rgba(245, 180, 70, 0.28);
+    color: #f3c36e;
+  }
+
+  .intelligence-badge.nurture {
+    background: rgba(95, 142, 219, 0.16);
+    border-color: rgba(138, 180, 255, 0.28);
+    color: #a9c8ff;
+  }
+
+  .intelligence-badge.cold {
+    background: rgba(148, 163, 184, 0.12);
+    border-color: rgba(148, 163, 184, 0.26);
+    color: #cbd5e1;
   }
 
   .primary-button,
@@ -3514,6 +3776,7 @@ button.insight-card:hover {
   .sales-activity-grid,
   .focus-grid,
   .ai-recommendations-grid,
+  .flow-intelligence-summary,
   .flow-progress-stats,
   .flow-results,
   .flow-lead-grid,
@@ -3551,9 +3814,15 @@ button.insight-card:hover {
   .flow-progress-stats article,
   .flow-results article,
   .flow-lead-grid article,
+  .flow-intelligence-summary div,
+  .flow-intelligence-summary ul,
   .flow-action-main,
   .flow-lead-card,
-  .flow-talking-points {
+  .flow-talking-points,
+  .flow-score-breakdown,
+  .lead-intelligence-panel,
+  .score-breakdown li,
+  .flow-score-breakdown li {
     min-width: 0;
     overflow-wrap: anywhere;
     padding: 8px;
@@ -3582,6 +3851,10 @@ button.insight-card:hover {
   .flow-progress-stats span,
   .flow-results span,
   .flow-lead-grid span,
+  .flow-intelligence-summary span,
+  .flow-intelligence-summary li,
+  .score-breakdown li small,
+  .flow-score-breakdown li small,
   .flow-lead-hero span,
   .flow-talking-points li,
   .flow-action-status {
@@ -3609,6 +3882,8 @@ button.insight-card:hover {
   .flow-progress-stats strong,
   .flow-results strong,
   .flow-lead-grid strong,
+  .flow-intelligence-summary strong,
+  .lead-intelligence-header h3,
   .flow-lead-hero strong {
     font-size: 0.86rem;
     line-height: 1.15;
@@ -3714,7 +3989,7 @@ button.insight-card:hover {
   .contact-row {
     align-items: center;
     gap: 6px;
-    grid-template-columns: 18px minmax(60px, 1.35fr) minmax(36px, 0.72fr) minmax(36px, 0.62fr) 26px minmax(36px, 0.58fr);
+    grid-template-columns: 18px minmax(60px, 1.35fr) minmax(36px, 0.72fr) minmax(36px, 0.62fr) minmax(54px, 0.74fr) minmax(36px, 0.58fr);
     padding: 8px;
   }
 
@@ -3786,6 +4061,7 @@ button.insight-card:hover {
   }
 
   .contact-score,
+  .intelligence-badge,
   .score-pill,
   .count-pill,
   .status-pill {

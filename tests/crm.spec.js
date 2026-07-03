@@ -63,6 +63,10 @@ test('renders the CRM dashboard MVP', async ({ page }) => {
   await expect(page.locator('#flowModePanel')).toContainText("Today's Sales Flow");
   await expect(page.locator('#flowProgressLabel')).toContainText('1 of 18 priority actions');
   await expect(page.locator('#flowTalkingPoints')).toContainText('Ask for the next concrete step');
+  await expect(page.locator('#flowLeadDetails')).toContainText('Lead Intelligence Score');
+  await expect(page.locator('#flowLeadDetails')).toContainText(/Hot|Warm|Nurture|Cold/);
+  await expect(page.locator('#flowLeadDetails')).toContainText('Recommended action');
+  await expect(page.locator('#flowLeadDetails')).toContainText('Top score factors');
 
   await navigateTo(page, 'Automation', 'automation');
   await expect(page.getByText('Create next-step tasks')).toBeVisible();
@@ -77,6 +81,9 @@ test('guides Start My Day through Flow Mode actions', async ({ page }) => {
   await expect(page.locator('#flowActionButtons')).toContainText('Send Text');
   await expect(page.locator('#flowActionButtons')).toContainText('Book Appointment');
   await expect(page.locator('#flowLeadDetails')).toContainText('Deal value');
+  await expect(page.locator('#flowLeadDetails')).toContainText('Lead Intelligence Score');
+  await expect(page.locator('#flowLeadDetails')).toContainText('Recommended action');
+  await expect(page.locator('#flowLeadDetails')).toContainText(/Hot|Warm|Nurture|Cold/);
 
   await page.getByRole('button', { name: 'Call Lead' }).click();
   await expect(page.locator('#flowActionStatus')).toContainText('Call Lead selected');
@@ -848,6 +855,10 @@ test('opens a full lead detail workspace', async ({ page }) => {
   await expect(dialog).toContainText('Maya Johnson');
   await expect(dialog).toContainText('Forecast value');
   await expect(dialog).toContainText('$3,360');
+  await expect(dialog).toContainText('Lead intelligence');
+  await expect(dialog).toContainText('Why this score?');
+  await expect(dialog).toContainText('Recommended action');
+  await expect(dialog).toContainText(/Hot|Warm|Nurture|Cold/);
   await expect(dialog).toContainText('Owner wants a faster quote follow-up flow');
   await expect(dialog).toContainText('Stage set to Qualified.');
 });
@@ -1398,7 +1409,7 @@ test('sorts contacts by value and company', async ({ page }) => {
 
   await page.getByLabel('Sort contacts').selectOption('score-desc');
   await expect(contactRows.first()).toContainText('Northstar Roofing');
-  await expect(contactRows.first().locator('.contact-score')).toHaveText('92');
+  await expect(contactRows.first().locator('.intelligence-badge')).toContainText(/Hot|Warm|Nurture|Cold/);
 
   await page.getByLabel('Sort contacts').selectOption('company');
   await expect(contactRows.first()).toContainText('Harbor Fitness');
@@ -1408,6 +1419,7 @@ test('sorts contacts by value and company', async ({ page }) => {
 test('selects and opens leads from the contact list', async ({ page }) => {
   await navigateTo(page, 'Contacts', 'contacts');
   const harborRow = page.locator('#contactTable .contact-row').filter({ hasText: 'Harbor Fitness' });
+  await expect(harborRow.locator('.intelligence-badge')).toContainText(/Hot|Warm|Nurture|Cold/);
 
   await harborRow.getByRole('button', { name: 'View' }).click();
   await expect(page).toHaveURL(/#pipeline/);
@@ -1418,6 +1430,8 @@ test('selects and opens leads from the contact list', async ({ page }) => {
   await navigateTo(page, 'Contacts', 'contacts');
   await harborRow.getByRole('button', { name: 'Details' }).click();
   await expect(page.getByRole('dialog', { name: 'Harbor Fitness' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Harbor Fitness' })).toContainText('Why this score?');
+  await expect(page.getByRole('dialog', { name: 'Harbor Fitness' })).toContainText('Recommended action');
   await expect(page.getByRole('dialog', { name: 'Harbor Fitness' })).toContainText('Review proposal pricing');
 });
 
@@ -1433,6 +1447,8 @@ test('manages a contact profile workspace from the contacts page', async ({ page
   await expect(profile).toBeVisible();
   await expect(profile).toContainText('Harbor Fitness');
   await expect(profile).toContainText('Nia Brooks');
+  await expect(profile).toContainText('Lead intelligence');
+  await expect(profile).toContainText('Why this score?');
   await expect(profile).toContainText('Draft Harbor Fitness proposal recap');
 
   await profile.getByLabel('Next action').fill('Confirm rollout date and billing owner.');
