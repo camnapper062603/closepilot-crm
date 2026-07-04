@@ -18,3 +18,4 @@ lead-generator-imports/*
 !lead-generator-imports/.gitkeep
 lead-generator-outputs/*
 !lead-generator-outputs/.gitkeep
+.vercel/
