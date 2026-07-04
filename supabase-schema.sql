@@ -116,6 +116,162 @@ create table if not exists public.workspace_audit_events (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.communications (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  lead_id uuid references public.leads(id) on delete set null,
+  channel text not null default 'note' check (channel in ('sms', 'email', 'call', 'draft', 'scheduled', 'note')),
+  direction text not null default 'outgoing' check (direction in ('incoming', 'outgoing', 'system')),
+  status text not null default 'logged',
+  subject text not null default '',
+  body text not null default '',
+  provider text not null default 'demo',
+  provider_message_id text not null default '',
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.message_drafts (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  lead_id uuid references public.leads(id) on delete set null,
+  channel text not null default 'sms',
+  body text not null default '',
+  scheduled_at timestamptz,
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.calls (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  lead_id uuid references public.leads(id) on delete set null,
+  phone text not null default '',
+  outcome text not null default 'logged',
+  duration_seconds integer not null default 0,
+  provider text not null default 'demo',
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.appointments (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  lead_id uuid references public.leads(id) on delete set null,
+  title text not null default '',
+  starts_at timestamptz not null,
+  assigned_to text not null default '',
+  status text not null default 'booked',
+  notes text not null default '',
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.notifications (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  user_id uuid references auth.users(id) on delete set null,
+  category text not null default 'system',
+  title text not null,
+  detail text not null default '',
+  read_at timestamptz,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.files (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  lead_id uuid references public.leads(id) on delete set null,
+  bucket text not null default 'workspace-files',
+  path text not null,
+  name text not null,
+  mime_type text not null default '',
+  size_bytes bigint not null default 0,
+  category text not null default 'attachment',
+  created_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.customer_portal_records (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  lead_id uuid references public.leads(id) on delete set null,
+  token_hash text not null,
+  status text not null default 'active',
+  expires_at timestamptz,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.jobs (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  lead_id uuid references public.leads(id) on delete set null,
+  title text not null,
+  status text not null default 'job_scheduled',
+  scheduled_at timestamptz,
+  crew text not null default '',
+  notes text not null default '',
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.automation_runs (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  automation_id uuid,
+  workflow_name text not null default '',
+  lead_id uuid references public.leads(id) on delete set null,
+  status text not null default 'success',
+  detail text not null default '',
+  duration_ms integer not null default 0,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.ai_outputs (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  lead_id uuid references public.leads(id) on delete set null,
+  output_type text not null,
+  provider text not null default 'fallback',
+  prompt text not null default '',
+  output jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.onboarding_state (
+  workspace_id uuid primary key references public.workspaces(id) on delete cascade,
+  completed boolean not null default false,
+  checklist jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.workspace_settings (
+  workspace_id uuid primary key references public.workspaces(id) on delete cascade,
+  business_profile jsonb not null default '{}'::jsonb,
+  branding jsonb not null default '{}'::jsonb,
+  working_hours jsonb not null default '{}'::jsonb,
+  lead_stages jsonb not null default '{}'::jsonb,
+  notification_settings jsonb not null default '{}'::jsonb,
+  ai_preferences jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.integration_settings (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  provider text not null,
+  status text not null default 'not_configured',
+  public_config jsonb not null default '{}'::jsonb,
+  last_checked_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (workspace_id, provider)
+);
+
 alter table if exists public.workspace_subscriptions
   add column if not exists current_period_end timestamptz,
   add column if not exists stripe_customer_id text,
@@ -143,6 +299,30 @@ alter table public.recruiting_candidates enable row level security;
 alter table public.workspace_subscriptions enable row level security;
 alter table public.workspace_invitations enable row level security;
 alter table public.workspace_audit_events enable row level security;
+alter table public.communications enable row level security;
+alter table public.message_drafts enable row level security;
+alter table public.calls enable row level security;
+alter table public.appointments enable row level security;
+alter table public.notifications enable row level security;
+alter table public.files enable row level security;
+alter table public.customer_portal_records enable row level security;
+alter table public.jobs enable row level security;
+alter table public.automation_runs enable row level security;
+alter table public.ai_outputs enable row level security;
+alter table public.onboarding_state enable row level security;
+alter table public.workspace_settings enable row level security;
+alter table public.integration_settings enable row level security;
+
+create index if not exists leads_workspace_stage_idx on public.leads(workspace_id, stage);
+create index if not exists tasks_workspace_due_idx on public.tasks(workspace_id, due);
+create index if not exists activities_workspace_lead_idx on public.activities(workspace_id, lead_id, created_at desc);
+create index if not exists communications_workspace_lead_idx on public.communications(workspace_id, lead_id, created_at desc);
+create index if not exists appointments_workspace_starts_idx on public.appointments(workspace_id, starts_at);
+create index if not exists notifications_workspace_read_idx on public.notifications(workspace_id, read_at, created_at desc);
+create index if not exists files_workspace_lead_idx on public.files(workspace_id, lead_id, created_at desc);
+create index if not exists jobs_workspace_status_idx on public.jobs(workspace_id, status);
+create index if not exists automation_runs_workspace_created_idx on public.automation_runs(workspace_id, created_at desc);
+create index if not exists ai_outputs_workspace_lead_idx on public.ai_outputs(workspace_id, lead_id, created_at desc);
 
 create or replace function public.is_workspace_member(target_workspace_id uuid)
 returns boolean
@@ -213,6 +393,19 @@ drop policy if exists "Members can manage subscriptions" on public.workspace_sub
 drop policy if exists "Members can manage invitations" on public.workspace_invitations;
 drop policy if exists "Invited users can read their own pending invitations" on public.workspace_invitations;
 drop policy if exists "Members can manage audit events" on public.workspace_audit_events;
+drop policy if exists "Members can manage communications" on public.communications;
+drop policy if exists "Members can manage message drafts" on public.message_drafts;
+drop policy if exists "Members can manage calls" on public.calls;
+drop policy if exists "Members can manage appointments" on public.appointments;
+drop policy if exists "Members can manage notifications" on public.notifications;
+drop policy if exists "Members can manage files" on public.files;
+drop policy if exists "Members can manage customer portal records" on public.customer_portal_records;
+drop policy if exists "Members can manage jobs" on public.jobs;
+drop policy if exists "Members can manage automation runs" on public.automation_runs;
+drop policy if exists "Members can manage AI outputs" on public.ai_outputs;
+drop policy if exists "Members can manage onboarding state" on public.onboarding_state;
+drop policy if exists "Members can manage workspace settings" on public.workspace_settings;
+drop policy if exists "Members can manage integration settings" on public.integration_settings;
 
 create policy "Users can see their workspaces"
   on public.workspaces for select
@@ -310,5 +503,70 @@ create policy "Invited users can read their own pending invitations"
 
 create policy "Members can manage audit events"
   on public.workspace_audit_events for all
+  using (public.is_workspace_member(workspace_id))
+  with check (public.is_workspace_member(workspace_id));
+
+create policy "Members can manage communications"
+  on public.communications for all
+  using (public.is_workspace_member(workspace_id))
+  with check (public.is_workspace_member(workspace_id));
+
+create policy "Members can manage message drafts"
+  on public.message_drafts for all
+  using (public.is_workspace_member(workspace_id))
+  with check (public.is_workspace_member(workspace_id));
+
+create policy "Members can manage calls"
+  on public.calls for all
+  using (public.is_workspace_member(workspace_id))
+  with check (public.is_workspace_member(workspace_id));
+
+create policy "Members can manage appointments"
+  on public.appointments for all
+  using (public.is_workspace_member(workspace_id))
+  with check (public.is_workspace_member(workspace_id));
+
+create policy "Members can manage notifications"
+  on public.notifications for all
+  using (public.is_workspace_member(workspace_id))
+  with check (public.is_workspace_member(workspace_id));
+
+create policy "Members can manage files"
+  on public.files for all
+  using (public.is_workspace_member(workspace_id))
+  with check (public.is_workspace_member(workspace_id));
+
+create policy "Members can manage customer portal records"
+  on public.customer_portal_records for all
+  using (public.is_workspace_member(workspace_id))
+  with check (public.is_workspace_member(workspace_id));
+
+create policy "Members can manage jobs"
+  on public.jobs for all
+  using (public.is_workspace_member(workspace_id))
+  with check (public.is_workspace_member(workspace_id));
+
+create policy "Members can manage automation runs"
+  on public.automation_runs for all
+  using (public.is_workspace_member(workspace_id))
+  with check (public.is_workspace_member(workspace_id));
+
+create policy "Members can manage AI outputs"
+  on public.ai_outputs for all
+  using (public.is_workspace_member(workspace_id))
+  with check (public.is_workspace_member(workspace_id));
+
+create policy "Members can manage onboarding state"
+  on public.onboarding_state for all
+  using (public.is_workspace_member(workspace_id))
+  with check (public.is_workspace_member(workspace_id));
+
+create policy "Members can manage workspace settings"
+  on public.workspace_settings for all
+  using (public.is_workspace_member(workspace_id))
+  with check (public.is_workspace_member(workspace_id));
+
+create policy "Members can manage integration settings"
+  on public.integration_settings for all
   using (public.is_workspace_member(workspace_id))
   with check (public.is_workspace_member(workspace_id));

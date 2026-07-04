@@ -8,7 +8,49 @@ const planCatalog = {
   scale: { label: "Scale", seatLimit: 25, priceEnv: "STRIPE_PRICE_SCALE" },
 };
 
+const aiEndpoints = new Set([
+  "/api/ai/lead-copilot",
+  "/api/ai/daily-briefing",
+  "/api/ai/follow-up-message",
+  "/api/ai/manager-insights",
+  "/api/ai/sales-coach",
+  "/api/ai/proposal-draft",
+  "/api/ai/conversation-summary",
+  "/api/ai/pipeline-analysis",
+]);
+
+const communicationEndpoints = new Set([
+  "/api/communications/send-sms",
+  "/api/communications/send-email",
+  "/api/communications/save-draft",
+  "/api/communications/log-call",
+  "/api/communications/schedule-message",
+  "/api/communications/conversation-summary",
+]);
+
+const readinessChecks = [
+  { key: "supabaseUrl", label: "Supabase project URL", env: "SUPABASE_URL", public: true },
+  { key: "supabaseAnonKey", label: "Supabase anon or publishable key", env: "SUPABASE_ANON_KEY", public: true },
+  { key: "supabaseServiceRole", label: "Supabase service role key", env: "SUPABASE_SERVICE_ROLE_KEY" },
+  { key: "stripeSecret", label: "Stripe secret key", env: "STRIPE_SECRET_KEY" },
+  { key: "stripeWebhook", label: "Stripe webhook secret", env: "STRIPE_WEBHOOK_SECRET" },
+  { key: "stripeStarter", label: "Stripe Starter price", env: "STRIPE_PRICE_STARTER" },
+  { key: "stripeGrowth", label: "Stripe Growth price", env: "STRIPE_PRICE_GROWTH" },
+  { key: "stripeScale", label: "Stripe Scale price", env: "STRIPE_PRICE_SCALE" },
+  { key: "appBaseUrl", label: "Application base URL", env: "APP_BASE_URL", public: true },
+  { key: "resend", label: "Resend API key", env: "RESEND_API_KEY" },
+  { key: "inviteFrom", label: "Invite sender email", env: "INVITE_FROM_EMAIL" },
+  { key: "supportEmail", label: "Support email", env: "SUPPORT_EMAIL", public: true },
+  { key: "twilioSid", label: "Twilio account SID", env: "TWILIO_ACCOUNT_SID" },
+  { key: "twilioToken", label: "Twilio auth token", env: "TWILIO_AUTH_TOKEN" },
+  { key: "twilioPhone", label: "Twilio phone number", env: "TWILIO_PHONE_NUMBER" },
+  { key: "openai", label: "OpenAI API key", env: "OPENAI_API_KEY" },
+  { key: "calendarClient", label: "Google Calendar OAuth client", env: "GOOGLE_CALENDAR_CLIENT_ID" },
+  { key: "calendarSecret", label: "Google Calendar OAuth secret", env: "GOOGLE_CALENDAR_CLIENT_SECRET" },
+];
+
 let stripeClient;
+const rateLimitBuckets = new Map();
 
 export function isClosePilotApiPath(pathname) {
   return (
@@ -16,7 +58,10 @@ export function isClosePilotApiPath(pathname) {
     pathname === "/api/stripe/create-portal-session" ||
     pathname === "/api/stripe/webhook" ||
     pathname === "/api/invites/send" ||
-    pathname === "/api/invites/accept"
+    pathname === "/api/invites/accept" ||
+    pathname === "/api/system/readiness" ||
+    aiEndpoints.has(pathname) ||
+    communicationEndpoints.has(pathname)
   );
 }
 
@@ -34,6 +79,8 @@ export async function handleClosePilotApiRequest(request, response) {
   }
 
   try {
+    assertRateLimit(request, url.pathname);
+
     if (url.pathname === "/api/stripe/webhook") {
       await handleStripeWebhook(request, response);
       return;
@@ -57,11 +104,141 @@ export async function handleClosePilotApiRequest(request, response) {
       await handleAcceptInvite(response, payload);
       return;
     }
+    if (url.pathname === "/api/system/readiness") {
+      await handleSystemReadiness(request, response, payload);
+      return;
+    }
+    if (aiEndpoints.has(url.pathname)) {
+      await handleAiRequest(url.pathname, request, response, payload);
+      return;
+    }
+    if (communicationEndpoints.has(url.pathname)) {
+      await handleCommunicationRequest(url.pathname, request, response, payload);
+      return;
+    }
 
     sendJson(response, 404, { error: "API route not found" });
   } catch (error) {
     sendJson(response, error.statusCode || 500, { error: error.message || String(error) });
   }
+}
+
+async function handleSystemReadiness(request, response) {
+  const checks = readinessChecks.map((check) => ({
+    key: check.key,
+    label: check.label,
+    env: check.env,
+    configured: Boolean(process.env[check.env]),
+    public: Boolean(check.public),
+  }));
+  const groups = {
+    database: ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY"],
+    billing: ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_PRICE_STARTER", "STRIPE_PRICE_GROWTH", "STRIPE_PRICE_SCALE"],
+    email: ["RESEND_API_KEY", "INVITE_FROM_EMAIL"],
+    sms: ["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_PHONE_NUMBER"],
+    ai: ["OPENAI_API_KEY"],
+    calendar: ["GOOGLE_CALENDAR_CLIENT_ID", "GOOGLE_CALENDAR_CLIENT_SECRET"],
+    app: ["APP_BASE_URL"],
+  };
+  const groupStatus = Object.fromEntries(
+    Object.entries(groups).map(([key, envs]) => [key, envs.every((env) => Boolean(process.env[env]))]),
+  );
+  const required = checks.filter((check) => !["SUPPORT_EMAIL"].includes(check.env));
+  const configured = required.filter((check) => check.configured).length;
+  const percentage = Math.round((configured / required.length) * 100);
+
+  sendJson(response, 200, {
+    ready: percentage >= 80 && groupStatus.database,
+    percentage,
+    mode: groupStatus.database ? "live-ready" : "demo",
+    checkedAt: new Date().toISOString(),
+    appBaseUrl: appBaseUrl(request),
+    groups: groupStatus,
+    checks,
+    warnings: launchWarnings(groupStatus),
+  });
+}
+
+async function handleAiRequest(pathname, request, response, payload) {
+  validateWorkspacePayload(payload);
+  const intent = pathname.split("/").pop();
+  const fallback = buildRuleBasedAiResponse(intent, payload);
+
+  if (!process.env.OPENAI_API_KEY) {
+    await saveAiOutput(payload, intent, fallback, { demo: true });
+    sendJson(response, 200, {
+      demo: true,
+      provider: "rule-based-fallback",
+      message: "OpenAI is not configured. Using deterministic ClosePilot fallback AI.",
+      ...fallback,
+    });
+    return;
+  }
+
+  const prompt = aiPromptForIntent(intent, payload);
+  const data = await callOpenAi(prompt, fallback);
+  await saveAiOutput(payload, intent, data, { demo: false });
+  sendJson(response, 200, {
+    demo: false,
+    provider: "openai",
+    ...data,
+  });
+}
+
+async function handleCommunicationRequest(pathname, request, response, payload) {
+  validateWorkspacePayload(payload, { requireLead: false });
+  const action = pathname.split("/").pop();
+
+  if (action === "send-sms") {
+    const to = cleanText(payload.to);
+    const body = cleanText(payload.body);
+    if (!to || !body) throwInputError("SMS recipient and body are required.");
+    const result = await sendSms(payload, request);
+    await saveCommunicationEvent(payload, "sms", result);
+    sendJson(response, 200, result);
+    return;
+  }
+
+  if (action === "send-email") {
+    const to = cleanEmail(payload.to);
+    const subject = cleanText(payload.subject) || "Follow-up from Kira Home";
+    const body = cleanText(payload.body);
+    if (!to || !body) throwInputError("Email recipient and body are required.");
+    const result = await sendEmail(payload, subject);
+    await saveCommunicationEvent(payload, "email", result);
+    sendJson(response, 200, result);
+    return;
+  }
+
+  if (action === "save-draft" || action === "schedule-message" || action === "log-call") {
+    const type = action === "log-call" ? "call" : action === "save-draft" ? "draft" : "scheduled";
+    const result = {
+      demo: !hasSupabaseServiceConfig(),
+      saved: true,
+      message:
+        action === "log-call"
+          ? "Call logged. Connect a phone provider for live call controls."
+          : action === "save-draft"
+            ? "Draft saved for this conversation."
+            : "Message scheduled. Connect providers before live delivery.",
+    };
+    await saveCommunicationEvent(payload, type, result);
+    sendJson(response, 200, result);
+    return;
+  }
+
+  if (action === "conversation-summary") {
+    const fallback = buildRuleBasedAiResponse("conversation-summary", payload);
+    await saveAiOutput(payload, "conversation-summary", fallback, { demo: !process.env.OPENAI_API_KEY });
+    sendJson(response, 200, {
+      demo: !process.env.OPENAI_API_KEY,
+      provider: process.env.OPENAI_API_KEY ? "openai-ready" : "rule-based-fallback",
+      ...fallback,
+    });
+    return;
+  }
+
+  sendJson(response, 404, { error: "Communication route not found" });
 }
 
 async function handleCreateCheckoutSession(request, response, payload) {
@@ -281,6 +458,245 @@ async function handleAcceptInvite(response, payload) {
   });
 }
 
+function validateWorkspacePayload(payload, options = {}) {
+  const workspaceId = cleanText(payload.workspaceId);
+  const leadId = cleanText(payload.leadId);
+  if (workspaceId && workspaceId.length > 120) throwInputError("Workspace ID is too long.");
+  if (options.requireLead && !leadId) throwInputError("Lead ID is required.");
+  if (cleanText(payload.body).length > 5000) throwInputError("Message body is too long.");
+  if (cleanText(payload.prompt).length > 4000) throwInputError("AI prompt is too long.");
+}
+
+function buildRuleBasedAiResponse(intent, payload = {}) {
+  const lead = payload.lead || {};
+  const leadName = cleanText(lead.name || payload.leadName || "this homeowner");
+  const company = cleanText(lead.company || payload.company || "the project");
+  const stage = cleanText(lead.stage || "new");
+  const value = Number(lead.value || payload.value || 0);
+  const highValue = value >= 12000;
+  const urgency =
+    /follow|overdue|today/i.test(cleanText(payload.reason || lead.nextAction)) || stage === "qualified"
+      ? "High"
+      : highValue
+        ? "Medium-high"
+        : "Medium";
+  const bestNextAction =
+    stage === "proposal"
+      ? "Follow up on the estimate and ask for a clear yes/no next step."
+      : stage === "qualified"
+        ? "Book or confirm the next appointment window."
+        : "Call first, then send a short follow-up text if there is no answer.";
+  const summary = `${leadName} is a ${stage} opportunity for ${company}${value ? ` worth about $${value.toLocaleString("en-US")}` : ""}.`;
+  const text = `Hi ${firstName(leadName)}, this is Kira Home. I wanted to follow up on ${company}. Is now a good time to talk through the next step?`;
+
+  return {
+    intent,
+    summary,
+    leadSummary: summary,
+    bestNextAction,
+    urgency,
+    closeProbability: highValue ? 72 : stage === "proposal" ? 68 : 54,
+    closeProbabilityExplanation: highValue
+      ? "Higher project value and active stage make this worth prioritizing."
+      : "Probability is based on stage, recency, and follow-up context.",
+    objectionRisk: stage === "proposal" ? "Price comparison or decision delay" : "Timing and trust",
+    likelyObjections: ["Need to compare quotes", "Need to talk with spouse or decision maker", "Timing is not urgent yet"],
+    callOpener: `Hi ${firstName(leadName)}, this is Kira Home. I saw the note about ${company}. Did I catch you at an okay time?`,
+    followUpText: text,
+    followUpEmail: `Subject: Quick follow-up on ${company}\n\nHi ${firstName(leadName)},\n\nI wanted to follow up on ${company}. The best next step is: ${bestNextAction}\n\nWould today or tomorrow be easier?`,
+    proposalDraft: `Proposal draft for ${company}: confirm scope, timeline, decision makers, and the next deposit or scheduling step.`,
+    appointmentPrep: `Review notes, confirm project scope, ask about timeline, budget range, decision maker, and preferred start date.`,
+    taskSuggestions: [
+      `Call ${leadName}`,
+      `Send follow-up text to ${leadName}`,
+      `Create a follow-up task for ${company}`,
+    ],
+    stageRecommendation: stage === "new" ? "Move to Qualified after contact is made." : "Keep stage until the next customer response.",
+    managerNote: `${leadName} should be worked before lower-value or colder leads because the next action is clear.`,
+  };
+}
+
+function aiPromptForIntent(intent, payload) {
+  return [
+    "You are ClosePilot, an AI operating system for home improvement sales teams.",
+    "Return compact JSON only. Do not include markdown.",
+    `Intent: ${intent}`,
+    `Lead/context JSON: ${JSON.stringify(payload).slice(0, 7000)}`,
+  ].join("\n");
+}
+
+async function callOpenAi(prompt, fallback) {
+  const body = {
+    model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+    messages: [
+      { role: "system", content: "Return JSON for a home improvement sales SaaS assistant." },
+      { role: "user", content: prompt },
+    ],
+    temperature: 0.2,
+    response_format: { type: "json_object" },
+  };
+
+  try {
+    const response = await fetchWithTimeout("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error?.message || `OpenAI request failed with ${response.status}.`);
+    const content = data.choices?.[0]?.message?.content || "{}";
+    return { ...fallback, ...JSON.parse(content) };
+  } catch (error) {
+    return {
+      ...fallback,
+      providerWarning: `OpenAI unavailable, deterministic fallback used: ${error.message}`,
+    };
+  }
+}
+
+async function sendSms(payload, request) {
+  if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN || !process.env.TWILIO_PHONE_NUMBER) {
+    return {
+      demo: true,
+      sent: false,
+      message: "SMS provider is not configured. Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER.",
+    };
+  }
+
+  const params = new URLSearchParams({
+    To: cleanText(payload.to),
+    From: process.env.TWILIO_PHONE_NUMBER,
+    Body: cleanText(payload.body),
+  });
+  const credentials = Buffer.from(`${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`).toString("base64");
+  const response = await fetchWithTimeout(
+    `https://api.twilio.com/2010-04-01/Accounts/${process.env.TWILIO_ACCOUNT_SID}/Messages.json`,
+    {
+      method: "POST",
+      headers: {
+        authorization: `Basic ${credentials}`,
+        "content-type": "application/x-www-form-urlencoded",
+      },
+      body: params,
+    },
+  );
+  const data = await response.json();
+  if (!response.ok) {
+    const error = new Error(data.message || `Twilio request failed with ${response.status}.`);
+    error.statusCode = 502;
+    throw error;
+  }
+  return {
+    sent: true,
+    provider: "twilio",
+    providerMessageId: data.sid,
+    message: "SMS sent through Twilio.",
+    appBaseUrl: appBaseUrl(request),
+  };
+}
+
+async function sendEmail(payload, subject) {
+  if (!process.env.RESEND_API_KEY || !process.env.INVITE_FROM_EMAIL) {
+    return {
+      demo: true,
+      sent: false,
+      message: "Email provider is not configured. Add RESEND_API_KEY and INVITE_FROM_EMAIL.",
+    };
+  }
+
+  const response = await fetchWithTimeout("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      from: `Kira Home <${process.env.INVITE_FROM_EMAIL}>`,
+      to: [cleanEmail(payload.to)],
+      subject,
+      text: cleanText(payload.body),
+    }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    const error = new Error(data.message || `Resend request failed with ${response.status}.`);
+    error.statusCode = 502;
+    throw error;
+  }
+  return {
+    sent: true,
+    provider: "resend",
+    providerMessageId: data.id,
+    message: "Email sent through Resend.",
+  };
+}
+
+async function saveCommunicationEvent(payload, type, result) {
+  if (!hasSupabaseServiceConfig() || !payload.workspaceId) return { saved: false };
+  try {
+    await supabaseRequest("communications", {
+      method: "POST",
+      body: [
+        {
+          workspace_id: cleanText(payload.workspaceId),
+          lead_id: cleanUuid(payload.leadId) || null,
+          channel: type,
+          direction: payload.direction || "outgoing",
+          status: result.sent || result.saved ? "logged" : "demo",
+          subject: cleanText(payload.subject),
+          body: cleanText(payload.body || result.message),
+          provider: result.provider || "demo",
+          provider_message_id: cleanText(result.providerMessageId),
+          metadata: { result },
+        },
+      ],
+      prefer: "return=minimal",
+    });
+    return { saved: true };
+  } catch (error) {
+    if (isMissingTableError(error, "communications")) return { saved: false };
+    throw error;
+  }
+}
+
+async function saveAiOutput(payload, type, output, options = {}) {
+  if (!hasSupabaseServiceConfig() || !payload.workspaceId) return { saved: false };
+  try {
+    await supabaseRequest("ai_outputs", {
+      method: "POST",
+      body: [
+        {
+          workspace_id: cleanText(payload.workspaceId),
+          lead_id: cleanUuid(payload.leadId || payload.lead?.id) || null,
+          output_type: type,
+          provider: options.demo ? "fallback" : "openai",
+          prompt: cleanText(payload.prompt || type),
+          output,
+        },
+      ],
+      prefer: "return=minimal",
+    });
+    return { saved: true };
+  } catch (error) {
+    if (isMissingTableError(error, "ai_outputs")) return { saved: false };
+    throw error;
+  }
+}
+
+function launchWarnings(groups) {
+  const warnings = [];
+  if (!groups.database) warnings.push("Supabase is not fully configured; the app will use demo/localStorage fallback.");
+  if (!groups.billing) warnings.push("Stripe checkout and billing portal remain in setup mode.");
+  if (!groups.email) warnings.push("Team invites and outbound email use fallback links/logging until Resend is configured.");
+  if (!groups.sms) warnings.push("SMS is logged only until Twilio credentials and a sending number are configured.");
+  if (!groups.ai) warnings.push("AI features use deterministic fallback until OPENAI_API_KEY is configured.");
+  if (!groups.calendar) warnings.push("Calendar events are CRM-only until Google Calendar OAuth is configured.");
+  return warnings;
+}
+
 async function syncStripeSubscription(subscription, override = {}) {
   const workspaceId = cleanText(override.workspaceId || subscription.metadata?.workspaceId);
   if (!workspaceId) return;
@@ -422,6 +838,10 @@ function hasSupabaseServiceConfig() {
   return Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
 }
 
+function isMissingTableError(error, table) {
+  return error?.code === "42P01" || error?.message?.includes(table);
+}
+
 function normalizePlanId(plan) {
   return planCatalog[plan] ? plan : "starter";
 }
@@ -463,6 +883,11 @@ function cleanEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : "";
 }
 
+function cleanUuid(value) {
+  const text = cleanText(value);
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(text) ? text : "";
+}
+
 function cleanUrl(value, fallback) {
   const fallbackUrl = cleanText(fallback);
   const text = cleanText(value) || fallbackUrl;
@@ -470,6 +895,51 @@ function cleanUrl(value, fallback) {
     return new URL(text).toString().replace(/\/$/, "");
   } catch {
     return fallbackUrl;
+  }
+}
+
+function firstName(value) {
+  return cleanText(value).split(/\s+/)[0] || "there";
+}
+
+function throwInputError(message) {
+  const error = new Error(message);
+  error.statusCode = 400;
+  throw error;
+}
+
+function assertRateLimit(request, pathname) {
+  if (pathname === "/api/stripe/webhook") return;
+  const limited = pathname.startsWith("/api/ai/") || pathname.startsWith("/api/communications/");
+  const max = limited ? 24 : 80;
+  const windowMs = 60000;
+  const identity =
+    request.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
+    request.socket?.remoteAddress ||
+    "local";
+  const key = `${pathname}:${identity}`;
+  const now = Date.now();
+  const bucket = rateLimitBuckets.get(key) || { count: 0, resetAt: now + windowMs };
+  if (bucket.resetAt <= now) {
+    bucket.count = 0;
+    bucket.resetAt = now + windowMs;
+  }
+  bucket.count += 1;
+  rateLimitBuckets.set(key, bucket);
+  if (bucket.count > max) {
+    const error = new Error("Too many requests. Try again in a minute.");
+    error.statusCode = 429;
+    throw error;
+  }
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = 12000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -508,6 +978,10 @@ function sendJson(response, statusCode, payload) {
     "access-control-allow-origin": process.env.APP_BASE_URL || "*",
     "access-control-allow-methods": "POST, OPTIONS",
     "access-control-allow-headers": "content-type, stripe-signature",
+    "content-security-policy": "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY",
     "content-type": "application/json; charset=utf-8",
   });
   response.end(statusCode === 204 ? "" : JSON.stringify(payload));

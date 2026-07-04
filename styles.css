@@ -1891,6 +1891,19 @@ button.insight-card:hover {
   color: var(--teal-dark);
 }
 
+.launch-check.readiness-score {
+  background: linear-gradient(180deg, var(--surface), var(--soft));
+  border-color: rgba(11, 47, 99, 0.22);
+}
+
+.launch-check.readiness-score > span {
+  align-items: center;
+  background: var(--black);
+  color: #ffffff;
+  display: inline-flex;
+  min-height: 40px;
+}
+
 .audit-row time {
   flex: 0 0 auto;
   font-weight: 800;
@@ -5555,6 +5568,11 @@ button.insight-card:hover {
   .automation-template-card.paused {
     background: rgba(161, 98, 7, 0.18);
     color: #f3c36e;
+  }
+
+  .launch-check.readiness-score {
+    background: linear-gradient(180deg, var(--surface-elevated), var(--soft));
+    border-color: rgba(138, 180, 255, 0.28);
   }
 
   .follow-up-reasons span,

@@ -410,6 +410,8 @@ let communicationCallState = {
 };
 let salesCopilotStatus = { leadId: "", message: "" };
 let inviteAcceptanceStatus = "";
+let serverReadiness = null;
+let serverReadinessLoaded = false;
 
 const formatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -654,6 +656,7 @@ const closeLeadDetailModalButton = document.querySelector("#closeLeadDetailModal
 
 const config = window.KiraHomeConfig || window.ClosePilotConfig || {};
 const hasSupabaseConfig = Boolean(config.supabaseUrl && config.supabaseAnonKey);
+const backendTimeoutMs = 12000;
 const pageTitles = {
   pipeline: "Dashboard",
   manager: "AI Sales Manager",
@@ -951,6 +954,24 @@ subpageNav.addEventListener("click", (event) => {
 window.addEventListener("hashchange", () => {
   routeFromHash();
   renderRoute();
+});
+
+window.addEventListener("online", () => {
+  setCloudMode(Boolean(hasSupabaseConfig), hasSupabaseConfig ? "Cloud synced" : "Demo mode");
+  showAppToast("Back online", "ClosePilot can reach the network again.");
+});
+
+window.addEventListener("offline", () => {
+  setCloudMode(Boolean(hasSupabaseConfig), "Offline mode");
+  showAppToast("Offline", "Changes stay local until the network returns.");
+});
+
+window.addEventListener("error", (event) => {
+  showAppToast("Something needs attention", event.message || "ClosePilot caught a browser error.");
+});
+
+window.addEventListener("unhandledrejection", (event) => {
+  showAppToast("Request issue", event.reason?.message || "ClosePilot caught a failed background request.");
 });
 
 async function boot() {
@@ -3087,7 +3108,10 @@ function renderSaasAdmin() {
     button.addEventListener("click", () => sendInviteEmail(button.dataset.sendInvite));
   });
 
-  launchChecklist.innerHTML = launchChecks().map(renderLaunchCheck).join("");
+  launchChecklist.innerHTML = renderLaunchReadinessSummary() + launchChecks().map(renderLaunchCheck).join("");
+  if (!serverReadinessLoaded) {
+    loadServerReadiness();
+  }
   auditList.innerHTML = account.auditEvents.length
     ? account.auditEvents
         .slice(0, 6)
@@ -3133,7 +3157,7 @@ function renderTeamInvite(invite) {
 function renderLaunchCheck(check) {
   return `
     <article class="launch-check ${check.ready ? "ready" : ""}">
-      <span>${check.ready ? "Ready" : "Setup"}</span>
+      <span>${escapeHtml(check.badge || (check.ready ? "Ready" : "Setup"))}</span>
       <div>
         <strong>${escapeHtml(check.title)}</strong>
         <small>${escapeHtml(check.detail)}</small>
@@ -3142,31 +3166,85 @@ function renderLaunchCheck(check) {
   `;
 }
 
+function renderLaunchReadinessSummary() {
+  const percentage = serverReadiness?.percentage ?? (hasSupabaseConfig ? 25 : 8);
+  const mode = serverReadiness?.mode || (hasSupabaseConfig ? "Browser Supabase config detected" : "Demo mode");
+  const warning = serverReadiness?.warnings?.[0] || "Add production environment variables in Vercel, then redeploy.";
+  return `
+    <article class="launch-check readiness-score ${percentage >= 80 ? "ready" : ""}">
+      <span>${percentage}%</span>
+      <div>
+        <strong>Overall launch readiness</strong>
+        <small>${escapeHtml(mode)} · ${escapeHtml(warning)}</small>
+      </div>
+    </article>
+  `;
+}
+
 function launchChecks() {
+  const groups = serverReadiness?.groups || {};
   return [
     {
       title: "Cloud database",
-      detail: hasSupabaseConfig ? "Supabase is configured." : "Add SUPABASE_URL and SUPABASE_ANON_KEY.",
-      ready: hasSupabaseConfig,
+      detail: groups.database || hasSupabaseConfig ? "Supabase browser config is present. Run the schema before live onboarding." : "Add SUPABASE_URL, SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY.",
+      ready: Boolean(groups.database || hasSupabaseConfig),
+    },
+    {
+      title: "Database schema",
+      detail: "Run supabase-schema.sql in Supabase SQL Editor. It is idempotent and includes RLS policies.",
+      ready: Boolean(groups.database),
+      badge: groups.database ? "Ready" : "Manual",
     },
     {
       title: "Stripe checkout",
-      detail: "Backend endpoint uses STRIPE_SECRET_KEY and plan price IDs when configured.",
-      ready: false,
+      detail: groups.billing ? "Stripe keys, webhook secret, and plan price IDs are configured." : "Add STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, and plan price IDs.",
+      ready: Boolean(groups.billing),
     },
     {
       title: "Billing portal",
-      detail: "Customer portal opens after Stripe creates a customer for the workspace.",
-      ready: false,
+      detail: groups.billing ? "Customer portal can open after checkout creates a Stripe customer." : "Complete Stripe setup and test a checkout session.",
+      ready: Boolean(groups.billing),
     },
     {
-      title: "Support inbox",
-      detail: config.inviteFromEmail
-        ? `${config.inviteFromEmail} is set. Add RESEND_API_KEY for invite delivery.`
-        : "Add INVITE_FROM_EMAIL and RESEND_API_KEY.",
-      ready: Boolean(config.inviteFromEmail),
+      title: "Email invites",
+      detail: groups.email || config.inviteFromEmail ? "Invite sender is configured. Resend sends live invites when RESEND_API_KEY is present." : "Add INVITE_FROM_EMAIL and RESEND_API_KEY.",
+      ready: Boolean(groups.email),
+    },
+    {
+      title: "SMS provider",
+      detail: groups.sms ? "Twilio credentials are configured for SMS." : "Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER.",
+      ready: Boolean(groups.sms),
+    },
+    {
+      title: "AI services",
+      detail: groups.ai ? "OpenAI is configured server-side." : "Add OPENAI_API_KEY for live AI. Fallback AI stays available until then.",
+      ready: Boolean(groups.ai),
+    },
+    {
+      title: "Calendar integration",
+      detail: groups.calendar ? "Google Calendar OAuth is configured." : "Add Google Calendar OAuth credentials when ready.",
+      ready: Boolean(groups.calendar),
+    },
+    {
+      title: "Mobile/PWA",
+      detail: "Manifest, app icons, Capacitor setup, and mobile viewport tests are included.",
+      ready: true,
+    },
+    {
+      title: "Demo mode",
+      detail: "Missing services show honest fallback messaging instead of fake live integrations.",
+      ready: true,
     },
   ];
+}
+
+async function loadServerReadiness() {
+  serverReadinessLoaded = true;
+  const result = await postBackendJson("/api/system/readiness", workspaceApiContext());
+  serverReadiness = result;
+  if (activePage === "admin") {
+    launchChecklist.innerHTML = renderLaunchReadinessSummary() + launchChecks().map(renderLaunchCheck).join("");
+  }
 }
 
 function renderInsights() {
@@ -7207,6 +7285,13 @@ async function handleComposerAction(action, conversation) {
 
   if (action === "draft") {
     setCommunicationDraftValue(conversation.lead.id, communicationComposerMode, body);
+    await postBackendJson("/api/communications/save-draft", {
+      ...workspaceApiContext(),
+      leadId: conversation.lead.id,
+      channel: communicationComposerMode,
+      to: communicationComposerMode === "email" ? conversation.profile.email : conversation.profile.phone,
+      body,
+    });
     status.textContent = "Draft saved.";
     showCommunicationToast("Draft saved", `${conversation.lead.name}'s draft is saved locally.`);
     return;
@@ -7214,11 +7299,19 @@ async function handleComposerAction(action, conversation) {
 
   if (action === "schedule") {
     const scheduledBody = body || personalizeCommunicationCopy("Hi {{name}}, following up on {{projectType}} tomorrow morning.", conversation);
+    const providerResult = await postBackendJson("/api/communications/schedule-message", {
+      ...workspaceApiContext(),
+      leadId: conversation.lead.id,
+      channel: communicationComposerMode,
+      to: communicationComposerMode === "email" ? conversation.profile.email : conversation.profile.phone,
+      body: scheduledBody,
+      scheduledAt: nextBusinessMorningIso(),
+    });
     const scheduled = addCommunicationMessage(conversation.lead.id, {
       type: communicationComposerMode === "email" ? "email" : "outgoing-text",
       direction: "outgoing",
       body: `Scheduled for tomorrow at 9:00 AM: ${scheduledBody}`,
-      status: "Scheduled",
+      status: providerResult.demo ? "Demo scheduled" : "Scheduled",
       outcome: "Message scheduled",
       attachments: [],
       read: true,
@@ -7229,7 +7322,7 @@ async function handleComposerAction(action, conversation) {
       message: `${communicationMessageTypeLabels[scheduled.type]} scheduled from Communications.`,
     });
     clearCommunicationDraft(conversation.lead.id, communicationComposerMode);
-    communicationsStatus.textContent = "Message scheduled for tomorrow at 9:00 AM.";
+    communicationsStatus.textContent = providerResult.message || "Message scheduled for tomorrow at 9:00 AM.";
     showCommunicationToast("Message scheduled", `${conversation.lead.name} will receive it tomorrow morning.`);
     renderCommunicationsPage();
     return;
@@ -7247,12 +7340,34 @@ async function handleComposerAction(action, conversation) {
         : communicationComposerMode === "note"
           ? "system-note"
           : "outgoing-text";
+    const providerResult =
+      communicationComposerMode === "email"
+        ? await postBackendJson("/api/communications/send-email", {
+            ...workspaceApiContext(),
+            leadId: conversation.lead.id,
+            to: conversation.profile.email,
+            subject: `Follow-up on ${conversation.lead.company}`,
+            body,
+          })
+        : communicationComposerMode === "text"
+          ? await postBackendJson("/api/communications/send-sms", {
+              ...workspaceApiContext(),
+              leadId: conversation.lead.id,
+              to: conversation.profile.phone,
+              body,
+            })
+          : await postBackendJson("/api/communications/save-draft", {
+              ...workspaceApiContext(),
+              leadId: conversation.lead.id,
+              channel: "note",
+              body,
+            });
     const sent = addCommunicationMessage(conversation.lead.id, {
       type: messageType,
       direction: communicationComposerMode === "note" ? "system" : "outgoing",
       body,
-      status: communicationComposerMode === "note" ? "Logged" : "Sent",
-      outcome: communicationComposerMode === "note" ? "Internal note saved" : "Message sent",
+      status: communicationComposerMode === "note" ? "Logged" : providerResult.demo ? "Demo logged" : "Sent",
+      outcome: communicationComposerMode === "note" ? "Internal note saved" : providerResult.message || "Message sent",
       attachments: communicationComposerMode === "email" ? [`${conversation.lead.company.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-attachment.pdf`] : [],
       read: true,
     });
@@ -7264,8 +7379,11 @@ async function handleComposerAction(action, conversation) {
     });
     completeCommunicationFollowUpForLead(conversation.lead.id);
     await runCommunicationAutomationForMessage(conversation, sent);
-    communicationsStatus.textContent = `${communicationMessageTypeLabels[sent.type]} sent for ${conversation.lead.name}.`;
-    showCommunicationToast(`${communicationMessageTypeLabels[sent.type]} sent`, `${conversation.lead.name}'s timeline was updated.`);
+    communicationsStatus.textContent = `${communicationMessageTypeLabels[sent.type]} ${providerResult.demo ? "logged in demo mode" : "sent"} for ${conversation.lead.name}.`;
+    showCommunicationToast(
+      `${communicationMessageTypeLabels[sent.type]} ${providerResult.demo ? "logged" : "sent"}`,
+      providerResult.message || `${conversation.lead.name}'s timeline was updated.`,
+    );
     renderCommunicationsPage();
   }
 }
@@ -7321,6 +7439,13 @@ function clearCommunicationDraft(leadId, mode) {
   saveCommunicationDraftState(drafts);
 }
 
+function nextBusinessMorningIso() {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  date.setHours(9, 0, 0, 0);
+  return date.toISOString();
+}
+
 function personalizeCommunicationCopy(copy, conversation) {
   return String(copy || "")
     .replaceAll("{{name}}", conversation.lead.name)
@@ -7349,11 +7474,20 @@ function startCommunicationCall(conversation) {
 async function endCommunicationCall(conversation) {
   if (!communicationCallState.active) return;
   const seconds = Math.max(1, Math.round((Date.now() - communicationCallState.startedAt) / 1000));
+  const providerResult = await postBackendJson("/api/communications/log-call", {
+    ...workspaceApiContext(),
+    leadId: conversation.lead.id,
+    to: conversation.profile.phone,
+    outcome: "Completed",
+    durationSeconds: seconds,
+    body: `Call completed with ${conversation.lead.name}. Duration ${formatCallDuration(seconds)}.`,
+  });
   addCommunicationMessage(conversation.lead.id, {
     type: "call-log",
     direction: "outgoing",
     body: `Call completed with ${conversation.lead.name}. Duration ${formatCallDuration(seconds)}.`,
-    status: "Completed",
+    status: providerResult.demo ? "Demo logged" : "Completed",
+    outcome: providerResult.message || "Call completed",
     attachments: [],
     read: true,
   });
@@ -7406,13 +7540,20 @@ async function logCommunicationCallOutcome(outcome, conversation) {
     "not-interested": "Not interested",
   };
   const label = labels[outcome] || "Call logged";
+  const providerResult = await postBackendJson("/api/communications/log-call", {
+    ...workspaceApiContext(),
+    leadId: conversation.lead.id,
+    to: conversation.profile.phone,
+    outcome: label,
+    body: `${label} call logged with ${conversation.lead.name}.`,
+  });
 
   addCommunicationMessage(conversation.lead.id, {
     type: "call-log",
     direction: "outgoing",
     body: `${label} call logged with ${conversation.lead.name}.`,
-    status: "Logged",
-    outcome: label,
+    status: providerResult.demo ? "Demo logged" : "Logged",
+    outcome: providerResult.message || label,
     read: true,
     rep: "Cameron Lee",
   });
@@ -7633,6 +7774,10 @@ function showCommunicationToast(title, detail) {
     toast.classList.add("leaving");
     window.setTimeout(() => toast.remove(), 180);
   }, 4200);
+}
+
+function showAppToast(title, detail) {
+  showCommunicationToast(title, detail);
 }
 
 function communicationTimestamp(daysAgo, hour, minute) {
@@ -8734,11 +8879,14 @@ function workspaceApiContext() {
 }
 
 async function postBackendJson(path, payload) {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), backendTimeoutMs);
   try {
     const response = await fetch(path, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(payload || {}),
+      signal: controller.signal,
     });
     const text = await response.text();
     let data = {};
@@ -8753,6 +8901,8 @@ async function postBackendJson(path, payload) {
     return data;
   } catch {
     return backendDemoFallback(path, payload);
+  } finally {
+    window.clearTimeout(timeout);
   }
 }
 
@@ -8784,6 +8934,42 @@ function backendDemoFallback(path, payload = {}) {
       demo: true,
       accepted: false,
       message: "Invite acceptance needs a configured production backend.",
+    };
+  }
+  if (path.includes("/system/readiness")) {
+    return {
+      demo: true,
+      percentage: hasSupabaseConfig ? 25 : 8,
+      mode: hasSupabaseConfig ? "browser-configured" : "demo",
+      groups: {
+        database: hasSupabaseConfig,
+        billing: false,
+        email: Boolean(config.inviteFromEmail),
+        sms: false,
+        ai: false,
+        calendar: false,
+        app: Boolean(config.appBaseUrl || window.location.origin),
+      },
+      checks: [],
+      warnings: ["Production backend readiness endpoint is unavailable. Showing browser-side setup guidance."],
+    };
+  }
+  if (path.includes("/api/ai/")) {
+    return {
+      demo: true,
+      provider: "browser-fallback",
+      summary: "AI backend is not configured yet.",
+      bestNextAction: "Use the rule-based recommendation shown in the CRM.",
+      followUpText: "Hi, quick follow-up from Kira Home. What is the easiest next step?",
+      message: "AI endpoint unavailable. Using browser fallback guidance.",
+    };
+  }
+  if (path.includes("/api/communications/")) {
+    return {
+      demo: true,
+      sent: false,
+      saved: true,
+      message: "Communication provider is not configured. ClosePilot logged this in demo mode.",
     };
   }
   return { demo: true, message: "Production backend is not configured yet." };
