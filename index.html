@@ -59,6 +59,7 @@
           <a class="active" data-nav-page="pipeline" href="#pipeline">Dashboard</a>
           <a data-nav-page="manager" href="#manager">AI Sales Manager</a>
           <a data-nav-page="contacts" href="#contacts">Contacts</a>
+          <a data-nav-page="recruiting" href="#recruiting">Recruiting Inbox</a>
           <a data-nav-page="automation" href="#automation">Automations</a>
           <a data-nav-page="tasks" href="#tasks">Tasks</a>
           <a data-nav-page="activity" href="#activity">Activity</a>
@@ -152,6 +153,38 @@
               <strong id="dashboardFollowUpQueueCount">0</strong>
             </div>
             <button class="primary-button" id="openFollowUpQueueButton" type="button">Open Follow-Up Queue</button>
+          </section>
+
+          <section class="dashboard-section opportunity-health-widget" id="opportunityHealthWidget" aria-labelledby="opportunityHealthHeading">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Pipeline intelligence</p>
+                <h2 id="opportunityHealthHeading">Opportunity Health</h2>
+              </div>
+              <button class="secondary-button" id="openBestOpportunity" type="button">Open Best Lead</button>
+            </div>
+            <div class="opportunity-health-grid" id="opportunityHealthDashboard" aria-label="Opportunity health dashboard"></div>
+          </section>
+
+          <section class="dashboard-section sales-copilot-widget" id="dashboardSalesCopilotCard" aria-labelledby="dashboardSalesCopilotHeading">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">AI Sales Copilot</p>
+                <h2 id="dashboardSalesCopilotHeading">Next move assistant</h2>
+              </div>
+            </div>
+            <div id="dashboardSalesCopilot"></div>
+          </section>
+
+          <section class="dashboard-section communication-stats-widget" id="communicationStatsWidget" aria-labelledby="communicationStatsHeading">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Communications</p>
+                <h2 id="communicationStatsHeading">Conversation command center</h2>
+              </div>
+              <button class="secondary-button" data-open-page="communications" type="button">Open Communications</button>
+            </div>
+            <div class="communication-stats-grid" id="communicationDashboardStats" aria-label="Communication stats"></div>
           </section>
 
           <section class="time-saved-widget" id="timeSavedWidget" aria-labelledby="timeSavedHeading">
@@ -642,7 +675,7 @@
           </aside>
         </section>
 
-        <section class="lower-grid" data-page-group="contacts tasks">
+        <section class="lower-grid" data-page-group="contacts recruiting tasks">
           <section class="panel" id="contacts" data-page="contacts" aria-labelledby="contactsHeading">
             <div class="panel-heading">
               <div>
@@ -694,6 +727,22 @@
               <button class="secondary-button" id="backToContacts" type="button">Back to contacts</button>
             </div>
             <div id="contactProfileContent" class="contact-profile-content"></div>
+          </section>
+
+          <section class="panel recruiting-inbox-panel" id="recruitingInbox" data-page="recruiting" aria-labelledby="recruitingInboxHeading">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Kira Recruit sync</p>
+                <h2 id="recruitingInboxHeading">Recruiting Inbox</h2>
+              </div>
+              <div class="panel-actions">
+                <a class="secondary-button" href="/recruiting.html">Open Recruit</a>
+                <button class="primary-button" id="refreshRecruitingFeed" type="button">Refresh Feed</button>
+              </div>
+            </div>
+            <div class="recruiting-inbox-summary" id="recruitingInboxSummary" aria-label="Recruiting inbox summary"></div>
+            <p class="recruiting-inbox-message" id="recruitingInboxMessage" role="status"></p>
+            <div class="recruiting-candidate-list" id="recruitingCandidateList"></div>
           </section>
 
           <section class="panel" id="tasks" data-page="tasks" aria-labelledby="tasksHeading">
@@ -898,13 +947,12 @@
                 <input id="communicationSearch" type="search" placeholder="Search customer, phone, email, message" />
               </label>
               <div class="communication-filters" role="group" aria-label="Conversation filters">
-                <button class="active" data-communication-filter="recent" type="button">Recent</button>
-                <button data-communication-filter="unread" type="button">Unread</button>
+                <button class="active" data-communication-filter="all" type="button">All</button>
                 <button data-communication-filter="calls" type="button">Calls</button>
                 <button data-communication-filter="texts" type="button">Texts</button>
                 <button data-communication-filter="emails" type="button">Emails</button>
-                <button data-communication-filter="appointments" type="button">Appointments</button>
-                <button data-communication-filter="pinned" type="button">Pinned</button>
+                <button data-communication-filter="notes" type="button">Notes</button>
+                <button data-communication-filter="missed-follow-ups" type="button">Missed Follow-Ups</button>
               </div>
               <div class="conversation-list" id="conversationList" aria-live="polite"></div>
             </aside>

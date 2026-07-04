@@ -2,6 +2,7 @@ import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
+import { handleClosePilotApiRequest, isClosePilotApiPath } from "./api-handlers.js";
 import { handleBusinessEnrichmentRequest } from "./business-enrichment-service.js";
 
 const root = fileURLToPath(new URL(".", import.meta.url));
@@ -23,6 +24,11 @@ createServer((request, response) => {
 
   if (url.pathname === "/api/business-enrichment") {
     handleBusinessEnrichmentRequest(request, response);
+    return;
+  }
+
+  if (isClosePilotApiPath(url.pathname)) {
+    handleClosePilotApiRequest(request, response);
     return;
   }
 

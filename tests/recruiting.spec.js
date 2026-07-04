@@ -41,8 +41,17 @@ test('runs the auto recruiting workflow and creates a CRM feed', async ({ page }
   await expect(page.locator('#feedMessage')).toContainText('CRM feed synced locally.');
 
   const feed = await page.evaluate(() => JSON.parse(localStorage.getItem('kiraRecruitingFeed-v1') || '{}'));
+  const sharedFeed = await page.evaluate(() => JSON.parse(localStorage.getItem('kiraRecruitingSharedFeed-v1') || '{}'));
   expect(feed.app).toBe('Kira Recruit');
   expect(feed.recruits).toHaveLength(4);
   expect(feed.interviews).toHaveLength(4);
+  expect(sharedFeed.app).toBe('Kira Recruit');
+  expect(sharedFeed.recruits[0]).toMatchObject({
+    name: 'Alyssa Moreno',
+    role: 'Inside Sales Dialer',
+    source: 'Indeed',
+    interviewStatus: 'Booked',
+  });
+  expect(sharedFeed.recruits[0].nextAction).toContain('Prep interview call');
   expect(feed.interviews.map((interview) => new Date(interview.startsAt).getDay()).every((day) => [1, 3, 5].includes(day))).toBe(true);
 });

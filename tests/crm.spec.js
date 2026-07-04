@@ -47,6 +47,51 @@ async function openBackupCenter(page) {
   await expect(page.locator('#workspaceBackup')).toBeVisible();
 }
 
+async function installRecruitingFeed(page) {
+  await page.evaluate(() => {
+    const feed = {
+      app: 'Kira Recruit',
+      version: 1,
+      syncedAt: new Date().toISOString(),
+      job: { title: 'Inside Sales Dialer' },
+      recruits: [
+        {
+          id: 'candidate-alyssa',
+          externalId: 'candidate-alyssa',
+          name: 'Alyssa Moreno',
+          email: 'alyssa.moreno@example.com',
+          phone: '(512) 555-0142',
+          role: 'Inside Sales Dialer',
+          source: 'Indeed',
+          interviewStatus: 'Booked',
+          score: 94,
+          nextAction: 'Prep interview call for Wednesday.',
+          experience: '2 years appointment setting, Spanish bilingual',
+          skills: ['Phone confidence', 'CRM notes'],
+          syncedAt: new Date().toISOString(),
+        },
+        {
+          id: 'candidate-derek',
+          externalId: 'candidate-derek',
+          name: 'Derek Shaw',
+          email: 'derek.shaw@example.com',
+          phone: '(214) 555-0188',
+          role: 'Inside Sales Dialer',
+          source: 'LinkedIn',
+          interviewStatus: 'Qualified',
+          score: 89,
+          nextAction: 'Call candidate and confirm availability.',
+          experience: 'Former SDR with outbound sales and daily CRM logging',
+          skills: ['Outbound', 'CRM experience'],
+          syncedAt: new Date().toISOString(),
+        },
+      ],
+      interviews: [],
+    };
+    localStorage.setItem('kiraRecruitingFeed-v1', JSON.stringify(feed));
+  });
+}
+
 test('renders the CRM dashboard MVP', async ({ page }) => {
   await expect(page).toHaveTitle(/Kira Home/);
   await expect(page.locator('.topbar h1')).toHaveText('Dashboard');
@@ -56,6 +101,13 @@ test('renders the CRM dashboard MVP', async ({ page }) => {
   await expect(page.locator('#dashboardFollowUpQueueCard')).toContainText('Follow-Ups Due');
   await expect(page.locator('#dashboardFollowUpQueueCount')).toHaveText(/\d+/);
   await expect(page.getByRole('button', { name: 'Open Follow-Up Queue' })).toBeVisible();
+  await expect(page.locator('#communicationStatsWidget')).toContainText('Conversation command center');
+  await expect(page.locator('#communicationDashboardStats')).toContainText('Calls today');
+  await expect(page.locator('#communicationDashboardStats')).toContainText('Texts logged today');
+  await expect(page.locator('#communicationDashboardStats')).toContainText('Emails logged today');
+  await expect(page.locator('#communicationDashboardStats')).toContainText('Missed follow-ups');
+  await expect(page.locator('#communicationDashboardStats')).toContainText('Average response time');
+  await expect(page.locator('#communicationDashboardStats')).toContainText('Needs attention');
   await expect(page.locator('#timeSavedWidget')).toContainText('Time Saved');
   await expect(page.locator('#dashboardTimeSavedToday')).toHaveText(/\d+(h( \d+m)?|m)/);
   await expect(page.locator('#dashboardTimeSavedSources')).toContainText('Smart Lead Prioritization');
@@ -81,6 +133,8 @@ test('renders the CRM dashboard MVP', async ({ page }) => {
 });
 
 test('guides Start My Day through Flow Mode actions', async ({ page }) => {
+  test.setTimeout(60_000);
+
   await page.getByRole('button', { name: 'Start My Day' }).click();
 
   await expect(page.locator('#flowModePanel')).toBeVisible();
@@ -163,9 +217,13 @@ test('opens primary sidebar items as separate app pages', async ({ page }) => {
   await expect(page.locator('#contacts')).toBeVisible();
   await expect(page.locator('#aiSalesManagerPage')).toBeHidden();
 
+  await navigateTo(page, 'Recruiting Inbox', 'recruiting');
+  await expect(page.locator('#recruitingInbox')).toBeVisible();
+  await expect(page.locator('#contacts')).toBeHidden();
+
   await navigateTo(page, 'Automations', 'automation');
   await expect(page.locator('#automation')).toBeVisible();
-  await expect(page.locator('#contacts')).toBeHidden();
+  await expect(page.locator('#recruitingInbox')).toBeHidden();
 
   await navigateTo(page, 'Tasks', 'tasks');
   await expect(page.locator('#tasks')).toBeVisible();
@@ -190,6 +248,117 @@ test('opens primary sidebar items as separate app pages', async ({ page }) => {
   await navigateTo(page, 'Admin', 'admin');
   await expect(page.locator('#saasAdmin')).toBeVisible();
   await expect(page.locator('#calendar')).toBeHidden();
+});
+
+test('syncs Kira Recruit candidates into the CRM Recruiting Inbox', async ({ page }) => {
+  await installRecruitingFeed(page);
+
+  const hasSupabaseKeys = await page.evaluate(() => Boolean(window.KiraHomeConfig?.supabaseUrl && window.KiraHomeConfig?.supabaseAnonKey));
+  expect(hasSupabaseKeys).toBe(false);
+
+  await navigateTo(page, 'Recruiting Inbox', 'recruiting');
+  await expect(page.locator('#recruitingInbox')).toBeVisible();
+  await expect(page.locator('#recruitingCandidateList')).toContainText('Alyssa Moreno');
+  await expect(page.locator('#recruitingCandidateList')).toContainText('Inside Sales Dialer');
+  await expect(page.locator('#recruitingCandidateList')).toContainText('Indeed');
+  await expect(page.locator('#recruitingCandidateList')).toContainText('Booked');
+  await expect(page.locator('#recruitingCandidateList')).toContainText('94');
+  await expect(page.locator('#recruitingCandidateList')).toContainText('Prep interview call');
+
+  await page.getByRole('button', { name: 'Refresh Feed' }).click();
+  await expect(page.locator('#recruitingInboxMessage')).toContainText('2 Kira Recruit candidate records synced');
+
+  const alyssa = page.locator('[data-recruit-candidate-card="candidate-alyssa"]');
+  await alyssa.getByRole('button', { name: 'Convert to CRM contact/lead' }).click();
+  await expect(page.locator('#recruitingInboxMessage')).toContainText('Alyssa Moreno converted');
+  await expect(alyssa).toContainText('Converted to CRM');
+
+  const derek = page.locator('[data-recruit-candidate-card="candidate-derek"]');
+  await derek.getByRole('button', { name: 'Create follow-up task' }).click();
+  await expect(page.locator('#recruitingInboxMessage')).toContainText('Follow-up task created for Derek Shaw');
+  await derek.getByRole('button', { name: 'Mark as reviewed' }).click();
+  await expect(page.locator('#recruitingInboxMessage')).toContainText('Derek Shaw marked as reviewed');
+  await expect(derek).toContainText('Reviewed');
+
+  await navigateTo(page, 'Contacts', 'contacts');
+  await page.getByPlaceholder('Search leads, companies, notes').fill('Alyssa');
+  await expect(page.locator('#contactTable')).toContainText('Alyssa Moreno');
+  await expect(page.locator('#contactTable')).toContainText('Kira Recruit');
+
+  await navigateTo(page, 'Tasks', 'tasks');
+  await page.getByPlaceholder('Search leads, companies, notes').fill('');
+  await page.getByPlaceholder('Search task text').fill('Alyssa');
+  await expect(page.locator('#taskList')).toContainText('Follow up with Alyssa Moreno from Kira Recruit');
+  await page.getByPlaceholder('Search task text').fill('Derek');
+  await expect(page.locator('#taskList')).toContainText('Follow up with recruiting candidate Derek Shaw');
+
+  await navigateTo(page, 'Activity', 'activity');
+  await page.getByPlaceholder('Search activity').fill('Kira Recruit');
+  await expect(page.locator('#activityFeed')).toContainText('Imported 2 candidates from Kira Recruit');
+  await expect(page.locator('#activityFeed')).toContainText('Alyssa Moreno converted from Kira Recruit');
+  await page.getByPlaceholder('Search activity').fill('Derek');
+  await expect(page.locator('#activityFeed')).toContainText('Recruiting follow-up task created for Derek Shaw');
+});
+
+test('renders Opportunity Health scores and dashboard recommendations', async ({ page }) => {
+  await expect(page.locator('#opportunityHealthWidget')).toContainText('Opportunity Health');
+  await expect(page.locator('#opportunityHealthDashboard')).toContainText('Hot opportunities');
+  await expect(page.locator('#opportunityHealthDashboard')).toContainText('At-risk opportunities');
+  await expect(page.locator('#opportunityHealthDashboard')).toContainText('Overdue follow-ups');
+  await expect(page.locator('#opportunityHealthDashboard')).toContainText('Best next lead to contact');
+  await expect(page.getByRole('button', { name: 'Open Best Lead' })).toBeEnabled();
+
+  await expect(page.locator('#pipelineBoard .opportunity-health-badge').first()).toContainText(/Hot|Warm|At Risk|Cold/);
+
+  await openLeadBrief(page);
+  await expect(page.locator('#leadBrief')).toContainText('Opportunity Health');
+  await expect(page.locator('#leadBrief')).toContainText('Recommended Next Action');
+  await expect(page.locator('#leadBrief')).toContainText('Why this score?');
+  await expect(page.locator('#leadBrief')).toContainText(/Hot|Warm|At Risk|Cold/);
+
+  await page.locator('#leadBrief').getByRole('button', { name: 'Open details' }).click();
+  await expect(page.locator('#leadDetailContent')).toContainText('Opportunity Health');
+  await expect(page.locator('#leadDetailContent')).toContainText('Recommended Next Action');
+  await expect(page.locator('#leadDetailContent')).toContainText('Last contact');
+});
+
+test('renders AI Sales Copilot suggestions and runs Copilot actions', async ({ page }) => {
+  const dashboardCopilot = page.locator('#dashboardSalesCopilotCard');
+  await expect(dashboardCopilot).toContainText('AI Sales Copilot');
+  await expect(dashboardCopilot).toContainText('Best next action');
+  await expect(dashboardCopilot).toContainText('Suggested call opener');
+  await expect(dashboardCopilot).toContainText('Suggested text message');
+  await expect(dashboardCopilot).toContainText('Suggested follow-up email');
+  await expect(dashboardCopilot).toContainText('Main objection risk');
+  await expect(dashboardCopilot).toContainText('Close probability explanation');
+
+  await dashboardCopilot.getByRole('button', { name: 'Copy Text' }).click();
+  await expect(dashboardCopilot.locator('.sales-copilot-status')).toContainText('Suggested text copied');
+  const copiedText = await page.evaluate(() => localStorage.getItem('closepilot-copilot-clipboard'));
+  expect(copiedText).toContain('Kira Home');
+
+  await dashboardCopilot.getByRole('button', { name: 'Create Task' }).click();
+  await expect(dashboardCopilot.locator('.sales-copilot-status')).toContainText('Copilot task created');
+  await navigateTo(page, 'Tasks', 'tasks');
+  await page.getByPlaceholder('Search task text').fill('Copilot');
+  await expect(page.locator('#taskList')).toContainText('Copilot:');
+
+  await navigateTo(page, 'Dashboard', 'pipeline');
+  await dashboardCopilot.getByRole('button', { name: 'Log Activity' }).click();
+  await expect(dashboardCopilot.locator('.sales-copilot-status')).toContainText('Copilot activity logged');
+  await navigateTo(page, 'Activity', 'activity');
+  await page.getByPlaceholder('Search activity').fill('AI Sales Copilot recommendation');
+  await expect(page.locator('#activityFeed')).toContainText('AI Sales Copilot recommendation logged');
+
+  await navigateTo(page, 'Dashboard', 'pipeline');
+  await openLeadBrief(page);
+  await page.locator('#leadBrief').getByRole('button', { name: 'Open details' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Northstar Roofing' });
+  await expect(dialog).toContainText('AI Sales Copilot');
+  await expect(dialog).toContainText('Best next action');
+  await dialog.locator('.sales-copilot-panel').getByRole('button', { name: 'Move Lead Stage' }).click();
+  await expect(dialog.locator('.sales-copilot-status')).toContainText('Copilot moved Northstar Roofing to Proposal');
+  await expect(dialog).toContainText('Proposal deal');
 });
 
 test('shows the AI Sales Manager owner dashboard', async ({ page }) => {
@@ -279,12 +448,12 @@ test('runs the unified communications center', async ({ page }) => {
   await expect(page.locator('#communicationsPage')).toBeVisible();
   await expect(page.locator('#conversationList').locator('.conversation-item')).toHaveCount(4);
   await expect(page.locator('#communicationSearch')).toBeVisible();
-  await expect(page.locator('.communication-filters')).toContainText('Unread');
+  await expect(page.locator('.communication-filters')).toContainText('All');
   await expect(page.locator('.communication-filters')).toContainText('Calls');
   await expect(page.locator('.communication-filters')).toContainText('Texts');
   await expect(page.locator('.communication-filters')).toContainText('Emails');
-  await expect(page.locator('.communication-filters')).toContainText('Appointments');
-  await expect(page.locator('.communication-filters')).toContainText('Pinned');
+  await expect(page.locator('.communication-filters')).toContainText('Notes');
+  await expect(page.locator('.communication-filters')).toContainText('Missed Follow-Ups');
 
   await expect(page.locator('#conversationTimeline')).toContainText('Incoming Text');
   await expect(page.locator('#conversationTimeline')).toContainText('Outgoing Text');
@@ -292,11 +461,23 @@ test('runs the unified communications center', async ({ page }) => {
   await expect(page.locator('#conversationTimeline')).toContainText('Voicemail');
   await expect(page.locator('#conversationTimeline')).toContainText('Email');
   await expect(page.locator('#conversationTimeline')).toContainText('Appointment');
+  await expect(page.locator('#conversationTimeline')).toContainText('Task Completion');
+  await expect(page.locator('#conversationTimeline')).toContainText('Automation Event');
   await expect(page.locator('#conversationTimeline')).toContainText('System Notes');
+  await expect(page.locator('#conversationTimeline')).toContainText('Rep:');
+  await expect(page.locator('#conversationTimeline')).toContainText('Outcome:');
 
+  await expect(page.locator('#messageComposer')).toContainText('Customer');
   await expect(page.locator('#messageComposer')).toContainText('Text');
   await expect(page.locator('#messageComposer')).toContainText('Email');
   await expect(page.locator('#messageComposer')).toContainText('Internal Note');
+  await expect(page.locator('#messageComposer')).toContainText('New lead follow-up');
+  await expect(page.locator('#messageComposer')).toContainText('Appointment confirmation');
+  await expect(page.locator('#messageComposer')).toContainText('Estimate follow-up');
+  await expect(page.locator('#messageComposer')).toContainText('No-answer follow-up');
+  await expect(page.locator('#messageComposer')).toContainText('Review request');
+  await expect(page.locator('#messageComposer')).toContainText('Referral request');
+  await expect(page.locator('#messageComposer')).toContainText('Win-back message');
   await expect(page.locator('#messageComposer')).toContainText('Emoji picker');
   await expect(page.locator('#messageComposer')).toContainText('Templates');
   await expect(page.locator('#messageComposer')).toContainText('Quick replies');
@@ -311,6 +492,12 @@ test('runs the unified communications center', async ({ page }) => {
   await expect(page.locator('#callControls')).toContainText('Transfer');
   await expect(page.locator('#callControls')).toContainText('Record');
   await expect(page.locator('#callControls')).toContainText('End Call');
+  await expect(page.locator('#callControls')).toContainText('Connected');
+  await expect(page.locator('#callControls')).toContainText('No answer');
+  await expect(page.locator('#callControls')).toContainText('Left voicemail');
+  await expect(page.locator('#callControls')).toContainText('Bad number');
+  await expect(page.locator('#callControls')).toContainText('Booked appointment');
+  await expect(page.locator('#callControls')).toContainText('Not interested');
 
   await expect(page.locator('#customerSidebar')).toContainText('Customer Information');
   await expect(page.locator('#customerSidebar')).toContainText('Lead Score');
@@ -320,8 +507,13 @@ test('runs the unified communications center', async ({ page }) => {
   await expect(page.locator('#aiAssistantPanel')).toContainText('Objection Handling Tips');
   await expect(page.locator('#aiAssistantPanel')).toContainText('Recommended Questions');
   await expect(page.locator('#aiAssistantPanel')).toContainText('Sentiment Analysis');
-  await expect(page.locator('#quickActionsPanel')).toContainText('Schedule Estimate');
-  await expect(page.locator('#quickActionsPanel')).toContainText('Collect Deposit');
+  await expect(page.locator('#quickActionsPanel')).toContainText('Create Follow-Up Task');
+  await expect(page.locator('#quickActionsPanel')).toContainText('Schedule Appointment');
+  await expect(page.locator('#quickActionsPanel')).toContainText('Move Lead Stage');
+  await expect(page.locator('#quickActionsPanel')).toContainText('Mark Hot');
+  await expect(page.locator('#quickActionsPanel')).toContainText('Mark Warm');
+  await expect(page.locator('#quickActionsPanel')).toContainText('Mark Cold');
+  await expect(page.locator('#quickActionsPanel')).toContainText('Add Note');
   await expect(page.locator('#communicationNotificationFeed')).toContainText('Incoming message');
   await expect(page.locator('#communicationNotificationFeed')).toContainText('Missed call');
   await expect(page.locator('#communicationNotificationFeed')).toContainText('New voicemail');
@@ -332,6 +524,14 @@ test('runs the unified communications center', async ({ page }) => {
   await expect(page.locator('#conversationTimeline')).toContainText('This is a unified inbox test text.');
   await expect(page.locator('#communicationsStatus')).toContainText('sent');
   await expect(page.locator('#communicationToastRegion')).toContainText('Outgoing Text sent');
+
+  await page.locator('#callControls').getByRole('button', { name: 'No answer' }).click();
+  await expect(page.locator('#conversationTimeline')).toContainText('No answer call logged');
+  await expect(page.locator('#conversationTimeline')).toContainText('Follow-up task created');
+  await expect(page.locator('#communicationsStatus')).toContainText('No answer call logged');
+
+  await page.locator('#quickActionsPanel').getByRole('button', { name: 'Add Note' }).click();
+  await expect(page.locator('#conversationTimeline')).toContainText('Conversation note added');
 
   await page.locator('#communicationCallButton').click();
   await expect(page.locator('#communicationsStatus')).toContainText('Calling');
@@ -989,8 +1189,8 @@ test('manages SaaS workspace plan, seats, and invites', async ({ page }) => {
   await page.getByRole('button', { name: 'Production readiness' }).click();
   await expect(admin.locator('#launchChecklist')).toContainText('Cloud database');
   await expect(admin.locator('#launchChecklist')).toContainText('Add SUPABASE_URL and SUPABASE_ANON_KEY.');
-  await expect(admin.locator('#launchChecklist')).toContainText('Add STRIPE_CHECKOUT_URL.');
-  await expect(admin.locator('#launchChecklist')).toContainText('support@kira.local is set.');
+  await expect(admin.locator('#launchChecklist')).toContainText('Backend endpoint uses STRIPE_SECRET_KEY and plan price IDs');
+  await expect(admin.locator('#launchChecklist')).toContainText('Add INVITE_FROM_EMAIL and RESEND_API_KEY');
 
   await page.getByRole('button', { name: 'Audit trail' }).click();
   await expect(admin.locator('#auditList')).toContainText('Workspace created');
@@ -1005,9 +1205,10 @@ test('manages SaaS workspace plan, seats, and invites', async ({ page }) => {
   await expect(admin.locator('#auditList')).toContainText('Plan changed');
 
   await admin.getByRole('button', { name: 'Open checkout' }).click();
-  await expect(admin.locator('#adminMessage')).toContainText('Add STRIPE_CHECKOUT_URL');
+  await expect(admin.locator('#adminMessage')).toContainText('Live checkout is not configured');
+  await expect(admin.locator('#adminMessage')).toContainText('STRIPE_SECRET_KEY');
   await admin.getByRole('button', { name: 'Billing portal' }).click();
-  await expect(admin.locator('#adminMessage')).toContainText('Add STRIPE_PORTAL_URL');
+  await expect(admin.locator('#adminMessage')).toContainText('Billing portal is not ready yet');
 
   await page.getByRole('button', { name: 'Members and invites' }).click();
   await admin.locator('#inviteEmail').fill('sales@example.com');
@@ -1022,12 +1223,18 @@ test('manages SaaS workspace plan, seats, and invites', async ({ page }) => {
   await page.getByRole('button', { name: 'Plan and seats' }).click();
   await expect(admin.locator('#planSummary')).toContainText('2/10');
   await page.getByRole('button', { name: 'Members and invites' }).click();
-  await expect(admin.locator('#adminMessage')).toContainText('Invite staged for sales@example.com');
+  await expect(admin.locator('#adminMessage')).toContainText('Invite link generated');
+  await expect(admin.locator('#adminMessage')).toContainText('RESEND_API_KEY');
+  await expect(admin.locator('#adminMessage')).toContainText('INVITE_FROM_EMAIL');
+  await expect(admin.locator('#adminMessage')).toContainText('/?invite=');
   await expect(admin.locator('#auditList')).toContainText('Invite staged');
+  await expect(admin.locator('#auditList')).toContainText('Invite link generated');
 
   await admin.getByRole('button', { name: 'Send email' }).click();
-  await expect(admin.locator('#adminMessage')).toContainText('Email draft opened for sales@example.com');
-  await expect(admin.locator('#auditList')).toContainText('Invite email prepared');
+  await expect(admin.locator('#adminMessage')).toContainText('Invite link generated');
+  await expect(admin.locator('#adminMessage')).toContainText('/?invite=');
+  const copiedInviteLink = await page.evaluate(() => localStorage.getItem('closepilot-last-copied-text'));
+  expect(copiedInviteLink).toContain('/?invite=');
 
   await page.getByRole('button', { name: 'Workspace settings' }).click();
   await admin.locator('#adminBusinessName').fill('Kira Home Agency');

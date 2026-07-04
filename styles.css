@@ -436,7 +436,8 @@ h2 {
 .soft-pill,
 .focus-grid span,
 .revenue-snapshot-grid span,
-.sales-activity-grid span {
+.sales-activity-grid span,
+.communication-stats-grid span {
   color: var(--muted);
   font-size: 0.76rem;
   font-weight: 850;
@@ -468,15 +469,31 @@ h2 {
 }
 
 .focus-grid,
-.sales-activity-grid {
+.sales-activity-grid,
+.communication-stats-grid,
+.opportunity-health-grid {
   display: grid;
   gap: 10px;
+}
+
+.focus-grid,
+.sales-activity-grid {
   grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.communication-stats-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.opportunity-health-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .focus-grid article,
 .sales-activity-grid article,
-.revenue-snapshot-grid article {
+.revenue-snapshot-grid article,
+.communication-stats-grid article,
+.opportunity-health-grid article {
   background: var(--soft);
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -489,18 +506,42 @@ h2 {
 
 .focus-grid article:hover,
 .sales-activity-grid article:hover,
-.revenue-snapshot-grid article:hover {
+.revenue-snapshot-grid article:hover,
+.communication-stats-grid article:hover,
+.opportunity-health-grid article:hover {
   border-color: rgba(11, 47, 99, 0.28);
   transform: translateY(-1px);
 }
 
 .focus-grid strong,
 .sales-activity-grid strong,
-.revenue-snapshot-grid strong {
+.revenue-snapshot-grid strong,
+.communication-stats-grid strong,
+.opportunity-health-grid strong {
   display: block;
   font-size: 1.4rem;
   line-height: 1.1;
   margin-top: 8px;
+}
+
+.opportunity-health-grid span,
+.opportunity-health-grid small {
+  color: var(--muted);
+  display: block;
+  font-size: 0.76rem;
+  font-weight: 850;
+  overflow-wrap: anywhere;
+  text-transform: uppercase;
+}
+
+.opportunity-health-grid small {
+  font-size: 0.72rem;
+  margin-top: 6px;
+  text-transform: none;
+}
+
+.best-next-opportunity {
+  border-color: rgba(11, 47, 99, 0.28) !important;
 }
 
 .command-start-button {
@@ -920,6 +961,7 @@ button.ai-card:hover {
   display: grid;
   gap: 14px;
   grid-template-columns: minmax(0, 1fr) minmax(320px, 0.76fr);
+  min-height: 520px;
 }
 
 .flow-action-main,
@@ -931,6 +973,13 @@ button.ai-card:hover {
   display: grid;
   gap: 14px;
   padding: 16px;
+}
+
+.flow-action-main,
+.flow-lead-card {
+  align-content: start;
+  max-height: 520px;
+  overflow: auto;
 }
 
 .flow-action-main h3 {
@@ -2385,6 +2434,124 @@ button.insight-card:hover {
   width: 100%;
 }
 
+.recruiting-inbox-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.recruiting-inbox-summary,
+.recruiting-candidate-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.recruiting-inbox-summary {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.recruiting-inbox-summary article,
+.recruiting-candidate-grid article {
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 11px;
+}
+
+.recruiting-inbox-summary span,
+.recruiting-candidate-grid span,
+.recruiting-inbox-message {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
+.recruiting-inbox-summary span,
+.recruiting-candidate-grid span {
+  text-transform: uppercase;
+}
+
+.recruiting-inbox-summary strong {
+  font-size: 1.34rem;
+  line-height: 1.1;
+}
+
+.recruiting-candidate-list {
+  display: grid;
+  gap: 12px;
+}
+
+.recruiting-candidate-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  transition:
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+.recruiting-candidate-card:hover {
+  border-color: rgba(11, 47, 99, 0.28);
+  transform: translateY(-1px);
+}
+
+.recruiting-candidate-card.converted {
+  border-color: rgba(15, 122, 79, 0.28);
+}
+
+.recruiting-candidate-head {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.recruiting-candidate-head strong,
+.recruiting-candidate-head span {
+  display: block;
+}
+
+.recruiting-candidate-head span {
+  color: var(--muted);
+  margin-top: 3px;
+}
+
+.recruiting-candidate-head b {
+  background: var(--navy);
+  border-radius: 999px;
+  color: #ffffff;
+  display: inline-flex;
+  font-size: 0.9rem;
+  font-weight: 900;
+  padding: 7px 10px;
+}
+
+.recruiting-candidate-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.candidate-tags,
+.recruiting-candidate-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.candidate-tags span {
+  background: #eef4ff;
+  border-radius: 999px;
+  color: var(--navy);
+  font-size: 0.72rem;
+  font-weight: 900;
+  padding: 5px 8px;
+}
+
 .communications-page {
   display: grid;
   gap: 12px;
@@ -2459,7 +2626,8 @@ button.insight-card:hover {
 }
 
 .communication-search,
-.composer-input-label {
+.composer-input-label,
+.composer-customer-select {
   color: var(--muted);
   display: grid;
   font-size: 0.82rem;
@@ -2469,7 +2637,8 @@ button.insight-card:hover {
 
 .communication-search input,
 .composer-input-label textarea,
-.composer-tool select {
+.composer-tool select,
+.composer-customer-select select {
   background: #ffffff;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -2489,7 +2658,8 @@ button.insight-card:hover {
 .composer-tabs button,
 .quick-replies button,
 .emoji-picker button,
-.call-control-grid button {
+.call-control-grid button,
+.call-log-actions button {
   background: #ffffff;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -2517,7 +2687,8 @@ button.insight-card:hover {
 .composer-tabs button:hover,
 .quick-replies button:hover,
 .emoji-picker button:hover,
-.call-control-grid button:hover {
+.call-control-grid button:hover,
+.call-log-actions button:hover {
   border-color: var(--navy);
   box-shadow: 0 8px 18px var(--ring);
   transform: translateY(-1px);
@@ -2723,6 +2894,31 @@ button.insight-card:hover {
   min-height: 42px;
 }
 
+.call-log-actions {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 8px;
+  grid-column: 1 / -1;
+  padding-top: 12px;
+}
+
+.call-log-actions span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.call-log-actions div {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.call-log-actions button {
+  min-height: 38px;
+}
+
 .call-control-grid button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
@@ -2788,6 +2984,14 @@ button.insight-card:hover {
   font-size: 0.72rem;
   font-weight: 900;
   text-transform: uppercase;
+}
+
+.message-bubble-header small {
+  color: var(--muted);
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 750;
+  margin-top: 2px;
 }
 
 .message-bubble-header time,
@@ -3411,11 +3615,67 @@ button.insight-card:hover {
   color: #475569;
 }
 
+.opportunity-health-badge {
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  display: inline-flex;
+  gap: 6px;
+  justify-content: center;
+  line-height: 1;
+  padding: 5px 9px;
+  white-space: nowrap;
+}
+
+.opportunity-health-badge strong,
+.opportunity-health-badge span {
+  color: inherit;
+  line-height: 1;
+}
+
+.opportunity-health-badge strong {
+  font-size: 0.82rem;
+}
+
+.opportunity-health-badge span {
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.opportunity-health-badge.hot {
+  background: #e8f7ef;
+  border-color: rgba(15, 122, 79, 0.28);
+  color: #0d6b46;
+}
+
+.opportunity-health-badge.warm {
+  background: #eaf1ff;
+  border-color: rgba(11, 47, 99, 0.24);
+  color: var(--navy);
+}
+
+.opportunity-health-badge.at-risk {
+  background: #fff3d8;
+  border-color: rgba(161, 98, 7, 0.26);
+  color: #88540a;
+}
+
+.opportunity-health-badge.cold {
+  background: #feecec;
+  border-color: rgba(180, 35, 24, 0.24);
+  color: #9a1b12;
+}
+
 .intelligence-badge.compact {
   padding: 4px 8px;
 }
 
+.opportunity-health-badge.compact {
+  padding: 4px 8px;
+}
+
 .deal-card .intelligence-badge,
+.deal-card .opportunity-health-badge,
 .contact-row .intelligence-badge {
   display: inline-flex;
 }
@@ -3448,11 +3708,11 @@ button.insight-card:hover {
 }
 
 .deal-card strong,
-.deal-card span:not(.intelligence-badge) {
+.deal-card span:not(.intelligence-badge):not(.opportunity-health-badge) {
   display: block;
 }
 
-.deal-card span:not(.intelligence-badge),
+.deal-card span:not(.intelligence-badge):not(.opportunity-health-badge),
 .lead-brief p,
 .task-item span,
 .contact-row span:not(.intelligence-badge) {
@@ -3469,6 +3729,11 @@ button.insight-card:hover {
   display: inline;
 }
 
+.opportunity-health-badge span {
+  color: inherit;
+  display: inline;
+}
+
 .contact-row p span,
 .task-item p span {
   display: block;
@@ -3477,6 +3742,8 @@ button.insight-card:hover {
 .deal-meta {
   align-items: center;
   display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
   justify-content: space-between;
 }
 
@@ -3580,7 +3847,8 @@ button.insight-card:hover {
   grid-template-columns: 1fr 1fr;
 }
 
-.lead-intelligence-panel {
+.lead-intelligence-panel,
+.opportunity-health-panel {
   background: #f8fafc;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -3589,24 +3857,28 @@ button.insight-card:hover {
   padding: 14px;
 }
 
-.lead-intelligence-panel.compact {
+.lead-intelligence-panel.compact,
+.opportunity-health-panel.compact {
   padding: 12px;
 }
 
-.lead-intelligence-header {
+.lead-intelligence-header,
+.opportunity-health-header {
   align-items: center;
   display: flex;
   gap: 12px;
   justify-content: space-between;
 }
 
-.lead-intelligence-header h3 {
+.lead-intelligence-header h3,
+.opportunity-health-header h3 {
   font-size: 1.34rem;
   line-height: 1.05;
   margin: 0;
 }
 
-.lead-intelligence-header h3 span {
+.lead-intelligence-header h3 span,
+.opportunity-health-header h3 span {
   color: var(--muted);
   font-size: 0.78rem;
   font-weight: 900;
@@ -3614,20 +3886,23 @@ button.insight-card:hover {
   text-transform: uppercase;
 }
 
-.lead-intelligence-action {
+.lead-intelligence-action,
+.opportunity-next-action {
   display: grid;
   gap: 4px;
   text-align: right;
 }
 
-.lead-intelligence-action span {
+.lead-intelligence-action span,
+.opportunity-next-action span {
   color: var(--muted);
   font-size: 0.68rem;
   font-weight: 900;
   text-transform: uppercase;
 }
 
-.lead-intelligence-action strong {
+.lead-intelligence-action strong,
+.opportunity-next-action strong {
   color: var(--navy);
   font-size: 0.95rem;
   line-height: 1.2;
@@ -3738,6 +4013,100 @@ button.insight-card:hover {
 
 .assistant-card .secondary-button {
   justify-self: start;
+}
+
+.sales-copilot-panel {
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 18px 46px rgba(11, 47, 99, 0.08);
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.sales-copilot-panel.detail {
+  box-shadow: none;
+}
+
+.sales-copilot-header {
+  align-items: start;
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+}
+
+.sales-copilot-header h3 {
+  font-size: 1.18rem;
+  margin: 0 0 4px;
+}
+
+.sales-copilot-header span,
+.sales-copilot-grid span,
+.sales-copilot-scripts span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.sales-copilot-header b {
+  align-items: center;
+  background: var(--navy);
+  border-radius: 8px;
+  color: #ffffff;
+  display: inline-flex;
+  font-size: 1.25rem;
+  font-weight: 950;
+  min-height: 54px;
+  padding: 0 14px;
+}
+
+.sales-copilot-grid,
+.sales-copilot-scripts {
+  display: grid;
+  gap: 10px;
+}
+
+.sales-copilot-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.sales-copilot-scripts {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.sales-copilot-grid article,
+.sales-copilot-scripts article {
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.sales-copilot-grid strong,
+.sales-copilot-scripts p {
+  color: var(--ink);
+  font-size: 0.92rem;
+  line-height: 1.38;
+  margin: 0;
+}
+
+.sales-copilot-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sales-copilot-status {
+  color: var(--navy);
+  font-weight: 900;
+  margin: 0;
+  min-height: 1.2rem;
 }
 
 .sequence-preview article {
@@ -4787,7 +5156,7 @@ button.insight-card:hover {
 .detail-grid {
   display: grid;
   gap: 10px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .detail-grid article,
@@ -4973,6 +5342,24 @@ button.insight-card:hover {
     color-scheme: dark;
   }
 
+  .auth-panel,
+  .main {
+    background: var(--bg);
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    background: var(--surface);
+    border-color: var(--line);
+    color: var(--ink);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--muted);
+  }
+
   .topbar,
   .metrics article,
   .panel,
@@ -4997,6 +5384,18 @@ button.insight-card:hover {
   .time-saved-grid article,
   .time-saved-source,
   .team-time-saved-row,
+  .goal-summary article,
+  .source-card,
+  .insight-card,
+  .backup-summary article,
+  .admin-card,
+  .admin-dropdown,
+  .plan-summary article,
+  .team-summary article,
+  .workspace-profile-summary article,
+  .launch-check,
+  .communication-stats-grid article,
+  .opportunity-health-grid article,
   .follow-up-queue-summary article,
   .follow-up-item,
   .follow-up-item-grid article,
@@ -5015,6 +5414,7 @@ button.insight-card:hover {
   .flow-lead-card,
   .flow-score-breakdown,
   .lead-intelligence-panel,
+  .opportunity-health-panel,
   .score-breakdown li,
   .flow-score-breakdown li,
   .workflow-builder-panel,
@@ -5039,6 +5439,7 @@ button.insight-card:hover {
   .risk-card,
   .manager-notification,
   .manager-analytics-chart,
+  .segmented-control,
   .communications-column,
   .conversation-item,
   .message-bubble.incoming,
@@ -5047,6 +5448,9 @@ button.insight-card:hover {
   .ai-assistant-panel,
   .quick-actions-panel,
   .communication-notifications,
+  .recruiting-inbox-summary article,
+  .recruiting-candidate-card,
+  .recruiting-candidate-grid article,
   .contact-summary article,
   .task-summary article,
   .pipeline-health article,
@@ -5055,17 +5459,37 @@ button.insight-card:hover {
   .contact-profile-section,
   .stage-column,
   .calendar-appointment,
+  .dial-summary article,
+  .dial-info-grid article,
+  .appointment-row,
+  .schedule-corner,
+  .schedule-day,
+  .schedule-hour,
   .automation-summary article,
+  .automation-preview,
+  .automation-template-card,
+  .automation-run-row,
   .assistant-card,
-  .sequence-preview {
+  .sales-copilot-panel,
+  .sales-copilot-grid article,
+  .sales-copilot-scripts article,
+  .sequence-preview,
+  .detail-hero,
+  .brief-grid div,
+  .forecast-summary article,
+  .forecast-row,
+  .import-summary article,
+  .import-errors {
     background: var(--soft);
   }
 
   .subpage-nav button,
+  .segmented-control button,
   .search input,
   .communication-search input,
   .composer-input-label textarea,
   .composer-tool select,
+  .composer-customer-select select,
   .communication-filters button,
   .manager-analytics-tabs button,
   .palette-node,
@@ -5077,7 +5501,9 @@ button.insight-card:hover {
   .quick-replies button,
   .emoji-picker button,
   .call-control-grid button,
+  .call-log-actions button,
   .deal-card,
+  .recruiting-candidate-card,
   .schedule-cell,
   .flow-talking-points,
   .flow-savings-message {
@@ -5087,13 +5513,16 @@ button.insight-card:hover {
 
   .conversation-item.active,
   .conversation-item:hover,
+  .source-card-main:hover,
+  button.insight-card:hover,
   .call-controls,
   .conversation-timeline,
   .message-bubble.system,
   .customer-detail-grid article,
   .ai-assistant-grid article,
   .communication-notification-feed article,
-  .composer-tool {
+  .composer-tool,
+  .call-log-actions {
     background: var(--soft);
   }
 
@@ -5112,10 +5541,20 @@ button.insight-card:hover {
 
   .message-bubble.outgoing,
   .pin-badge,
+  .candidate-tags span,
   .customer-tags span,
-  .stage-pill {
+  .stage-pill,
+  .launch-check.ready > span,
+  .status-pill.on {
     background: rgba(95, 142, 219, 0.16);
     color: #a9c8ff;
+  }
+
+  .launch-check > span,
+  .status-pill.off,
+  .automation-template-card.paused {
+    background: rgba(161, 98, 7, 0.18);
+    color: #f3c36e;
   }
 
   .follow-up-reasons span,
@@ -5196,8 +5635,9 @@ button.insight-card:hover {
   }
 
   .brand-mark {
-    background: #ffffff;
-    color: #071f42;
+    background: var(--surface-elevated);
+    border: 1px solid var(--line);
+    color: var(--ink);
   }
 }
 
@@ -5251,6 +5691,8 @@ button.insight-card:hover {
   .dashboard-follow-up-card,
   .dashboard-split,
   .time-saved-breakdown,
+  .sales-copilot-grid,
+  .sales-copilot-scripts,
   .flow-mode-header,
   .flow-step-card {
     grid-template-columns: 1fr;
@@ -5261,6 +5703,14 @@ button.insight-card:hover {
   }
 
   .focus-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .communication-stats-grid,
+  .opportunity-health-grid,
+  .recruiting-inbox-summary,
+  .recruiting-candidate-grid,
+  .call-log-actions div {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
@@ -5350,7 +5800,8 @@ button.insight-card:hover {
 
   .topbar,
   .topbar-actions,
-  .panel-heading {
+  .panel-heading,
+  .sales-copilot-header {
     align-items: stretch;
     flex-direction: column;
   }
@@ -5525,6 +5976,14 @@ button.insight-card:hover {
 
   .conversation-list {
     grid-template-columns: 1fr;
+  }
+
+  .communication-stats-grid,
+  .opportunity-health-grid,
+  .recruiting-inbox-summary,
+  .recruiting-candidate-grid,
+  .call-log-actions div {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .section-heading {
@@ -5770,6 +6229,16 @@ button.insight-card:hover {
   .flow-step-card,
   .flow-mode-header {
     grid-template-columns: 1fr;
+  }
+
+  .flow-step-card {
+    min-height: 0;
+  }
+
+  .flow-action-main,
+  .flow-lead-card {
+    max-height: none;
+    overflow: visible;
   }
 
   .message-bubble,

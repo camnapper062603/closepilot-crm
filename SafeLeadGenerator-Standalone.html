@@ -473,6 +473,96 @@
         padding: 2px 5px;
       }
 
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #080a0f;
+          --surface: #0e1118;
+          --ink: #f6f8fb;
+          --muted: #a7b0bf;
+          --line: #273142;
+          --teal: #5f8edb;
+          --teal-dark: #8ab4ff;
+          --navy: #5f8edb;
+          --navy-dark: #8ab4ff;
+          --navy-soft: #16253d;
+          --black: #05070b;
+          --gold: #f3c36e;
+          --red: #fca5a5;
+          --blue: #a9c8ff;
+          --shadow: 0 12px 30px rgba(0, 0, 0, 0.32);
+        }
+
+        body {
+          color-scheme: dark;
+        }
+
+        .main {
+          background: var(--bg);
+        }
+
+        input,
+        select,
+        textarea {
+          background: #121722;
+          border-color: var(--line);
+          color: var(--ink);
+        }
+
+        .brand-mark,
+        .topbar,
+        .panel,
+        .upload-card,
+        .metric,
+        .cost-group,
+        .cost-row,
+        .cost-summary article,
+        .stack-item {
+          background: var(--surface);
+        }
+
+        .tab-switcher,
+        .template-links button,
+        .template-links a,
+        code {
+          background: #171d28;
+          color: var(--ink);
+        }
+
+        .tab-switcher button,
+        .secondary {
+          background: #121722;
+          border-color: var(--line);
+          color: var(--ink);
+        }
+
+        .tab-switcher button.active,
+        .primary {
+          background: var(--navy);
+          color: #ffffff;
+        }
+
+        .danger,
+        .block {
+          background: rgba(180, 35, 24, 0.18);
+          color: #fca5a5;
+        }
+
+        .warn {
+          background: rgba(161, 98, 7, 0.18);
+          color: #f3c36e;
+        }
+
+        .ok {
+          background: rgba(15, 122, 79, 0.18);
+          color: #7ee2ad;
+        }
+
+        .info {
+          background: rgba(95, 142, 219, 0.16);
+          color: #a9c8ff;
+        }
+      }
+
       @media (max-width: 1080px) {
         .app,
         .two-col,

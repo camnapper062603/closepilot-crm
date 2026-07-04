@@ -6,7 +6,9 @@ const config = {
   stripeCheckoutUrl: process.env.STRIPE_CHECKOUT_URL || "",
   stripePortalUrl: process.env.STRIPE_PORTAL_URL || "",
   supportEmail: process.env.SUPPORT_EMAIL || "support@kira.local",
+  inviteFromEmail: process.env.INVITE_FROM_EMAIL || "",
   productUrl: process.env.PRODUCT_URL || "",
+  appBaseUrl: process.env.APP_BASE_URL || "",
 };
 
 const configText = `window.ClosePilotConfig = ${JSON.stringify(config, null, 2)};\n`;

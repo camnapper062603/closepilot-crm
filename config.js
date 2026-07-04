@@ -4,5 +4,7 @@ window.ClosePilotConfig = {
   "stripeCheckoutUrl": "",
   "stripePortalUrl": "",
   "supportEmail": "support@kira.local",
-  "productUrl": ""
+  "inviteFromEmail": "",
+  "productUrl": "",
+  "appBaseUrl": ""
 };

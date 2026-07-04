@@ -1,5 +1,6 @@
 const storageKey = "kiraRecruitingState-v1";
 const crmFeedKey = "kiraRecruitingFeed-v1";
+const sharedRecruitingFeedKey = "kiraRecruitingSharedFeed-v1";
 const recruitSubpages = [
   { id: "dashboard", label: "Dashboard" },
   { id: "job", label: "Job details" },
@@ -316,6 +317,7 @@ function nextInterviewSlots(time, count) {
 function syncCrmFeed() {
   const feed = buildFeed();
   localStorage.setItem(crmFeedKey, JSON.stringify(feed));
+  localStorage.setItem(sharedRecruitingFeedKey, JSON.stringify(feed));
   state.feedSyncedAt = feed.syncedAt;
   elements.feedMessage.textContent = "CRM feed synced locally.";
   saveState();
@@ -329,9 +331,38 @@ function buildFeed() {
     syncedAt: new Date().toISOString(),
     job: state.job,
     postings: state.postings,
-    recruits: state.candidates,
+    recruits: state.candidates.map(candidateToRecruitRecord),
     interviews: state.interviews,
   };
+}
+
+function candidateToRecruitRecord(candidate) {
+  const interview = state.interviews.find((item) => item.candidateId === candidate.id);
+  return {
+    id: candidate.id,
+    externalId: candidate.id,
+    name: candidate.name,
+    email: candidate.email,
+    phone: candidate.phone,
+    role: candidate.jobTitle || state.job.title || "Sales candidate",
+    source: candidate.source,
+    interviewStatus: interview?.status || candidate.status || "New",
+    interviewAt: interview?.startsAt || "",
+    score: candidate.score,
+    nextAction: recruitNextAction(candidate, interview),
+    experience: candidate.experience,
+    skills: candidate.skills,
+    syncedAt: candidate.syncedAt || new Date().toISOString(),
+    reviewed: false,
+    convertedLeadId: "",
+  };
+}
+
+function recruitNextAction(candidate, interview) {
+  if (interview?.startsAt) return `Prep interview call for ${formatDate(interview.startsAt)}.`;
+  if (candidate.score >= 85) return "Call candidate and confirm availability.";
+  if (candidate.score >= 75) return "Book interview for Monday, Wednesday, or Friday.";
+  return "Review candidate fit before outreach.";
 }
 
 function downloadFeed() {
@@ -350,6 +381,7 @@ function resetRecruiting() {
   state = defaultState();
   localStorage.removeItem(storageKey);
   localStorage.removeItem(crmFeedKey);
+  localStorage.removeItem(sharedRecruitingFeedKey);
   hydrateJobForm();
   elements.jobMessage.textContent = "Demo reset.";
   elements.feedMessage.textContent = "";
@@ -490,7 +522,7 @@ function renderFeed() {
   elements.feedPreview.innerHTML = `
     <article>
       <span>Feed key</span>
-      <strong>${crmFeedKey}</strong>
+      <strong>${sharedRecruitingFeedKey}</strong>
     </article>
     <article>
       <span>Current job</span>

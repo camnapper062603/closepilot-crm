@@ -57,6 +57,9 @@ const extensionCatalog = [
   },
 ];
 
+const recruitingSharedFeedKey = "kiraRecruitingSharedFeed-v1";
+const recruitingLegacyFeedKey = "kiraRecruitingFeed-v1";
+
 const defaultAutomations = [
   {
     key: "next-step-tasks",
@@ -313,6 +316,7 @@ const seedState = {
       source: "Cold email",
     },
   ],
+  recruitingCandidates: [],
   tasks: [
     { id: "task-1", text: "Call Maya before 3 PM", done: false, due: "today" },
     { id: "task-2", text: "Draft Harbor Fitness proposal recap", done: false, due: "today" },
@@ -392,7 +396,7 @@ let workflowPan = { x: 0, y: 0 };
 let managerAnalyticsView = "revenue";
 let managerInsightsVersion = 0;
 let selectedConversationId = null;
-let communicationFilter = "recent";
+let communicationFilter = "all";
 let communicationComposerMode = "text";
 let communicationDrafts = {};
 let communicationCallTimer = null;
@@ -404,6 +408,8 @@ let communicationCallState = {
   speaker: false,
   hold: false,
 };
+let salesCopilotStatus = { leadId: "", message: "" };
+let inviteAcceptanceStatus = "";
 
 const formatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -430,6 +436,10 @@ const dashboardSchedule = document.querySelector("#dashboardSchedule");
 const dashboardFollowUpQueueCount = document.querySelector("#dashboardFollowUpQueueCount");
 const dashboardFollowUpUrgency = document.querySelector("#dashboardFollowUpUrgency");
 const openFollowUpQueueButton = document.querySelector("#openFollowUpQueueButton");
+const opportunityHealthDashboard = document.querySelector("#opportunityHealthDashboard");
+const openBestOpportunityButton = document.querySelector("#openBestOpportunity");
+const dashboardSalesCopilot = document.querySelector("#dashboardSalesCopilot");
+const communicationDashboardStats = document.querySelector("#communicationDashboardStats");
 const dashboardTimeSavedToday = document.querySelector("#dashboardTimeSavedToday");
 const dashboardTimeSavedWeek = document.querySelector("#dashboardTimeSavedWeek");
 const dashboardTimeSavedMonth = document.querySelector("#dashboardTimeSavedMonth");
@@ -475,6 +485,11 @@ const managerNotifications = document.querySelector("#managerNotifications");
 const managerAnalyticsTabs = document.querySelector("#managerAnalyticsTabs");
 const managerAnalyticsChart = document.querySelector("#managerAnalyticsChart");
 const communicationsPage = document.querySelector("#communicationsPage");
+const recruitingInbox = document.querySelector("#recruitingInbox");
+const recruitingInboxSummary = document.querySelector("#recruitingInboxSummary");
+const recruitingInboxMessage = document.querySelector("#recruitingInboxMessage");
+const recruitingCandidateList = document.querySelector("#recruitingCandidateList");
+const refreshRecruitingFeedButton = document.querySelector("#refreshRecruitingFeed");
 const conversationCount = document.querySelector("#conversationCount");
 const communicationSearchInput = document.querySelector("#communicationSearch");
 const conversationList = document.querySelector("#conversationList");
@@ -643,6 +658,7 @@ const pageTitles = {
   pipeline: "Dashboard",
   manager: "AI Sales Manager",
   contacts: "Contacts",
+  recruiting: "Recruiting Inbox",
   automation: "Automations",
   tasks: "Tasks",
   activity: "Activity",
@@ -671,6 +687,7 @@ const subpageCatalog = {
     { id: "list", label: "Contacts" },
     { id: "profile", label: "Contact profile" },
   ],
+  recruiting: [{ id: "inbox", label: "Recruiting Inbox" }],
   tasks: [{ id: "list", label: "Tasks" }],
   activity: [{ id: "feed", label: "Activity feed" }],
   admin: [
@@ -812,6 +829,13 @@ exportSourceReportButton.addEventListener("click", exportSourceReportCsv);
 revenueGoalForm.addEventListener("submit", saveRevenueTarget);
 startMyDayButton.addEventListener("click", startMyDay);
 openFollowUpQueueButton.addEventListener("click", openFollowUpQueue);
+openBestOpportunityButton.addEventListener("click", openBestOpportunity);
+document.querySelectorAll("[data-open-page]").forEach((button) => {
+  button.addEventListener("click", () => {
+    setActivePage(button.dataset.openPage);
+    renderRoute();
+  });
+});
 flowCompleteNextButton.addEventListener("click", completeCurrentFlowAction);
 restartFlowButton.addEventListener("click", startMyDay);
 document.querySelectorAll("[data-flow-outcome]").forEach((button) => {
@@ -880,6 +904,10 @@ managerRefreshInsightsButton.addEventListener("click", () => {
   managerInsightsVersion += 1;
   renderAISalesManagerPage();
   managerStatus.textContent = "AI insights refreshed with the latest placeholder signals.";
+});
+
+refreshRecruitingFeedButton.addEventListener("click", async () => {
+  await syncRecruitingFeedIntoState({ logImport: true });
 });
 
 communicationSearchInput.addEventListener("input", renderCommunicationsPage);
@@ -971,10 +999,14 @@ async function boot() {
 async function startCloudWorkspace() {
   hideAuth();
   setCloudMode(true);
+  await acceptPendingInviteIfNeeded();
   store = createSupabaseStore(supabaseClient, currentUser);
   await store.ensureWorkspace();
   routeFromHash();
   await reloadState();
+  if (inviteAcceptanceStatus) {
+    adminMessage.textContent = inviteAcceptanceStatus;
+  }
 }
 
 function showAuth() {
@@ -1018,6 +1050,27 @@ async function signUp() {
     return;
   }
   setAuthMessage(data.session ? "Account created." : "Check your email to confirm your account.");
+}
+
+async function acceptPendingInviteIfNeeded() {
+  const token = new URLSearchParams(window.location.search).get("invite");
+  if (!token || !currentUser) return;
+
+  try {
+    const result = await postBackendJson("/api/invites/accept", {
+      token,
+      userId: currentUser.id,
+      email: currentUser.email,
+    });
+    inviteAcceptanceStatus = result.message || "Invite accepted. Workspace access is ready.";
+    if (result.accepted) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("invite");
+      history.replaceState(null, "", `${url.pathname}${url.search}${url.hash || "#admin"}`);
+    }
+  } catch (error) {
+    inviteAcceptanceStatus = `Invite acceptance needs attention: ${error.message}`;
+  }
 }
 
 async function signOut() {
@@ -1151,6 +1204,7 @@ function render() {
   renderAutomations();
   renderActivityFeed();
   renderContacts();
+  renderRecruitingInbox();
   renderCommunicationsPage();
   renderDialWorkspace();
   renderCalendar();
@@ -1186,6 +1240,7 @@ function renderRoute() {
   document.body.dataset.activePage = activePage;
   pageTitle.textContent = pageTitles[activePage] || pageTitles.pipeline;
   applyContactPageMode();
+  if (activePage === "recruiting") renderRecruitingInbox();
   if (window.location.hash !== `#${activePage}`) {
     history.replaceState(null, "", `#${activePage}`);
   }
@@ -1369,6 +1424,9 @@ function renderDailyCommandCenter() {
   document.querySelector("#dashboardWinRate").textContent = `${stats.winRate}%`;
 
   renderDashboardFollowUpCard(stats.followUpQueue);
+  renderDashboardOpportunityHealth(stats);
+  renderDashboardSalesCopilot(stats);
+  renderDashboardCommunicationStats(stats);
   renderDashboardRecommendations(stats);
   renderDashboardTimeSaved(stats);
   renderDashboardActivity(stats);
@@ -1434,6 +1492,463 @@ function renderDashboardFollowUpCard(queue = buildSmartFollowUpQueue()) {
     ? `${critical ? `${critical} critical · ` : ""}${high} high priority · ${queue[0].reason}`
     : "No follow-ups need action right now.";
   openFollowUpQueueButton.disabled = queue.length === 0;
+}
+
+function renderDashboardOpportunityHealth(stats = dailyCommandStats()) {
+  if (!opportunityHealthDashboard) return;
+  const summary = opportunityHealthSummary(stats);
+  openBestOpportunityButton.disabled = !summary.bestNextLead;
+  opportunityHealthDashboard.innerHTML = `
+    <article>
+      <span>Hot opportunities</span>
+      <strong>${summary.hot.length}</strong>
+    </article>
+    <article>
+      <span>At-risk opportunities</span>
+      <strong>${summary.atRisk.length}</strong>
+    </article>
+    <article>
+      <span>Overdue follow-ups</span>
+      <strong>${summary.overdueFollowUps}</strong>
+    </article>
+    <article class="best-next-opportunity">
+      <span>Best next lead to contact</span>
+      <strong>${summary.bestNextLead ? escapeHtml(summary.bestNextLead.company) : "No open leads"}</strong>
+      <small>${summary.bestNextLead ? escapeHtml(summary.bestHealth.recommendedAction) : "Add leads to build recommendations."}</small>
+    </article>
+  `;
+}
+
+function opportunityHealthSummary(stats = dailyCommandStats()) {
+  const followUpQueue = stats.followUpQueue || buildSmartFollowUpQueue();
+  const scored = state.leads
+    .filter((lead) => lead.stage !== "won")
+    .map((lead) => ({
+      lead,
+      health: calculateOpportunityHealth(lead, { followUpQueue }),
+    }))
+    .sort((left, right) => right.health.score - left.health.score || right.lead.value - left.lead.value);
+  const best = scored.find((item) => item.health.label === "Hot") || scored[0] || null;
+
+  return {
+    hot: scored.filter((item) => item.health.label === "Hot"),
+    atRisk: scored.filter((item) => item.health.label === "At Risk" || item.health.label === "Cold"),
+    overdueFollowUps: scored.filter((item) => item.health.hasOverdueTask || item.health.hasSmartFollowUp).length,
+    bestNextLead: best?.lead || null,
+    bestHealth: best?.health || null,
+  };
+}
+
+function openBestOpportunity() {
+  const summary = opportunityHealthSummary();
+  if (!summary.bestNextLead) return;
+  state.selectedLeadId = summary.bestNextLead.id;
+  subpageState.pipeline = "brief";
+  setActivePage("pipeline");
+  render();
+}
+
+function renderDashboardSalesCopilot(stats = dailyCommandStats()) {
+  if (!dashboardSalesCopilot) return;
+  const summary = opportunityHealthSummary(stats);
+  const lead = summary.bestNextLead || stats.hotLeads?.[0] || stats.openLeads?.[0] || selectedLead();
+  dashboardSalesCopilot.innerHTML = renderSalesCopilotPanel(lead, "dashboard");
+  bindSalesCopilotActions(dashboardSalesCopilot);
+}
+
+function renderSalesCopilotPanel(lead, variant = "dashboard") {
+  if (!lead) {
+    return `
+      <section class="sales-copilot-panel empty">
+        <p class="eyebrow">AI Sales Copilot</p>
+        <h3>No active leads yet</h3>
+        <p>Add or import a lead to generate deterministic sales guidance.</p>
+      </section>
+    `;
+  }
+
+  const copilot = salesCopilotForLead(lead);
+  const nextStage = nextPipelineStage(lead);
+  const status =
+    salesCopilotStatus.leadId === lead.id
+      ? salesCopilotStatus.message
+      : "Ready to turn this recommendation into the next CRM action.";
+
+  return `
+    <section class="sales-copilot-panel ${variant}" data-copilot-lead-id="${escapeHtml(lead.id)}">
+      <div class="sales-copilot-header">
+        <div>
+          <p class="eyebrow">AI Sales Copilot</p>
+          <h3>${escapeHtml(lead.company)}</h3>
+          <span>${escapeHtml(lead.name)} · ${escapeHtml(stageLabel(lead.stage))} · ${formatter.format(lead.value)}</span>
+        </div>
+        <b>${copilot.closeProbability}%</b>
+      </div>
+      <div class="sales-copilot-grid">
+        <article>
+          <span>Best next action</span>
+          <strong>${escapeHtml(copilot.bestNextAction)}</strong>
+        </article>
+        <article>
+          <span>Main objection risk</span>
+          <strong>${escapeHtml(copilot.objectionRisk)}</strong>
+        </article>
+        <article>
+          <span>Close probability explanation</span>
+          <strong>${escapeHtml(copilot.closeProbabilityExplanation)}</strong>
+        </article>
+      </div>
+      <div class="sales-copilot-scripts">
+        <article>
+          <span>Suggested call opener</span>
+          <p>${escapeHtml(copilot.callOpener)}</p>
+        </article>
+        <article>
+          <span>Suggested text message</span>
+          <p>${escapeHtml(copilot.textMessage)}</p>
+        </article>
+        <article>
+          <span>Suggested follow-up email</span>
+          <p>${escapeHtml(copilot.emailMessage)}</p>
+        </article>
+      </div>
+      <div class="sales-copilot-actions">
+        <button class="secondary-button" data-copilot-action="copy" data-copilot-lead="${escapeHtml(lead.id)}" type="button">Copy Text</button>
+        <button class="secondary-button" data-copilot-action="task" data-copilot-lead="${escapeHtml(lead.id)}" type="button">Create Task</button>
+        <button class="secondary-button" data-copilot-action="activity" data-copilot-lead="${escapeHtml(lead.id)}" type="button">Log Activity</button>
+        <button class="primary-button" data-copilot-action="stage" data-copilot-lead="${escapeHtml(lead.id)}" type="button" ${nextStage.id === lead.stage ? "disabled" : ""}>Move Lead Stage</button>
+      </div>
+      <p class="sales-copilot-status" role="status">${escapeHtml(status)}</p>
+    </section>
+  `;
+}
+
+function salesCopilotForLead(lead) {
+  const health = calculateOpportunityHealth(lead);
+  const intelligence = calculateLeadIntelligence(lead);
+  const activities = (state.activities || []).filter((activity) => activity.leadId === lead.id);
+  const lastActivity = latestLeadActivity(lead.id);
+  const quietDays = daysSinceActivity(lastActivity);
+  const tasks = leadTasks(lead);
+  const openTasks = tasks.filter((task) => !task.done);
+  const dueToday = openTasks.find((task) => task.due === "today");
+  const firstName = lead.name.split(" ")[0] || lead.name;
+  const bestNextAction = copilotBestNextAction(lead, { health, dueToday, quietDays });
+  const closeProbability = copilotCloseProbability(lead, health, openTasks);
+
+  return {
+    lead,
+    bestNextAction,
+    callOpener: `Hey ${firstName}, it's Cameron with Kira Home. I was looking at ${lead.company}'s ${stageLabel(
+      lead.stage,
+    ).toLowerCase()} file and wanted to make the next step simple: ${bestNextAction}`,
+    textMessage: `Hi ${firstName}, quick follow-up from Kira Home. ${bestNextAction} Does today or tomorrow work better?`,
+    emailMessage: `Subject: Next step for ${lead.company}\n\nHi ${firstName},\n\nI wanted to recap the next step: ${bestNextAction}\n\nThe goal is to make the decision clear and keep momentum moving.`,
+    objectionRisk: copilotObjectionRisk(lead, { health, openTasks, quietDays }),
+    closeProbability,
+    closeProbabilityExplanation: `${closeProbability}% because ${stageLabel(lead.stage)} starts at ${Math.round(
+      (stageProbabilities[lead.stage] || 0) * 100,
+    )}%, Lead Intelligence is ${intelligence.score}/100, Opportunity Health is ${health.score}/100, and ${
+      activities.length
+    } activity ${activities.length === 1 ? "touch is" : "touches are"} logged.`,
+  };
+}
+
+function copilotBestNextAction(lead, context) {
+  if (context.dueToday) return context.dueToday.text.replace(` (${lead.company})`, "");
+  if (context.health.label === "At Risk" || context.health.label === "Cold") {
+    return `Call ${lead.name} and reset the decision timeline today.`;
+  }
+  if (lead.stage === "proposal") return `Ask ${lead.name} for a yes/no decision date and final objection list.`;
+  if (lead.stage === "qualified") return `Send ${lead.company} a proposal recap and ask for the install calendar.`;
+  if (lead.stage === "won") return `Ask ${lead.name} for kickoff goals and one referral opportunity.`;
+  return `Call ${lead.name} to confirm fit, budget, and timeline.`;
+}
+
+function copilotObjectionRisk(lead, context) {
+  const notes = `${lead.notes} ${lead.nextAction}`.toLowerCase();
+  if (/price|pricing|budget|cost/.test(notes)) return "Budget or pricing clarity";
+  if (lead.stage === "proposal" && lead.value >= 9000) return "Decision-maker alignment";
+  if (context.openTasks.length >= 2) return "Follow-up drag";
+  if (context.quietDays >= 7) return "Low urgency from quiet activity";
+  if (context.health.label === "At Risk" || context.health.label === "Cold") return "Momentum risk";
+  return "Timeline uncertainty";
+}
+
+function copilotCloseProbability(lead, health, openTasks) {
+  if (lead.stage === "won") return 100;
+  const baseline = Math.round((stageProbabilities[lead.stage] || 0.1) * 100);
+  const scoreLift = Math.round((Number(lead.score || 0) - 70) * 0.22);
+  const healthLift = Math.round((Number(health.score || 0) - 65) * 0.18);
+  const taskDrag = openTasks.length > 1 ? -4 : openTasks.length === 0 ? 2 : 0;
+  return Math.max(5, Math.min(95, baseline + scoreLift + healthLift + taskDrag));
+}
+
+function nextPipelineStage(lead) {
+  const index = stages.findIndex((stage) => stage.id === lead.stage);
+  return stages[Math.min(stages.length - 1, Math.max(0, index + 1))] || stages[0];
+}
+
+function bindSalesCopilotActions(root = document) {
+  root.querySelectorAll("[data-copilot-action]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      await handleSalesCopilotAction(button);
+    });
+  });
+}
+
+async function handleSalesCopilotAction(button) {
+  const lead = state.leads.find((item) => item.id === button.dataset.copilotLead);
+  if (!lead) return;
+  const panel = button.closest(".sales-copilot-panel");
+  const copilot = salesCopilotForLead(lead);
+  const action = button.dataset.copilotAction;
+
+  if (action === "copy") {
+    await copyCopilotText(copilot.textMessage);
+    setSalesCopilotPanelStatus(panel, `Suggested text copied for ${lead.name}.`);
+    salesCopilotStatus = { leadId: lead.id, message: `Suggested text copied for ${lead.name}.` };
+    return;
+  }
+
+  if (action === "task") {
+    await store.createTask({
+      text: `Copilot: ${copilot.bestNextAction} (${lead.company})`,
+      done: false,
+      due: "today",
+    });
+    await store.createActivity({
+      leadId: lead.id,
+      type: "copilot-task",
+      message: `AI Sales Copilot created task: ${copilot.bestNextAction}`,
+    });
+    salesCopilotStatus = { leadId: lead.id, message: `Copilot task created for ${lead.company}.` };
+    await refreshAfterSalesCopilotAction(lead.id);
+    return;
+  }
+
+  if (action === "activity") {
+    await store.createActivity({
+      leadId: lead.id,
+      type: "copilot",
+      message: `AI Sales Copilot recommendation logged: ${copilot.bestNextAction}`,
+    });
+    salesCopilotStatus = { leadId: lead.id, message: `Copilot activity logged for ${lead.company}.` };
+    await refreshAfterSalesCopilotAction(lead.id);
+    return;
+  }
+
+  if (action === "stage") {
+    const nextStage = nextPipelineStage(lead);
+    if (nextStage.id === lead.stage) {
+      setSalesCopilotPanelStatus(panel, `${lead.company} is already at the final stage.`);
+      return;
+    }
+    await applyStageMove(lead, 1);
+    await store.createActivity({
+      leadId: lead.id,
+      type: "copilot-stage",
+      message: `AI Sales Copilot moved ${lead.company} to ${nextStage.label}.`,
+    });
+    salesCopilotStatus = { leadId: lead.id, message: `Copilot moved ${lead.company} to ${nextStage.label}.` };
+    await refreshAfterSalesCopilotAction(lead.id);
+  }
+}
+
+async function copyCopilotText(text) {
+  localStorage.setItem("closepilot-copilot-clipboard", text);
+  await copyTextToClipboard(text);
+}
+
+function setSalesCopilotPanelStatus(panel, message) {
+  const status = panel?.querySelector(".sales-copilot-status");
+  if (status) status.textContent = message;
+}
+
+async function refreshAfterSalesCopilotAction(leadId) {
+  state = await store.load();
+  normalizeLoadedState();
+  state.selectedLeadId = leadId;
+  render();
+  const freshLead = state.leads.find((item) => item.id === leadId);
+  if (freshLead && leadDetailModal && !leadDetailModal.hidden) {
+    renderLeadDetail(freshLead);
+  }
+}
+
+function calculateOpportunityHealth(lead, context = {}) {
+  const followUpQueue = context.followUpQueue || buildSmartFollowUpQueue();
+  const smartFollowUp = followUpQueue.find((item) => item.lead.id === lead.id);
+  const lastActivity = latestLeadActivity(lead.id);
+  const daysQuiet = daysSinceActivity(lastActivity);
+  const tasks = leadTasks(lead);
+  const openTasks = tasks.filter((task) => !task.done);
+  const followUpTasks = tasks.filter((task) => /follow|call|text|appointment|interview/i.test(task.text));
+  const followUpActivities = (state.activities || []).filter(
+    (activity) => activity.leadId === lead.id && /follow|call|text|email|appointment/i.test(`${activity.type} ${activity.message}`),
+  );
+  const hasOverdueTask = openTasks.some((task) => task.due === "today") && daysQuiet >= 3;
+  const estimateValue = Number(lead.value || 0);
+  const stageImpact = {
+    new: -2,
+    qualified: 12,
+    proposal: 10,
+    won: 18,
+  }[lead.stage] || 0;
+  const factors = [];
+  let score = 62;
+
+  addFactor(
+    lastActivity ? `Last contact ${daysQuiet} day${daysQuiet === 1 ? "" : "s"} ago` : "No contact logged",
+    lastActivity ? (daysQuiet <= 2 ? 16 : daysQuiet <= 6 ? 5 : -18) : -22,
+    lastActivity ? "Recency protects active buying intent." : "No logged touch makes the opportunity harder to forecast.",
+  );
+  addFactor(
+    `${followUpTasks.length + followUpActivities.length} follow-up signals`,
+    Math.min(12, (followUpTasks.length + followUpActivities.length) * 3),
+    "Follow-up volume shows whether the deal is being worked.",
+  );
+  addFactor(`${stageLabel(lead.stage)} stage`, stageImpact, "Pipeline stage changes health and urgency.");
+  addFactor(
+    `${formatter.format(estimateValue)} estimate value`,
+    estimateValue >= 10000 ? 8 : estimateValue >= 7000 ? 5 : estimateValue < 3000 ? -4 : 1,
+    "Higher estimate values deserve more protection in the daily plan.",
+  );
+  if (hasOverdueTask) addFactor("Task overdue status", -15, "A due-today task with quiet activity is treated as overdue.");
+  if (smartFollowUp) addFactor(`Smart follow-up status: ${smartFollowUp.reason}`, -10, "The Smart Follow-Up Queue says this lead needs attention.");
+
+  score = clampScore(score + factors.reduce((sum, factor) => sum + factor.impact, 0));
+  const label = opportunityHealthLabel(score);
+
+  return {
+    score,
+    label,
+    factors: factors.sort((left, right) => Math.abs(right.impact) - Math.abs(left.impact)),
+    recommendedAction: recommendedOpportunityAction(lead, { score, label, smartFollowUp, hasOverdueTask, daysQuiet }),
+    lastContactedAt: lastActivity?.createdAt || "",
+    followUpCount: followUpTasks.length + followUpActivities.length,
+    hasOverdueTask,
+    hasSmartFollowUp: Boolean(smartFollowUp),
+  };
+
+  function addFactor(label, impact, detail) {
+    factors.push({ label, impact, detail });
+  }
+}
+
+function opportunityHealthLabel(score) {
+  if (score >= 85) return "Hot";
+  if (score >= 70) return "Warm";
+  if (score >= 45) return "At Risk";
+  return "Cold";
+}
+
+function opportunityHealthClass(label) {
+  return label.toLowerCase().replace(/\s+/g, "-");
+}
+
+function recommendedOpportunityAction(lead, health) {
+  if (health.hasOverdueTask) return "Clear overdue follow-up today";
+  if (health.smartFollowUp) return health.smartFollowUp.recommendedAction;
+  if (lead.stage === "proposal") return "Call about estimate decision";
+  if (lead.stage === "qualified") return "Book appointment";
+  if (health.daysQuiet >= 7) return "Restart contact sequence";
+  if (health.score >= 85) return "Call now";
+  return lead.nextAction || "Send follow-up text";
+}
+
+function opportunityHealthBadge(lead, className = "") {
+  const health = calculateOpportunityHealth(lead);
+  return `
+    <span class="opportunity-health-badge ${opportunityHealthClass(health.label)} ${className}" aria-label="Opportunity Health ${health.score} ${health.label}">
+      <strong>${health.score}</strong>
+      <span>${escapeHtml(health.label)}</span>
+    </span>
+  `;
+}
+
+function renderOpportunityHealthPanel(lead, variant = "full") {
+  const health = calculateOpportunityHealth(lead);
+  const factors = health.factors.slice(0, variant === "compact" ? 3 : 6);
+  return `
+    <section class="opportunity-health-panel ${variant}">
+      <div class="opportunity-health-header">
+        <div>
+          <p class="eyebrow">Opportunity Health</p>
+          <h3>${health.score}/100 <span>${escapeHtml(health.label)}</span></h3>
+        </div>
+        <div class="opportunity-next-action">
+          <span>Recommended Next Action</span>
+          <strong>${escapeHtml(health.recommendedAction)}</strong>
+        </div>
+      </div>
+      <div class="score-breakdown">
+        <p class="eyebrow">Why this score?</p>
+        ${factors.length ? `<ul>${factors.map(renderScoreFactor).join("")}</ul>` : "<p>No health factors yet.</p>"}
+      </div>
+    </section>
+  `;
+}
+
+function renderDashboardCommunicationStats(stats = dailyCommandStats()) {
+  if (!communicationDashboardStats) return;
+  const communication = calculateCommunicationDashboardStats(stats);
+  const cards = [
+    ["Calls today", communication.callsToday],
+    ["Texts logged today", communication.textsToday],
+    ["Emails logged today", communication.emailsToday],
+    ["Missed follow-ups", communication.missedFollowUps],
+    ["Average response time", `${communication.averageResponseMinutes}m`],
+    ["Needs attention", communication.conversationsNeedingAttention],
+  ];
+
+  communicationDashboardStats.innerHTML = cards
+    .map(
+      ([label, value]) => `
+        <article>
+          <span>${escapeHtml(label)}</span>
+          <strong>${escapeHtml(String(value))}</strong>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function calculateCommunicationDashboardStats(stats = dailyCommandStats()) {
+  const conversations = communicationConversations();
+  const messages = conversations.flatMap((conversation) => conversation.messages);
+  const todayMessages = messages.filter((message) => isToday(message.createdAt));
+  const followUpQueue = stats.followUpQueue || buildSmartFollowUpQueue();
+  const missedFollowUps = followUpQueue.filter((item) => /missed|no contact|risk|not contacted/i.test(item.reason)).length;
+  const followUpLeadIds = new Set(followUpQueue.map((item) => item.lead.id));
+
+  return {
+    callsToday: todayMessages.filter((message) => ["call-log", "voicemail"].includes(message.type)).length,
+    textsToday: todayMessages.filter((message) => ["incoming-text", "outgoing-text"].includes(message.type)).length,
+    emailsToday: todayMessages.filter((message) => message.type === "email").length,
+    missedFollowUps: missedFollowUps || followUpQueue.length,
+    averageResponseMinutes: averageCommunicationResponseMinutes(conversations),
+    conversationsNeedingAttention: conversations.filter(
+      (conversation) => conversation.unreadCount > 0 || followUpLeadIds.has(conversation.lead.id),
+    ).length,
+  };
+}
+
+function averageCommunicationResponseMinutes(conversations) {
+  const responseGaps = [];
+  conversations.forEach((conversation) => {
+    const sorted = [...conversation.messages].sort((left, right) => new Date(left.createdAt) - new Date(right.createdAt));
+    sorted.forEach((message, index) => {
+      if (message.direction !== "incoming") return;
+      const response = sorted.slice(index + 1).find((nextMessage) => nextMessage.direction === "outgoing");
+      if (!response) return;
+      const gap = Math.round((new Date(response.createdAt) - new Date(message.createdAt)) / 60000);
+      if (gap >= 0 && gap < 1440) responseGaps.push(gap);
+    });
+  });
+
+  if (!responseGaps.length) return 14;
+  return Math.max(1, Math.round(responseGaps.reduce((sum, gap) => sum + gap, 0) / responseGaps.length));
 }
 
 function buildSmartFollowUpQueue() {
@@ -1940,7 +2455,7 @@ function startMyDay() {
   subpageState.pipeline = "overview";
   setActivePage("pipeline");
   render();
-  flowModePanel.scrollIntoView({ behavior: "smooth", block: "start" });
+  flowModePanel.scrollIntoView({ block: "start" });
 }
 
 function createFlowSession(actions = []) {
@@ -2091,7 +2606,28 @@ async function completeFlowAction(outcome) {
   flowSession.pendingOutcome = "";
   const nextAction = currentFlowAction();
   if (nextAction) state.selectedLeadId = nextAction.leadId;
-  render();
+  renderAfterFlowAction();
+}
+
+function renderAfterFlowAction() {
+  renderMetrics();
+  const stats = dailyCommandStats();
+  document.querySelector("#dashboardFollowUpsDue").textContent = stats.followUpsDue;
+  document.querySelector("#dashboardAppointmentsToday").textContent = stats.appointmentsToday.length;
+  document.querySelector("#dashboardDealsAtRisk").textContent = stats.dealsAtRisk.length;
+  document.querySelector("#dashboardCallsMade").textContent = stats.callsMade;
+  document.querySelector("#dashboardAppointmentsBooked").textContent = stats.appointmentsBooked;
+  document.querySelector("#dashboardCloseRate").textContent = `${stats.closeRate}%`;
+  document.querySelector("#dashboardWinRate").textContent = `${stats.winRate}%`;
+  renderDashboardFollowUpCard(stats.followUpQueue);
+  renderDashboardOpportunityHealth(stats);
+  renderDashboardSalesCopilot(stats);
+  renderDashboardCommunicationStats(stats);
+  renderDashboardTimeSaved(stats);
+  renderDashboardActivity(stats);
+  renderDashboardSchedule(stats);
+  renderFlowMode();
+  renderActivityFeed();
 }
 
 function incrementFlowResult(outcome) {
@@ -2615,18 +3151,20 @@ function launchChecks() {
     },
     {
       title: "Stripe checkout",
-      detail: config.stripeCheckoutUrl ? "Checkout URL is configured." : "Add STRIPE_CHECKOUT_URL.",
-      ready: Boolean(config.stripeCheckoutUrl),
+      detail: "Backend endpoint uses STRIPE_SECRET_KEY and plan price IDs when configured.",
+      ready: false,
     },
     {
       title: "Billing portal",
-      detail: config.stripePortalUrl ? "Customer portal URL is configured." : "Add STRIPE_PORTAL_URL.",
-      ready: Boolean(config.stripePortalUrl),
+      detail: "Customer portal opens after Stripe creates a customer for the workspace.",
+      ready: false,
     },
     {
       title: "Support inbox",
-      detail: config.supportEmail ? `${config.supportEmail} is set.` : "Add SUPPORT_EMAIL.",
-      ready: Boolean(config.supportEmail),
+      detail: config.inviteFromEmail
+        ? `${config.inviteFromEmail} is set. Add RESEND_API_KEY for invite delivery.`
+        : "Add INVITE_FROM_EMAIL and RESEND_API_KEY.",
+      ready: Boolean(config.inviteFromEmail),
     },
   ];
 }
@@ -3081,6 +3619,7 @@ function renderDealCard(lead) {
         <div class="deal-meta">
           <b>${formatter.format(lead.value)}</b>
           ${leadIntelligenceBadge(lead, "compact")}
+          ${opportunityHealthBadge(lead, "compact")}
         </div>
       </button>
       <div class="card-actions">
@@ -3129,6 +3668,7 @@ function renderLeadBrief() {
     return;
   }
   const intelligence = calculateLeadIntelligence(lead);
+  const health = calculateOpportunityHealth(lead);
 
   leadBrief.innerHTML = `
     <div>
@@ -3139,9 +3679,11 @@ function renderLeadBrief() {
       <div><span>Value</span><strong>${formatter.format(lead.value)}</strong></div>
       <div><span>Lead Intelligence</span><strong>${intelligence.score}/100</strong></div>
       <div><span>Score label</span><strong>${escapeHtml(intelligence.label)}</strong></div>
+      <div><span>Opportunity Health</span><strong>${health.score}/100 ${escapeHtml(health.label)}</strong></div>
       <div><span>Recommended</span><strong>${escapeHtml(intelligence.recommendedAction)}</strong></div>
     </div>
     ${renderLeadIntelligencePanel(lead, "compact")}
+    ${renderOpportunityHealthPanel(lead, "compact")}
     <div class="brief-actions">
       <button class="primary-button" data-follow-up-lead="${lead.id}" type="button">Add follow-up</button>
       <button class="secondary-button" data-open-lead-detail="${lead.id}" type="button">Open details</button>
@@ -3154,6 +3696,10 @@ function renderLeadBrief() {
     ${renderSequencePreview(lead)}
     <p>${escapeHtml(lead.notes)}</p>
     <strong>${escapeHtml(lead.nextAction)}</strong>
+    <section class="detail-section compact-next-action">
+      <p class="eyebrow">Recommended Next Action</p>
+      <strong>${escapeHtml(health.recommendedAction)}</strong>
+    </section>
     <div class="activity-timeline">
       <p class="eyebrow">Activity</p>
       ${renderLeadActivities(lead.id)}
@@ -3205,6 +3751,7 @@ function closeLeadDetailModal() {
 
 function renderLeadDetail(lead) {
   const intelligence = calculateLeadIntelligence(lead);
+  const health = calculateOpportunityHealth(lead);
   document.querySelector("#leadDetailHeading").textContent = lead.company;
   leadDetailContent.innerHTML = `
     <div class="detail-hero">
@@ -3229,11 +3776,16 @@ function renderLeadDetail(lead) {
         <strong>${formatter.format(weightedLeadValue(lead))}</strong>
       </article>
       <article>
+        <span>Opportunity Health</span>
+        <strong>${health.score}/100 ${escapeHtml(health.label)}</strong>
+      </article>
+      <article>
         <span>Close odds</span>
         <strong>${Math.round((stageProbabilities[lead.stage] || 0) * 100)}%</strong>
       </article>
     </div>
     ${renderLeadIntelligencePanel(lead)}
+    ${renderOpportunityHealthPanel(lead)}
     <div class="detail-actions">
       <button class="primary-button" data-detail-follow-up="${lead.id}" type="button">Add follow-up</button>
       <button class="secondary-button" data-detail-sequence="${lead.id}" type="button">Start sequence</button>
@@ -3241,9 +3793,14 @@ function renderLeadDetail(lead) {
       <button class="secondary-button" data-detail-edit="${lead.id}" type="button">Edit lead</button>
     </div>
     ${renderAssistantCard(lead, "detail")}
+    ${renderSalesCopilotPanel(lead, "detail")}
     <section class="detail-section">
       <p class="eyebrow">Next action</p>
       <strong>${escapeHtml(lead.nextAction)}</strong>
+    </section>
+    <section class="detail-section">
+      <p class="eyebrow">Recommended Next Action</p>
+      <strong>${escapeHtml(health.recommendedAction)}</strong>
     </section>
     <section class="detail-section">
       <p class="eyebrow">Notes</p>
@@ -3282,6 +3839,8 @@ function renderLeadDetail(lead) {
     await applyAssistantSuggestion(lead.id);
     renderLeadDetail(state.leads.find((item) => item.id === lead.id) || lead);
   });
+
+  bindSalesCopilotActions(leadDetailContent);
 
   leadDetailContent.querySelector("[data-detail-outcome]")?.addEventListener("click", async (event) => {
     await updateLeadOutcome(lead.id, event.currentTarget.dataset.outcome);
@@ -5441,6 +6000,305 @@ function trendLabel(trend) {
   return "Flat";
 }
 
+function renderRecruitingInbox() {
+  if (!recruitingInbox) return;
+  const candidates = recruitingInboxCandidates();
+  const converted = candidates.filter((candidate) => candidate.convertedLeadId).length;
+  const reviewed = candidates.filter((candidate) => candidate.reviewedAt).length;
+  const booked = candidates.filter((candidate) => /booked/i.test(candidate.interviewStatus)).length;
+
+  recruitingInboxSummary.innerHTML = `
+    <article>
+      <span>Synced candidates</span>
+      <strong>${candidates.length}</strong>
+    </article>
+    <article>
+      <span>Interview status</span>
+      <strong>${booked} booked</strong>
+    </article>
+    <article>
+      <span>Reviewed</span>
+      <strong>${reviewed}</strong>
+    </article>
+    <article>
+      <span>Converted</span>
+      <strong>${converted}</strong>
+    </article>
+  `;
+
+  if (!candidates.length) {
+    recruitingCandidateList.innerHTML = "<p class=\"empty-state\">No synced recruits yet. Open Kira Recruit, sync applicants, then sync the CRM feed.</p>";
+    recruitingInboxMessage.textContent = "Demo mode reads Kira Recruit from shared localStorage when Supabase keys are not configured.";
+    return;
+  }
+
+  recruitingCandidateList.innerHTML = candidates.map(renderRecruitingCandidateCard).join("");
+  recruitingCandidateList.querySelectorAll("[data-recruit-action]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const action = button.dataset.recruitAction;
+      const candidateId = button.dataset.recruitCandidate;
+      if (action === "convert") await convertRecruitingCandidate(candidateId);
+      if (action === "task") await createRecruitingFollowUpTask(candidateId);
+      if (action === "review") await markRecruitingCandidateReviewed(candidateId);
+    });
+  });
+}
+
+function renderRecruitingCandidateCard(candidate) {
+  return `
+    <article class="recruiting-candidate-card ${candidate.convertedLeadId ? "converted" : ""}" data-recruit-candidate-card="${escapeHtml(candidate.id)}">
+      <div class="recruiting-candidate-head">
+        <div>
+          <strong>${escapeHtml(candidate.name)}</strong>
+          <span>${escapeHtml(candidate.role)} · ${escapeHtml(candidate.source)}</span>
+        </div>
+        <b>${candidate.score}</b>
+      </div>
+      <div class="recruiting-candidate-grid">
+        <article><span>Interview status</span><strong>${escapeHtml(candidate.interviewStatus)}</strong></article>
+        <article><span>Next action</span><strong>${escapeHtml(candidate.nextAction)}</strong></article>
+        <article><span>Email</span><strong>${escapeHtml(candidate.email || "Not synced")}</strong></article>
+        <article><span>Phone</span><strong>${escapeHtml(candidate.phone || "Not synced")}</strong></article>
+      </div>
+      <div class="candidate-tags">
+        <span>${candidate.reviewedAt ? "Reviewed" : "Needs review"}</span>
+        <span>${candidate.convertedLeadId ? "Converted to CRM" : "Not converted"}</span>
+      </div>
+      <div class="recruiting-candidate-actions">
+        <button class="primary-button" data-recruit-action="convert" data-recruit-candidate="${escapeHtml(candidate.id)}" type="button" ${candidate.convertedLeadId ? "disabled" : ""}>Convert to CRM contact/lead</button>
+        <button class="secondary-button" data-recruit-action="task" data-recruit-candidate="${escapeHtml(candidate.id)}" type="button">Create follow-up task</button>
+        <button class="secondary-button" data-recruit-action="review" data-recruit-candidate="${escapeHtml(candidate.id)}" type="button" ${candidate.reviewedAt ? "disabled" : ""}>Mark as reviewed</button>
+      </div>
+    </article>
+  `;
+}
+
+function recruitingInboxCandidates() {
+  const feedCandidates = readRecruitingFeedCandidates();
+  const storedById = new Map((state.recruitingCandidates || []).map((candidate) => [candidate.id, candidate]));
+  const merged = [...feedCandidates, ...(state.recruitingCandidates || [])]
+    .map((candidate) => normalizedRecruitingCandidate({ ...candidate, ...(storedById.get(candidate.id) || {}) }))
+    .filter((candidate) => candidate.name);
+  const unique = new Map();
+  merged.forEach((candidate) => {
+    unique.set(candidate.id, { ...(unique.get(candidate.id) || {}), ...candidate });
+  });
+  const overrides = recruitingInboxOverrides();
+  return [...unique.values()]
+    .map((candidate) => ({ ...candidate, ...(overrides[candidate.id] || {}) }))
+    .sort((left, right) => Number(right.score || 0) - Number(left.score || 0) || left.name.localeCompare(right.name));
+}
+
+function readRecruitingFeedCandidates() {
+  const feed = readRecruitingFeed();
+  const recruits = Array.isArray(feed?.recruits) ? feed.recruits : [];
+  return recruits.map((candidate) => normalizedRecruitingCandidate(candidate, feed));
+}
+
+function readRecruitingFeed() {
+  for (const key of [recruitingLegacyFeedKey, recruitingSharedFeedKey]) {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(key) || "null");
+      if (parsed?.app === "Kira Recruit") return parsed;
+    } catch {
+      localStorage.removeItem(key);
+    }
+  }
+  return null;
+}
+
+function normalizedRecruitingCandidate(candidate = {}, feed = {}) {
+  const externalId = candidate.externalId || candidate.id || candidate.email || candidate.name;
+  const role = candidate.role || candidate.jobTitle || feed.job?.title || "Sales candidate";
+  const interview = (feed.interviews || []).find((item) => item.candidateId === candidate.id || item.email === candidate.email);
+  return {
+    id: String(externalId || crypto.randomUUID()),
+    externalId: String(externalId || ""),
+    name: String(candidate.name || "").trim(),
+    role,
+    source: candidate.source || "Kira Recruit",
+    interviewStatus: candidate.interviewStatus || interview?.status || candidate.status || "New",
+    interviewAt: candidate.interviewAt || interview?.startsAt || "",
+    score: clampScore(Number(candidate.score || 65)),
+    nextAction: candidate.nextAction || defaultRecruitingNextAction(candidate, interview),
+    email: candidate.email || "",
+    phone: candidate.phone || "",
+    experience: candidate.experience || "",
+    skills: Array.isArray(candidate.skills) ? candidate.skills : [],
+    syncedAt: candidate.syncedAt || feed.syncedAt || new Date().toISOString(),
+    reviewedAt: candidate.reviewedAt || "",
+    convertedLeadId: candidate.convertedLeadId || "",
+    taskCreatedAt: candidate.taskCreatedAt || "",
+  };
+}
+
+function defaultRecruitingNextAction(candidate, interview) {
+  if (interview?.startsAt) return `Prepare for interview on ${formatActivityDate(interview.startsAt)}.`;
+  if ((candidate.score || 0) >= 85) return "Call candidate and confirm availability.";
+  if ((candidate.score || 0) >= 75) return "Book interview call.";
+  return "Review fit before outreach.";
+}
+
+function recruitingInboxOverrides() {
+  try {
+    return JSON.parse(localStorage.getItem(recruitingInboxStateKey()) || "{}");
+  } catch {
+    localStorage.removeItem(recruitingInboxStateKey());
+    return {};
+  }
+}
+
+function saveRecruitingInboxOverride(candidate) {
+  const overrides = recruitingInboxOverrides();
+  overrides[candidate.id] = {
+    reviewedAt: candidate.reviewedAt || "",
+    convertedLeadId: candidate.convertedLeadId || "",
+    taskCreatedAt: candidate.taskCreatedAt || "",
+    interviewStatus: candidate.interviewStatus || "New",
+  };
+  localStorage.setItem(recruitingInboxStateKey(), JSON.stringify(overrides));
+}
+
+function recruitingInboxStateKey() {
+  return `closepilot-recruiting-inbox:${workspaceSetupSettings().name}`;
+}
+
+async function syncRecruitingFeedIntoState({ logImport = false } = {}) {
+  const feedCandidates = readRecruitingFeedCandidates();
+  const candidates = mergeRecruitingCandidates(state.recruitingCandidates || [], feedCandidates);
+  state.recruitingCandidates = candidates;
+  await saveRecruitingCandidates(candidates);
+
+  if (logImport) {
+    await store.createActivity({
+      leadId: null,
+      type: "recruiting-import",
+      message: feedCandidates.length
+        ? `Imported ${feedCandidates.length} candidate${feedCandidates.length === 1 ? "" : "s"} from Kira Recruit.`
+        : "Recruiting feed import checked; no candidates were available.",
+    });
+    recruitingInboxMessage.textContent = feedCandidates.length
+      ? `${feedCandidates.length} Kira Recruit candidate records synced into the CRM inbox.`
+      : "No Kira Recruit feed found yet.";
+  }
+
+  renderRecruitingInbox();
+  renderActivityFeed();
+}
+
+function mergeRecruitingCandidates(existing = [], incoming = []) {
+  const merged = new Map(existing.map((candidate) => [candidate.id, normalizedRecruitingCandidate(candidate)]));
+  incoming.forEach((candidate) => {
+    const previous = merged.get(candidate.id) || {};
+    merged.set(candidate.id, normalizedRecruitingCandidate({ ...previous, ...candidate }));
+  });
+  return [...merged.values()].sort((left, right) => Number(right.score || 0) - Number(left.score || 0));
+}
+
+async function saveRecruitingCandidates(candidates) {
+  state.recruitingCandidates = candidates.map((candidate) => normalizedRecruitingCandidate(candidate));
+  if (store.saveRecruitingCandidates) {
+    await store.saveRecruitingCandidates(state.recruitingCandidates);
+  }
+}
+
+async function persistRecruitingCandidate(candidate) {
+  const normalized = normalizedRecruitingCandidate(candidate);
+  state.recruitingCandidates = mergeRecruitingCandidates(state.recruitingCandidates || [], [normalized]);
+  saveRecruitingInboxOverride(normalized);
+  if (store.updateRecruitingCandidate) {
+    await store.updateRecruitingCandidate(normalized);
+  } else {
+    await saveRecruitingCandidates(state.recruitingCandidates);
+  }
+}
+
+async function convertRecruitingCandidate(candidateId) {
+  const candidate = recruitingInboxCandidates().find((item) => item.id === candidateId);
+  if (!candidate || candidate.convertedLeadId) return;
+  const lead = await store.createLead({
+    name: candidate.name,
+    company: candidate.role,
+    stage: "new",
+    value: Math.max(0, Math.round(candidate.score * 100)),
+    score: candidate.score,
+    notes: `${candidate.experience || "Recruiting candidate"} Skills: ${candidate.skills.join(", ") || "Not synced"}.`,
+    nextAction: candidate.nextAction,
+    source: "Kira Recruit",
+  });
+  const updatedCandidate = {
+    ...candidate,
+    convertedLeadId: lead.id,
+    reviewedAt: candidate.reviewedAt || new Date().toISOString(),
+    interviewStatus: "Converted",
+  };
+  await persistRecruitingCandidate(updatedCandidate);
+  await store.createActivity({
+    leadId: lead.id,
+    type: "recruiting-conversion",
+    message: `${candidate.name} converted from Kira Recruit into CRM leads.`,
+  });
+  await store.createTask({
+    text: `Follow up with ${candidate.name} from Kira Recruit about ${candidate.role}`,
+    done: false,
+    due: "today",
+  });
+  await store.createActivity({
+    leadId: lead.id,
+    type: "task",
+    message: `Recruiting follow-up task created for ${candidate.name}.`,
+  });
+  state.selectedLeadId = lead.id;
+  recruitingInboxMessage.textContent = `${candidate.name} converted to CRM contact/lead.`;
+  await reloadState();
+  setActivePage("recruiting");
+  renderRoute();
+}
+
+async function createRecruitingFollowUpTask(candidateId) {
+  const candidate = recruitingInboxCandidates().find((item) => item.id === candidateId);
+  if (!candidate) return;
+  await store.createTask({
+    text: `Follow up with recruiting candidate ${candidate.name} for ${candidate.role}`,
+    done: false,
+    due: "today",
+  });
+  const updatedCandidate = {
+    ...candidate,
+    taskCreatedAt: new Date().toISOString(),
+  };
+  await persistRecruitingCandidate(updatedCandidate);
+  await store.createActivity({
+    leadId: candidate.convertedLeadId || null,
+    type: "task",
+    message: `Recruiting follow-up task created for ${candidate.name}.`,
+  });
+  recruitingInboxMessage.textContent = `Follow-up task created for ${candidate.name}.`;
+  await reloadState();
+  setActivePage("recruiting");
+  renderRoute();
+}
+
+async function markRecruitingCandidateReviewed(candidateId) {
+  const candidate = recruitingInboxCandidates().find((item) => item.id === candidateId);
+  if (!candidate) return;
+  const updatedCandidate = {
+    ...candidate,
+    reviewedAt: new Date().toISOString(),
+    interviewStatus: candidate.interviewStatus === "New" ? "Reviewed" : candidate.interviewStatus,
+  };
+  await persistRecruitingCandidate(updatedCandidate);
+  await store.createActivity({
+    leadId: candidate.convertedLeadId || null,
+    type: "recruiting-reviewed",
+    message: `${candidate.name} marked as reviewed from Recruiting Inbox.`,
+  });
+  recruitingInboxMessage.textContent = `${candidate.name} marked as reviewed.`;
+  await reloadState();
+  setActivePage("recruiting");
+  renderRoute();
+}
+
 const communicationMessageTypeLabels = {
   "incoming-text": "Incoming Text",
   "outgoing-text": "Outgoing Text",
@@ -5448,6 +6306,9 @@ const communicationMessageTypeLabels = {
   voicemail: "Voicemail",
   email: "Email",
   appointment: "Appointment",
+  note: "Note",
+  "task-completion": "Task Completion",
+  "automation-event": "Automation Event",
   "system-note": "System Notes",
 };
 
@@ -5459,32 +6320,42 @@ const communicationComposerTabs = [
 
 const communicationTemplates = {
   text: [
-    "Quick estimate check-in",
+    "New lead follow-up",
     "Appointment confirmation",
-    "Missed call follow-up",
+    "Estimate follow-up",
+    "No-answer follow-up",
+    "Review request",
+    "Referral request",
+    "Win-back message",
   ],
   email: [
-    "Estimate recap email",
-    "Project scope summary",
-    "Deposit request email",
+    "New lead follow-up",
+    "Appointment confirmation",
+    "Estimate follow-up",
+    "No-answer follow-up",
+    "Review request",
+    "Referral request",
+    "Win-back message",
   ],
   note: [
-    "Objection summary",
-    "Decision maker note",
-    "Follow-up context",
+    "New lead follow-up",
+    "Appointment confirmation",
+    "Estimate follow-up",
+    "No-answer follow-up",
+    "Review request",
+    "Referral request",
+    "Win-back message",
   ],
 };
 
 const communicationTemplateCopy = {
-  "Quick estimate check-in": "Hi {{name}}, wanted to check in on the estimate for {{projectType}}. Any questions I can clear up today?",
-  "Appointment confirmation": "Hi {{name}}, confirming your estimate appointment. Does the current time still work for you?",
-  "Missed call follow-up": "Hi {{name}}, sorry I missed you. I can help with {{projectType}} when you have a minute.",
-  "Estimate recap email": "Hi {{name}},\n\nHere is a quick recap for {{projectType}} at {{address}}. The projected value is {{value}} and the next step is {{nextAction}}.\n\nBest,\nCameron",
-  "Project scope summary": "Hi {{name}},\n\nI captured the project scope, timeline, and next steps for {{projectType}}. Reply with anything you want adjusted before we move forward.",
-  "Deposit request email": "Hi {{name}},\n\nTo reserve the project window, you can place the deposit today. I can resend the secure payment link if helpful.",
-  "Objection summary": "{{name}} raised questions about pricing, timing, and project scope. Next best move: {{nextAction}}",
-  "Decision maker note": "{{name}} appears to be the primary contact. Confirm if anyone else needs to approve the project.",
-  "Follow-up context": "Follow-up should reference {{projectType}}, the quoted value of {{value}}, and the current stage: {{stage}}.",
+  "New lead follow-up": "Hi {{name}}, this is Cameron with Kira Home. I saw you were interested in {{projectType}} at {{address}}. What would be the easiest time to talk through the next step?",
+  "Appointment confirmation": "Hi {{name}}, confirming your appointment for {{projectType}}. Does the current time still work for you?",
+  "Estimate follow-up": "Hi {{name}}, quick follow-up on the estimate for {{projectType}}. Any questions I can answer before we lock in the next step?",
+  "No-answer follow-up": "Hi {{name}}, sorry I missed you. I can help with {{projectType}} when you have a minute. Want me to call back later today?",
+  "Review request": "Hi {{name}}, thank you again for working with Kira Home. Would you be open to leaving a quick review when you have a minute?",
+  "Referral request": "Hi {{name}}, if you know a neighbor who needs help with a similar project, I would be happy to take care of them too.",
+  "Win-back message": "Hi {{name}}, checking back in on {{projectType}}. Should we keep this moving, adjust the plan, or pause it for now?",
 };
 
 const communicationQuickReplies = [
@@ -5529,6 +6400,7 @@ function communicationConversations() {
       const profile = communicationCustomerProfile(lead, index);
       const messages = [
         ...defaultCommunicationMessages(lead, profile, index),
+        ...crmCommunicationEventsForLead(lead, profile),
         ...(savedMessages[lead.id] || []).map(normalizedCommunicationMessage),
       ].sort((left, right) => new Date(left.createdAt) - new Date(right.createdAt));
       const lastMessage = messages[messages.length - 1];
@@ -5553,6 +6425,10 @@ function communicationConversations() {
 
 function filteredCommunicationConversations(conversations) {
   const query = communicationSearchInput.value.trim().toLowerCase();
+  const followUpLeadIds =
+    communicationFilter === "missed-follow-ups"
+      ? new Set(buildSmartFollowUpQueue().map((item) => item.lead.id))
+      : new Set();
   return conversations.filter((conversation) => {
     const searchable = [
       conversation.lead.name,
@@ -5561,17 +6437,23 @@ function filteredCommunicationConversations(conversations) {
       conversation.profile.email,
       conversation.profile.address,
       conversation.lastMessage?.body,
+      conversation.messages.map((message) => message.body).join(" "),
     ]
       .join(" ")
       .toLowerCase();
     const matchesSearch = !query || searchable.includes(query);
     if (!matchesSearch) return false;
-    if (communicationFilter === "unread") return conversation.unreadCount > 0;
+    if (communicationFilter === "all") return true;
     if (communicationFilter === "calls") return conversation.messages.some((message) => ["call-log", "voicemail"].includes(message.type));
     if (communicationFilter === "texts") return conversation.messages.some((message) => ["incoming-text", "outgoing-text"].includes(message.type));
     if (communicationFilter === "emails") return conversation.messages.some((message) => message.type === "email");
-    if (communicationFilter === "appointments") return conversation.messages.some((message) => message.type === "appointment");
-    if (communicationFilter === "pinned") return conversation.pinned;
+    if (communicationFilter === "notes") return conversation.messages.some((message) => ["note", "system-note", "task-completion", "automation-event"].includes(message.type));
+    if (communicationFilter === "missed-follow-ups") {
+      return (
+        followUpLeadIds.has(conversation.lead.id) ||
+        conversation.messages.some((message) => /no answer|missed|voicemail|overdue/i.test(`${message.body} ${message.outcome}`))
+      );
+    }
     return true;
   });
 }
@@ -5668,12 +6550,16 @@ function renderConversationMessage(message) {
   return `
     <article class="message-bubble ${message.type} ${message.direction || "system"}">
       <div class="message-bubble-header">
-        <span>${escapeHtml(communicationMessageTypeLabels[message.type] || "Message")}</span>
+        <div>
+          <span>${escapeHtml(communicationMessageTypeLabels[message.type] || "Message")}</span>
+          <small>Rep: ${escapeHtml(message.rep || "ClosePilot")}</small>
+        </div>
         <time>${formatActivityDate(message.createdAt)}</time>
       </div>
       <p>${escapeHtml(message.body)}</p>
       <div class="message-bubble-footer">
         <span>Status: ${escapeHtml(message.status || "Logged")}</span>
+        <span>Outcome: ${escapeHtml(message.outcome || "Logged")}</span>
         <span>${message.read ? "Read" : "Unread"}</span>
         ${attachments.length ? `<span>Attachments: ${attachments.map(escapeHtml).join(", ")}</span>` : "<span>Attachments: none</span>"}
       </div>
@@ -5692,6 +6578,20 @@ function renderMessageComposer(conversation) {
         : "Send Text";
 
   messageComposer.innerHTML = `
+    <label class="composer-customer-select">
+      Customer
+      <select id="communicationCustomerSelect">
+        ${communicationConversations()
+          .map(
+            (item) => `
+              <option value="${escapeHtml(item.id)}" ${item.id === conversation.id ? "selected" : ""}>
+                ${escapeHtml(item.lead.name)} · ${escapeHtml(item.lead.company)}
+              </option>
+            `,
+          )
+          .join("")}
+      </select>
+    </label>
     <div class="composer-tabs" role="tablist" aria-label="Composer type">
       ${communicationComposerTabs
         .map(
@@ -5741,6 +6641,11 @@ function renderMessageComposer(conversation) {
     <p class="composer-status" id="communicationComposerStatus" role="status"></p>
   `;
 
+  messageComposer.querySelector("#communicationCustomerSelect").addEventListener("change", (event) => {
+    selectedConversationId = event.target.value;
+    renderCommunicationsPage();
+  });
+
   messageComposer.querySelectorAll("[data-composer-mode]").forEach((button) => {
     button.addEventListener("click", () => {
       communicationComposerMode = button.dataset.composerMode;
@@ -5780,6 +6685,14 @@ function renderMessageComposer(conversation) {
 
 function renderCallControls(conversation) {
   const isActive = communicationCallState.active && communicationCallState.leadId === conversation.lead.id;
+  const callOutcomes = [
+    ["connected", "Connected"],
+    ["no-answer", "No answer"],
+    ["left-voicemail", "Left voicemail"],
+    ["bad-number", "Bad number"],
+    ["booked-appointment", "Booked appointment"],
+    ["not-interested", "Not interested"],
+  ];
   callControls.innerHTML = `
     <div class="call-primary">
       <button class="call-button" id="communicationCallButton" type="button">${isActive ? "Calling" : "Call"}</button>
@@ -5796,6 +6709,14 @@ function renderCallControls(conversation) {
       <button data-call-control="record" type="button">Record</button>
       <button class="end-call-button" id="communicationEndCallButton" type="button" ${isActive ? "" : "disabled"}>End Call</button>
     </div>
+    <div class="call-log-actions">
+      <span>One-click call log</span>
+      <div>
+        ${callOutcomes
+          .map(([id, label]) => `<button data-call-outcome="${id}" type="button">${escapeHtml(label)}</button>`)
+          .join("")}
+      </div>
+    </div>
   `;
 
   callControls.querySelector("#communicationCallButton").addEventListener("click", () => {
@@ -5809,6 +6730,10 @@ function renderCallControls(conversation) {
 
   callControls.querySelectorAll("[data-call-control]").forEach((button) => {
     button.addEventListener("click", () => handleCallControl(button.dataset.callControl, conversation));
+  });
+
+  callControls.querySelectorAll("[data-call-outcome]").forEach((button) => {
+    button.addEventListener("click", () => logCommunicationCallOutcome(button.dataset.callOutcome, conversation));
   });
 
   syncCommunicationCallTimer();
@@ -5912,11 +6837,13 @@ function renderQuickActionsPanel(conversation) {
   }
 
   const actions = [
-    ["schedule-estimate", "Schedule Estimate"],
-    ["create-task", "Create Task"],
-    ["send-quote", "Send Quote"],
-    ["request-review", "Request Review"],
-    ["collect-deposit", "Collect Deposit"],
+    ["create-follow-up", "Create Follow-Up Task"],
+    ["schedule-appointment", "Schedule Appointment"],
+    ["move-stage", "Move Lead Stage"],
+    ["mark-hot", "Mark Hot"],
+    ["mark-warm", "Mark Warm"],
+    ["mark-cold", "Mark Cold"],
+    ["add-note", "Add Note"],
   ];
   quickActionsPanel.innerHTML = `
     <p class="eyebrow">Quick actions</p>
@@ -5994,6 +6921,30 @@ function defaultCommunicationMessages(lead, profile, index = 0) {
       read: true,
     },
     {
+      id: `default-${lead.id}-automation`,
+      type: "automation-event",
+      direction: "system",
+      body: `Automation event: Lead Intelligence scored ${lead.company} and queued the next best action.`,
+      createdAt: communicationTimestamp(4 + offset, 11, 5),
+      status: "Completed",
+      outcome: "Automation queued",
+      attachments: [],
+      read: true,
+      rep: "ClosePilot",
+    },
+    {
+      id: `default-${lead.id}-task-complete`,
+      type: "task-completion",
+      direction: "system",
+      body: `Task completion: Cameron reviewed ${lead.source || "source"} context and confirmed the next action.`,
+      createdAt: communicationTimestamp(4 + offset, 15, 35),
+      status: "Completed",
+      outcome: "Task completed",
+      attachments: [],
+      read: true,
+      rep: "Cameron Lee",
+    },
+    {
       id: `default-${lead.id}-incoming`,
       type: "incoming-text",
       direction: "incoming",
@@ -6056,6 +7007,81 @@ function defaultCommunicationMessages(lead, profile, index = 0) {
   ].map(normalizedCommunicationMessage);
 }
 
+function crmCommunicationEventsForLead(lead, profile) {
+  const activityEvents = (state.activities || [])
+    .filter((activity) => activity.leadId === lead.id)
+    .map((activity) =>
+      normalizedCommunicationMessage({
+        id: `activity-${activity.id}`,
+        type: communicationTypeForActivity(activity),
+        direction: "system",
+        body: activity.message,
+        createdAt: activity.createdAt,
+        status: "Synced",
+        outcome: activityOutcomeLabel(activity),
+        rep: activity.type === "automation" ? "ClosePilot" : "Cameron Lee",
+      }),
+    );
+
+  const appointmentEvents = (state.appointments || [])
+    .filter((appointment) => appointment.leadId === lead.id)
+    .map((appointment) =>
+      normalizedCommunicationMessage({
+        id: `appointment-${appointment.id}`,
+        type: "appointment",
+        direction: "system",
+        body: `${appointment.company || lead.company} appointment with ${appointment.closer || "round robin closer"}: ${appointment.notes || profile.projectType}.`,
+        createdAt: appointment.createdAt || appointment.startsAt,
+        status: "Booked",
+        outcome: `Scheduled for ${formatActivityDate(appointment.startsAt)}`,
+        rep: appointment.closer || "ClosePilot",
+      }),
+    );
+
+  const taskCompletionEvents = (state.tasks || [])
+    .filter((task) => task.done && taskBelongsToLead(task, lead))
+    .map((task) =>
+      normalizedCommunicationMessage({
+        id: `task-${task.id}`,
+        type: "task-completion",
+        direction: "system",
+        body: `Task completed: ${task.text}`,
+        createdAt: task.completedAt || task.createdAt || communicationTimestamp(0, 16, 0),
+        status: "Completed",
+        outcome: "Task completed",
+        rep: "Cameron Lee",
+      }),
+    );
+
+  return [...activityEvents, ...appointmentEvents, ...taskCompletionEvents];
+}
+
+function communicationTypeForActivity(activity = {}) {
+  const text = `${activity.type || ""} ${activity.message || ""}`;
+  if (/automation/i.test(activity.type)) return "automation-event";
+  if (/task.*completed|completed task/i.test(text)) return "task-completion";
+  if (/call|dial|voicemail/i.test(text)) return "call-log";
+  if (/email/i.test(text)) return "email";
+  if (/text|sms/i.test(text)) return "outgoing-text";
+  if (/note/i.test(activity.type)) return "note";
+  return "system-note";
+}
+
+function activityOutcomeLabel(activity = {}) {
+  const type = activity.type || "activity";
+  if (/automation/i.test(type)) return "Automation triggered";
+  if (/call|dial/i.test(`${type} ${activity.message}`)) return "Call logged";
+  if (/task/i.test(`${type} ${activity.message}`)) return "Task updated";
+  if (/stage/i.test(type)) return "Stage updated";
+  if (/outcome/i.test(type)) return "Outcome updated";
+  return "Synced to CRM";
+}
+
+function taskBelongsToLead(task, lead) {
+  const text = `${task.text || ""}`.toLowerCase();
+  return text.includes(lead.name.toLowerCase()) || text.includes(lead.company.toLowerCase());
+}
+
 function communicationAssistantForConversation(conversation) {
   const topFactor = conversation.intelligence.factors[0]?.label || "Follow-up context";
   const sentiment = conversation.intelligence.score >= 85 ? "Positive buying intent" : conversation.intelligence.score >= 70 ? "Curious but needs clarity" : "Needs nurturing";
@@ -6085,13 +7111,16 @@ function nextCommunicationFollowUp(conversation) {
 
 function normalizedCommunicationMessage(message = {}) {
   const type = communicationMessageTypeLabels[message.type] ? message.type : "system-note";
+  const direction = message.direction || communicationDirectionForType(type);
   return {
     id: message.id || crypto.randomUUID(),
     type,
-    direction: message.direction || communicationDirectionForType(type),
+    direction,
     body: String(message.body || "").trim() || "Communication logged.",
     createdAt: message.createdAt || new Date().toISOString(),
     status: message.status || "Logged",
+    outcome: message.outcome || message.status || "Logged",
+    rep: message.rep || (direction === "system" ? "ClosePilot" : "Cameron Lee"),
     attachments: normalizedMessageAttachments(message.attachments),
     read: message.read !== false,
   };
@@ -6185,13 +7214,19 @@ async function handleComposerAction(action, conversation) {
 
   if (action === "schedule") {
     const scheduledBody = body || personalizeCommunicationCopy("Hi {{name}}, following up on {{projectType}} tomorrow morning.", conversation);
-    addCommunicationMessage(conversation.lead.id, {
+    const scheduled = addCommunicationMessage(conversation.lead.id, {
       type: communicationComposerMode === "email" ? "email" : "outgoing-text",
       direction: "outgoing",
       body: `Scheduled for tomorrow at 9:00 AM: ${scheduledBody}`,
       status: "Scheduled",
+      outcome: "Message scheduled",
       attachments: [],
       read: true,
+    });
+    await store.createActivity({
+      leadId: conversation.lead.id,
+      type: "communication",
+      message: `${communicationMessageTypeLabels[scheduled.type]} scheduled from Communications.`,
     });
     clearCommunicationDraft(conversation.lead.id, communicationComposerMode);
     communicationsStatus.textContent = "Message scheduled for tomorrow at 9:00 AM.";
@@ -6217,18 +7252,52 @@ async function handleComposerAction(action, conversation) {
       direction: communicationComposerMode === "note" ? "system" : "outgoing",
       body,
       status: communicationComposerMode === "note" ? "Logged" : "Sent",
+      outcome: communicationComposerMode === "note" ? "Internal note saved" : "Message sent",
       attachments: communicationComposerMode === "email" ? [`${conversation.lead.company.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-attachment.pdf`] : [],
       read: true,
     });
     clearCommunicationDraft(conversation.lead.id, communicationComposerMode);
     await store.createActivity({
       leadId: conversation.lead.id,
-      type: "communication",
-      message: `${communicationMessageTypeLabels[sent.type]} logged from Communications.`,
+      type: communicationComposerMode === "note" ? "note" : "communication",
+      message: `${communicationMessageTypeLabels[sent.type]} logged from Communications: ${body.slice(0, 90)}${body.length > 90 ? "..." : ""}`,
     });
+    completeCommunicationFollowUpForLead(conversation.lead.id);
+    await runCommunicationAutomationForMessage(conversation, sent);
     communicationsStatus.textContent = `${communicationMessageTypeLabels[sent.type]} sent for ${conversation.lead.name}.`;
     showCommunicationToast(`${communicationMessageTypeLabels[sent.type]} sent`, `${conversation.lead.name}'s timeline was updated.`);
     renderCommunicationsPage();
+  }
+}
+
+function completeCommunicationFollowUpForLead(leadId) {
+  const itemId = `follow-up-${leadId}`;
+  if (buildSmartFollowUpQueue().some((item) => item.id === itemId)) {
+    setFollowUpItemComplete(itemId);
+  }
+}
+
+async function runCommunicationAutomationForMessage(conversation, message) {
+  const body = `${message.body || ""} ${message.outcome || ""}`;
+  const runs = [];
+
+  if (/no answer|missed|voicemail/i.test(body)) {
+    runs.push(...(await runAutomationTrigger("no-response", conversation.lead, { force: true })));
+  }
+
+  if (message.type === "email" && /estimate|quote|proposal/i.test(body)) {
+    runs.push(...(await runAutomationTrigger("stage-proposal", conversation.lead, { force: true })));
+  }
+
+  if (runs.length) {
+    addCommunicationMessage(conversation.lead.id, {
+      type: "automation-event",
+      direction: "system",
+      body: `${runs.length} automation ${runs.length === 1 ? "workflow" : "workflows"} triggered from Communications.`,
+      status: "Completed",
+      outcome: "Automation triggered",
+      rep: "ClosePilot",
+    });
   }
 }
 
@@ -6277,7 +7346,7 @@ function startCommunicationCall(conversation) {
   renderCallControls(conversation);
 }
 
-function endCommunicationCall(conversation) {
+async function endCommunicationCall(conversation) {
   if (!communicationCallState.active) return;
   const seconds = Math.max(1, Math.round((Date.now() - communicationCallState.startedAt) / 1000));
   addCommunicationMessage(conversation.lead.id, {
@@ -6288,6 +7357,12 @@ function endCommunicationCall(conversation) {
     attachments: [],
     read: true,
   });
+  await store.createActivity({
+    leadId: conversation.lead.id,
+    type: "call",
+    message: `Call completed from Communications. Duration ${formatCallDuration(seconds)}.`,
+  });
+  completeCommunicationFollowUpForLead(conversation.lead.id);
   communicationCallState = {
     active: false,
     leadId: null,
@@ -6321,79 +7396,194 @@ function handleCallControl(control, conversation) {
   renderCallControls(conversation);
 }
 
-async function handleCommunicationQuickAction(action, conversation) {
+async function logCommunicationCallOutcome(outcome, conversation) {
+  const labels = {
+    connected: "Connected",
+    "no-answer": "No answer",
+    "left-voicemail": "Left voicemail",
+    "bad-number": "Bad number",
+    "booked-appointment": "Booked appointment",
+    "not-interested": "Not interested",
+  };
+  const label = labels[outcome] || "Call logged";
+
+  addCommunicationMessage(conversation.lead.id, {
+    type: "call-log",
+    direction: "outgoing",
+    body: `${label} call logged with ${conversation.lead.name}.`,
+    status: "Logged",
+    outcome: label,
+    read: true,
+    rep: "Cameron Lee",
+  });
+  await store.createActivity({
+    leadId: conversation.lead.id,
+    type: "call",
+    message: `${label} call logged from Communications.`,
+  });
+  completeCommunicationFollowUpForLead(conversation.lead.id);
+
+  if (outcome === "no-answer" || outcome === "left-voicemail") {
+    await createCommunicationFollowUpTask(conversation, label);
+    const runs = await runAutomationTrigger("no-response", conversation.lead, { force: true });
+    if (runs.length) {
+      addCommunicationMessage(conversation.lead.id, {
+        type: "automation-event",
+        direction: "system",
+        body: `No-response automation started after ${label.toLowerCase()} call outcome.`,
+        status: "Completed",
+        outcome: "Automation triggered",
+        rep: "ClosePilot",
+      });
+    }
+  }
+
+  if (outcome === "booked-appointment") {
+    await bookCommunicationAppointment(conversation, "Booked from one-click call outcome.");
+  }
+
+  if (outcome === "bad-number" || outcome === "not-interested") {
+    await updateCommunicationLeadTemperature(conversation, outcome === "bad-number" ? "cold" : "cold", `${label} call outcome.`);
+  }
+
+  communicationsStatus.textContent = `${label} call logged for ${conversation.lead.name}.`;
+  showCommunicationToast("Call outcome logged", `${label} updated the conversation timeline.`);
+  renderCommunicationsPage();
+}
+
+async function createCommunicationFollowUpTask(conversation, reason = "Follow-up") {
+  await store.createTask({
+    text: `Follow up with ${conversation.lead.name} after ${reason.toLowerCase()}`,
+    done: false,
+    due: "today",
+  });
+  await store.createActivity({
+    leadId: conversation.lead.id,
+    type: "task",
+    message: `Follow-up task created from Communications after ${reason.toLowerCase()}.`,
+  });
+  addCommunicationMessage(conversation.lead.id, {
+    type: "system-note",
+    direction: "system",
+    body: `Follow-up task created after ${reason.toLowerCase()}.`,
+    status: "Created",
+    outcome: "Follow-up task created",
+    rep: "ClosePilot",
+  });
+}
+
+async function bookCommunicationAppointment(conversation, notes = "Scheduled from Communications.") {
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   tomorrow.setHours(10, 0, 0, 0);
 
-  if (action === "schedule-estimate") {
-    await store.createAppointment({
-      leadId: conversation.lead.id,
-      leadName: conversation.lead.name,
-      company: conversation.lead.company,
-      startsAt: tomorrow.toISOString(),
-      closer: "Avery Brooks",
-      notes: `${conversation.profile.projectType} estimate from Communications quick action.`,
-    });
-    addCommunicationMessage(conversation.lead.id, {
-      type: "appointment",
-      direction: "system",
-      body: `Schedule Estimate created for ${formatActivityDate(tomorrow.toISOString())}.`,
-      status: "Booked",
-    });
-    communicationsStatus.textContent = "Estimate appointment scheduled.";
-    showCommunicationToast("Estimate scheduled", `${conversation.lead.name} is booked for tomorrow.`);
+  await store.createAppointment({
+    leadId: conversation.lead.id,
+    leadName: conversation.lead.name,
+    company: conversation.lead.company,
+    startsAt: tomorrow.toISOString(),
+    closer: "Avery Brooks",
+    notes: `${conversation.profile.projectType} appointment. ${notes}`,
+  });
+  await store.createActivity({
+    leadId: conversation.lead.id,
+    type: "appointment",
+    message: `Appointment booked from Communications for ${formatActivityDate(tomorrow.toISOString())}.`,
+  });
+  addCommunicationMessage(conversation.lead.id, {
+    type: "appointment",
+    direction: "system",
+    body: `Appointment scheduled for ${formatActivityDate(tomorrow.toISOString())}.`,
+    status: "Booked",
+    outcome: "Appointment booked",
+    rep: "ClosePilot",
+  });
+  completeCommunicationFollowUpForLead(conversation.lead.id);
+  await runAutomationTrigger("stage-qualified", conversation.lead, { force: true });
+}
+
+async function updateCommunicationLeadTemperature(conversation, temperature, reason = "Updated from Communications.") {
+  const scores = {
+    hot: 92,
+    warm: 78,
+    cold: 35,
+  };
+  const labels = {
+    hot: "Hot",
+    warm: "Warm",
+    cold: "Cold",
+  };
+  const updatedLead = {
+    ...conversation.lead,
+    score: scores[temperature] || conversation.lead.score,
+    nextAction: `${labels[temperature] || "Updated"} from Communications. ${reason}`,
+  };
+  await store.updateLead(updatedLead);
+  await store.createActivity({
+    leadId: conversation.lead.id,
+    type: "edited",
+    message: `Lead marked ${labels[temperature] || temperature} from Communications.`,
+  });
+  addCommunicationMessage(conversation.lead.id, {
+    type: "system-note",
+    direction: "system",
+    body: `Lead marked ${labels[temperature] || temperature}. ${reason}`,
+    status: "Updated",
+    outcome: `Marked ${labels[temperature] || temperature}`,
+    rep: "Cameron Lee",
+  });
+}
+
+async function handleCommunicationQuickAction(action, conversation) {
+  if (action === "create-follow-up") {
+    await createCommunicationFollowUpTask(conversation, "conversation quick action");
+    communicationsStatus.textContent = "Follow-up task created from Communications.";
+    showCommunicationToast("Follow-up created", `${conversation.lead.name} has a task due today.`);
   }
 
-  if (action === "create-task") {
-    await store.createTask({
-      text: `Follow up with ${conversation.lead.name} about ${conversation.profile.projectType.toLowerCase()}`,
-      done: false,
-      due: "today",
-    });
+  if (action === "schedule-appointment") {
+    await bookCommunicationAppointment(conversation, "Scheduled from conversation quick action.");
+    communicationsStatus.textContent = "Appointment scheduled from Communications.";
+    showCommunicationToast("Appointment scheduled", `${conversation.lead.name} is booked for tomorrow.`);
+  }
+
+  if (action === "move-stage") {
+    await applyStageMove(conversation.lead, 1);
     addCommunicationMessage(conversation.lead.id, {
       type: "system-note",
       direction: "system",
-      body: "Create Task quick action added a follow-up task for today.",
+      body: "Lead stage moved forward from the conversation.",
+      status: "Updated",
+      outcome: "Stage moved",
+      rep: "Cameron Lee",
+    });
+    communicationsStatus.textContent = "Lead stage moved from Communications.";
+    showCommunicationToast("Lead stage moved", `${conversation.lead.company} advanced to the next stage.`);
+  }
+
+  if (action === "mark-hot" || action === "mark-warm" || action === "mark-cold") {
+    const temperature = action.replace("mark-", "");
+    await updateCommunicationLeadTemperature(conversation, temperature, "Conversation quick action.");
+    communicationsStatus.textContent = `Lead marked ${temperature} from Communications.`;
+    showCommunicationToast("Lead temperature updated", `${conversation.lead.name} is now marked ${temperature}.`);
+  }
+
+  if (action === "add-note") {
+    addCommunicationMessage(conversation.lead.id, {
+      type: "note",
+      direction: "system",
+      body: `Conversation note added: Mention ${conversation.profile.projectType.toLowerCase()}, budget fit, and next availability.`,
       status: "Logged",
+      outcome: "Note added",
+      rep: "Cameron Lee",
     });
-    communicationsStatus.textContent = "Task created from Communications.";
-    showCommunicationToast("Task created", "Follow-up task added for today.");
-  }
-
-  if (action === "send-quote") {
-    addCommunicationMessage(conversation.lead.id, {
-      type: "email",
-      direction: "outgoing",
-      body: `Quote sent for ${conversation.profile.projectType.toLowerCase()} at ${conversation.profile.address}.`,
-      status: "Sent",
-      attachments: [`quote-${conversation.lead.id}.pdf`],
+    await store.createActivity({
+      leadId: conversation.lead.id,
+      type: "note",
+      message: "Conversation note added from Communications quick action.",
     });
-    communicationsStatus.textContent = "Quote sent.";
-    showCommunicationToast("Quote sent", `${conversation.lead.name}'s quote was added to the timeline.`);
-  }
-
-  if (action === "request-review") {
-    addCommunicationMessage(conversation.lead.id, {
-      type: "outgoing-text",
-      direction: "outgoing",
-      body: `Hi ${conversation.lead.name}, when the project wraps up, would you be open to leaving us a quick review?`,
-      status: "Sent",
-    });
-    communicationsStatus.textContent = "Review request sent.";
-    showCommunicationToast("Review requested", "Review request text sent.");
-  }
-
-  if (action === "collect-deposit") {
-    addCommunicationMessage(conversation.lead.id, {
-      type: "email",
-      direction: "outgoing",
-      body: `Deposit request sent for ${formatter.format(Math.round(conversation.lead.value * 0.2))}.`,
-      status: "Sent",
-      attachments: ["deposit-link-placeholder.txt"],
-    });
-    communicationsStatus.textContent = "Deposit request sent.";
-    showCommunicationToast("Deposit request sent", "Payment collection placeholder logged.");
+    communicationsStatus.textContent = "Note added to the conversation.";
+    showCommunicationToast("Note added", `${conversation.lead.name}'s profile was updated.`);
   }
 
   renderCommunicationsPage();
@@ -7316,6 +8506,10 @@ function cloudScheduleKey(workspaceId) {
   return `closepilot-schedule-${workspaceId}`;
 }
 
+function cloudRecruitingCandidatesKey(workspaceId) {
+  return `closepilot-recruiting-candidates-${workspaceId}`;
+}
+
 function revenueTarget() {
   const saved = Number(localStorage.getItem(revenueTargetKey()));
   return Number.isFinite(saved) && saved > 0 ? saved : 30000;
@@ -7398,27 +8592,60 @@ async function changeSubscriptionPlan(planId) {
 }
 
 async function openCheckout() {
-  if (config.stripeCheckoutUrl) {
-    window.open(config.stripeCheckoutUrl, "_blank", "noopener");
-    adminMessage.textContent = "Stripe checkout opened.";
-    await logAuditEvent("Checkout opened", "Billing checkout link opened.");
-    await reloadState();
-    return;
-  }
+  const account = accountState();
+  const context = workspaceApiContext();
+  openCheckoutButton.disabled = true;
+  adminMessage.textContent = "Creating secure Stripe checkout...";
 
-  adminMessage.textContent = "Add STRIPE_CHECKOUT_URL to enable live checkout.";
+  try {
+    const result = await postBackendJson("/api/stripe/create-checkout-session", {
+      ...context,
+      plan: account.subscription.plan,
+      stripeCustomerId: account.subscription.stripeCustomerId,
+    });
+
+    if (result.url) {
+      window.open(result.url, "_blank", "noopener");
+      adminMessage.textContent = "Stripe checkout opened.";
+      await logAuditEvent("Checkout opened", "Stripe Checkout session created.");
+      await reloadState();
+      return;
+    }
+
+    adminMessage.textContent =
+      result.message || "Live checkout is not configured. Demo mode keeps billing changes local.";
+  } catch (error) {
+    adminMessage.textContent = `Live billing API unavailable. Demo mode: ${error.message}`;
+  } finally {
+    openCheckoutButton.disabled = false;
+  }
 }
 
 async function openBillingPortal() {
-  if (config.stripePortalUrl) {
-    window.open(config.stripePortalUrl, "_blank", "noopener");
-    adminMessage.textContent = "Billing portal opened.";
-    await logAuditEvent("Billing portal opened", "Customer portal link opened.");
-    await reloadState();
-    return;
-  }
+  const account = accountState();
+  openBillingPortalButton.disabled = true;
+  adminMessage.textContent = "Opening secure billing portal...";
 
-  adminMessage.textContent = "Add STRIPE_PORTAL_URL to enable the customer portal.";
+  try {
+    const result = await postBackendJson("/api/stripe/create-portal-session", {
+      ...workspaceApiContext(),
+      stripeCustomerId: account.subscription.stripeCustomerId,
+    });
+
+    if (result.url) {
+      window.open(result.url, "_blank", "noopener");
+      adminMessage.textContent = "Billing portal opened.";
+      await logAuditEvent("Billing portal opened", "Stripe customer portal session created.");
+      await reloadState();
+      return;
+    }
+
+    adminMessage.textContent = result.message || "Billing portal is not ready yet. Demo mode remains active.";
+  } catch (error) {
+    adminMessage.textContent = `Live billing portal unavailable. Demo mode: ${error.message}`;
+  } finally {
+    openBillingPortalButton.disabled = false;
+  }
 }
 
 async function inviteTeamMember(event) {
@@ -7435,7 +8662,7 @@ async function inviteTeamMember(event) {
     return;
   }
 
-  await store.createTeamInvite({
+  const invite = await store.createTeamInvite({
     email,
     role: inviteRole.value,
     status: "pending",
@@ -7443,23 +8670,132 @@ async function inviteTeamMember(event) {
   await logAuditEvent("Invite staged", `${email} invited as ${inviteRole.value}.`);
   inviteEmail.value = "";
   inviteRole.value = "member";
-  adminMessage.textContent = `Invite staged for ${email}. Connect email delivery before sending live invites.`;
-  await reloadState();
+  adminMessage.textContent = `Invite staged for ${email}. Sending invite...`;
+  await sendInviteThroughBackend(invite);
 }
 
 async function sendInviteEmail(inviteId) {
   const invite = accountState().invites.find((item) => item.id === inviteId);
   if (!invite) return;
+  await sendInviteThroughBackend(invite);
+}
 
-  const subject = encodeURIComponent("You're invited to Kira Home");
-  const body = encodeURIComponent(
-    `You've been invited as a ${invite.role} in Kira Home.\n\nOpen the app and create your account to join the workspace.`,
-  );
-  const mailto = `mailto:${invite.email}?subject=${subject}&body=${body}`;
-  window.location.href = mailto;
-  await logAuditEvent("Invite email prepared", `${invite.email} mail link opened.`);
-  adminMessage.textContent = `Email draft opened for ${invite.email}.`;
+async function sendInviteThroughBackend(invite) {
+  adminMessage.textContent = `Sending invite to ${invite.email}...`;
+  try {
+    const result = await postBackendJson("/api/invites/send", {
+      ...workspaceApiContext(),
+      inviteId: invite.id,
+      email: invite.email,
+      role: invite.role,
+    });
+
+    if (result.inviteLink) {
+      await copyTextToClipboard(result.inviteLink);
+      await maybeUpdateTeamInvite({
+        ...invite,
+        inviteLink: result.inviteLink,
+        expiresAt: result.expiresAt || invite.expiresAt || "",
+      });
+    }
+
+    if (result.sent) {
+      await logAuditEvent("Invite sent", `${invite.email} sent through backend email delivery.`);
+      adminMessage.textContent = result.message || `Invite email sent to ${invite.email}.`;
+    } else {
+      await logAuditEvent("Invite link generated", `${invite.email} invite link generated for manual sharing.`);
+      adminMessage.textContent = `${result.message || "Invite link generated."} ${result.inviteLink || ""}`.trim();
+    }
+  } catch (error) {
+    const fallbackLink = `${window.location.origin}${window.location.pathname}?invite=demo-${invite.id}`;
+    await copyTextToClipboard(fallbackLink);
+    await logAuditEvent("Invite fallback", `${invite.email} invite link copied because backend email is unavailable.`);
+    adminMessage.textContent = `Invite staged for ${invite.email}. Backend email unavailable, fallback invite link copied: ${fallbackLink}`;
+  }
   await reloadState();
+}
+
+async function maybeUpdateTeamInvite(invite) {
+  if (store.updateTeamInvite) {
+    await store.updateTeamInvite(invite);
+  }
+}
+
+function workspaceApiContext() {
+  const settings = workspaceSetupSettings();
+  const productUrl = config.productUrl || config.appBaseUrl || window.location.origin;
+  return {
+    workspaceId: store?.workspaceId?.() || "",
+    workspaceName: settings.name,
+    ownerEmail: settings.ownerEmail,
+    inviterEmail: settings.ownerEmail,
+    productUrl,
+  };
+}
+
+async function postBackendJson(path, payload) {
+  try {
+    const response = await fetch(path, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload || {}),
+    });
+    const text = await response.text();
+    let data = {};
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      return backendDemoFallback(path, payload);
+    }
+    if (!response.ok) {
+      throw new Error(data.error || `Request failed with ${response.status}.`);
+    }
+    return data;
+  } catch {
+    return backendDemoFallback(path, payload);
+  }
+}
+
+function backendDemoFallback(path, payload = {}) {
+  if (path.includes("/stripe/create-checkout-session")) {
+    const planId = planCatalog[payload.plan] ? payload.plan : "starter";
+    return {
+      demo: true,
+      message: `Live checkout is not configured. Add STRIPE_SECRET_KEY and STRIPE_PRICE_${planId.toUpperCase()} to enable ${planCatalog[planId].label}.`,
+    };
+  }
+  if (path.includes("/stripe/create-portal-session")) {
+    return {
+      demo: true,
+      message: "Billing portal is not ready yet. Add STRIPE_SECRET_KEY and complete a checkout so a Stripe customer ID exists.",
+    };
+  }
+  if (path.includes("/invites/send")) {
+    const token = `demo-${payload.inviteId || crypto.randomUUID()}`;
+    return {
+      demo: true,
+      sent: false,
+      inviteLink: `${window.location.origin}${window.location.pathname}?invite=${token}`,
+      message: "Invite link generated. Add RESEND_API_KEY and INVITE_FROM_EMAIL to send email automatically.",
+    };
+  }
+  if (path.includes("/invites/accept")) {
+    return {
+      demo: true,
+      accepted: false,
+      message: "Invite acceptance needs a configured production backend.",
+    };
+  }
+  return { demo: true, message: "Production backend is not configured yet." };
+}
+
+async function copyTextToClipboard(text) {
+  localStorage.setItem("closepilot-last-copied-text", text);
+  try {
+    if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(text);
+  } catch {
+    localStorage.setItem("closepilot-last-copied-text", text);
+  }
 }
 
 async function logAuditEvent(action, detail) {
@@ -8296,6 +9632,9 @@ function createLocalStore() {
     save(nextState) {
       localStorage.setItem("closepilot-state", JSON.stringify(nextState));
     },
+    workspaceId() {
+      return "";
+    },
     async createLead(lead) {
       const created = { id: crypto.randomUUID(), ...lead };
       state.leads.unshift(created);
@@ -8321,6 +9660,17 @@ function createLocalStore() {
         state.selectedLeadId = state.leads[0]?.id || null;
       }
       this.save(state);
+    },
+    async saveRecruitingCandidates(candidates) {
+      state.recruitingCandidates = candidates.map((candidate) => normalizedRecruitingCandidate(candidate));
+      this.save(state);
+      return state.recruitingCandidates;
+    },
+    async updateRecruitingCandidate(candidate) {
+      const normalized = normalizedRecruitingCandidate(candidate);
+      state.recruitingCandidates = mergeRecruitingCandidates(state.recruitingCandidates || [], [normalized]);
+      this.save(state);
+      return normalized;
     },
     async createActivity(activity) {
       const created = {
@@ -8433,6 +9783,12 @@ function createLocalStore() {
       this.save(state);
       return created;
     },
+    async updateTeamInvite(invite) {
+      state.account = accountState();
+      state.account.invites = state.account.invites.map((item) => (item.id === invite.id ? { ...item, ...invite } : item));
+      this.save(state);
+      return invite;
+    },
     async createAuditEvent(event) {
       const created = {
         id: crypto.randomUUID(),
@@ -8474,6 +9830,9 @@ function createSupabaseStore(client, user) {
   let workspaceName = "Personal workspace";
 
   return {
+    workspaceId() {
+      return workspaceId || "";
+    },
     async ensureWorkspace() {
       const { data: membership, error: memberError } = await client
         .from("workspace_members")
@@ -8538,6 +9897,7 @@ function createSupabaseStore(client, user) {
         automationRuns,
         appointments,
         schedule,
+        recruitingCandidates,
       ] = await Promise.all([
         client.from("leads").select("*").eq("workspace_id", workspaceId).order("created_at"),
         client.from("tasks").select("*").eq("workspace_id", workspaceId).order("created_at", {
@@ -8550,6 +9910,7 @@ function createSupabaseStore(client, user) {
         this.loadAutomationRuns(),
         this.loadAppointments(),
         this.loadSchedule(),
+        this.loadRecruitingCandidates(),
       ]);
       throwIf(leadError);
       throwIf(taskError);
@@ -8566,6 +9927,7 @@ function createSupabaseStore(client, user) {
         automationRuns,
         appointments,
         schedule,
+        recruitingCandidates,
       };
     },
     loadAppointments() {
@@ -8593,6 +9955,59 @@ function createSupabaseStore(client, user) {
     },
     saveSchedule(schedule) {
       localStorage.setItem(cloudScheduleKey(workspaceId), JSON.stringify(normalizedSchedule(schedule)));
+    },
+    loadRecruitingCandidatesFallback() {
+      const saved = localStorage.getItem(cloudRecruitingCandidatesKey(workspaceId));
+      if (!saved) return [];
+      try {
+        return JSON.parse(saved).map((candidate) => normalizedRecruitingCandidate(candidate));
+      } catch {
+        localStorage.removeItem(cloudRecruitingCandidatesKey(workspaceId));
+        return [];
+      }
+    },
+    saveRecruitingCandidatesFallback(candidates) {
+      const normalized = candidates.map((candidate) => normalizedRecruitingCandidate(candidate));
+      localStorage.setItem(cloudRecruitingCandidatesKey(workspaceId), JSON.stringify(normalized));
+      state.recruitingCandidates = normalized;
+      return normalized;
+    },
+    async loadRecruitingCandidates() {
+      const { data, error } = await client
+        .from("recruiting_candidates")
+        .select("*")
+        .eq("workspace_id", workspaceId)
+        .order("synced_at", { ascending: false });
+      if (isMissingRecruitingTable(error)) return this.loadRecruitingCandidatesFallback();
+      throwIf(error);
+      return data.map(fromRecruitingCandidateRow);
+    },
+    async saveRecruitingCandidates(candidates) {
+      const normalized = candidates.map((candidate) => normalizedRecruitingCandidate(candidate));
+      const { error } = await client
+        .from("recruiting_candidates")
+        .upsert(normalized.map((candidate) => toRecruitingCandidateRow(candidate, workspaceId)), {
+          onConflict: "workspace_id,external_id",
+        });
+      if (isMissingRecruitingTable(error)) return this.saveRecruitingCandidatesFallback(normalized);
+      throwIf(error);
+      state.recruitingCandidates = normalized;
+      return normalized;
+    },
+    async updateRecruitingCandidate(candidate) {
+      const normalized = normalizedRecruitingCandidate(candidate);
+      const { data, error } = await client
+        .from("recruiting_candidates")
+        .upsert(toRecruitingCandidateRow(normalized, workspaceId), { onConflict: "workspace_id,external_id" })
+        .select("*")
+        .single();
+      if (isMissingRecruitingTable(error)) {
+        const candidates = mergeRecruitingCandidates(this.loadRecruitingCandidatesFallback(), [normalized]);
+        this.saveRecruitingCandidatesFallback(candidates);
+        return normalized;
+      }
+      throwIf(error);
+      return fromRecruitingCandidateRow(data);
     },
     async loadSaasAccount() {
       const fallback = normalizedAccount({
@@ -8639,6 +10054,9 @@ function createSupabaseStore(client, user) {
               status: subscription.status,
               seatLimit: subscription.seat_limit,
               trialEndsAt: subscription.trial_ends_at,
+              currentPeriodEnd: subscription.current_period_end,
+              stripeCustomerId: subscription.stripe_customer_id,
+              stripeSubscriptionId: subscription.stripe_subscription_id,
             }
           : fallback.subscription,
         members: (members || []).map((member) => ({
@@ -8865,6 +10283,9 @@ function createSupabaseStore(client, user) {
         status: normalized.subscription.status,
         seat_limit: normalized.subscription.seatLimit,
         trial_ends_at: normalized.subscription.trialEndsAt,
+        current_period_end: normalized.subscription.currentPeriodEnd || null,
+        stripe_customer_id: normalized.subscription.stripeCustomerId || null,
+        stripe_subscription_id: normalized.subscription.stripeSubscriptionId || null,
       });
       if (isMissingSaasTable(error)) {
         state.account = normalized;
@@ -8902,6 +10323,29 @@ function createSupabaseStore(client, user) {
         state.account = account;
         localStorage.setItem(cloudSaasAccountKey(workspaceId), JSON.stringify(account));
         return created;
+      }
+      throwIf(error);
+      return fromInviteRow(data);
+    },
+    async updateTeamInvite(invite) {
+      const patch = {
+        status: invite.status,
+        expires_at: invite.expiresAt || null,
+        accepted_at: invite.acceptedAt || null,
+      };
+      const { data, error } = await client
+        .from("workspace_invitations")
+        .update(patch)
+        .eq("id", invite.id)
+        .eq("workspace_id", workspaceId)
+        .select("*")
+        .single();
+      if (isMissingSaasTable(error)) {
+        const account = normalizedAccount(state.account);
+        account.invites = account.invites.map((item) => (item.id === invite.id ? { ...item, ...invite } : item));
+        state.account = account;
+        localStorage.setItem(cloudSaasAccountKey(workspaceId), JSON.stringify(account));
+        return invite;
       }
       throwIf(error);
       return fromInviteRow(data);
@@ -8945,8 +10389,10 @@ function createSupabaseStore(client, user) {
       if (!isMissingActivitiesTable(activityError)) throwIf(activityError);
       localStorage.removeItem(cloudAppointmentsKey(workspaceId));
       localStorage.removeItem(cloudScheduleKey(workspaceId));
+      localStorage.removeItem(cloudRecruitingCandidatesKey(workspaceId));
       state.appointments = [];
       state.schedule = {};
+      state.recruitingCandidates = [];
     },
     async seedStarterData() {
       const { count, error } = await client
@@ -9053,6 +10499,8 @@ function fromInviteRow(row) {
     role: row.role,
     status: row.status,
     createdAt: row.created_at,
+    expiresAt: row.expires_at,
+    acceptedAt: row.accepted_at,
   };
 }
 
@@ -9063,6 +10511,54 @@ function fromAuditRow(row) {
     detail: row.detail,
     createdAt: row.created_at,
   };
+}
+
+function toRecruitingCandidateRow(candidate, workspaceId) {
+  const normalized = normalizedRecruitingCandidate(candidate);
+  return {
+    workspace_id: workspaceId,
+    external_id: normalized.externalId || normalized.id,
+    name: normalized.name,
+    role: normalized.role,
+    source: normalized.source,
+    interview_status: normalized.interviewStatus,
+    interview_at: normalized.interviewAt || null,
+    score: normalized.score,
+    next_action: normalized.nextAction,
+    email: normalized.email,
+    phone: normalized.phone,
+    status: normalized.convertedLeadId ? "converted" : normalized.reviewedAt ? "reviewed" : "new",
+    converted_lead_id: normalized.convertedLeadId || null,
+    reviewed_at: normalized.reviewedAt || null,
+    synced_at: normalized.syncedAt || new Date().toISOString(),
+    payload: {
+      experience: normalized.experience,
+      skills: normalized.skills,
+      taskCreatedAt: normalized.taskCreatedAt,
+    },
+  };
+}
+
+function fromRecruitingCandidateRow(row) {
+  return normalizedRecruitingCandidate({
+    id: row.external_id || row.id,
+    externalId: row.external_id || row.id,
+    name: row.name,
+    role: row.role,
+    source: row.source,
+    interviewStatus: row.interview_status,
+    interviewAt: row.interview_at || "",
+    score: row.score,
+    nextAction: row.next_action,
+    email: row.email,
+    phone: row.phone,
+    convertedLeadId: row.converted_lead_id || "",
+    reviewedAt: row.reviewed_at || "",
+    syncedAt: row.synced_at || "",
+    experience: row.payload?.experience || "",
+    skills: row.payload?.skills || [],
+    taskCreatedAt: row.payload?.taskCreatedAt || "",
+  });
 }
 
 function normalizeLoadedState() {
@@ -9078,6 +10574,9 @@ function normalizeLoadedState() {
   state.schedule = normalizedSchedule(state.schedule);
   state.activities ||= [];
   state.account = normalizedAccount(state.account);
+  state.recruitingCandidates = Array.isArray(state.recruitingCandidates)
+    ? state.recruitingCandidates.map((candidate) => normalizedRecruitingCandidate(candidate))
+    : [];
 }
 
 function normalizedAutomationTemplates(templates) {
@@ -9172,6 +10671,9 @@ function normalizedAccount(account = {}) {
       status: account.subscription?.status || "trialing",
       seatLimit: Number(account.subscription?.seatLimit) || planCatalog[plan].seatLimit,
       trialEndsAt: account.subscription?.trialEndsAt || "2026-07-11T00:00:00.000Z",
+      currentPeriodEnd: account.subscription?.currentPeriodEnd || "",
+      stripeCustomerId: account.subscription?.stripeCustomerId || "",
+      stripeSubscriptionId: account.subscription?.stripeSubscriptionId || "",
     },
     members: Array.isArray(account.members) && account.members.length
       ? account.members
@@ -9199,6 +10701,10 @@ function isMissingSaasTable(error) {
     error?.message?.includes("workspace_invitations") ||
     error?.message?.includes("workspace_audit_events")
   );
+}
+
+function isMissingRecruitingTable(error) {
+  return error?.code === "42P01" || error?.message?.includes("recruiting_candidates");
 }
 
 function throwIf(error) {
