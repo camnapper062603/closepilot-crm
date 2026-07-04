@@ -8,6 +8,11 @@ dist/
 /playwright/.cache/
 /playwright/.auth/
 
+# Local secrets
+.env
+.env.*
+!.env.example
+
 # Safe lead generator local data
 lead-generator-imports/*
 !lead-generator-imports/.gitkeep

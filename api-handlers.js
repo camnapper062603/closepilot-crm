@@ -3,9 +3,9 @@ import Stripe from "stripe";
 import { sendInviteEmailWithResend } from "./email-service.js";
 
 const planCatalog = {
-  starter: { label: "Starter", seatLimit: 3, priceEnv: "STRIPE_PRICE_STARTER" },
-  growth: { label: "Growth", seatLimit: 10, priceEnv: "STRIPE_PRICE_GROWTH" },
-  scale: { label: "Scale", seatLimit: 25, priceEnv: "STRIPE_PRICE_SCALE" },
+  starter: { label: "Starter", seatLimit: 3, priceEnv: "STRIPE_PRICE_STARTER", productEnv: "STRIPE_PRODUCT_STARTER" },
+  growth: { label: "Growth", seatLimit: 10, priceEnv: "STRIPE_PRICE_GROWTH", productEnv: "STRIPE_PRODUCT_GROWTH" },
+  scale: { label: "Scale", seatLimit: 25, priceEnv: "STRIPE_PRICE_SCALE", productEnv: "STRIPE_PRODUCT_SCALE" },
 };
 
 const aiEndpoints = new Set([
@@ -33,10 +33,15 @@ const readinessChecks = [
   { key: "supabaseAnonKey", label: "Supabase anon or publishable key", env: "SUPABASE_ANON_KEY", public: true },
   { key: "supabaseServiceRole", label: "Supabase service role key", env: "SUPABASE_SERVICE_ROLE_KEY" },
   { key: "stripeSecret", label: "Stripe secret key", env: "STRIPE_SECRET_KEY" },
+  { key: "stripePublishable", label: "Stripe publishable key", env: "STRIPE_PUBLISHABLE_KEY", public: true, optional: true },
   { key: "stripeWebhook", label: "Stripe webhook secret", env: "STRIPE_WEBHOOK_SECRET" },
-  { key: "stripeStarter", label: "Stripe Starter price", env: "STRIPE_PRICE_STARTER" },
-  { key: "stripeGrowth", label: "Stripe Growth price", env: "STRIPE_PRICE_GROWTH" },
-  { key: "stripeScale", label: "Stripe Scale price", env: "STRIPE_PRICE_SCALE" },
+  { key: "stripeStarter", label: "Stripe Starter price", env: "STRIPE_PRICE_STARTER", optional: true },
+  { key: "stripeGrowth", label: "Stripe Growth price", env: "STRIPE_PRICE_GROWTH", optional: true },
+  { key: "stripeScale", label: "Stripe Scale price", env: "STRIPE_PRICE_SCALE", optional: true },
+  { key: "stripeStarterProduct", label: "Stripe Starter product", env: "STRIPE_PRODUCT_STARTER", optional: true },
+  { key: "stripeGrowthProduct", label: "Stripe Growth product", env: "STRIPE_PRODUCT_GROWTH", optional: true },
+  { key: "stripeScaleProduct", label: "Stripe Scale product", env: "STRIPE_PRODUCT_SCALE", optional: true },
+  { key: "stripeMeterKey", label: "Stripe meter key", env: "STRIPE_METER_KEY", optional: true },
   { key: "appBaseUrl", label: "Application base URL", env: "APP_BASE_URL", public: true },
   { key: "resend", label: "Resend API key", env: "RESEND_API_KEY" },
   { key: "inviteFrom", label: "Invite sender email", env: "INVITE_FROM_EMAIL" },
@@ -133,7 +138,10 @@ async function handleSystemReadiness(request, response) {
   }));
   const groups = {
     database: ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY"],
-    billing: ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_PRICE_STARTER", "STRIPE_PRICE_GROWTH", "STRIPE_PRICE_SCALE"],
+    billing:
+      Boolean(process.env.STRIPE_SECRET_KEY) &&
+      Boolean(process.env.STRIPE_WEBHOOK_SECRET) &&
+      Object.values(planCatalog).every((plan) => Boolean(process.env[plan.priceEnv] || process.env[plan.productEnv])),
     email: ["RESEND_API_KEY", "INVITE_FROM_EMAIL"],
     sms: ["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_PHONE_NUMBER"],
     ai: ["OPENAI_API_KEY"],
@@ -141,9 +149,12 @@ async function handleSystemReadiness(request, response) {
     app: ["APP_BASE_URL"],
   };
   const groupStatus = Object.fromEntries(
-    Object.entries(groups).map(([key, envs]) => [key, envs.every((env) => Boolean(process.env[env]))]),
+    Object.entries(groups).map(([key, envs]) => [
+      key,
+      Array.isArray(envs) ? envs.every((env) => Boolean(process.env[env])) : Boolean(envs),
+    ]),
   );
-  const required = checks.filter((check) => !["SUPPORT_EMAIL"].includes(check.env));
+  const required = checks.filter((check) => !check.optional && !["SUPPORT_EMAIL"].includes(check.env));
   const configured = required.filter((check) => check.configured).length;
   const percentage = Math.round((configured / required.length) * 100);
 
@@ -244,14 +255,14 @@ async function handleCommunicationRequest(pathname, request, response, payload) 
 async function handleCreateCheckoutSession(request, response, payload) {
   const stripe = getStripeClient();
   const planId = normalizePlanId(payload.plan);
-  const priceId = process.env[planCatalog[planId].priceEnv] || "";
+  const priceId = stripe ? await resolveStripePlanPriceId(stripe, planId) : "";
   const workspaceId = cleanText(payload.workspaceId);
   const baseUrl = appBaseUrl(request);
 
   if (!stripe || !priceId) {
     sendJson(response, 200, {
       demo: true,
-      message: `Live checkout is not configured. Add STRIPE_SECRET_KEY and ${planCatalog[planId].priceEnv} to enable ${planCatalog[planId].label}.`,
+      message: `Live checkout is not configured. Add STRIPE_SECRET_KEY plus ${planCatalog[planId].priceEnv} or ${planCatalog[planId].productEnv} with a default recurring price to enable ${planCatalog[planId].label}.`,
     });
     return;
   }
@@ -832,6 +843,23 @@ function getStripeClient() {
   if (!process.env.STRIPE_SECRET_KEY) return null;
   stripeClient ||= new Stripe(process.env.STRIPE_SECRET_KEY);
   return stripeClient;
+}
+
+async function resolveStripePlanPriceId(stripe, planId) {
+  const plan = planCatalog[planId];
+  const explicitPriceId = cleanText(process.env[plan.priceEnv]);
+  if (explicitPriceId) return explicitPriceId;
+
+  const productId = cleanText(process.env[plan.productEnv]);
+  if (!productId) return "";
+
+  try {
+    const product = await stripe.products.retrieve(productId, { expand: ["default_price"] });
+    if (typeof product.default_price === "string") return product.default_price;
+    return product.default_price?.id || "";
+  } catch {
+    return "";
+  }
 }
 
 function hasSupabaseServiceConfig() {

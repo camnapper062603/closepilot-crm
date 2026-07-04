@@ -3197,7 +3197,9 @@ function launchChecks() {
     },
     {
       title: "Stripe checkout",
-      detail: groups.billing ? "Stripe keys, webhook secret, and plan price IDs are configured." : "Add STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, and plan price IDs.",
+      detail: groups.billing
+        ? "Stripe keys, webhook secret, and plan price or product IDs are configured."
+        : "Add STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, and plan price IDs or product IDs with default prices.",
       ready: Boolean(groups.billing),
     },
     {
