@@ -98,6 +98,13 @@ test('configures job board integrations and stages onboarding payroll', async ({
   await expect(page.locator('#workerList')).toContainText('Taylor Pay');
   await expect(page.locator('#workerList')).toContainText('W-9 contractor');
   await expect(page.locator('#workerList')).toContainText('[redacted tax id]');
+  await expect(page.locator('#onboardingSummary')).toContainText('Workers');
+  await page.locator('#selectAllWorkers').click();
+  await expect(page.locator('#selectedWorkerCount')).toHaveText('1 selected');
+  await page.locator('#onboardingEmailTemplate').selectOption('tax');
+  await page.locator('#bulkSendOnboarding').click();
+  await expect(page.locator('#onboardingMessage')).toContainText('1 packet queued with the Tax packet reminder email.');
+  await expect(page.locator('#workerList')).toContainText('Email queued');
   await page.getByRole('button', { name: 'Send packet link' }).click();
   await expect(page.locator('#onboardingMessage')).toContainText('Demo onboarding link staged');
 
@@ -119,7 +126,13 @@ test('configures job board integrations and stages onboarding payroll', async ({
   await expect(page.locator('#payrollList')).toContainText('Taylor Pay');
   await expect(page.locator('#payrollList')).toContainText('$255.00');
   await expect(page.locator('#payrollList')).toContainText('Staged');
-  await page.getByRole('button', { name: 'Mark latest paid' }).click();
-  await expect(page.locator('#payrollMessage')).toContainText('marked paid in demo mode');
+  await expect(page.locator('#payrollSummary')).toContainText('$255.00');
+  await page.locator('#selectAllPayrollRuns').click();
+  await expect(page.locator('#selectedPayrollCount')).toHaveText('1 selected');
+  await page.locator('#emailPayrollRuns').click();
+  await expect(page.locator('#payrollMessage')).toContainText('1 summary queued with the Payment summary email.');
+  await expect(page.locator('#payrollList')).toContainText('Email queued');
+  await page.locator('#markSelectedPayrollPaid').click();
+  await expect(page.locator('#payrollMessage')).toContainText('1 payroll run marked paid in demo mode');
   await expect(page.locator('#payrollList')).toContainText('Paid');
 });

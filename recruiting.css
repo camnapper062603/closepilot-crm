@@ -420,6 +420,62 @@ textarea {
   gap: 8px;
 }
 
+.people-ops-summary {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 14px 0;
+}
+
+.people-ops-summary article {
+  background: linear-gradient(145deg, #f8fbff, #eef4ff);
+  border: 1px solid #c9d8f0;
+  border-radius: var(--radius-sm);
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+}
+
+.people-ops-summary span,
+.bulk-action-bar span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.people-ops-summary strong {
+  color: var(--navy-dark);
+  font-size: 1.2rem;
+  font-weight: 950;
+}
+
+.bulk-action-bar {
+  align-items: end;
+  background:
+    linear-gradient(135deg, rgba(238, 244, 255, 0.9), rgba(245, 247, 250, 0.92)),
+    #f8fbff;
+  border: 1px solid #c9d8f0;
+  border-radius: var(--radius-sm);
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(170px, 0.7fr) minmax(220px, 0.8fr) minmax(0, 1.5fr);
+  margin: 12px 0;
+  padding: 12px;
+}
+
+.bulk-action-bar strong {
+  color: var(--navy-dark);
+  display: block;
+  font-size: 1.06rem;
+}
+
+.bulk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: end;
+}
+
 .board-list,
 .candidate-list,
 .interview-list,
@@ -572,12 +628,58 @@ textarea {
     transform var(--motion-fast);
 }
 
+.worker-card {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(248, 251, 255, 0.96)),
+    var(--surface);
+  grid-template-columns: auto minmax(0, 1fr) minmax(220px, 0.75fr);
+}
+
+.worker-card p {
+  grid-column: 2 / -1;
+}
+
+.payroll-run {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(245, 247, 250, 0.96)),
+    var(--surface);
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.worker-card.selected,
+.payroll-run.selected {
+  border-color: rgba(47, 111, 237, 0.46);
+  box-shadow: 0 18px 44px rgba(11, 47, 99, 0.12);
+}
+
 .integration-card:hover,
 .worker-card:hover,
 .payroll-run:hover {
   border-color: rgba(47, 111, 237, 0.28);
   box-shadow: var(--shadow-lift);
   transform: translateY(-2px);
+}
+
+.select-card-control {
+  align-items: center;
+  background: var(--navy-soft);
+  border: 1px solid #c9d8f0;
+  border-radius: 999px;
+  color: var(--navy);
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 900;
+  gap: 6px;
+  height: fit-content;
+  padding: 7px 10px;
+}
+
+.select-card-control input {
+  accent-color: var(--navy);
+  height: 15px;
+  min-height: 0;
+  padding: 0;
+  width: 15px;
 }
 
 .integration-card.connected {
@@ -650,10 +752,6 @@ textarea {
   justify-content: center;
   min-height: 42px;
   padding: 8px 12px;
-}
-
-.payroll-run {
-  grid-template-columns: minmax(0, 1fr) auto;
 }
 
 .payroll-run.paid {
@@ -729,10 +827,23 @@ textarea {
 
   .recruit-hero-grid article,
   .candidate-insight-row,
+  .people-ops-summary article,
+  .bulk-action-bar,
   .payroll-total,
   .payroll-run-total {
     background: #171d28;
     border-color: var(--line);
+  }
+
+  .worker-card,
+  .payroll-run {
+    background: var(--surface);
+  }
+
+  .worker-card.selected,
+  .payroll-run.selected {
+    border-color: rgba(95, 142, 219, 0.56);
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.22);
   }
 
   .compliance-warning {
@@ -744,6 +855,7 @@ textarea {
   .subpage-nav,
   .mode-pill,
   .schedule-pill,
+  .select-card-control,
   .tag-row span {
     background: #171d28;
     border-color: var(--line);
@@ -883,6 +995,8 @@ textarea {
   .onboarding-form,
   .payroll-provider-form,
   .payroll-run-form,
+  .people-ops-summary,
+  .bulk-action-bar,
   .integration-card,
   .worker-card,
   .payroll-run {
@@ -921,6 +1035,18 @@ textarea {
   .connection-status,
   .payroll-run-total {
     justify-self: stretch;
+  }
+
+  .worker-card p {
+    grid-column: auto;
+  }
+
+  .bulk-actions {
+    justify-content: stretch;
+  }
+
+  .bulk-actions > * {
+    flex: 1 1 140px;
   }
 
   .schedule-pill,

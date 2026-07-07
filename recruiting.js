@@ -93,6 +93,8 @@ const candidatePool = [
 
 let state = loadState();
 let activeSubpage = "dashboard";
+let selectedWorkerIds = new Set();
+let selectedPayrollRunIds = new Set();
 
 const elements = {
   subpageNav: document.querySelector("#recruitSubpageNav"),
@@ -145,6 +147,12 @@ const elements = {
   workerTaxStatus: document.querySelector("#workerTaxStatus"),
   workerDepositStatus: document.querySelector("#workerDepositStatus"),
   workerNotes: document.querySelector("#workerNotes"),
+  onboardingSummary: document.querySelector("#onboardingSummary"),
+  selectedWorkerCount: document.querySelector("#selectedWorkerCount"),
+  onboardingEmailTemplate: document.querySelector("#onboardingEmailTemplate"),
+  selectAllWorkers: document.querySelector("#selectAllWorkers"),
+  clearWorkerSelection: document.querySelector("#clearWorkerSelection"),
+  bulkSendOnboarding: document.querySelector("#bulkSendOnboarding"),
   workerList: document.querySelector("#workerList"),
   onboardingMessage: document.querySelector("#onboardingMessage"),
   sendOnboardingPacket: document.querySelector("#sendOnboardingPacket"),
@@ -160,6 +168,13 @@ const elements = {
   payrollBonus: document.querySelector("#payrollBonus"),
   payrollReimbursement: document.querySelector("#payrollReimbursement"),
   payrollTotal: document.querySelector("#payrollTotal"),
+  payrollSummary: document.querySelector("#payrollSummary"),
+  selectedPayrollCount: document.querySelector("#selectedPayrollCount"),
+  payrollEmailTemplate: document.querySelector("#payrollEmailTemplate"),
+  selectAllPayrollRuns: document.querySelector("#selectAllPayrollRuns"),
+  clearPayrollSelection: document.querySelector("#clearPayrollSelection"),
+  emailPayrollRuns: document.querySelector("#emailPayrollRuns"),
+  markSelectedPayrollPaid: document.querySelector("#markSelectedPayrollPaid"),
   payrollList: document.querySelector("#payrollList"),
   payrollMessage: document.querySelector("#payrollMessage"),
   markPayrollPaid: document.querySelector("#markPayrollPaid"),
@@ -184,9 +199,16 @@ elements.integrationForm.addEventListener("submit", saveIntegration);
 elements.testIntegration.addEventListener("click", testIntegrationConnection);
 elements.onboardingForm.addEventListener("submit", createOnboardingPacket);
 elements.sendOnboardingPacket.addEventListener("click", sendLatestOnboardingPacket);
+elements.selectAllWorkers.addEventListener("click", selectAllWorkers);
+elements.clearWorkerSelection.addEventListener("click", clearWorkerSelection);
+elements.bulkSendOnboarding.addEventListener("click", bulkSendOnboardingPackets);
 elements.payrollProviderForm.addEventListener("submit", savePayrollProvider);
 elements.payrollRunForm.addEventListener("submit", stagePayrollRun);
 elements.markPayrollPaid.addEventListener("click", markLatestPayrollPaid);
+elements.selectAllPayrollRuns.addEventListener("click", selectAllPayrollRuns);
+elements.clearPayrollSelection.addEventListener("click", clearPayrollSelection);
+elements.emailPayrollRuns.addEventListener("click", emailSelectedPayrollRuns);
+elements.markSelectedPayrollPaid.addEventListener("click", markSelectedPayrollRunsPaid);
 [elements.payrollHours, elements.payrollRate, elements.payrollBonus, elements.payrollReimbursement].forEach((input) => {
   input.addEventListener("input", renderPayrollTotal);
 });
@@ -831,25 +853,122 @@ function sendLatestOnboardingPacket() {
   render();
 }
 
+function selectAllWorkers() {
+  selectedWorkerIds = new Set(state.onboardingWorkers.map((worker) => worker.id));
+  renderOnboarding();
+}
+
+function clearWorkerSelection() {
+  selectedWorkerIds.clear();
+  renderOnboarding();
+}
+
+function bulkSendOnboardingPackets() {
+  const selected = selectedOnboardingWorkers();
+  if (!selected.length) {
+    elements.onboardingMessage.textContent = "Select at least one worker before emailing packets.";
+    return;
+  }
+  const template = onboardingTemplateLabel(elements.onboardingEmailTemplate.value);
+  const now = new Date().toISOString();
+  const selectedIds = new Set(selected.map((worker) => worker.id));
+  state.onboardingWorkers = state.onboardingWorkers.map((worker) => {
+    if (!selectedIds.has(worker.id)) return worker;
+    return {
+      ...worker,
+      packetStatus: "Email queued",
+      taxStatus: worker.taxStatus === "Not sent" ? "Sent" : worker.taxStatus,
+      lastEmailTemplate: template,
+      lastEmailAt: now,
+      updatedAt: now,
+    };
+  });
+  elements.onboardingMessage.textContent = `${selected.length} ${selected.length === 1 ? "packet" : "packets"} queued with the ${template} email.`;
+  saveState();
+  render();
+}
+
+function selectedOnboardingWorkers() {
+  return state.onboardingWorkers.filter((worker) => selectedWorkerIds.has(worker.id));
+}
+
+function onboardingTemplateLabel(value) {
+  const labels = {
+    welcome: "Welcome packet",
+    tax: "Tax packet reminder",
+    deposit: "Direct deposit setup",
+  };
+  return labels[value] || "Onboarding";
+}
+
 function renderOnboarding() {
+  syncWorkerSelection();
+  renderOnboardingSummary();
+  elements.selectedWorkerCount.textContent = `${selectedWorkerIds.size} selected`;
   elements.workerList.innerHTML = state.onboardingWorkers.length
     ? state.onboardingWorkers.map(renderWorkerCard).join("")
     : '<p class="empty-state">No W-2/W-9 packets created yet.</p>';
+  elements.workerList.querySelectorAll("[data-worker-select]").forEach((checkbox) => {
+    checkbox.addEventListener("change", () => {
+      if (checkbox.checked) {
+        selectedWorkerIds.add(checkbox.dataset.workerSelect);
+      } else {
+        selectedWorkerIds.delete(checkbox.dataset.workerSelect);
+      }
+      renderOnboarding();
+    });
+  });
+}
+
+function syncWorkerSelection() {
+  const ids = new Set(state.onboardingWorkers.map((worker) => worker.id));
+  selectedWorkerIds = new Set([...selectedWorkerIds].filter((id) => ids.has(id)));
+}
+
+function renderOnboardingSummary() {
+  const sent = state.onboardingWorkers.filter((worker) => ["Sent", "Email queued"].includes(worker.packetStatus) || worker.taxStatus === "Sent").length;
+  const completed = state.onboardingWorkers.filter((worker) => worker.taxStatus === "Completed").length;
+  const depositReady = state.onboardingWorkers.filter((worker) => worker.depositStatus === "Verified by provider").length;
+  elements.onboardingSummary.innerHTML = `
+    <article>
+      <span>Workers</span>
+      <strong>${state.onboardingWorkers.length}</strong>
+    </article>
+    <article>
+      <span>Packets sent</span>
+      <strong>${sent}</strong>
+    </article>
+    <article>
+      <span>Completed</span>
+      <strong>${completed}</strong>
+    </article>
+    <article>
+      <span>Deposit ready</span>
+      <strong>${depositReady}</strong>
+    </article>
+  `;
 }
 
 function renderWorkerCard(worker) {
   const formLabel = worker.type === "w2" ? "W-2 employee" : "W-9 contractor";
+  const selected = selectedWorkerIds.has(worker.id);
   return `
-    <article class="worker-card">
+    <article class="worker-card ${selected ? "selected" : ""}">
+      <label class="select-card-control">
+        <input type="checkbox" data-worker-select="${escapeHtml(worker.id)}" ${selected ? "checked" : ""} />
+        <span>Select</span>
+      </label>
       <div>
         <strong>${escapeHtml(worker.name)}</strong>
         <span>${escapeHtml(formLabel)} • ${escapeHtml(worker.role)}</span>
         <small>${escapeHtml(worker.email)} • starts ${escapeHtml(worker.startDate || "TBD")}</small>
       </div>
       <div class="worker-status-grid">
+        <span>Packet: ${escapeHtml(worker.packetStatus || "Created")}</span>
         <span>Tax packet: ${escapeHtml(worker.taxStatus)}</span>
         <span>Direct deposit: ${escapeHtml(worker.depositStatus)}</span>
         <span>Pay: ${escapeHtml(worker.payRate)}</span>
+        ${worker.lastEmailTemplate ? `<span>Email: ${escapeHtml(worker.lastEmailTemplate)}</span>` : ""}
       </div>
       <p>${escapeHtml(worker.notes || "No notes yet.")}</p>
     </article>
@@ -915,12 +1034,124 @@ function markLatestPayrollPaid() {
   render();
 }
 
+function selectAllPayrollRuns() {
+  selectedPayrollRunIds = new Set(state.payrollRuns.map((run) => run.id));
+  renderPayroll();
+}
+
+function clearPayrollSelection() {
+  selectedPayrollRunIds.clear();
+  renderPayroll();
+}
+
+function emailSelectedPayrollRuns() {
+  const selected = selectedPayrollRuns();
+  if (!selected.length) {
+    elements.payrollMessage.textContent = "Select at least one payroll run before emailing summaries.";
+    return;
+  }
+  const template = payrollTemplateLabel(elements.payrollEmailTemplate.value);
+  const now = new Date().toISOString();
+  const selectedIds = new Set(selected.map((run) => run.id));
+  state.payrollRuns = state.payrollRuns.map((run) =>
+    selectedIds.has(run.id)
+      ? {
+          ...run,
+          emailStatus: "Email queued",
+          lastEmailTemplate: template,
+          lastEmailAt: now,
+        }
+      : run,
+  );
+  elements.payrollMessage.textContent = `${selected.length} ${selected.length === 1 ? "summary" : "summaries"} queued with the ${template} email.`;
+  saveState();
+  render();
+}
+
+function markSelectedPayrollRunsPaid() {
+  const selected = selectedPayrollRuns().filter((run) => run.status !== "Paid");
+  if (!selected.length) {
+    elements.payrollMessage.textContent = "Select at least one unpaid payroll run.";
+    return;
+  }
+  const selectedIds = new Set(selected.map((run) => run.id));
+  const now = new Date().toISOString();
+  state.payrollRuns = state.payrollRuns.map((run) =>
+    selectedIds.has(run.id)
+      ? {
+          ...run,
+          status: "Paid",
+          paidAt: now,
+        }
+      : run,
+  );
+  elements.payrollMessage.textContent = `${selected.length} ${selected.length === 1 ? "payroll run" : "payroll runs"} marked paid in demo mode.`;
+  saveState();
+  render();
+}
+
+function selectedPayrollRuns() {
+  return state.payrollRuns.filter((run) => selectedPayrollRunIds.has(run.id));
+}
+
+function payrollTemplateLabel(value) {
+  const labels = {
+    summary: "Payment summary",
+    paid: "Payment sent",
+    missing: "Missing payroll info",
+  };
+  return labels[value] || "Payroll";
+}
+
 function renderPayroll() {
+  syncPayrollSelection();
   hydratePayrollWorkerOptions();
   renderPayrollTotal();
+  renderPayrollSummary();
+  elements.selectedPayrollCount.textContent = `${selectedPayrollRunIds.size} selected`;
   elements.payrollList.innerHTML = state.payrollRuns.length
     ? state.payrollRuns.map(renderPayrollRun).join("")
     : '<p class="empty-state">No payroll runs staged yet.</p>';
+  elements.payrollList.querySelectorAll("[data-payroll-select]").forEach((checkbox) => {
+    checkbox.addEventListener("change", () => {
+      if (checkbox.checked) {
+        selectedPayrollRunIds.add(checkbox.dataset.payrollSelect);
+      } else {
+        selectedPayrollRunIds.delete(checkbox.dataset.payrollSelect);
+      }
+      renderPayroll();
+    });
+  });
+}
+
+function syncPayrollSelection() {
+  const ids = new Set(state.payrollRuns.map((run) => run.id));
+  selectedPayrollRunIds = new Set([...selectedPayrollRunIds].filter((id) => ids.has(id)));
+}
+
+function renderPayrollSummary() {
+  const total = state.payrollRuns.reduce((sum, run) => sum + Number(run.total || 0), 0);
+  const staged = state.payrollRuns.filter((run) => run.status !== "Paid").length;
+  const paid = state.payrollRuns.filter((run) => run.status === "Paid").length;
+  const queuedEmails = state.payrollRuns.filter((run) => run.emailStatus === "Email queued").length;
+  elements.payrollSummary.innerHTML = `
+    <article>
+      <span>Total staged</span>
+      <strong>${formatMoney(total)}</strong>
+    </article>
+    <article>
+      <span>Open runs</span>
+      <strong>${staged}</strong>
+    </article>
+    <article>
+      <span>Paid</span>
+      <strong>${paid}</strong>
+    </article>
+    <article>
+      <span>Emails queued</span>
+      <strong>${queuedEmails}</strong>
+    </article>
+  `;
 }
 
 function hydratePayrollWorkerOptions() {
@@ -944,12 +1175,18 @@ function payrollTotalValue() {
 }
 
 function renderPayrollRun(run) {
+  const selected = selectedPayrollRunIds.has(run.id);
   return `
-    <article class="payroll-run ${run.status.toLowerCase()}">
+    <article class="payroll-run ${run.status.toLowerCase()} ${selected ? "selected" : ""}">
+      <label class="select-card-control">
+        <input type="checkbox" data-payroll-select="${escapeHtml(run.id)}" ${selected ? "checked" : ""} />
+        <span>Select</span>
+      </label>
       <div>
         <strong>${escapeHtml(run.workerName)}</strong>
         <span>${escapeHtml(run.period)} • ${escapeHtml(payrollProviderLabel(run.provider))}</span>
-        <small>${run.workerType === "w2" ? "W-2 payroll" : "W-9 contractor payout"} • ${escapeHtml(run.status)}</small>
+        <small>${run.workerType === "w2" ? "W-2 payroll" : "W-9 contractor payout"} • ${escapeHtml(run.status)}${run.emailStatus ? ` • ${escapeHtml(run.emailStatus)}` : ""}</small>
+        ${run.lastEmailTemplate ? `<small>Email: ${escapeHtml(run.lastEmailTemplate)}</small>` : ""}
       </div>
       <div class="payroll-run-total">${formatMoney(run.total)}</div>
     </article>

@@ -311,6 +311,26 @@
             <div class="compliance-warning">
               Kira Recruit tracks onboarding status only. Collect SSNs, EINs, W-4, W-9, I-9, and bank details inside a secure payroll/onboarding provider.
             </div>
+            <div class="people-ops-summary" id="onboardingSummary" aria-label="Onboarding summary"></div>
+            <div class="bulk-action-bar" aria-label="Bulk onboarding actions">
+              <div>
+                <strong id="selectedWorkerCount">0 selected</strong>
+                <span>Onboarding batch</span>
+              </div>
+              <label>
+                Email template
+                <select id="onboardingEmailTemplate">
+                  <option value="welcome">Welcome packet</option>
+                  <option value="tax">Tax packet reminder</option>
+                  <option value="deposit">Direct deposit setup</option>
+                </select>
+              </label>
+              <div class="bulk-actions">
+                <button class="secondary-button" id="selectAllWorkers" type="button">Select all</button>
+                <button class="secondary-button" id="clearWorkerSelection" type="button">Clear</button>
+                <button class="primary-button" id="bulkSendOnboarding" type="button">Email selected</button>
+              </div>
+            </div>
             <div class="worker-list" id="workerList"></div>
             <p class="status-message" id="onboardingMessage" role="status"></p>
           </section>
@@ -375,6 +395,27 @@
                 <button class="secondary-button" id="markPayrollPaid" type="button">Mark latest paid</button>
               </div>
             </form>
+            <div class="people-ops-summary" id="payrollSummary" aria-label="Payroll summary"></div>
+            <div class="bulk-action-bar" aria-label="Bulk payroll actions">
+              <div>
+                <strong id="selectedPayrollCount">0 selected</strong>
+                <span>Payroll batch</span>
+              </div>
+              <label>
+                Email template
+                <select id="payrollEmailTemplate">
+                  <option value="summary">Payment summary</option>
+                  <option value="paid">Payment sent</option>
+                  <option value="missing">Missing payroll info</option>
+                </select>
+              </label>
+              <div class="bulk-actions">
+                <button class="secondary-button" id="selectAllPayrollRuns" type="button">Select all</button>
+                <button class="secondary-button" id="clearPayrollSelection" type="button">Clear</button>
+                <button class="secondary-button" id="emailPayrollRuns" type="button">Email selected</button>
+                <button class="primary-button" id="markSelectedPayrollPaid" type="button">Mark selected paid</button>
+              </div>
+            </div>
             <div class="payroll-list" id="payrollList"></div>
             <p class="status-message" id="payrollMessage" role="status"></p>
           </section>
