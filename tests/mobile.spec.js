@@ -22,6 +22,8 @@ test('CRM pages adapt to a phone viewport', async ({ page }) => {
   await openMobile(page, '/');
 
   await expect(page.locator('.topbar h1')).toHaveText('Dashboard');
+  await expect(page.locator('.nav-links')).toHaveCSS('position', 'fixed');
+  await expect(page.locator('#mobileQuickAction')).toBeVisible();
   await expectPageFitsViewport(page);
 
   await page.getByRole('link', { name: 'Contacts' }).click();
@@ -42,6 +44,16 @@ test('CRM pages adapt to a phone viewport', async ({ page }) => {
 
   await page.getByRole('link', { name: 'Admin' }).click();
   await expect(page.locator('.topbar h1')).toHaveText('Workspace admin');
+  await expectPageFitsViewport(page);
+});
+
+test('CRM mobile layout works with reduced motion enabled', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openMobile(page, '/');
+
+  await expect(page.locator('.topbar h1')).toHaveText('Dashboard');
+  await page.getByRole('link', { name: 'Communications' }).click();
+  await expect(page.locator('.topbar h1')).toHaveText('Communications');
   await expectPageFitsViewport(page);
 });
 

@@ -9,6 +9,8 @@ test.beforeEach(async ({ page }) => {
 test('opens the lead generator cost planner and estimates paid stack costs', async ({ page }) => {
   await expect(page).toHaveTitle(/Safe Property Lead Generator/);
   await expect(page.getByRole('heading', { name: 'Compliant Property Lead Builder' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Best area to target today' })).toBeVisible();
+  await expect(page.locator('.territory-command')).toContainText('DNC first');
 
   await page.getByRole('button', { name: 'Cost planner' }).click();
   await expect(page.getByRole('heading', { name: 'Auto residential lead cost planner' })).toBeVisible();

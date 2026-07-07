@@ -57,6 +57,129 @@ const extensionCatalog = [
   },
 ];
 
+const teamRoleCatalog = {
+  owner: {
+    label: "Owner",
+    description: "Owns billing, workspace settings, team access, and final security controls.",
+  },
+  admin: {
+    label: "Admin",
+    description: "Can manage billing, team members, automations, integrations, and workspace settings.",
+  },
+  manager: {
+    label: "Manager",
+    description: "Can coach reps, assign leads, review pipeline health, and manage daily sales execution.",
+  },
+  rep: {
+    label: "Rep",
+    description: "Can work assigned leads, run Flow Mode, log calls, send messages, and manage personal tasks.",
+  },
+};
+
+const aiToneCatalog = {
+  professional: "Professional",
+  friendly: "Friendly",
+  direct: "Direct",
+  urgent: "Urgent",
+  luxury: "Luxury/high-ticket",
+};
+
+const aiTemplateCatalog = {
+  roofing: {
+    label: "Roofing",
+    opener:
+      "Hi {{customerName}}, this is {{repName}} with {{companyName}}. I saw the note about the {{projectType}} at {{propertyAddress}} and wanted to make the next step simple: {{nextStep}}",
+    text:
+      "Hi {{customerName}}, quick follow-up from {{companyName}} on the {{projectType}}. {{nextStep}} If storm timing or insurance paperwork is a factor, I can help you sort that out today.",
+    email:
+      "Subject: Next step for your {{projectType}}\n\nHi {{customerName}},\n\nI wanted to follow up on the {{projectType}} at {{propertyAddress}}. The next step is {{nextStep}}.\n\nIf it helps, I can also recap timeline, scope, and any insurance or financing questions before you decide.",
+    objection: "Timing, insurance approval, and comparison shopping",
+  },
+  windows: {
+    label: "Windows",
+    opener:
+      "Hi {{customerName}}, this is {{repName}} with {{companyName}}. I wanted to follow up on your window project and help you compare comfort, efficiency, and budget clearly.",
+    text:
+      "Hi {{customerName}}, following up on the window project. {{nextStep}} I can keep it simple and help compare options without pressure.",
+    email:
+      "Subject: Window project follow-up\n\nHi {{customerName}},\n\nI wanted to make the next step easy for your window project: {{nextStep}}.\n\nI can also recap efficiency, warranty, and install timing in plain English.",
+    objection: "Budget, product comparison, and install disruption",
+  },
+  remodeling: {
+    label: "Remodeling",
+    opener:
+      "Hi {{customerName}}, this is {{repName}} with {{companyName}}. I wanted to follow up on the remodel and make sure scope, timing, and budget are clear before the next step.",
+    text:
+      "Hi {{customerName}}, quick remodel follow-up from {{companyName}}. {{nextStep}} Want me to recap scope and timeline in one simple message?",
+    email:
+      "Subject: Remodel next steps\n\nHi {{customerName}},\n\nI wanted to follow up on the remodel. The best next step is {{nextStep}}.\n\nI can help clarify scope, timeline, selections, and decision timing so nothing feels vague.",
+    objection: "Scope changes, timeline, decision fatigue, and budget creep",
+  },
+  flooring: {
+    label: "Flooring",
+    opener:
+      "Hi {{customerName}}, this is {{repName}} with {{companyName}}. I wanted to follow up on the flooring project and make sure material, timing, and install details are easy to compare.",
+    text:
+      "Hi {{customerName}}, following up on the flooring project. {{nextStep}} I can help narrow options around durability, look, and timing.",
+    email:
+      "Subject: Flooring project follow-up\n\nHi {{customerName}},\n\nThe next best step for your flooring project is {{nextStep}}.\n\nI can also recap material options, install timing, and any prep needed before the crew arrives.",
+    objection: "Material choice, moving furniture, install disruption, and price comparison",
+  },
+  solar: {
+    label: "Solar",
+    opener:
+      "Hi {{customerName}}, this is {{repName}} with {{companyName}}. I wanted to follow up on the solar project and help make the savings, financing, and timeline easier to understand.",
+    text:
+      "Hi {{customerName}}, quick follow-up on solar. {{nextStep}} I can recap numbers and next steps clearly so it does not feel like a spreadsheet project.",
+    email:
+      "Subject: Solar next steps\n\nHi {{customerName}},\n\nI wanted to follow up on the solar project. The next step is {{nextStep}}.\n\nI can also recap savings, incentives, financing, and installation timing in a cleaner way.",
+    objection: "Financing, utility savings confidence, permitting, and long-term commitment",
+  },
+  general: {
+    label: "General home improvement",
+    opener:
+      "Hi {{customerName}}, this is {{repName}} with {{companyName}}. I wanted to follow up on the home project and make the next step simple: {{nextStep}}",
+    text:
+      "Hi {{customerName}}, quick follow-up from {{companyName}} on your home project. {{nextStep}} Does today or tomorrow work better?",
+    email:
+      "Subject: Next step for your home project\n\nHi {{customerName}},\n\nI wanted to follow up and make the next step clear: {{nextStep}}.\n\nI can recap scope, timing, estimate amount, and any open questions before you decide.",
+    objection: "Timing, trust, scope clarity, and budget",
+  },
+};
+
+const customizationAccentCatalog = {
+  navy: { label: "Navy blue", value: "#0b2f63" },
+  blue: { label: "Electric blue", value: "#2f6fed" },
+  green: { label: "Growth green", value: "#0f7a4f" },
+  gold: { label: "Premium gold", value: "#a16207" },
+  slate: { label: "Executive slate", value: "#334155" },
+};
+
+const defaultCustomizationPreferences = {
+  themeMode: "system",
+  accentColor: "navy",
+  density: "comfortable",
+  dashboardLayout: "command",
+  sidebarMode: "expanded",
+  defaultLandingPage: "pipeline",
+  aiTone: "professional",
+  defaultTrade: "general",
+  companyName: "Kira Home",
+  brandAccent: "#2f6fed",
+  logoName: "Logo upload placeholder",
+  visibleWidgets: {
+    focus: true,
+    health: true,
+    copilot: true,
+    communications: true,
+    time: true,
+    recommendations: true,
+    revenue: true,
+    activity: true,
+    calendar: true,
+  },
+};
+
 const recruitingSharedFeedKey = "kiraRecruitingSharedFeed-v1";
 const recruitingLegacyFeedKey = "kiraRecruitingFeed-v1";
 
@@ -646,7 +769,25 @@ const openBillingPortalButton = document.querySelector("#openBillingPortal");
 const inviteForm = document.querySelector("#inviteForm");
 const inviteEmail = document.querySelector("#inviteEmail");
 const inviteRole = document.querySelector("#inviteRole");
+const inviteRoleHint = document.querySelector("#inviteRoleHint");
+const rolePermissionGrid = document.querySelector("#rolePermissionGrid");
 const teamList = document.querySelector("#teamList");
+const customizationForm = document.querySelector("#customizationForm");
+const customThemeMode = document.querySelector("#customThemeMode");
+const customAccentColor = document.querySelector("#customAccentColor");
+const customDensity = document.querySelector("#customDensity");
+const customSidebarMode = document.querySelector("#customSidebarMode");
+const customDefaultLanding = document.querySelector("#customDefaultLanding");
+const customDashboardLayout = document.querySelector("#customDashboardLayout");
+const customAiTone = document.querySelector("#customAiTone");
+const customDefaultTrade = document.querySelector("#customDefaultTrade");
+const customCompanyName = document.querySelector("#customCompanyName");
+const customBrandAccent = document.querySelector("#customBrandAccent");
+const customLogoName = document.querySelector("#customLogoName");
+const customizationMessage = document.querySelector("#customizationMessage");
+const brandPreviewCard = document.querySelector("#brandPreviewCard");
+const resetCustomizationButton = document.querySelector("#resetCustomization");
+const mobileQuickActionButton = document.querySelector("#mobileQuickAction");
 const launchChecklist = document.querySelector("#launchChecklist");
 const auditList = document.querySelector("#auditList");
 const adminMessage = document.querySelector("#adminMessage");
@@ -697,6 +838,7 @@ const subpageCatalog = {
     { id: "settings", label: "Workspace settings" },
     { id: "billing", label: "Plan and seats" },
     { id: "team", label: "Members and invites" },
+    { id: "customization", label: "Customization" },
     { id: "extensions", label: "Connected apps" },
     { id: "launch", label: "Production readiness" },
     { id: "audit", label: "Audit trail" },
@@ -720,6 +862,10 @@ let flowSession = createFlowSession();
 const subpageState = Object.fromEntries(Object.entries(subpageCatalog).map(([page, pages]) => [page, pages[0].id]));
 
 document.querySelector("#openLeadModal").addEventListener("click", () => {
+  openLeadModal();
+});
+
+mobileQuickActionButton?.addEventListener("click", () => {
   openLeadModal();
 });
 
@@ -861,7 +1007,10 @@ exportWorkspaceBackupButton.addEventListener("click", exportWorkspaceBackup);
 importWorkspaceBackupButton.addEventListener("click", () => importWorkspaceBackupInput.click());
 importWorkspaceBackupInput.addEventListener("change", importWorkspaceBackup);
 workspaceAdminForm.addEventListener("submit", saveAdminWorkspaceSettings);
+customizationForm?.addEventListener("submit", saveCustomizationPreferences);
+resetCustomizationButton?.addEventListener("click", resetCustomizationPreferences);
 inviteForm.addEventListener("submit", inviteTeamMember);
+inviteRole.addEventListener("change", renderInviteRoleGuidance);
 openCheckoutButton.addEventListener("click", openCheckout);
 openBillingPortalButton.addEventListener("click", openBillingPortal);
 confirmImportButton.addEventListener("click", confirmLeadsImport);
@@ -1211,6 +1360,7 @@ function sortedContactLeads(leads) {
 }
 
 function render() {
+  applyCustomizationPreferences();
   renderWorkspaceIdentity();
   renderMetrics();
   renderDailyCommandCenter();
@@ -1237,7 +1387,8 @@ function render() {
 
 function routeFromHash() {
   const requested = window.location.hash.replace("#", "");
-  activePage = pageTitles[requested] ? requested : "pipeline";
+  const preferred = userCustomizationPreferences().defaultLandingPage;
+  activePage = pageTitles[requested] ? requested : pageTitles[preferred] ? preferred : "pipeline";
 }
 
 function renderRoute() {
@@ -1590,6 +1741,7 @@ function renderSalesCopilotPanel(lead, variant = "dashboard") {
 
   const copilot = salesCopilotForLead(lead);
   const nextStage = nextPipelineStage(lead);
+  const aiModeLabel = serverReadiness?.groups?.ai ? "OpenAI ready" : "Deterministic fallback";
   const status =
     salesCopilotStatus.leadId === lead.id
       ? salesCopilotStatus.message
@@ -1604,6 +1756,11 @@ function renderSalesCopilotPanel(lead, variant = "dashboard") {
           <span>${escapeHtml(lead.name)} · ${escapeHtml(stageLabel(lead.stage))} · ${formatter.format(lead.value)}</span>
         </div>
         <b>${copilot.closeProbability}%</b>
+      </div>
+      <div class="sales-copilot-tags" aria-label="AI template context">
+        <span>${escapeHtml(aiModeLabel)}</span>
+        <span>${escapeHtml(copilot.categoryLabel)}</span>
+        <span>${escapeHtml(copilot.toneLabel)}</span>
       </div>
       <div class="sales-copilot-grid">
         <article>
@@ -1653,19 +1810,19 @@ function salesCopilotForLead(lead) {
   const tasks = leadTasks(lead);
   const openTasks = tasks.filter((task) => !task.done);
   const dueToday = openTasks.find((task) => task.due === "today");
-  const firstName = lead.name.split(" ")[0] || lead.name;
   const bestNextAction = copilotBestNextAction(lead, { health, dueToday, quietDays });
   const closeProbability = copilotCloseProbability(lead, health, openTasks);
+  const templateContext = leadCopilotTemplateContext(lead, { health, quietDays, bestNextAction });
 
   return {
     lead,
     bestNextAction,
-    callOpener: `Hey ${firstName}, it's Cameron with Kira Home. I was looking at ${lead.company}'s ${stageLabel(
-      lead.stage,
-    ).toLowerCase()} file and wanted to make the next step simple: ${bestNextAction}`,
-    textMessage: `Hi ${firstName}, quick follow-up from Kira Home. ${bestNextAction} Does today or tomorrow work better?`,
-    emailMessage: `Subject: Next step for ${lead.company}\n\nHi ${firstName},\n\nI wanted to recap the next step: ${bestNextAction}\n\nThe goal is to make the decision clear and keep momentum moving.`,
-    objectionRisk: copilotObjectionRisk(lead, { health, openTasks, quietDays }),
+    categoryLabel: templateContext.category.label,
+    toneLabel: aiToneCatalog[templateContext.tone] || aiToneCatalog.professional,
+    callOpener: fillAiTemplate(templateContext.category.opener, templateContext.variables),
+    textMessage: applyCopilotTone(fillAiTemplate(templateContext.category.text, templateContext.variables), templateContext.tone),
+    emailMessage: applyCopilotTone(fillAiTemplate(templateContext.category.email, templateContext.variables), templateContext.tone),
+    objectionRisk: `${templateContext.category.objection}; ${copilotObjectionRisk(lead, { health, openTasks, quietDays })}`,
     closeProbability,
     closeProbabilityExplanation: `${closeProbability}% because ${stageLabel(lead.stage)} starts at ${Math.round(
       (stageProbabilities[lead.stage] || 0) * 100,
@@ -1673,6 +1830,74 @@ function salesCopilotForLead(lead) {
       activities.length
     } activity ${activities.length === 1 ? "touch is" : "touches are"} logged.`,
   };
+}
+
+function leadCopilotTemplateContext(lead, context) {
+  const categoryKey = inferProjectCategory(lead);
+  const tone = inferCopilotTone(lead, context);
+  const firstName = lead.name.split(" ")[0] || lead.name;
+  return {
+    category: aiTemplateCatalog[categoryKey] || aiTemplateCatalog.general,
+    tone,
+    variables: {
+      customerName: firstName,
+      projectType: projectTypeLabel(categoryKey),
+      propertyAddress: lead.address || "the property",
+      appointmentDate: lead.appointmentAt ? formatShortDate(lead.appointmentAt) : "the next appointment window",
+      repName: "Cameron",
+      companyName: "Kira Home",
+      estimateAmount: formatter.format(lead.value || 0),
+      lastInteraction: latestLeadActivity(lead.id)?.message || lead.notes || "the last conversation",
+      nextStep: context.bestNextAction,
+    },
+  };
+}
+
+function inferProjectCategory(lead) {
+  const text = `${lead.company || ""} ${lead.notes || ""} ${lead.nextAction || ""} ${lead.source || ""}`.toLowerCase();
+  if (/roof|storm|shingle|gutter/.test(text)) return "roofing";
+  if (/window|glass|pane|sash/.test(text)) return "windows";
+  if (/remodel|bath|kitchen|addition|renovation/.test(text)) return "remodeling";
+  if (/floor|tile|hardwood|vinyl|carpet/.test(text)) return "flooring";
+  if (/solar|panel|utility|battery/.test(text)) return "solar";
+  return userCustomizationPreferences().defaultTrade || "general";
+}
+
+function inferCopilotTone(lead, context) {
+  const preferredTone = userCustomizationPreferences().aiTone;
+  if (preferredTone && preferredTone !== "professional") return preferredTone;
+  if (context.health.score < 45 || context.quietDays >= 5) return "urgent";
+  if ((lead.value || 0) >= 15000) return "luxury";
+  if (lead.stage === "proposal") return "direct";
+  if (lead.stage === "new") return "friendly";
+  return "professional";
+}
+
+function projectTypeLabel(categoryKey) {
+  const labels = {
+    roofing: "roofing project",
+    windows: "window project",
+    remodeling: "remodeling project",
+    flooring: "flooring project",
+    solar: "solar project",
+    general: "home improvement project",
+  };
+  return labels[categoryKey] || labels.general;
+}
+
+function fillAiTemplate(template, variables) {
+  return Object.entries(variables).reduce(
+    (output, [key, value]) => output.replaceAll(`{{${key}}}`, String(value || "")),
+    template,
+  );
+}
+
+function applyCopilotTone(message, tone) {
+  if (tone === "urgent") return `${message}\n\nTiming note: this one needs attention today before momentum fades.`;
+  if (tone === "direct") return `${message}\n\nClear next step: ask for the decision path and the date they want to move forward.`;
+  if (tone === "luxury") return `${message}\n\nKeep the conversation consultative: quality, trust, and schedule certainty matter more than pressure.`;
+  if (tone === "friendly") return `${message}\n\nKeep it warm and easy to answer.`;
+  return message;
 }
 
 function copilotBestNextAction(lead, context) {
@@ -3084,6 +3309,9 @@ function renderSaasAdmin() {
     button.textContent = `${option.label} ${formatter.format(option.price)}/mo`;
   });
 
+  renderInviteRoleGuidance();
+  renderCustomizationSettings();
+
   teamSummary.innerHTML = `
     <article>
       <span>Active members</span>
@@ -3131,27 +3359,202 @@ function renderSaasAdmin() {
 }
 
 function renderTeamMember(member) {
+  const role = teamRoleCatalog[member.role] || teamRoleCatalog.rep;
+  const isOwner = member.role === "owner";
   return `
-    <article class="team-row">
+    <article class="team-row team-member-row">
       <div>
         <strong>${escapeHtml(member.email)}</strong>
-        <span>${escapeHtml(member.role)} · active</span>
+        <span>${escapeHtml(role.label)} · active</span>
+        <small>${escapeHtml(role.description)}</small>
       </div>
-      <span class="status-pill">Member</span>
+      <span class="status-pill">${isOwner ? "Owner" : "Member"}</span>
     </article>
   `;
 }
 
 function renderTeamInvite(invite) {
+  const role = teamRoleCatalog[invite.role] || teamRoleCatalog.rep;
+  const expiresAt = invite.expiresAt ? ` · expires ${formatShortDate(invite.expiresAt)}` : "";
+  const statusLabel = invite.status === "accepted" ? "Accepted" : invite.status === "expired" ? "Expired" : "Pending";
   return `
-    <article class="team-row">
+    <article class="team-row team-invite-row ${escapeHtml(invite.status || "pending")}">
       <div>
         <strong>${escapeHtml(invite.email)}</strong>
-        <span>${escapeHtml(invite.role)} · invited ${formatShortDate(invite.createdAt)}</span>
+        <span>${escapeHtml(role.label)} · ${statusLabel} · invited ${formatShortDate(invite.createdAt)}${expiresAt}</span>
+        <small>${escapeHtml(role.description)}</small>
       </div>
-      <button class="secondary-button" data-send-invite="${invite.id}" type="button">Send email</button>
+      <div class="team-row-actions">
+        <span class="status-pill">${statusLabel}</span>
+        <button class="secondary-button" data-send-invite="${invite.id}" type="button">Send email</button>
+      </div>
     </article>
   `;
+}
+
+function renderInviteRoleGuidance() {
+  if (!inviteRoleHint || !rolePermissionGrid) return;
+  const role = teamRoleCatalog[inviteRole.value] || teamRoleCatalog.rep;
+  inviteRoleHint.textContent = role.description;
+  rolePermissionGrid.innerHTML = ["owner", "admin", "manager", "rep"]
+    .map((roleId) => {
+      const item = teamRoleCatalog[roleId];
+      return `
+        <article class="${roleId === inviteRole.value ? "active" : ""}">
+          <strong>${escapeHtml(item.label)}</strong>
+          <span>${escapeHtml(item.description)}</span>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function userCustomizationPreferences() {
+  const fallback = structuredClone(defaultCustomizationPreferences);
+  const saved = localStorage.getItem(customizationPreferenceKey());
+  if (!saved) return fallback;
+  try {
+    const parsed = JSON.parse(saved);
+    return {
+      ...fallback,
+      ...parsed,
+      visibleWidgets: {
+        ...fallback.visibleWidgets,
+        ...(parsed.visibleWidgets || {}),
+      },
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+function customizationPreferenceKey() {
+  return currentUser ? `closepilot-ui-preferences-${currentUser.id}` : "closepilot-ui-preferences-demo";
+}
+
+function applyCustomizationPreferences(preferences = userCustomizationPreferences()) {
+  const accent = customizationAccentCatalog[preferences.accentColor] || customizationAccentCatalog.navy;
+  const theme = ["light", "dark", "system"].includes(preferences.themeMode) ? preferences.themeMode : "system";
+  document.documentElement.dataset.theme = theme;
+  document.body.dataset.themePreference = theme;
+  document.body.dataset.accent = preferences.accentColor || "navy";
+  document.body.dataset.density = preferences.density === "compact" ? "compact" : "comfortable";
+  document.body.dataset.dashboardLayout = preferences.dashboardLayout === "compact" ? "compact" : "command";
+  document.body.dataset.sidebar = preferences.sidebarMode === "compact" ? "compact" : "expanded";
+  document.documentElement.style.setProperty("--accent", preferences.brandAccent || accent.value);
+  document.documentElement.style.setProperty("--brand-accent", preferences.brandAccent || accent.value);
+
+  const widgetSelectors = {
+    focus: "#dashboardFollowUpQueueCard, .today-focus-card",
+    health: "#opportunityHealthWidget",
+    copilot: "#dashboardSalesCopilotCard",
+    communications: "#communicationStatsWidget",
+    time: "#timeSavedWidget",
+    recommendations: "#aiRecommendationsWidget",
+    revenue: "#revenueSnapshotWidget, #salesActivityWidget",
+    activity: "#teamActivityWidget",
+    calendar: "#dashboardCalendarWidget",
+  };
+
+  Object.entries(widgetSelectors).forEach(([widget, selector]) => {
+    document.querySelectorAll(selector).forEach((element) => {
+      element.hidden = preferences.visibleWidgets?.[widget] === false;
+    });
+  });
+}
+
+function renderCustomizationSettings() {
+  if (!customizationForm) return;
+  const preferences = userCustomizationPreferences();
+  customThemeMode.value = preferences.themeMode;
+  customAccentColor.value = preferences.accentColor;
+  customDensity.value = preferences.density;
+  customSidebarMode.value = preferences.sidebarMode;
+  customDefaultLanding.value = preferences.defaultLandingPage;
+  customDashboardLayout.value = preferences.dashboardLayout;
+  customAiTone.value = preferences.aiTone;
+  customDefaultTrade.value = preferences.defaultTrade;
+  customCompanyName.value = preferences.companyName;
+  customBrandAccent.value = preferences.brandAccent;
+  customLogoName.value = preferences.logoName;
+  setCustomizationWidgetCheckbox("widgetFocus", preferences.visibleWidgets.focus);
+  setCustomizationWidgetCheckbox("widgetHealth", preferences.visibleWidgets.health);
+  setCustomizationWidgetCheckbox("widgetCopilot", preferences.visibleWidgets.copilot);
+  setCustomizationWidgetCheckbox("widgetCommunications", preferences.visibleWidgets.communications);
+  setCustomizationWidgetCheckbox("widgetTime", preferences.visibleWidgets.time);
+  setCustomizationWidgetCheckbox("widgetRecommendations", preferences.visibleWidgets.recommendations);
+  setCustomizationWidgetCheckbox("widgetRevenue", preferences.visibleWidgets.revenue);
+  setCustomizationWidgetCheckbox("widgetActivity", preferences.visibleWidgets.activity);
+  setCustomizationWidgetCheckbox("widgetCalendar", preferences.visibleWidgets.calendar);
+  renderBrandPreview(preferences);
+}
+
+function setCustomizationWidgetCheckbox(id, checked) {
+  const element = document.querySelector(`#${id}`);
+  if (element) element.checked = checked !== false;
+}
+
+function customizationWidgetChecked(id) {
+  return document.querySelector(`#${id}`)?.checked !== false;
+}
+
+function renderBrandPreview(preferences) {
+  if (!brandPreviewCard) return;
+  const accent = customizationAccentCatalog[preferences.accentColor] || customizationAccentCatalog.navy;
+  const trade = aiTemplateCatalog[preferences.defaultTrade] || aiTemplateCatalog.general;
+  brandPreviewCard.innerHTML = `
+    <span class="brand-preview-mark" style="--preview-accent: ${escapeHtml(preferences.brandAccent || accent.value)}">KH</span>
+    <div>
+      <strong>${escapeHtml(preferences.companyName || "Kira Home")}</strong>
+      <span>${escapeHtml(trade.label)} · ${escapeHtml(aiToneCatalog[preferences.aiTone] || aiToneCatalog.professional)}</span>
+      <small>${escapeHtml(preferences.logoName || "Logo upload placeholder")} · saved in demo localStorage</small>
+    </div>
+  `;
+}
+
+async function saveCustomizationPreferences(event) {
+  event.preventDefault();
+  const preferences = {
+    ...userCustomizationPreferences(),
+    themeMode: customThemeMode.value,
+    accentColor: customAccentColor.value,
+    density: customDensity.value,
+    sidebarMode: customSidebarMode.value,
+    defaultLandingPage: customDefaultLanding.value,
+    dashboardLayout: customDashboardLayout.value,
+    aiTone: customAiTone.value,
+    defaultTrade: customDefaultTrade.value,
+    companyName: customCompanyName.value.trim() || "Kira Home",
+    brandAccent: customBrandAccent.value || customizationAccentCatalog.navy.value,
+    logoName: customLogoName.value.trim() || "Logo upload placeholder",
+    visibleWidgets: {
+      focus: customizationWidgetChecked("widgetFocus"),
+      health: customizationWidgetChecked("widgetHealth"),
+      copilot: customizationWidgetChecked("widgetCopilot"),
+      communications: customizationWidgetChecked("widgetCommunications"),
+      time: customizationWidgetChecked("widgetTime"),
+      recommendations: customizationWidgetChecked("widgetRecommendations"),
+      revenue: customizationWidgetChecked("widgetRevenue"),
+      activity: customizationWidgetChecked("widgetActivity"),
+      calendar: customizationWidgetChecked("widgetCalendar"),
+    },
+  };
+
+  localStorage.setItem(customizationPreferenceKey(), JSON.stringify(preferences));
+  applyCustomizationPreferences(preferences);
+  renderCustomizationSettings();
+  customizationMessage.textContent = "Preferences saved for this workspace demo. Cloud sync can reuse the same shape later.";
+  await logAuditEvent("UI preferences saved", `${preferences.companyName} selected ${preferences.themeMode} mode and ${preferences.density} density.`);
+  renderSaasAdmin();
+}
+
+async function resetCustomizationPreferences() {
+  localStorage.removeItem(customizationPreferenceKey());
+  applyCustomizationPreferences(defaultCustomizationPreferences);
+  renderCustomizationSettings();
+  customizationMessage.textContent = "Preferences reset to the ClosePilot default experience.";
+  await logAuditEvent("UI preferences reset", "Workspace UI preferences returned to default.");
+  renderSaasAdmin();
 }
 
 function renderLaunchCheck(check) {
@@ -8798,9 +9201,22 @@ async function openBillingPortal() {
 async function inviteTeamMember(event) {
   event.preventDefault();
   const email = inviteEmail.value.trim().toLowerCase();
-  if (!email) return;
+  if (!isValidInviteEmail(email)) {
+    adminMessage.textContent = "Enter a valid email address before sending an invite.";
+    inviteEmail.focus();
+    return;
+  }
 
   const account = accountState();
+  const duplicateMember = account.members.some((member) => member.email.toLowerCase() === email);
+  const duplicateInvite = account.invites.some(
+    (invite) => invite.email.toLowerCase() === email && ["pending", "sent"].includes(invite.status || "pending"),
+  );
+  if (duplicateMember || duplicateInvite) {
+    adminMessage.textContent = `${email} already has access or a pending invite. Use Send email to resend the existing invite.`;
+    return;
+  }
+
   const usedSeats =
     account.members.filter((member) => member.status === "active").length +
     account.invites.filter((invite) => invite.status === "pending").length;
@@ -8816,9 +9232,14 @@ async function inviteTeamMember(event) {
   });
   await logAuditEvent("Invite staged", `${email} invited as ${inviteRole.value}.`);
   inviteEmail.value = "";
-  inviteRole.value = "member";
+  inviteRole.value = "rep";
+  renderInviteRoleGuidance();
   adminMessage.textContent = `Invite staged for ${email}. Sending invite...`;
   await sendInviteThroughBackend(invite);
+}
+
+function isValidInviteEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 async function sendInviteEmail(inviteId) {

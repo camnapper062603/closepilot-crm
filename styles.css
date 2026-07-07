@@ -20,8 +20,16 @@
   --amber: #c57b22;
   --coral: #c85a54;
   --blue: #174b8f;
-  --shadow: 0 12px 30px rgba(5, 5, 5, 0.08);
-  --shadow-soft: 0 18px 50px rgba(5, 5, 5, 0.08);
+  --accent: #2f6fed;
+  --focus: rgba(47, 111, 237, 0.28);
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --shadow: 0 16px 40px rgba(5, 5, 5, 0.08);
+  --shadow-soft: 0 20px 60px rgba(5, 5, 5, 0.1);
+  --shadow-lift: 0 28px 80px rgba(5, 5, 5, 0.14);
+  --motion-fast: 150ms ease;
+  --motion-med: 240ms ease;
 }
 
 * {
@@ -6807,7 +6815,12 @@ button.insight-card:hover {
   }
 
   .pipeline-board {
-    grid-template-columns: repeat(4, 82vw);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow-x: hidden;
+  }
+
+  .stage-column {
+    min-width: 0;
   }
 
   .insight-list,
@@ -6869,5 +6882,780 @@ button.insight-card:hover {
 
   h1 {
     font-size: 2.2rem;
+  }
+}
+
+/* Premium commercial SaaS polish layer */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background:
+    radial-gradient(circle at top left, rgba(47, 111, 237, 0.06), transparent 28rem),
+    linear-gradient(180deg, var(--bg), var(--soft));
+  min-height: 100vh;
+  text-rendering: optimizeLegibility;
+}
+
+.daily-command-center,
+.flow-mode-panel,
+.sales-copilot-panel {
+  animation: page-soft-enter var(--motion-med) both;
+}
+
+a,
+button,
+input,
+select,
+textarea,
+summary {
+  transition:
+    background var(--motion-fast),
+    border-color var(--motion-fast),
+    box-shadow var(--motion-fast),
+    color var(--motion-fast),
+    opacity var(--motion-fast),
+    transform var(--motion-fast);
+}
+
+:where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+button:active,
+.primary-button:active,
+.secondary-button:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+.sidebar {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), transparent 22rem),
+    var(--black);
+  box-shadow: inset -1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.brand-mark {
+  box-shadow: 0 12px 32px rgba(255, 255, 255, 0.16);
+}
+
+.nav-links a {
+  border: 1px solid transparent;
+  min-height: 42px;
+}
+
+.nav-links a.active,
+.nav-links a:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 28px rgba(11, 47, 99, 0.24);
+}
+
+.topbar,
+.panel,
+.admin-card,
+.dashboard-greeting,
+.today-focus-card,
+.dashboard-follow-up-card,
+.time-saved-widget,
+.dashboard-section,
+.flow-mode-panel,
+.communications-column,
+.sales-copilot-panel,
+.workflow-builder-panel,
+.workflow-templates-panel {
+  backdrop-filter: blur(18px);
+  border-radius: var(--radius-md);
+}
+
+.topbar {
+  position: sticky;
+  top: 14px;
+  z-index: 20;
+}
+
+.search,
+.admin-form input,
+.admin-form select,
+.invite-form input,
+.invite-form select,
+.workflow-properties-card input,
+.workflow-properties-card textarea,
+.ai-workflow-assistant textarea {
+  background: color-mix(in srgb, var(--surface) 92%, var(--soft));
+}
+
+.primary-button {
+  box-shadow: 0 12px 28px rgba(11, 47, 99, 0.2);
+}
+
+.secondary-button {
+  box-shadow: 0 8px 20px rgba(11, 47, 99, 0.13);
+}
+
+.metrics article,
+.focus-grid article,
+.time-saved-grid article,
+.revenue-snapshot-grid article,
+.sales-activity-grid article,
+.ai-card,
+.dashboard-feed-item,
+.dashboard-schedule-item,
+.deal-card,
+.contact-row,
+.team-row,
+.launch-check,
+.workflow-node,
+.workflow-template-card,
+.recruiting-candidate-card,
+.manager-kpi-card,
+.risk-card {
+  transition:
+    border-color var(--motion-fast),
+    box-shadow var(--motion-fast),
+    transform var(--motion-fast);
+}
+
+.metrics article:hover,
+.focus-grid article:hover,
+.time-saved-grid article:hover,
+.revenue-snapshot-grid article:hover,
+.sales-activity-grid article:hover,
+.ai-card:hover,
+.dashboard-feed-item:hover,
+.dashboard-schedule-item:hover,
+.deal-card:hover,
+.contact-row:hover,
+.team-row:hover,
+.launch-check:hover,
+.workflow-template-card:hover,
+.recruiting-candidate-card:hover,
+.manager-kpi-card:hover,
+.risk-card:hover {
+  border-color: rgba(47, 111, 237, 0.28);
+  box-shadow: var(--shadow-lift);
+  transform: translateY(-2px);
+}
+
+.sales-copilot-panel {
+  background:
+    linear-gradient(135deg, rgba(47, 111, 237, 0.08), transparent 32%),
+    var(--surface-elevated);
+}
+
+.sales-copilot-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sales-copilot-tags span,
+.invite-role-hint {
+  background: var(--navy-soft);
+  border: 1px solid rgba(11, 47, 99, 0.12);
+  border-radius: 999px;
+  color: var(--navy-dark);
+  display: inline-flex;
+  font-size: 0.74rem;
+  font-weight: 900;
+  line-height: 1.2;
+  padding: 7px 10px;
+}
+
+.invite-field {
+  color: var(--muted);
+  display: grid;
+  font-size: 0.78rem;
+  font-weight: 900;
+  gap: 5px;
+  text-transform: uppercase;
+}
+
+.invite-role-hint {
+  border-radius: var(--radius-sm);
+  display: block;
+  line-height: 1.45;
+  margin: 0;
+  text-transform: none;
+}
+
+.role-permission-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.role-permission-grid article {
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  display: grid;
+  gap: 5px;
+  padding: 10px;
+}
+
+.role-permission-grid article.active {
+  background: var(--navy-soft);
+  border-color: rgba(11, 47, 99, 0.28);
+}
+
+.role-permission-grid strong {
+  font-size: 0.84rem;
+}
+
+.role-permission-grid span,
+.team-row small {
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.team-row-actions {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+.team-invite-row.pending {
+  border-color: rgba(197, 123, 34, 0.34);
+}
+
+.launch-checklist {
+  counter-reset: readiness;
+}
+
+.launch-check {
+  counter-increment: readiness;
+}
+
+.launch-check div strong::before {
+  color: var(--muted);
+  content: counter(readiness, decimal-leading-zero) " / ";
+  font-weight: 900;
+}
+
+.flow-mode-panel {
+  overflow: hidden;
+  position: relative;
+}
+
+.flow-mode-panel::before {
+  background: linear-gradient(90deg, var(--navy), var(--accent), var(--navy));
+  content: "";
+  height: 3px;
+  inset: 0 0 auto;
+  position: absolute;
+}
+
+.flow-step-card {
+  animation: step-slide-in var(--motion-med) both;
+}
+
+.modal-backdrop:not([hidden]) .modal-card,
+.communication-toast {
+  animation: page-soft-enter var(--motion-med) both;
+}
+
+.skeleton,
+.loading-shimmer {
+  animation: loading-shimmer 1.4s linear infinite;
+  background: linear-gradient(90deg, var(--soft), var(--soft-strong), var(--soft));
+  background-size: 220% 100%;
+}
+
+@keyframes page-soft-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes step-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes loading-shimmer {
+  to {
+    background-position: -220% 0;
+  }
+}
+
+.app-shell,
+.main,
+.sidebar,
+.topbar,
+.panel,
+.dashboard-section,
+.admin-card {
+  transition:
+    background-color var(--motion-med),
+    border-color var(--motion-med),
+    box-shadow var(--motion-med),
+    color var(--motion-med);
+}
+
+html[data-theme="light"] {
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-elevated: #ffffff;
+  --ink: #050505;
+  --muted: #5f6670;
+  --line: #d8dde5;
+  --navy: #0b2f63;
+  --navy-dark: #071f42;
+  --navy-soft: #eef4ff;
+  --black: #050505;
+  --soft: #f6f8fb;
+  --soft-strong: #eef2f7;
+  --ring: rgba(11, 47, 99, 0.16);
+  --shadow: 0 16px 40px rgba(5, 5, 5, 0.08);
+  --shadow-soft: 0 20px 60px rgba(5, 5, 5, 0.1);
+}
+
+html[data-theme="dark"] {
+  --bg: #080a0f;
+  --surface: #0e1118;
+  --surface-elevated: #121722;
+  --ink: #f6f8fb;
+  --muted: #a7b0bf;
+  --line: #273142;
+  --navy: #5f8edb;
+  --navy-dark: #8ab4ff;
+  --navy-soft: #16253d;
+  --black: #05070b;
+  --soft: #171d28;
+  --soft-strong: #202838;
+  --ring: rgba(138, 180, 255, 0.18);
+  --shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+  --shadow-soft: 0 18px 50px rgba(0, 0, 0, 0.32);
+}
+
+html[data-theme="dark"] body {
+  color-scheme: dark;
+}
+
+html[data-theme="dark"] .auth-panel,
+html[data-theme="dark"] .main,
+html[data-theme="dark"] body {
+  background:
+    radial-gradient(circle at top right, rgba(47, 111, 237, 0.12), transparent 34rem),
+    var(--bg);
+}
+
+html[data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]),
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+html[data-theme="dark"] .topbar,
+html[data-theme="dark"] .metrics article,
+html[data-theme="dark"] .panel,
+html[data-theme="dark"] .onboarding-panel,
+html[data-theme="dark"] .auth-card,
+html[data-theme="dark"] .dashboard-greeting,
+html[data-theme="dark"] .today-focus-card,
+html[data-theme="dark"] .dashboard-follow-up-card,
+html[data-theme="dark"] .time-saved-widget,
+html[data-theme="dark"] .dashboard-section,
+html[data-theme="dark"] .flow-mode-panel,
+html[data-theme="dark"] .manager-hero,
+html[data-theme="dark"] .manager-section,
+html[data-theme="dark"] .admin-card,
+html[data-theme="dark"] .communications-column,
+html[data-theme="dark"] .message-composer,
+html[data-theme="dark"] .customer-sidebar,
+html[data-theme="dark"] .ai-assistant-panel,
+html[data-theme="dark"] .quick-actions-panel {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent), var(--surface-elevated);
+  border-color: var(--line);
+}
+
+html[data-theme="dark"] .subpage-nav,
+html[data-theme="dark"] .mode-pill,
+html[data-theme="dark"] .admin-dropdown,
+html[data-theme="dark"] .role-permission-grid article,
+html[data-theme="dark"] .brand-preview-card,
+html[data-theme="dark"] .customization-form fieldset {
+  background: var(--soft);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+html[data-theme="light"] body {
+  color-scheme: light;
+}
+
+body[data-accent="blue"] {
+  --brand-accent: #2f6fed;
+}
+
+body[data-accent="green"] {
+  --brand-accent: #0f7a4f;
+}
+
+body[data-accent="gold"] {
+  --brand-accent: #a16207;
+}
+
+body[data-accent="slate"] {
+  --brand-accent: #334155;
+}
+
+body[data-accent="navy"] {
+  --brand-accent: #0b2f63;
+}
+
+body[data-accent] .primary-button,
+body[data-accent] .subpage-nav button.active,
+body[data-accent] .nav-links a.active,
+body[data-accent] .nav-links a:hover,
+body[data-accent] .command-start-button,
+body[data-accent] .mobile-quick-action {
+  background: var(--brand-accent);
+  border-color: var(--brand-accent);
+  color: #ffffff;
+}
+
+body[data-accent] .brand-mark,
+body[data-accent] .intelligence-badge.hot,
+body[data-accent] .sales-copilot-tags span,
+body[data-accent] .invite-role-hint {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand-accent), transparent 78%);
+}
+
+body[data-density="compact"] .main {
+  gap: 16px;
+  padding: 18px;
+}
+
+body[data-density="compact"] .panel,
+body[data-density="compact"] .dashboard-section,
+body[data-density="compact"] .time-saved-widget,
+body[data-density="compact"] .today-focus-card,
+body[data-density="compact"] .dashboard-greeting,
+body[data-density="compact"] .dashboard-follow-up-card,
+body[data-density="compact"] .admin-card {
+  padding: 14px;
+}
+
+body[data-density="compact"] .metrics article,
+body[data-density="compact"] .focus-grid article,
+body[data-density="compact"] .team-row,
+body[data-density="compact"] .contact-row,
+body[data-density="compact"] .task-item {
+  padding: 10px;
+}
+
+body[data-sidebar="compact"] .app-shell {
+  grid-template-columns: 96px minmax(0, 1fr);
+}
+
+body[data-sidebar="compact"] .sidebar {
+  align-items: center;
+  padding: 18px 12px;
+}
+
+body[data-sidebar="compact"] .brand div,
+body[data-sidebar="compact"] .workspace-card,
+body[data-sidebar="compact"] .nav-links a {
+  font-size: 0;
+}
+
+body[data-sidebar="compact"] .nav-links a {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px;
+  width: 56px;
+}
+
+body[data-sidebar="compact"] .nav-links a::first-letter {
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+body[data-dashboard-layout="compact"] .daily-command-center {
+  gap: 14px;
+}
+
+body[data-dashboard-layout="compact"] .dashboard-greeting,
+body[data-dashboard-layout="compact"] .today-focus-card {
+  grid-template-columns: 1fr;
+}
+
+.customization-card {
+  overflow: hidden;
+}
+
+.customization-form {
+  display: grid;
+  gap: 14px;
+}
+
+.customization-form fieldset {
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+  padding: 14px;
+}
+
+.customization-form legend {
+  color: var(--navy-dark);
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 0 6px;
+  text-transform: uppercase;
+}
+
+.customization-form label {
+  color: var(--muted);
+  display: grid;
+  font-size: 0.82rem;
+  font-weight: 850;
+  gap: 6px;
+}
+
+.customization-widget-fieldset {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.customization-widget-fieldset label {
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  display: flex;
+  gap: 8px;
+  min-height: 38px;
+  padding: 8px 10px;
+}
+
+.customization-widget-fieldset input {
+  accent-color: var(--brand-accent, var(--accent));
+}
+
+.brand-preview-card {
+  align-items: center;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--brand-accent, var(--accent)), transparent 86%), transparent),
+    var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  display: flex;
+  gap: 12px;
+  grid-column: 1 / -1;
+  padding: 12px;
+}
+
+.brand-preview-mark {
+  align-items: center;
+  background: var(--preview-accent, var(--brand-accent, var(--accent)));
+  border-radius: var(--radius-sm);
+  color: #ffffff;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-weight: 950;
+  height: 44px;
+  justify-content: center;
+  width: 44px;
+}
+
+.brand-preview-card strong,
+.brand-preview-card span,
+.brand-preview-card small {
+  display: block;
+}
+
+.brand-preview-card span,
+.brand-preview-card small,
+.customization-message {
+  color: var(--muted);
+}
+
+.customization-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.mobile-quick-action {
+  display: none;
+}
+
+.sales-copilot-panel,
+.ai-assistant-panel,
+.ai-workflow-assistant {
+  overflow: hidden;
+  position: relative;
+}
+
+.sales-copilot-panel::after,
+.ai-assistant-panel::after,
+.ai-workflow-assistant::after {
+  animation: ai-pulse 2.8s ease-in-out infinite;
+  background: radial-gradient(circle, color-mix(in srgb, var(--brand-accent, var(--accent)), transparent 72%), transparent 68%);
+  content: "";
+  height: 120px;
+  opacity: 0.72;
+  pointer-events: none;
+  position: absolute;
+  right: -50px;
+  top: -54px;
+  width: 120px;
+}
+
+@keyframes ai-pulse {
+  0%,
+  100% {
+    opacity: 0.42;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 0.78;
+    transform: scale(1.06);
+  }
+}
+
+@media (max-width: 820px) {
+  .main {
+    padding-bottom: 92px;
+  }
+
+  .topbar {
+    position: static;
+  }
+
+  .sidebar {
+    background: var(--black);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 10px;
+  }
+
+  .nav-links {
+    background: rgba(5, 5, 5, 0.94);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 18px 18px 0 0;
+    bottom: 0;
+    box-shadow: 0 -18px 45px rgba(5, 5, 5, 0.22);
+    flex-wrap: wrap;
+    left: 0;
+    overflow-x: clip;
+    padding: 9px 10px calc(9px + env(safe-area-inset-bottom));
+    position: fixed;
+    right: 0;
+    z-index: 60;
+  }
+
+  .nav-links a {
+    flex: 1 1 62px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    min-height: 44px;
+    padding: 8px 9px;
+    text-align: center;
+  }
+
+  .subpage-nav {
+    flex-wrap: wrap;
+    overflow-x: clip;
+  }
+
+  .subpage-nav button {
+    flex: 1 1 auto;
+  }
+
+  .role-permission-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .team-row,
+  .team-row-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .team-row-actions .secondary-button {
+    width: 100%;
+  }
+
+  .mobile-quick-action {
+    align-items: center;
+    border: 1px solid var(--brand-accent, var(--accent));
+    border-radius: 999px;
+    bottom: calc(74px + env(safe-area-inset-bottom));
+    box-shadow: 0 16px 42px rgba(5, 5, 5, 0.24);
+    color: #ffffff;
+    display: inline-flex;
+    font-weight: 950;
+    min-height: 48px;
+    padding: 0 18px;
+    position: fixed;
+    right: 16px;
+    z-index: 70;
+  }
+
+  body[data-sidebar="compact"] .app-shell {
+    display: block;
+  }
+
+  body[data-sidebar="compact"] .sidebar {
+    align-items: stretch;
+  }
+
+  body[data-sidebar="compact"] .brand div,
+  body[data-sidebar="compact"] .nav-links a {
+    font-size: inherit;
+  }
+
+  body[data-sidebar="compact"] .nav-links a {
+    width: auto;
+  }
+}
+
+@media (max-width: 560px) {
+  .role-permission-grid,
+  .sales-copilot-grid,
+  .sales-copilot-scripts,
+  .customization-form fieldset,
+  .customization-widget-fieldset {
+    grid-template-columns: 1fr;
+  }
+
+  .sales-copilot-tags span {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
   }
 }

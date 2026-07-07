@@ -456,25 +456,40 @@ function renderCandidates() {
   elements.candidateList.innerHTML = candidates.length
     ? candidates
         .map(
-          (candidate) => `
-            <article class="candidate-card">
+          (candidate) => {
+            const scoreLabel = candidate.score >= 85 ? "Priority" : candidate.score >= 75 ? "Qualified" : "Review";
+            const nextAction =
+              candidate.status === "Booked"
+                ? "Prep interview questions"
+                : candidate.score >= 85
+                  ? "Call candidate first"
+                  : candidate.score >= 75
+                    ? "Book interview"
+                    : "Review fit";
+            return `
+            <article class="candidate-card ${scoreLabel.toLowerCase()}">
               <div class="candidate-head">
                 <div>
                   <strong>${escapeHtml(candidate.name)}</strong>
                   <span>${escapeHtml(candidate.source)} - ${escapeHtml(candidate.email)}</span>
                 </div>
-                <b>${candidate.score}</b>
+                <b aria-label="Candidate score ${candidate.score}">${candidate.score}</b>
               </div>
               <p>${escapeHtml(candidate.experience)}</p>
               <div class="tag-row">
                 ${candidate.skills.map((skill) => `<span>${escapeHtml(skill)}</span>`).join("")}
+              </div>
+              <div class="candidate-insight-row">
+                <span>${scoreLabel} candidate</span>
+                <strong>${nextAction}</strong>
               </div>
               <div class="candidate-foot">
                 <span>${escapeHtml(candidate.phone)}</span>
                 <strong>${escapeHtml(candidate.status)}</strong>
               </div>
             </article>
-          `,
+          `;
+          },
         )
         .join("")
     : '<p class="empty-state">No applicants synced yet.</p>';

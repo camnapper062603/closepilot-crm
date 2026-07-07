@@ -9,6 +9,8 @@ test.beforeEach(async ({ page }) => {
 test('runs the auto recruiting workflow and creates a CRM feed', async ({ page }) => {
   await expect(page).toHaveTitle(/Kira Recruit/);
   await expect(page.getByRole('heading', { name: 'Auto recruiting' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Next best candidate action' })).toBeVisible();
+  await expect(page.locator('.recruit-hero')).toContainText('AI recruiter');
   await expect(page.locator('.recruit-sidebar')).toHaveCount(0);
   await expect(page.locator('#recruitSubpageNav')).toContainText('Job details');
 
@@ -29,6 +31,8 @@ test('runs the auto recruiting workflow and creates a CRM feed', async ({ page }
   await expect(page.locator('#applicantCount')).toHaveText('4');
   await page.getByRole('button', { name: 'Single candidate location' }).click();
   await expect(page.locator('#candidateList')).toContainText('Alyssa Moreno');
+  await expect(page.locator('#candidateList')).toContainText('Priority candidate');
+  await expect(page.locator('#candidateList')).toContainText('Call candidate first');
 
   await page.getByRole('button', { name: 'Book interviews' }).click();
   await page.getByRole('button', { name: 'Dashboard' }).click();

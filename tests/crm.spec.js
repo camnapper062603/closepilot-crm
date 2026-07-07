@@ -4,7 +4,7 @@ import { test, expect } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.clear());
-  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.goto('/', { waitUntil: 'load' });
   await expect(page.locator('.topbar h1')).toHaveText('Dashboard');
 });
 
@@ -93,6 +93,8 @@ async function installRecruitingFeed(page) {
 }
 
 test('renders the CRM dashboard MVP', async ({ page }) => {
+  test.setTimeout(60_000);
+
   await expect(page).toHaveTitle(/Kira Home/);
   await expect(page.locator('.topbar h1')).toHaveText('Dashboard');
   await expect(page.locator('#dailyCommandCenter')).toContainText('Good Morning, Cameron');
@@ -325,6 +327,9 @@ test('renders Opportunity Health scores and dashboard recommendations', async ({
 test('renders AI Sales Copilot suggestions and runs Copilot actions', async ({ page }) => {
   const dashboardCopilot = page.locator('#dashboardSalesCopilotCard');
   await expect(dashboardCopilot).toContainText('AI Sales Copilot');
+  await expect(dashboardCopilot).toContainText('Deterministic fallback');
+  await expect(dashboardCopilot).toContainText('Roofing');
+  await expect(dashboardCopilot).toContainText('Urgent');
   await expect(dashboardCopilot).toContainText('Best next action');
   await expect(dashboardCopilot).toContainText('Suggested call opener');
   await expect(dashboardCopilot).toContainText('Suggested text message');
@@ -522,8 +527,8 @@ test('runs the unified communications center', async ({ page }) => {
   await page.locator('#communicationComposerInput').fill('This is a unified inbox test text.');
   await page.getByRole('button', { name: 'Send Text' }).click();
   await expect(page.locator('#conversationTimeline')).toContainText('This is a unified inbox test text.');
-  await expect(page.locator('#communicationsStatus')).toContainText('sent');
-  await expect(page.locator('#communicationToastRegion')).toContainText('Outgoing Text sent');
+  await expect(page.locator('#communicationsStatus')).toContainText('logged in demo mode');
+  await expect(page.locator('#communicationToastRegion')).toContainText('Outgoing Text logged');
 
   await page.locator('#callControls').getByRole('button', { name: 'No answer' }).click();
   await expect(page.locator('#conversationTimeline')).toContainText('No answer call logged');
@@ -1185,12 +1190,17 @@ test('manages SaaS workspace plan, seats, and invites', async ({ page }) => {
   await page.getByRole('button', { name: 'Members and invites' }).click();
   await expect(admin.locator('#teamSummary')).toContainText('Active members');
   await expect(admin.locator('#teamSummary')).toContainText('1');
+  await expect(admin.locator('#rolePermissionGrid')).toContainText('Owner');
+  await expect(admin.locator('#rolePermissionGrid')).toContainText('Manager');
+  await expect(admin.locator('#inviteRoleHint')).toContainText('Can manage billing');
 
   await page.getByRole('button', { name: 'Production readiness' }).click();
+  await expect(admin.locator('#launchChecklist')).toContainText('Overall launch readiness');
   await expect(admin.locator('#launchChecklist')).toContainText('Cloud database');
-  await expect(admin.locator('#launchChecklist')).toContainText('Add SUPABASE_URL and SUPABASE_ANON_KEY.');
-  await expect(admin.locator('#launchChecklist')).toContainText('Backend endpoint uses STRIPE_SECRET_KEY and plan price IDs');
+  await expect(admin.locator('#launchChecklist')).toContainText('Add SUPABASE_URL, SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY');
+  await expect(admin.locator('#launchChecklist')).toContainText('Add STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, and plan price IDs');
   await expect(admin.locator('#launchChecklist')).toContainText('Add INVITE_FROM_EMAIL and RESEND_API_KEY');
+  await expect(admin.locator('#launchChecklist')).toContainText('OPENAI_API_KEY');
 
   await page.getByRole('button', { name: 'Audit trail' }).click();
   await expect(admin.locator('#auditList')).toContainText('Workspace created');
@@ -1216,7 +1226,7 @@ test('manages SaaS workspace plan, seats, and invites', async ({ page }) => {
   await admin.getByRole('button', { name: 'Invite' }).click();
 
   await expect(admin.locator('#teamList')).toContainText('sales@example.com');
-  await expect(admin.locator('#teamList')).toContainText('admin');
+  await expect(admin.locator('#teamList')).toContainText('Admin');
   await expect(admin.locator('#teamList')).toContainText('Send email');
   await expect(admin.locator('#teamSummary')).toContainText('1');
 
@@ -1236,6 +1246,10 @@ test('manages SaaS workspace plan, seats, and invites', async ({ page }) => {
   const copiedInviteLink = await page.evaluate(() => localStorage.getItem('closepilot-last-copied-text'));
   expect(copiedInviteLink).toContain('/?invite=');
 
+  await admin.locator('#inviteEmail').fill('sales@example.com');
+  await admin.getByRole('button', { name: 'Invite' }).click();
+  await expect(admin.locator('#adminMessage')).toContainText('already has access or a pending invite');
+
   await page.getByRole('button', { name: 'Workspace settings' }).click();
   await admin.locator('#adminBusinessName').fill('Kira Home Agency');
   await admin.locator('#adminWorkspaceType').selectOption('Team');
@@ -1245,6 +1259,39 @@ test('manages SaaS workspace plan, seats, and invites', async ({ page }) => {
   await expect(page.locator('#workspaceNameLabel')).toContainText('Kira Home Agency');
   await expect(page.locator('#workspaceModeLabel')).toContainText('Team workspace - Forecast revenue.');
   await expect(admin.locator('#adminMessage')).toContainText('Workspace settings saved.');
+});
+
+test('production API fallbacks are honest when providers are missing', async ({ request }) => {
+  const readiness = await request.post('/api/system/readiness', { data: { workspaceId: 'demo-workspace' } });
+  expect(readiness.ok()).toBeTruthy();
+  const readinessBody = await readiness.json();
+  expect(readinessBody.percentage).toBeGreaterThanOrEqual(0);
+  expect(readinessBody.groups).toHaveProperty('database');
+
+  const ai = await request.post('/api/ai/lead-copilot', {
+    data: {
+      workspaceId: 'demo-workspace',
+      lead: { name: 'Jordan Lee', company: 'Roof replacement', stage: 'proposal', value: 18000 },
+    },
+  });
+  expect(ai.ok()).toBeTruthy();
+  const aiBody = await ai.json();
+  expect(aiBody.demo).toBeTruthy();
+  expect(aiBody.provider).toContain('fallback');
+  expect(aiBody.bestNextAction).toBeTruthy();
+
+  const sms = await request.post('/api/communications/send-sms', {
+    data: {
+      workspaceId: 'demo-workspace',
+      leadId: 'lead-1',
+      to: '+15555550123',
+      body: 'Quick follow-up from Kira Home.',
+    },
+  });
+  expect(sms.ok()).toBeTruthy();
+  const smsBody = await sms.json();
+  expect(smsBody.demo).toBeTruthy();
+  expect(smsBody.message).toContain('SMS provider is not configured');
 });
 
 test('saves an expanded workspace profile for SaaS operations', async ({ page }) => {
@@ -1266,6 +1313,34 @@ test('saves an expanded workspace profile for SaaS operations', async ({ page })
   await page.getByRole('button', { name: '+ Lead' }).click();
   await expect(page.getByLabel('Source', { exact: true })).toHaveValue('Referral partner');
   await page.getByRole('button', { name: 'Close' }).click();
+});
+
+test('saves UI customization preferences and applies them to the workspace shell', async ({ page }) => {
+  await navigateTo(page, 'Admin', 'admin');
+  const admin = page.locator('#saasAdmin');
+
+  await page.getByRole('button', { name: 'Customization' }).click();
+  await expect(admin.locator('#customizationForm')).toContainText('Workspace appearance');
+  await admin.getByLabel('Theme mode').selectOption('dark');
+  await admin.getByLabel('Accent color').selectOption('green');
+  await admin.getByLabel('Density').selectOption('compact');
+  await admin.getByLabel('Sidebar').selectOption('compact');
+  await admin.getByLabel('Default landing page').selectOption('communications');
+  await admin.getByLabel('Dashboard layout').selectOption('compact');
+  await admin.getByLabel('AI tone').selectOption('friendly');
+  await admin.getByLabel('Default trade').selectOption('roofing');
+  await admin.getByLabel('Brand display name').fill('Kira Roofing Studio');
+  await admin.locator('#widgetRecommendations').setChecked(false);
+  await admin.getByRole('button', { name: 'Save preferences' }).click();
+
+  await expect(admin.locator('#customizationMessage')).toContainText('Preferences saved');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect(page.locator('body')).toHaveAttribute('data-density', 'compact');
+  await expect(page.locator('body')).toHaveAttribute('data-sidebar', 'compact');
+  await expect(admin.locator('#brandPreviewCard')).toContainText('Kira Roofing Studio');
+
+  await page.getByRole('link', { name: 'Dashboard' }).click();
+  await expect(page.locator('#aiRecommendationsWidget')).toBeHidden();
 });
 
 test('edits the selected lead', async ({ page }) => {

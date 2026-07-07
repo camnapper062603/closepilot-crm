@@ -28,6 +28,10 @@
         --red: #b42318;
         --blue: #2f5f8f;
         --shadow: 0 12px 30px rgba(5, 5, 5, 0.08);
+        --shadow-lift: 0 26px 70px rgba(5, 5, 5, 0.14);
+        --accent: #2f6fed;
+        --radius-sm: 8px;
+        --radius-md: 12px;
       }
 
       * {
@@ -35,7 +39,9 @@
       }
 
       body {
-        background: var(--bg);
+        background:
+          radial-gradient(circle at top right, rgba(47, 111, 237, 0.11), transparent 34rem),
+          var(--bg);
         color: var(--ink);
         font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         margin: 0;
@@ -143,7 +149,7 @@
       .panel {
         background: var(--surface);
         border: 1px solid var(--line);
-        border-radius: 8px;
+        border-radius: var(--radius-md);
         box-shadow: var(--shadow);
         display: grid;
         gap: 14px;
@@ -161,7 +167,7 @@
       .topbar {
         background: var(--surface);
         border: 1px solid var(--line);
-        border-radius: 8px;
+        border-radius: var(--radius-md);
         box-shadow: var(--shadow);
         padding: 16px;
       }
@@ -170,7 +176,8 @@
       .controls,
       .template-links,
       .metric-grid,
-      .two-col {
+      .two-col,
+      .territory-command-grid {
         display: grid;
         gap: 12px;
       }
@@ -183,14 +190,92 @@
         grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       }
 
+      .territory-command {
+        background:
+          linear-gradient(135deg, rgba(47, 111, 237, 0.1), transparent 42%),
+          var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow);
+        display: grid;
+        gap: 16px;
+        grid-template-columns: minmax(0, 1fr) minmax(340px, 0.95fr);
+        overflow: hidden;
+        padding: 18px;
+        position: relative;
+      }
+
+      .territory-command::after {
+        animation: lead-pulse 3s ease-in-out infinite;
+        background: radial-gradient(circle, rgba(47, 111, 237, 0.2), transparent 68%);
+        content: "";
+        height: 180px;
+        pointer-events: none;
+        position: absolute;
+        right: -70px;
+        top: -70px;
+        width: 180px;
+      }
+
+      .territory-command h2,
+      .territory-command p {
+        margin: 0;
+      }
+
+      .territory-command p {
+        color: var(--muted);
+        line-height: 1.55;
+        max-width: 58ch;
+      }
+
+      .territory-command-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        position: relative;
+        z-index: 1;
+      }
+
+      .territory-command-grid article {
+        background: rgba(255, 255, 255, 0.72);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        display: grid;
+        gap: 5px;
+        padding: 12px;
+      }
+
+      .territory-command-grid span,
+      .territory-command-grid small {
+        color: var(--muted);
+        font-size: 0.78rem;
+        font-weight: 850;
+      }
+
+      .territory-command-grid strong {
+        color: var(--navy-dark);
+      }
+
       .upload-card,
       .metric,
       .status-card {
         border: 1px solid var(--line);
-        border-radius: 8px;
+        border-radius: var(--radius-sm);
         display: grid;
         gap: 8px;
         padding: 12px;
+        transition:
+          border-color 150ms ease,
+          box-shadow 150ms ease,
+          transform 150ms ease;
+      }
+
+      .upload-card:hover,
+      .metric:hover,
+      .status-card:hover,
+      .cost-row:hover,
+      .stack-item:hover {
+        border-color: rgba(47, 111, 237, 0.28);
+        box-shadow: var(--shadow-lift);
+        transform: translateY(-2px);
       }
 
       .upload-card input {
@@ -273,7 +358,7 @@
       }
 
       .primary {
-        background: var(--navy);
+        background: linear-gradient(135deg, var(--navy), var(--accent));
         color: #ffffff;
       }
 
@@ -381,6 +466,18 @@
         margin: 0;
         min-height: 24px;
         padding-left: 10px;
+      }
+
+      @keyframes lead-pulse {
+        0%,
+        100% {
+          opacity: 0.35;
+          transform: scale(0.94);
+        }
+        50% {
+          opacity: 0.72;
+          transform: scale(1.08);
+        }
       }
 
       .cost-layout {
@@ -511,6 +608,7 @@
         .brand-mark,
         .topbar,
         .panel,
+        .territory-command,
         .upload-card,
         .metric,
         .cost-group,
@@ -518,6 +616,11 @@
         .cost-summary article,
         .stack-item {
           background: var(--surface);
+        }
+
+        .territory-command-grid article {
+          background: #171d28;
+          border-color: var(--line);
         }
 
         .tab-switcher,
@@ -566,8 +669,13 @@
       @media (max-width: 1080px) {
         .app,
         .two-col,
-        .cost-layout {
+        .cost-layout,
+        .territory-command {
           grid-template-columns: 1fr;
+        }
+
+        .territory-command-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
         }
 
         .sidebar {
@@ -639,6 +747,14 @@
         .metric-grid {
           gap: 6px;
           grid-template-columns: repeat(5, minmax(0, 1fr));
+        }
+
+        .territory-command {
+          padding: 14px;
+        }
+
+        .territory-command-grid {
+          grid-template-columns: 1fr;
         }
 
         .cost-controls,
@@ -895,6 +1011,33 @@
           <button class="active" data-lead-tab-button="generator" type="button">Generator</button>
           <button data-lead-tab-button="costs" type="button">Cost planner</button>
         </nav>
+
+        <section class="territory-command" data-lead-tab="generator" aria-labelledby="territoryCommandHeading">
+          <div>
+            <span class="pill info">Territory command center</span>
+            <h2 id="territoryCommandHeading">Best area to target today</h2>
+            <p>
+              Prioritize owner-occupied residential prospects, keep phone outreach behind DNC checks, and move safe records into the CRM when the file is clean.
+            </p>
+          </div>
+          <div class="territory-command-grid" aria-label="Residential lead priorities">
+            <article>
+              <span>Lead quality target</span>
+              <strong>80-95%</strong>
+              <small>BatchLeads match range</small>
+            </article>
+            <article>
+              <span>Recommended route</span>
+              <strong>Northwest</strong>
+              <small>High equity placeholder</small>
+            </article>
+            <article>
+              <span>Compliance state</span>
+              <strong>DNC first</strong>
+              <small>No scraping, CSV/API only</small>
+            </article>
+          </div>
+        </section>
 
         <section class="metric-grid" data-lead-tab="generator">
           <article class="metric">

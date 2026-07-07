@@ -34,6 +34,19 @@ PORT=4174 npm start
 npm test
 ```
 
+## Production Docs
+
+- `DEPLOYMENT.md`
+- `ENVIRONMENT.md`
+- `SUPABASE_SETUP.md`
+- `STRIPE_SETUP.md`
+- `EMAIL_SMS_SETUP.md`
+- `AI_SETUP.md`
+- `MOBILE_SETUP.md`
+- `SELLABLE_SAAS_CHECKLIST.md`
+- `TROUBLESHOOTING.md`
+- `API.md`
+
 ## Deploy On Vercel
 
 1. Create a GitHub repository for this folder.
