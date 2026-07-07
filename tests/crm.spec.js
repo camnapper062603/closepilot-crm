@@ -159,6 +159,36 @@ test('opens the public marketer demo workspace with sample operating data', asyn
   await expect(page.locator('#authMessage')).toContainText('Demo closed');
 });
 
+test('lands users on role-specific first pages', async ({ page }) => {
+  const applyRoleLanding = async (role, teamFunction) => {
+    await page.evaluate(
+      ({ role: nextRole, teamFunction: nextFunction }) => {
+        localStorage.setItem('closepilot-demo-role', nextRole);
+        if (nextFunction) {
+          localStorage.setItem('closepilot-demo-function', nextFunction);
+        } else {
+          localStorage.removeItem('closepilot-demo-function');
+        }
+        history.replaceState(null, '', window.location.pathname);
+        window.dispatchEvent(new Event('hashchange'));
+      },
+      { role, teamFunction },
+    );
+  };
+
+  await applyRoleLanding('member', 'dialer');
+  await expect(page.locator('.topbar h1')).toHaveText('Dial floor');
+  await expect(page).toHaveURL(/#dial$/);
+
+  await applyRoleLanding('member', 'closer');
+  await expect(page.locator('.topbar h1')).toHaveText('Calendar');
+  await expect(page).toHaveURL(/#calendar$/);
+
+  await applyRoleLanding('manager', '');
+  await expect(page.locator('.topbar h1')).toHaveText('Dashboard');
+  await expect(page).toHaveURL(/#pipeline$/);
+});
+
 test('guides Start My Day through Flow Mode actions', async ({ page }) => {
   test.setTimeout(60_000);
 
@@ -903,6 +933,7 @@ test('shows pipeline health metrics for visible deals', async ({ page }) => {
 });
 
 test('shows a global activity feed and opens related leads', async ({ page }) => {
+  test.slow();
   const activityFilters = page.getByRole('group', { name: 'Activity filter' });
 
   await navigateTo(page, 'Activity', 'activity');

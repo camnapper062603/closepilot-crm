@@ -1365,8 +1365,9 @@ async function startCloudWorkspace() {
   await acceptPendingInviteIfNeeded();
   store = createSupabaseStore(supabaseClient, currentUser);
   await store.ensureWorkspace();
+  await reloadState({ renderAfterLoad: false });
   routeFromHash();
-  await reloadState();
+  render();
   handleCalendarCallbackStatus();
   if (inviteAcceptanceStatus) {
     adminMessage.textContent = inviteAcceptanceStatus;
@@ -1595,10 +1596,10 @@ function closeLeadModal() {
   leadModal.hidden = true;
 }
 
-async function reloadState() {
+async function reloadState(options = {}) {
   state = await store.load();
   normalizeLoadedState();
-  render();
+  if (options.renderAfterLoad !== false) render();
 }
 
 function filteredLeads() {
@@ -1661,8 +1662,36 @@ function render() {
 
 function routeFromHash() {
   const requested = window.location.hash.replace("#", "");
-  const preferred = userCustomizationPreferences().defaultLandingPage;
+  const preferred = preferredLandingPage();
   activePage = pageTitles[requested] ? requested : pageTitles[preferred] ? preferred : "pipeline";
+}
+
+function preferredLandingPage() {
+  const preferences = userCustomizationPreferences();
+  const customLanding = preferences.defaultLandingPage;
+  const roleLanding = roleDefaultLandingPage();
+
+  if (
+    customLanding &&
+    customLanding !== defaultCustomizationPreferences.defaultLandingPage &&
+    pageTitles[customLanding] &&
+    canAccessPage(customLanding)
+  ) {
+    return customLanding;
+  }
+
+  if (pageTitles[roleLanding] && canAccessPage(roleLanding)) return roleLanding;
+  if (pageTitles[customLanding] && canAccessPage(customLanding)) return customLanding;
+  return "pipeline";
+}
+
+function roleDefaultLandingPage() {
+  const role = currentAccessRole();
+  const teamFunction = currentTeamFunction();
+
+  if (role === "member" && ["dialer", "setter"].includes(teamFunction)) return "dial";
+  if (role === "member" && teamFunction === "closer") return "calendar";
+  return "pipeline";
 }
 
 function renderRoute() {
@@ -1872,6 +1901,15 @@ function currentAccessRole() {
     return normalizeRoleId(rawDemoRoleOverride);
   }
   return normalizeRoleId(currentWorkspaceMember().role);
+}
+
+function currentTeamFunction() {
+  const rawDemoFunctionOverride = localStorage.getItem("closepilot-demo-function") || "";
+  if (!currentUser && salesFunctionCatalog[rawDemoFunctionOverride]) {
+    return rawDemoFunctionOverride;
+  }
+  const value = String(currentWorkspaceMember().teamFunction || "none").toLowerCase();
+  return salesFunctionCatalog[value] ? value : "none";
 }
 
 function canAccessPage(page) {
