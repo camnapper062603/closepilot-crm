@@ -5,8 +5,11 @@ const recruitSubpages = [
   { id: "dashboard", label: "Dashboard" },
   { id: "job", label: "Job details" },
   { id: "boards", label: "Job board connectors" },
+  { id: "integrations", label: "Integrations" },
   { id: "applicants", label: "Single candidate location" },
   { id: "interviews", label: "Monday, Wednesday, Friday calls" },
+  { id: "onboarding", label: "W-2/W-9" },
+  { id: "payroll", label: "Payroll" },
   { id: "crm", label: "Recruiting feed" },
 ];
 const boards = [
@@ -17,6 +20,19 @@ const boards = [
   { id: "google", name: "Google Jobs", type: "Structured job feed" },
   { id: "facebook", name: "Facebook Jobs", type: "Social listing" },
 ];
+
+const integrationProviders = {
+  indeed: {
+    label: "Indeed",
+    accountLabel: "Advertiser / employer account",
+    detail: "Use this for sponsored job posting, applicant import, campaign budgets, and apply webhook handoff.",
+  },
+  monsterzip: {
+    label: "Monster / ZipRecruiter",
+    accountLabel: "MonsterZip employer account",
+    detail: "Use this for Monster or ZipRecruiter distribution, candidate sync, posting budgets, and apply URL routing.",
+  },
+};
 
 const candidatePool = [
   {
@@ -108,6 +124,45 @@ const elements = {
   candidateList: document.querySelector("#candidateList"),
   interviewList: document.querySelector("#interviewList"),
   feedPreview: document.querySelector("#feedPreview"),
+  integrationForm: document.querySelector("#integrationForm"),
+  integrationProvider: document.querySelector("#integrationProvider"),
+  integrationAccountId: document.querySelector("#integrationAccountId"),
+  integrationEmail: document.querySelector("#integrationEmail"),
+  integrationApiToken: document.querySelector("#integrationApiToken"),
+  integrationWebhookUrl: document.querySelector("#integrationWebhookUrl"),
+  integrationBudget: document.querySelector("#integrationBudget"),
+  integrationNotes: document.querySelector("#integrationNotes"),
+  integrationGrid: document.querySelector("#integrationGrid"),
+  integrationMessage: document.querySelector("#integrationMessage"),
+  testIntegration: document.querySelector("#testIntegration"),
+  onboardingForm: document.querySelector("#onboardingForm"),
+  workerName: document.querySelector("#workerName"),
+  workerEmail: document.querySelector("#workerEmail"),
+  workerType: document.querySelector("#workerType"),
+  workerRole: document.querySelector("#workerRole"),
+  workerPayRate: document.querySelector("#workerPayRate"),
+  workerStartDate: document.querySelector("#workerStartDate"),
+  workerTaxStatus: document.querySelector("#workerTaxStatus"),
+  workerDepositStatus: document.querySelector("#workerDepositStatus"),
+  workerNotes: document.querySelector("#workerNotes"),
+  workerList: document.querySelector("#workerList"),
+  onboardingMessage: document.querySelector("#onboardingMessage"),
+  sendOnboardingPacket: document.querySelector("#sendOnboardingPacket"),
+  payrollProviderForm: document.querySelector("#payrollProviderForm"),
+  payrollProvider: document.querySelector("#payrollProvider"),
+  payrollCompanyId: document.querySelector("#payrollCompanyId"),
+  payrollApiToken: document.querySelector("#payrollApiToken"),
+  payrollRunForm: document.querySelector("#payrollRunForm"),
+  payrollWorker: document.querySelector("#payrollWorker"),
+  payrollPeriod: document.querySelector("#payrollPeriod"),
+  payrollHours: document.querySelector("#payrollHours"),
+  payrollRate: document.querySelector("#payrollRate"),
+  payrollBonus: document.querySelector("#payrollBonus"),
+  payrollReimbursement: document.querySelector("#payrollReimbursement"),
+  payrollTotal: document.querySelector("#payrollTotal"),
+  payrollList: document.querySelector("#payrollList"),
+  payrollMessage: document.querySelector("#payrollMessage"),
+  markPayrollPaid: document.querySelector("#markPayrollPaid"),
 };
 
 elements.subpageNav.addEventListener("click", (event) => {
@@ -124,6 +179,17 @@ elements.resetRecruiting.addEventListener("click", resetRecruiting);
 elements.downloadFeed.addEventListener("click", downloadFeed);
 elements.candidateFilter.addEventListener("change", render);
 elements.candidateSort.addEventListener("change", render);
+elements.integrationProvider.addEventListener("change", hydrateIntegrationForm);
+elements.integrationForm.addEventListener("submit", saveIntegration);
+elements.testIntegration.addEventListener("click", testIntegrationConnection);
+elements.onboardingForm.addEventListener("submit", createOnboardingPacket);
+elements.sendOnboardingPacket.addEventListener("click", sendLatestOnboardingPacket);
+elements.payrollProviderForm.addEventListener("submit", savePayrollProvider);
+elements.payrollRunForm.addEventListener("submit", stagePayrollRun);
+elements.markPayrollPaid.addEventListener("click", markLatestPayrollPaid);
+[elements.payrollHours, elements.payrollRate, elements.payrollBonus, elements.payrollReimbursement].forEach((input) => {
+  input.addEventListener("input", renderPayrollTotal);
+});
 elements.jobForm.addEventListener("input", () => {
   state.job = readJobForm();
   saveState();
@@ -131,6 +197,9 @@ elements.jobForm.addEventListener("input", () => {
 });
 
 hydrateJobForm();
+hydrateIntegrationForm();
+hydratePayrollProviderForm();
+hydrateDefaultDates();
 routeFromHash();
 render();
 
@@ -156,6 +225,35 @@ function defaultState() {
     candidates: [],
     interviews: [],
     feedSyncedAt: "",
+    integrations: {
+      indeed: emptyIntegration("indeed"),
+      monsterzip: emptyIntegration("monsterzip"),
+    },
+    onboardingWorkers: [],
+    payrollProvider: {
+      provider: "gusto",
+      companyId: "",
+      tokenConfigured: false,
+      tokenLast4: "",
+      savedAt: "",
+    },
+    payrollRuns: [],
+  };
+}
+
+function emptyIntegration(provider) {
+  return {
+    provider,
+    accountId: "",
+    email: "",
+    tokenConfigured: false,
+    tokenLast4: "",
+    webhookUrl: "",
+    budget: "",
+    notes: "",
+    status: "Not connected",
+    lastTestedAt: "",
+    savedAt: "",
   };
 }
 
@@ -170,6 +268,13 @@ function loadState() {
       postings: Array.isArray(stored.postings) && stored.postings.length ? stored.postings : defaultState().postings,
       candidates: Array.isArray(stored.candidates) ? stored.candidates : [],
       interviews: Array.isArray(stored.interviews) ? stored.interviews : [],
+      integrations: {
+        indeed: { ...emptyIntegration("indeed"), ...(stored.integrations?.indeed || {}) },
+        monsterzip: { ...emptyIntegration("monsterzip"), ...(stored.integrations?.monsterzip || {}) },
+      },
+      onboardingWorkers: Array.isArray(stored.onboardingWorkers) ? stored.onboardingWorkers : [],
+      payrollProvider: { ...defaultState().payrollProvider, ...(stored.payrollProvider || {}) },
+      payrollRuns: Array.isArray(stored.payrollRuns) ? stored.payrollRuns : [],
     };
   } catch {
     return defaultState();
@@ -189,6 +294,35 @@ function hydrateJobForm() {
   elements.jobPriority.value = state.job.priority;
   elements.jobSummary.value = state.job.summary;
   elements.jobRequirements.value = state.job.requirements;
+}
+
+function hydrateIntegrationForm() {
+  const provider = elements.integrationProvider.value;
+  const integration = state.integrations[provider] || emptyIntegration(provider);
+  elements.integrationAccountId.value = integration.accountId || "";
+  elements.integrationEmail.value = integration.email || "";
+  elements.integrationApiToken.value = "";
+  elements.integrationWebhookUrl.value = integration.webhookUrl || "";
+  elements.integrationBudget.value = integration.budget || "";
+  elements.integrationNotes.value = integration.notes || "";
+}
+
+function hydratePayrollProviderForm() {
+  elements.payrollProvider.value = state.payrollProvider.provider || "gusto";
+  elements.payrollCompanyId.value = state.payrollProvider.companyId || "";
+  elements.payrollApiToken.value = "";
+}
+
+function hydrateDefaultDates() {
+  if (!elements.workerStartDate.value) {
+    elements.workerStartDate.value = new Date().toISOString().slice(0, 10);
+  }
+  if (!elements.payrollPeriod.value) {
+    const now = new Date();
+    elements.payrollPeriod.value = `${now.toLocaleString("en-US", { month: "short" })} 1-${now.toLocaleString("en-US", {
+      month: "short",
+    })} 15`;
+  }
 }
 
 function readJobForm() {
@@ -216,6 +350,47 @@ function publishJob() {
     lastSync: now,
   }));
   elements.jobMessage.textContent = "Job listed to active board connectors.";
+  saveState();
+  render();
+}
+
+function saveIntegration(event) {
+  event.preventDefault();
+  const provider = elements.integrationProvider.value;
+  const existing = state.integrations[provider] || emptyIntegration(provider);
+  const tokenValue = elements.integrationApiToken.value.trim();
+  state.integrations[provider] = {
+    ...existing,
+    provider,
+    accountId: elements.integrationAccountId.value.trim(),
+    email: elements.integrationEmail.value.trim(),
+    tokenConfigured: Boolean(tokenValue) || existing.tokenConfigured,
+    tokenLast4: tokenValue ? tokenValue.slice(-4) : existing.tokenLast4,
+    webhookUrl: elements.integrationWebhookUrl.value.trim(),
+    budget: elements.integrationBudget.value.trim(),
+    notes: elements.integrationNotes.value.trim(),
+    status: "Saved",
+    savedAt: new Date().toISOString(),
+  };
+  elements.integrationApiToken.value = "";
+  elements.integrationMessage.textContent = `${providerLabel(provider)} connector saved. Token is masked for demo storage.`;
+  saveState();
+  render();
+}
+
+function testIntegrationConnection() {
+  const provider = elements.integrationProvider.value;
+  const integration = state.integrations[provider] || emptyIntegration(provider);
+  if (!integration.accountId || !integration.email || !integration.tokenConfigured) {
+    elements.integrationMessage.textContent = `Add ${providerLabel(provider)} account ID, employer email, and API token before testing.`;
+    return;
+  }
+  state.integrations[provider] = {
+    ...integration,
+    status: "Demo connected",
+    lastTestedAt: new Date().toISOString(),
+  };
+  elements.integrationMessage.textContent = `${providerLabel(provider)} connection test passed in demo mode. Live API calls can be wired server-side.`;
   saveState();
   render();
 }
@@ -331,8 +506,20 @@ function buildFeed() {
     syncedAt: new Date().toISOString(),
     job: state.job,
     postings: state.postings,
+    integrations: Object.values(state.integrations).map((integration) => ({
+      provider: integration.provider,
+      status: integration.status,
+      accountId: integration.accountId,
+      email: integration.email,
+      webhookUrl: integration.webhookUrl,
+      budget: integration.budget,
+      tokenConfigured: integration.tokenConfigured,
+      lastTestedAt: integration.lastTestedAt,
+    })),
     recruits: state.candidates.map(candidateToRecruitRecord),
     interviews: state.interviews,
+    onboardingWorkers: state.onboardingWorkers,
+    payrollRuns: state.payrollRuns,
   };
 }
 
@@ -383,6 +570,9 @@ function resetRecruiting() {
   localStorage.removeItem(crmFeedKey);
   localStorage.removeItem(sharedRecruitingFeedKey);
   hydrateJobForm();
+  hydrateIntegrationForm();
+  hydratePayrollProviderForm();
+  hydrateDefaultDates();
   elements.jobMessage.textContent = "Demo reset.";
   elements.feedMessage.textContent = "";
   render();
@@ -391,8 +581,11 @@ function resetRecruiting() {
 function render() {
   renderMetrics();
   renderBoards();
+  renderIntegrations();
   renderCandidates();
   renderInterviews();
+  renderOnboarding();
+  renderPayroll();
   renderFeed();
   renderSubpages();
 }
@@ -449,6 +642,32 @@ function renderBoards() {
       `,
     )
     .join("");
+}
+
+function renderIntegrations() {
+  elements.integrationGrid.innerHTML = Object.entries(integrationProviders)
+    .map(([providerId, provider]) => renderIntegrationCard(state.integrations[providerId] || emptyIntegration(providerId), provider))
+    .join("");
+}
+
+function renderIntegrationCard(integration, provider) {
+  const connected = integration?.status === "Demo connected";
+  const saved = Boolean(integration?.savedAt);
+  return `
+    <article class="integration-card ${connected ? "connected" : ""}">
+      <div>
+        <span>${escapeHtml(provider.accountLabel)}</span>
+        <strong>${escapeHtml(provider.label)}</strong>
+        <p>${escapeHtml(provider.detail)}</p>
+      </div>
+      <div class="integration-facts">
+        <span>${escapeHtml(integration?.accountId || "No account ID yet")}</span>
+        <span>${integration?.tokenConfigured ? `Token configured ••••${escapeHtml(integration.tokenLast4 || "****")}` : "Token not configured"}</span>
+        <span>${escapeHtml(integration?.budget || "No default budget")}</span>
+      </div>
+      <strong class="connection-status">${connected ? "Connected" : saved ? "Saved" : "Not connected"}</strong>
+    </article>
+  `;
 }
 
 function renderCandidates() {
@@ -552,6 +771,213 @@ function renderFeed() {
       <strong>${feed.interviews.length}</strong>
     </article>
   `;
+}
+
+function createOnboardingPacket(event) {
+  event.preventDefault();
+  if (!elements.onboardingForm.reportValidity()) return;
+  const worker = readWorkerForm();
+  const existingIndex = state.onboardingWorkers.findIndex((item) => item.email.toLowerCase() === worker.email.toLowerCase());
+  if (existingIndex >= 0) {
+    state.onboardingWorkers[existingIndex] = {
+      ...state.onboardingWorkers[existingIndex],
+      ...worker,
+      updatedAt: new Date().toISOString(),
+    };
+    elements.onboardingMessage.textContent = `${worker.name} onboarding packet updated.`;
+  } else {
+    state.onboardingWorkers.unshift({
+      id: `worker-${Date.now()}`,
+      ...worker,
+      packetStatus: "Created",
+      createdAt: new Date().toISOString(),
+      updatedAt: "",
+    });
+    elements.onboardingMessage.textContent = `${worker.name} onboarding packet created.`;
+  }
+  saveState();
+  render();
+}
+
+function readWorkerForm() {
+  return {
+    name: elements.workerName.value.trim(),
+    email: elements.workerEmail.value.trim(),
+    type: elements.workerType.value,
+    role: elements.workerRole.value.trim() || state.job.title,
+    payRate: elements.workerPayRate.value.trim() || state.job.pay,
+    startDate: elements.workerStartDate.value,
+    taxStatus: elements.workerTaxStatus.value,
+    depositStatus: elements.workerDepositStatus.value,
+    notes: sanitizeSensitiveNotes(elements.workerNotes.value.trim()),
+  };
+}
+
+function sanitizeSensitiveNotes(value) {
+  return value.replace(/\b\d{3}-?\d{2}-?\d{4}\b/g, "[redacted tax id]").replace(/\b\d{9,17}\b/g, "[redacted sensitive number]");
+}
+
+function sendLatestOnboardingPacket() {
+  if (!state.onboardingWorkers.length) {
+    elements.onboardingMessage.textContent = "Create a worker packet before sending an onboarding link.";
+    return;
+  }
+  const [worker] = state.onboardingWorkers;
+  worker.packetStatus = "Sent";
+  worker.taxStatus = worker.taxStatus === "Not sent" ? "Sent" : worker.taxStatus;
+  worker.updatedAt = new Date().toISOString();
+  elements.onboardingMessage.textContent = `Demo onboarding link staged for ${worker.email}. Live delivery should use a secure payroll/onboarding provider.`;
+  saveState();
+  render();
+}
+
+function renderOnboarding() {
+  elements.workerList.innerHTML = state.onboardingWorkers.length
+    ? state.onboardingWorkers.map(renderWorkerCard).join("")
+    : '<p class="empty-state">No W-2/W-9 packets created yet.</p>';
+}
+
+function renderWorkerCard(worker) {
+  const formLabel = worker.type === "w2" ? "W-2 employee" : "W-9 contractor";
+  return `
+    <article class="worker-card">
+      <div>
+        <strong>${escapeHtml(worker.name)}</strong>
+        <span>${escapeHtml(formLabel)} • ${escapeHtml(worker.role)}</span>
+        <small>${escapeHtml(worker.email)} • starts ${escapeHtml(worker.startDate || "TBD")}</small>
+      </div>
+      <div class="worker-status-grid">
+        <span>Tax packet: ${escapeHtml(worker.taxStatus)}</span>
+        <span>Direct deposit: ${escapeHtml(worker.depositStatus)}</span>
+        <span>Pay: ${escapeHtml(worker.payRate)}</span>
+      </div>
+      <p>${escapeHtml(worker.notes || "No notes yet.")}</p>
+    </article>
+  `;
+}
+
+function savePayrollProvider(event) {
+  event.preventDefault();
+  const tokenValue = elements.payrollApiToken.value.trim();
+  state.payrollProvider = {
+    provider: elements.payrollProvider.value,
+    companyId: elements.payrollCompanyId.value.trim(),
+    tokenConfigured: Boolean(tokenValue) || state.payrollProvider.tokenConfigured,
+    tokenLast4: tokenValue ? tokenValue.slice(-4) : state.payrollProvider.tokenLast4,
+    savedAt: new Date().toISOString(),
+  };
+  elements.payrollApiToken.value = "";
+  elements.payrollMessage.textContent = `${payrollProviderLabel(state.payrollProvider.provider)} payroll provider saved. Token is masked for demo storage.`;
+  saveState();
+  render();
+}
+
+function stagePayrollRun(event) {
+  event.preventDefault();
+  if (!elements.payrollRunForm.reportValidity()) return;
+  const worker = state.onboardingWorkers.find((item) => item.id === elements.payrollWorker.value);
+  if (!worker) {
+    elements.payrollMessage.textContent = "Create at least one W-2/W-9 worker before staging payroll.";
+    return;
+  }
+  const total = payrollTotalValue();
+  state.payrollRuns.unshift({
+    id: `payroll-${Date.now()}`,
+    workerId: worker.id,
+    workerName: worker.name,
+    workerType: worker.type,
+    period: elements.payrollPeriod.value.trim(),
+    hours: Number(elements.payrollHours.value || 0),
+    rate: Number(elements.payrollRate.value || 0),
+    bonus: Number(elements.payrollBonus.value || 0),
+    reimbursement: Number(elements.payrollReimbursement.value || 0),
+    total,
+    status: "Staged",
+    provider: state.payrollProvider.provider,
+    createdAt: new Date().toISOString(),
+    paidAt: "",
+  });
+  elements.payrollMessage.textContent = `Payroll run staged for ${worker.name}. Live payment requires ${payrollProviderLabel(state.payrollProvider.provider)} API wiring.`;
+  saveState();
+  render();
+}
+
+function markLatestPayrollPaid() {
+  const run = state.payrollRuns.find((item) => item.status !== "Paid");
+  if (!run) {
+    elements.payrollMessage.textContent = "No staged payroll run is waiting for payment.";
+    return;
+  }
+  run.status = "Paid";
+  run.paidAt = new Date().toISOString();
+  elements.payrollMessage.textContent = `${run.workerName} marked paid in demo mode.`;
+  saveState();
+  render();
+}
+
+function renderPayroll() {
+  hydratePayrollWorkerOptions();
+  renderPayrollTotal();
+  elements.payrollList.innerHTML = state.payrollRuns.length
+    ? state.payrollRuns.map(renderPayrollRun).join("")
+    : '<p class="empty-state">No payroll runs staged yet.</p>';
+}
+
+function hydratePayrollWorkerOptions() {
+  elements.payrollWorker.innerHTML = state.onboardingWorkers.length
+    ? state.onboardingWorkers
+        .map((worker) => `<option value="${escapeHtml(worker.id)}">${escapeHtml(worker.name)} (${worker.type.toUpperCase()})</option>`)
+        .join("")
+    : '<option value="">Create a worker packet first</option>';
+}
+
+function renderPayrollTotal() {
+  elements.payrollTotal.textContent = formatMoney(payrollTotalValue());
+}
+
+function payrollTotalValue() {
+  const hours = Number(elements.payrollHours.value || 0);
+  const rate = Number(elements.payrollRate.value || 0);
+  const bonus = Number(elements.payrollBonus.value || 0);
+  const reimbursement = Number(elements.payrollReimbursement.value || 0);
+  return Math.max(0, hours * rate + bonus + reimbursement);
+}
+
+function renderPayrollRun(run) {
+  return `
+    <article class="payroll-run ${run.status.toLowerCase()}">
+      <div>
+        <strong>${escapeHtml(run.workerName)}</strong>
+        <span>${escapeHtml(run.period)} • ${escapeHtml(payrollProviderLabel(run.provider))}</span>
+        <small>${run.workerType === "w2" ? "W-2 payroll" : "W-9 contractor payout"} • ${escapeHtml(run.status)}</small>
+      </div>
+      <div class="payroll-run-total">${formatMoney(run.total)}</div>
+    </article>
+  `;
+}
+
+function providerLabel(provider) {
+  return integrationProviders[provider]?.label || "Job board";
+}
+
+function payrollProviderLabel(provider) {
+  const labels = {
+    gusto: "Gusto",
+    adp: "ADP",
+    quickbooks: "QuickBooks Payroll",
+    "stripe-connect": "Stripe Connect",
+    manual: "Manual export",
+  };
+  return labels[provider] || "Payroll provider";
+}
+
+function formatMoney(value) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(value || 0));
 }
 
 function formatDate(value) {

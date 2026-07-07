@@ -59,3 +59,67 @@ test('runs the auto recruiting workflow and creates a CRM feed', async ({ page }
   expect(sharedFeed.recruits[0].nextAction).toContain('Prep interview call');
   expect(feed.interviews.map((interview) => new Date(interview.startsAt).getDay()).every((day) => [1, 3, 5].includes(day))).toBe(true);
 });
+
+test('configures job board integrations and stages onboarding payroll', async ({ page }) => {
+  await page.getByRole('button', { name: 'Integrations' }).click();
+  await expect(page.getByRole('heading', { name: 'Indeed and MonsterZip integrations' })).toBeVisible();
+  await page.locator('#integrationProvider').selectOption('indeed');
+  await page.locator('#integrationAccountId').fill('indeed-account-123');
+  await page.locator('#integrationEmail').fill('recruiting@kirahome.org');
+  await page.locator('#integrationApiToken').fill('indeed-demo-token-9876');
+  await page.locator('#integrationWebhookUrl').fill('https://kirahome.org/api/recruiting/applicants');
+  await page.locator('#integrationBudget').fill('$35/day');
+  await page.locator('#integrationNotes').fill('Texas inside sales campaign');
+  await page.getByRole('button', { name: 'Save connector' }).click();
+  await expect(page.locator('#integrationMessage')).toContainText('Indeed connector saved');
+  await expect(page.locator('#integrationGrid')).toContainText('Token configured ••••9876');
+
+  await page.getByRole('button', { name: 'Test connection' }).click();
+  await expect(page.locator('#integrationMessage')).toContainText('Indeed connection test passed');
+  await expect(page.locator('#integrationGrid')).toContainText('Connected');
+
+  await page.locator('#integrationProvider').selectOption('monsterzip');
+  await page.locator('#integrationAccountId').fill('monsterzip-456');
+  await page.locator('#integrationEmail').fill('jobs@kirahome.org');
+  await page.locator('#integrationApiToken').fill('monsterzip-demo-token-2222');
+  await page.getByRole('button', { name: 'Save connector' }).click();
+  await expect(page.locator('#integrationGrid')).toContainText('Monster / ZipRecruiter');
+  await expect(page.locator('#integrationGrid')).toContainText('Token configured ••••2222');
+
+  await page.getByRole('button', { name: 'W-2/W-9' }).click();
+  await expect(page.getByRole('heading', { name: 'W-2 / W-9 onboarding packets' })).toBeVisible();
+  await page.locator('#workerName').fill('Taylor Pay');
+  await page.locator('#workerEmail').fill('taylor.pay@example.com');
+  await page.locator('#workerType').selectOption('w9');
+  await page.locator('#workerRole').fill('Appointment Setter');
+  await page.locator('#workerPayRate').fill('$20/hr + commission');
+  await page.locator('#workerNotes').fill('Packet only. Do not store 123-45-6789 here.');
+  await page.getByRole('button', { name: 'Create packet' }).click();
+  await expect(page.locator('#workerList')).toContainText('Taylor Pay');
+  await expect(page.locator('#workerList')).toContainText('W-9 contractor');
+  await expect(page.locator('#workerList')).toContainText('[redacted tax id]');
+  await page.getByRole('button', { name: 'Send packet link' }).click();
+  await expect(page.locator('#onboardingMessage')).toContainText('Demo onboarding link staged');
+
+  await page.getByRole('button', { name: 'Payroll' }).click();
+  await expect(page.getByRole('heading', { name: 'Employee and contractor payments' })).toBeVisible();
+  await page.locator('#payrollCompanyId').fill('gusto-company-123');
+  await page.locator('#payrollApiToken').fill('payroll-demo-token-4321');
+  await page.getByRole('button', { name: 'Save payroll provider' }).click();
+  await expect(page.locator('#payrollMessage')).toContainText('Gusto payroll provider saved');
+
+  await page.locator('#payrollWorker').selectOption({ label: 'Taylor Pay (W9)' });
+  await page.locator('#payrollPeriod').fill('Jul 1-Jul 15');
+  await page.locator('#payrollHours').fill('10');
+  await page.locator('#payrollRate').fill('20');
+  await page.locator('#payrollBonus').fill('50');
+  await page.locator('#payrollReimbursement').fill('5');
+  await expect(page.locator('#payrollTotal')).toHaveText('$255.00');
+  await page.getByRole('button', { name: 'Stage payroll run' }).click();
+  await expect(page.locator('#payrollList')).toContainText('Taylor Pay');
+  await expect(page.locator('#payrollList')).toContainText('$255.00');
+  await expect(page.locator('#payrollList')).toContainText('Staged');
+  await page.getByRole('button', { name: 'Mark latest paid' }).click();
+  await expect(page.locator('#payrollMessage')).toContainText('marked paid in demo mode');
+  await expect(page.locator('#payrollList')).toContainText('Paid');
+});

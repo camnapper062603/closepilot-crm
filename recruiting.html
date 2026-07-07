@@ -196,6 +196,188 @@
             <div class="feed-preview" id="feedPreview"></div>
             <p class="status-message" id="feedMessage" role="status"></p>
           </section>
+
+          <section class="panel integration-panel" id="integrations" data-recruit-subpage="integrations" aria-labelledby="integrationsHeading">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Job board setup</p>
+                <h2 id="integrationsHeading">Indeed and MonsterZip integrations</h2>
+              </div>
+              <span class="schedule-pill">Provider-ready</span>
+            </div>
+            <form class="integration-form" id="integrationForm">
+              <label>
+                Provider
+                <select id="integrationProvider">
+                  <option value="indeed">Indeed</option>
+                  <option value="monsterzip">Monster / ZipRecruiter</option>
+                </select>
+              </label>
+              <label>
+                Employer account ID
+                <input id="integrationAccountId" type="text" placeholder="Indeed advertiser ID or MonsterZip account ID" />
+              </label>
+              <label>
+                Employer email
+                <input id="integrationEmail" type="email" placeholder="recruiting@company.com" />
+              </label>
+              <label>
+                API key or access token
+                <input id="integrationApiToken" type="password" autocomplete="off" placeholder="Saved as configured, never displayed" />
+              </label>
+              <label>
+                Apply webhook URL
+                <input id="integrationWebhookUrl" type="url" placeholder="https://kirahome.org/api/recruiting/applicants" />
+              </label>
+              <label>
+                Default campaign budget
+                <input id="integrationBudget" type="text" placeholder="$25/day" />
+              </label>
+              <label class="wide-field">
+                Posting notes
+                <textarea id="integrationNotes" rows="3" placeholder="Required job board account notes, regions, billing owner, or posting rules"></textarea>
+              </label>
+              <div class="form-actions wide-field">
+                <button class="primary-button" type="submit">Save connector</button>
+                <button class="secondary-button" id="testIntegration" type="button">Test connection</button>
+              </div>
+            </form>
+            <div class="integration-grid" id="integrationGrid"></div>
+            <p class="status-message" id="integrationMessage" role="status"></p>
+          </section>
+
+          <section class="panel onboarding-panel" id="onboarding" data-recruit-subpage="onboarding" aria-labelledby="onboardingHeading">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Worker setup</p>
+                <h2 id="onboardingHeading">W-2 / W-9 onboarding packets</h2>
+              </div>
+              <span class="schedule-pill">No tax IDs stored</span>
+            </div>
+            <form class="onboarding-form" id="onboardingForm">
+              <label>
+                Worker name
+                <input id="workerName" type="text" placeholder="Alyssa Moreno" required />
+              </label>
+              <label>
+                Worker email
+                <input id="workerEmail" type="email" placeholder="worker@example.com" required />
+              </label>
+              <label>
+                Worker type
+                <select id="workerType">
+                  <option value="w2">W-2 employee</option>
+                  <option value="w9">W-9 contractor</option>
+                </select>
+              </label>
+              <label>
+                Role
+                <input id="workerRole" type="text" value="Inside Sales Dialer" />
+              </label>
+              <label>
+                Pay rate
+                <input id="workerPayRate" type="text" value="$18/hr + bonus" />
+              </label>
+              <label>
+                Start date
+                <input id="workerStartDate" type="date" />
+              </label>
+              <label>
+                Tax packet status
+                <select id="workerTaxStatus">
+                  <option value="Not sent">Not sent</option>
+                  <option value="Sent">Sent</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Needs review">Needs review</option>
+                </select>
+              </label>
+              <label>
+                Direct deposit status
+                <select id="workerDepositStatus">
+                  <option value="Not requested">Not requested</option>
+                  <option value="Requested">Requested</option>
+                  <option value="Verified by provider">Verified by provider</option>
+                </select>
+              </label>
+              <label class="wide-field">
+                Onboarding notes
+                <textarea id="workerNotes" rows="3" placeholder="Track provider packet link, signed handbook, I-9 status, W-9 status, or manager notes. Do not paste SSNs or bank numbers here."></textarea>
+              </label>
+              <div class="form-actions wide-field">
+                <button class="primary-button" type="submit">Create packet</button>
+                <button class="secondary-button" id="sendOnboardingPacket" type="button">Send packet link</button>
+              </div>
+            </form>
+            <div class="compliance-warning">
+              Kira Recruit tracks onboarding status only. Collect SSNs, EINs, W-4, W-9, I-9, and bank details inside a secure payroll/onboarding provider.
+            </div>
+            <div class="worker-list" id="workerList"></div>
+            <p class="status-message" id="onboardingMessage" role="status"></p>
+          </section>
+
+          <section class="panel payroll-panel" id="payroll" data-recruit-subpage="payroll" aria-labelledby="payrollHeading">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Pay operations</p>
+                <h2 id="payrollHeading">Employee and contractor payments</h2>
+              </div>
+              <span class="schedule-pill">Demo payroll staging</span>
+            </div>
+            <form class="payroll-provider-form" id="payrollProviderForm">
+              <label>
+                Payroll provider
+                <select id="payrollProvider">
+                  <option value="gusto">Gusto</option>
+                  <option value="adp">ADP</option>
+                  <option value="quickbooks">QuickBooks Payroll</option>
+                  <option value="stripe-connect">Stripe Connect contractor payouts</option>
+                  <option value="manual">Manual export</option>
+                </select>
+              </label>
+              <label>
+                Company payroll ID
+                <input id="payrollCompanyId" type="text" placeholder="Provider company or tenant ID" />
+              </label>
+              <label>
+                Provider API token
+                <input id="payrollApiToken" type="password" autocomplete="off" placeholder="Saved as configured, never displayed" />
+              </label>
+              <button class="secondary-button" type="submit">Save payroll provider</button>
+            </form>
+            <form class="payroll-run-form" id="payrollRunForm">
+              <label>
+                Worker
+                <select id="payrollWorker"></select>
+              </label>
+              <label>
+                Pay period
+                <input id="payrollPeriod" type="text" placeholder="Jul 1-Jul 15" required />
+              </label>
+              <label>
+                Hours
+                <input id="payrollHours" type="number" min="0" step="0.25" value="40" />
+              </label>
+              <label>
+                Hourly rate
+                <input id="payrollRate" type="number" min="0" step="0.01" value="18" />
+              </label>
+              <label>
+                Bonus / commission
+                <input id="payrollBonus" type="number" min="0" step="0.01" value="0" />
+              </label>
+              <label>
+                Reimbursements
+                <input id="payrollReimbursement" type="number" min="0" step="0.01" value="0" />
+              </label>
+              <div class="payroll-total" id="payrollTotal" aria-label="Payroll total">$720.00</div>
+              <div class="form-actions">
+                <button class="primary-button" type="submit">Stage payroll run</button>
+                <button class="secondary-button" id="markPayrollPaid" type="button">Mark latest paid</button>
+              </div>
+            </form>
+            <div class="payroll-list" id="payrollList"></div>
+            <p class="status-message" id="payrollMessage" role="status"></p>
+          </section>
         </section>
       </main>
     </div>

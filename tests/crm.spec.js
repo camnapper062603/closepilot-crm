@@ -1261,6 +1261,32 @@ test('manages SaaS workspace plan, seats, and invites', async ({ page }) => {
   await expect(admin.locator('#adminMessage')).toContainText('Workspace settings saved.');
 });
 
+test('loads scale test data for 20 dialers and 10 closers', async ({ page }) => {
+  await navigateTo(page, 'Admin', 'admin');
+  await openBackupCenter(page);
+
+  const backup = page.locator('#workspaceBackup');
+  await backup.getByRole('button', { name: 'Load scale test data' }).click();
+  await expect(backup.locator('#backupMessage')).toContainText('Loaded 100 test leads, 20 dialers, and 10 closers.');
+  await expect(backup.locator('#backupSummary')).toContainText('100');
+  await expect(backup.locator('#backupSummary')).toContainText('30');
+
+  await openSubpage(page, 'Members and invites');
+  const admin = page.locator('#saasAdmin');
+  await expect(admin.locator('#teamSummary')).toContainText('31');
+  await expect(admin.locator('#teamList')).toContainText('dialer01@kirahome.test');
+  await expect(admin.locator('#teamList')).toContainText('Dialer');
+  await expect(admin.locator('#teamList')).toContainText('closer10@kirahome.test');
+  await expect(admin.locator('#teamList')).toContainText('Closer');
+
+  await navigateTo(page, 'Dial', 'dial');
+  await expect(page.locator('#dialSummary')).toContainText('70');
+  await expect(page.locator('#dialSummary')).toContainText('Closers');
+  await expect(page.locator('#appointmentCloser option')).toHaveCount(10);
+  await expect(page.locator('#appointmentCloser')).toContainText('closer01@kirahome.test');
+  await expect(page.locator('#appointmentCloser')).not.toContainText('dialer01@kirahome.test');
+});
+
 test('production API fallbacks are honest when providers are missing', async ({ request }) => {
   const readiness = await request.post('/api/system/readiness', { data: { workspaceId: 'demo-workspace' } });
   expect(readiness.ok()).toBeTruthy();

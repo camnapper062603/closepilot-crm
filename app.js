@@ -496,6 +496,78 @@ const seedState = {
   ],
 };
 
+const scaleTestConfig = {
+  leadCount: 100,
+  dialerCount: 20,
+  closerCount: 10,
+  seatLimit: 35,
+};
+
+const scaleTestFirstNames = [
+  "Avery",
+  "Jordan",
+  "Taylor",
+  "Morgan",
+  "Riley",
+  "Casey",
+  "Parker",
+  "Reese",
+  "Hayden",
+  "Quinn",
+];
+
+const scaleTestLastNames = [
+  "Adams",
+  "Bennett",
+  "Carter",
+  "Diaz",
+  "Edwards",
+  "Flores",
+  "Garcia",
+  "Hayes",
+  "Irwin",
+  "James",
+];
+
+const scaleTestStreets = [
+  "Cedar Bend Dr",
+  "Oak Hollow Ln",
+  "Lone Star Pkwy",
+  "Bluebonnet Way",
+  "Mesa Ridge Ct",
+  "Hill Country Trl",
+  "Pecan Grove Rd",
+  "Riverstone Blvd",
+  "Sunset Terrace",
+  "Prairie Creek Cir",
+];
+
+const scaleTestCities = [
+  { city: "Austin", county: "Travis" },
+  { city: "Round Rock", county: "Williamson" },
+  { city: "Georgetown", county: "Williamson" },
+  { city: "San Marcos", county: "Hays" },
+  { city: "Pflugerville", county: "Travis" },
+  { city: "Cedar Park", county: "Williamson" },
+  { city: "Kyle", county: "Hays" },
+  { city: "Buda", county: "Hays" },
+  { city: "Leander", county: "Williamson" },
+  { city: "Manor", county: "Travis" },
+];
+
+const scaleTestProjects = [
+  "roof replacement",
+  "solar quote",
+  "window upgrade",
+  "bath remodel",
+  "HVAC replacement",
+  "kitchen remodel",
+  "fence repair",
+  "exterior paint",
+  "garage conversion",
+  "flooring install",
+];
+
 let state = structuredClone(seedState);
 let store;
 let currentUser = null;
@@ -748,6 +820,7 @@ const cancelImportButton = document.querySelector("#cancelImportButton");
 const closeImportModalButton = document.querySelector("#closeImportModal");
 const exportWorkspaceBackupButton = document.querySelector("#exportWorkspaceBackup");
 const importWorkspaceBackupButton = document.querySelector("#importWorkspaceBackup");
+const seedScaleTestDataButton = document.querySelector("#seedScaleTestData");
 const importWorkspaceBackupInput = document.querySelector("#importWorkspaceBackupInput");
 const backupSummary = document.querySelector("#backupSummary");
 const backupMessage = document.querySelector("#backupMessage");
@@ -1005,6 +1078,7 @@ importLeadsButton.addEventListener("click", () => importLeadsInput.click());
 importLeadsInput.addEventListener("change", importLeadsCsv);
 exportWorkspaceBackupButton.addEventListener("click", exportWorkspaceBackup);
 importWorkspaceBackupButton.addEventListener("click", () => importWorkspaceBackupInput.click());
+seedScaleTestDataButton.addEventListener("click", seedScaleTestWorkspace);
 importWorkspaceBackupInput.addEventListener("change", importWorkspaceBackup);
 workspaceAdminForm.addEventListener("submit", saveAdminWorkspaceSettings);
 customizationForm?.addEventListener("submit", saveCustomizationPreferences);
@@ -3360,17 +3434,34 @@ function renderSaasAdmin() {
 
 function renderTeamMember(member) {
   const role = teamRoleCatalog[member.role] || teamRoleCatalog.rep;
+  const functionLabel = memberFunctionLabel(member);
+  const description = memberFunctionDescription(member) || role.description;
   const isOwner = member.role === "owner";
   return `
     <article class="team-row team-member-row">
       <div>
         <strong>${escapeHtml(member.email)}</strong>
-        <span>${escapeHtml(role.label)} · active</span>
-        <small>${escapeHtml(role.description)}</small>
+        <span>${escapeHtml(functionLabel || role.label)} · active</span>
+        <small>${escapeHtml(description)}</small>
       </div>
       <span class="status-pill">${isOwner ? "Owner" : "Member"}</span>
     </article>
   `;
+}
+
+function memberFunctionLabel(member) {
+  const value = String(member.teamFunction || "").toLowerCase();
+  if (value === "dialer") return "Dialer";
+  if (value === "closer") return "Closer";
+  if (value === "owner") return "Owner";
+  return "";
+}
+
+function memberFunctionDescription(member) {
+  const value = String(member.teamFunction || "").toLowerCase();
+  if (value === "dialer") return "Works generated leads, logs calls and texts, and books appointments.";
+  if (value === "closer") return "Receives round-robin appointments and manages closing follow-up.";
+  return "";
 }
 
 function renderTeamInvite(invite) {
@@ -8628,8 +8719,13 @@ function nextDialAction(outcome) {
 
 function closerOptions() {
   const active = accountState().members.filter((member) => member.status === "active");
-  return active.length
-    ? active.map((member) => ({ email: member.email, role: member.role }))
+  const closers = active.filter((member) => {
+    const functionName = String(member.teamFunction || "").toLowerCase();
+    return functionName === "closer" || member.role === "closer";
+  });
+  const assignable = closers.length ? closers : active;
+  return assignable.length
+    ? assignable.map((member) => ({ email: member.email, role: member.role, teamFunction: member.teamFunction || "" }))
     : [{ email: workspaceSetupSettings().ownerEmail, role: "owner" }];
 }
 
@@ -9000,6 +9096,165 @@ async function seedStarterWorkspace() {
   await reloadState();
   seedWorkspaceButton.disabled = false;
   seedWorkspaceButton.textContent = "Load starter pipeline";
+}
+
+async function seedScaleTestWorkspace() {
+  seedScaleTestDataButton.disabled = true;
+  seedScaleTestDataButton.textContent = "Loading scale data...";
+  backupMessage.textContent = "Building 100 test leads, 20 dialers, and 10 closers...";
+
+  try {
+    const data = createScaleTestWorkspaceData();
+    await store.clearWorkspaceData();
+    setupBusinessName.value = data.workspace.name;
+    setupWorkspaceType.value = data.workspace.type;
+    setupSalesGoal.value = data.workspace.goal;
+    await persistWorkspaceSetup(data.workspace);
+
+    const createdLeads = await store.createLeads(data.leads.map(withoutId));
+    const leadsForTasks = createdLeads.length ? createdLeads : data.leads;
+    for (const task of createScaleTestTasks(leadsForTasks)) {
+      await store.createTask(task);
+    }
+    for (const lead of leadsForTasks.slice(0, 25)) {
+      await store.createActivity({
+        leadId: lead.id,
+        type: "created",
+        message: `Scale test lead staged for ${lead.company}.`,
+      });
+    }
+
+    await store.updateSaasAccount(data.account);
+    await logAuditEvent(
+      "Scale test data loaded",
+      `${scaleTestConfig.leadCount} leads, ${scaleTestConfig.dialerCount} dialers, and ${scaleTestConfig.closerCount} closers staged.`,
+    );
+    localStorage.setItem(onboardingDismissalKey(), "true");
+    backupMessage.textContent = `Loaded ${scaleTestConfig.leadCount} test leads, ${scaleTestConfig.dialerCount} dialers, and ${scaleTestConfig.closerCount} closers.`;
+    await reloadState();
+  } catch (error) {
+    console.error(error);
+    backupMessage.textContent = "Scale test seed failed. Check console logs and try again.";
+  } finally {
+    seedScaleTestDataButton.disabled = false;
+    seedScaleTestDataButton.textContent = "Load scale test data";
+  }
+}
+
+function createScaleTestWorkspaceData() {
+  return {
+    workspace: {
+      name: "Kira Home Scale Test",
+      type: "Team",
+      goal: "Track every lead",
+      ownerEmail: "owner@kirahome.test",
+      industry: "Residential home services",
+      timezone: "America/Chicago",
+      defaultSource: "Safe lead generator",
+    },
+    leads: createScaleTestLeads(),
+    account: createScaleTestAccount(),
+  };
+}
+
+function createScaleTestLeads() {
+  return Array.from({ length: scaleTestConfig.leadCount }, (_, index) => {
+    const number = index + 1;
+    const firstName = scaleTestFirstNames[index % scaleTestFirstNames.length];
+    const lastName = scaleTestLastNames[Math.floor(index / scaleTestFirstNames.length) % scaleTestLastNames.length];
+    const street = scaleTestStreets[index % scaleTestStreets.length];
+    const location = scaleTestCities[index % scaleTestCities.length];
+    const project = scaleTestProjects[index % scaleTestProjects.length];
+    const stage = number <= 70 ? "new" : number <= 88 ? "qualified" : number <= 96 ? "proposal" : "won";
+    const assignedDialer = `dialer${padNumber((index % scaleTestConfig.dialerCount) + 1)}@kirahome.test`;
+    const assignedCloser = `closer${padNumber((index % scaleTestConfig.closerCount) + 1)}@kirahome.test`;
+    const value = 6500 + ((index * 1375) % 36000);
+    const score = Math.min(99, 58 + ((index * 7) % 40) + (stage === "proposal" ? 5 : 0));
+    const address = `${1000 + number} ${street}`;
+
+    return {
+      id: `scale-lead-${number}`,
+      name: `${firstName} ${lastName}`,
+      company: `${address}, ${location.city}`,
+      stage,
+      value,
+      score,
+      source: "Safe lead generator",
+      nextAction: scaleTestNextAction(stage, project),
+      notes: [
+        `Phone: (555) 01${String(number).padStart(2, "0")}`,
+        `Email: homeowner${String(number).padStart(3, "0")}@example.test`,
+        `County: ${location.county}`,
+        `Parcel: TX-${String(740000 + number).padStart(6, "0")}`,
+        `Project: ${project}`,
+        `Assigned dialer: ${assignedDialer}`,
+        `Assigned closer: ${assignedCloser}`,
+        "Compliance: Demo-only residential lead. Scrub DNC and consent before real outreach.",
+      ].join("\n"),
+    };
+  });
+}
+
+function createScaleTestTasks(leads) {
+  return leads.slice(0, 30).map((lead, index) => ({
+    text: `${index < 20 ? "Dialer" : "Closer"} follow-up: ${lead.name} at ${lead.company}`,
+    done: false,
+    due: index < 18 ? "today" : "tomorrow",
+  }));
+}
+
+function createScaleTestAccount() {
+  const owner = {
+    id: "scale-member-owner",
+    email: "owner@kirahome.test",
+    role: "owner",
+    teamFunction: "owner",
+    status: "active",
+  };
+  const dialers = Array.from({ length: scaleTestConfig.dialerCount }, (_, index) => ({
+    id: `scale-dialer-${index + 1}`,
+    email: `dialer${padNumber(index + 1)}@kirahome.test`,
+    role: "rep",
+    teamFunction: "dialer",
+    status: "active",
+  }));
+  const closers = Array.from({ length: scaleTestConfig.closerCount }, (_, index) => ({
+    id: `scale-closer-${index + 1}`,
+    email: `closer${padNumber(index + 1)}@kirahome.test`,
+    role: "manager",
+    teamFunction: "closer",
+    status: "active",
+  }));
+
+  return normalizedAccount({
+    subscription: {
+      plan: "scale",
+      status: "active",
+      seatLimit: scaleTestConfig.seatLimit,
+      trialEndsAt: "2026-07-31T00:00:00.000Z",
+    },
+    members: [owner, ...dialers, ...closers],
+    invites: [],
+    auditEvents: [
+      {
+        id: "scale-audit-seed",
+        action: "Scale test workspace loaded",
+        detail: "100 leads, 20 dialers, and 10 closers staged for launch testing.",
+        createdAt: new Date().toISOString(),
+      },
+    ],
+  });
+}
+
+function scaleTestNextAction(stage, project) {
+  if (stage === "won") return `Send onboarding checklist for ${project}.`;
+  if (stage === "proposal") return `Closer should review estimate and ask for the decision timeline on ${project}.`;
+  if (stage === "qualified") return `Book estimate appointment for ${project}.`;
+  return `Dial homeowner and qualify timing, budget, and interest in ${project}.`;
+}
+
+function padNumber(value) {
+  return String(value).padStart(2, "0");
 }
 
 async function dismissOnboarding() {

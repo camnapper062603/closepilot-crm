@@ -33,6 +33,10 @@
 - Kira Recruit has a dashboard command-center hero for next best candidate action, interview cadence, and AI recruiter readiness.
 - Candidate cards now show score context and a recommended next action such as calling the best candidate first or booking an interview.
 - Recruit surfaces share rounded panels, lifted hover states, dark-mode support, and mobile stacked layouts.
+- Recruiting integrations now include provider-ready setup forms for Indeed and Monster/ZipRecruiter, including employer account ID, employer email, apply webhook URL, budget defaults, posting notes, and masked token status.
+- W-2/W-9 onboarding tracks worker packet status, worker type, role, pay rate, tax packet status, direct deposit status, and notes while redacting tax-ID-like numbers from demo notes.
+- Payroll staging supports provider settings for Gusto, ADP, QuickBooks Payroll, Stripe Connect contractor payouts, and manual export, plus demo payroll run totals and paid status.
+- Demo mode intentionally does not store raw API tokens, SSNs, EINs, bank account numbers, or routing numbers. Live payroll and tax collection should be connected through a secure provider-side flow.
 
 ## Lead Generator Polish
 

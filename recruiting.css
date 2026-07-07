@@ -357,11 +357,25 @@ button {
   grid-column: 2 / 3;
 }
 
+.integration-panel,
+.onboarding-panel,
+.payroll-panel {
+  grid-column: 1 / -1;
+}
+
 .job-form,
-.applicant-tools {
+.applicant-tools,
+.integration-form,
+.onboarding-form,
+.payroll-provider-form,
+.payroll-run-form {
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.payroll-run-form {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 label {
@@ -399,17 +413,30 @@ textarea {
   min-height: 22px;
 }
 
+.form-actions {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .board-list,
 .candidate-list,
 .interview-list,
-.feed-preview {
+.feed-preview,
+.integration-grid,
+.worker-list,
+.payroll-list {
   display: grid;
   gap: 10px;
 }
 
 .board-row,
 .interview-row,
-.feed-preview article {
+.feed-preview article,
+.integration-card,
+.worker-card,
+.payroll-run {
   align-items: center;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -532,6 +559,107 @@ textarea {
   justify-items: start;
 }
 
+.integration-card,
+.worker-card,
+.payroll-run {
+  align-items: stretch;
+  border-radius: var(--radius-md);
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(220px, 0.8fr) auto;
+  transition:
+    border-color var(--motion-fast),
+    box-shadow var(--motion-fast),
+    transform var(--motion-fast);
+}
+
+.integration-card:hover,
+.worker-card:hover,
+.payroll-run:hover {
+  border-color: rgba(47, 111, 237, 0.28);
+  box-shadow: var(--shadow-lift);
+  transform: translateY(-2px);
+}
+
+.integration-card.connected {
+  border-color: rgba(31, 122, 77, 0.34);
+}
+
+.integration-card p,
+.worker-card p {
+  color: var(--muted);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.integration-card strong,
+.worker-card strong,
+.payroll-run strong {
+  display: block;
+}
+
+.integration-facts,
+.worker-status-grid {
+  align-content: start;
+  display: grid;
+  gap: 6px;
+}
+
+.integration-facts span,
+.worker-status-grid span,
+.worker-card small,
+.payroll-run small,
+.payroll-run span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.connection-status {
+  align-self: start;
+  background: var(--navy-soft);
+  border: 1px solid #c9d8f0;
+  border-radius: 999px;
+  color: var(--navy);
+  font-size: 0.78rem;
+  justify-self: end;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+
+.compliance-warning {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: var(--radius-sm);
+  color: #92400e;
+  font-size: 0.86rem;
+  font-weight: 850;
+  line-height: 1.45;
+  padding: 12px;
+}
+
+.payroll-total,
+.payroll-run-total {
+  align-items: center;
+  background: var(--navy-soft);
+  border: 1px solid #c9d8f0;
+  border-radius: var(--radius-sm);
+  color: var(--navy-dark);
+  display: flex;
+  font-size: 1.18rem;
+  font-weight: 950;
+  justify-content: center;
+  min-height: 42px;
+  padding: 8px 12px;
+}
+
+.payroll-run {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.payroll-run.paid {
+  border-color: rgba(31, 122, 77, 0.34);
+}
+
 .empty-state {
   border: 1px dashed var(--line);
   border-radius: 8px;
@@ -587,19 +715,30 @@ textarea {
   .brand-mark,
   .topbar,
   .panel,
-    .metrics article,
-    .recruit-hero,
-    .candidate-card,
+  .metrics article,
+  .recruit-hero,
+  .candidate-card,
   .board-row,
   .interview-row,
-  .feed-preview article {
+  .feed-preview article,
+  .integration-card,
+  .worker-card,
+  .payroll-run {
     background: var(--surface);
   }
 
   .recruit-hero-grid article,
-  .candidate-insight-row {
+  .candidate-insight-row,
+  .payroll-total,
+  .payroll-run-total {
     background: #171d28;
     border-color: var(--line);
+  }
+
+  .compliance-warning {
+    background: rgba(161, 98, 7, 0.18);
+    border-color: rgba(245, 180, 70, 0.28);
+    color: #f3c36e;
   }
 
   .subpage-nav,
@@ -651,7 +790,10 @@ textarea {
   .applicant-panel,
   .board-panel,
   .interview-panel,
-  .crm-panel {
+  .crm-panel,
+  .integration-panel,
+  .onboarding-panel,
+  .payroll-panel {
     grid-column: auto;
   }
 
@@ -736,7 +878,14 @@ textarea {
   }
 
   .job-form,
-  .applicant-tools {
+  .applicant-tools,
+  .integration-form,
+  .onboarding-form,
+  .payroll-provider-form,
+  .payroll-run-form,
+  .integration-card,
+  .worker-card,
+  .payroll-run {
     grid-template-columns: 1fr;
   }
 
@@ -767,6 +916,11 @@ textarea {
 
   .board-stats {
     justify-items: start;
+  }
+
+  .connection-status,
+  .payroll-run-total {
+    justify-self: stretch;
   }
 
   .schedule-pill,
