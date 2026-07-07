@@ -348,7 +348,10 @@ h2 {
   display: inline-flex;
   font-size: 0.9rem;
   font-weight: 850;
+  gap: 8px;
   justify-content: center;
+  line-height: 1.12;
+  max-width: 100%;
   min-height: 46px;
   padding: 0 20px;
   transition:
@@ -356,6 +359,7 @@ h2 {
     box-shadow 160ms ease,
     transform 160ms ease;
   white-space: nowrap;
+  width: auto;
 }
 
 .primary-button:hover,
@@ -1143,13 +1147,19 @@ button.ai-card:hover {
 }
 
 .flow-action-buttons {
-  display: grid;
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
 .flow-action-buttons button {
-  min-width: 0;
+  flex: 0 0 auto;
+  min-width: max-content;
+}
+
+#flowCompleteNext {
+  min-width: 146px;
 }
 
 .flow-action-buttons button.active {
@@ -3131,13 +3141,15 @@ button.insight-card:hover {
 }
 
 .call-control-grid {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
 .call-control-grid button {
+  flex: 0 0 auto;
   min-height: 42px;
+  min-width: max-content;
 }
 
 .call-log-actions {
@@ -3156,13 +3168,15 @@ button.insight-card:hover {
 }
 
 .call-log-actions div {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
 .call-log-actions button {
+  flex: 0 0 auto;
   min-height: 38px;
+  min-width: max-content;
 }
 
 .call-control-grid button:disabled {
@@ -6469,6 +6483,15 @@ button.insight-card:hover {
     min-height: 42px;
     padding: 8px 12px;
     white-space: normal;
+    width: auto;
+  }
+
+  .auth-actions .primary-button,
+  .auth-actions .secondary-button,
+  .auth-demo-card .secondary-button,
+  .command-start-button,
+  .dashboard-follow-up-card .primary-button,
+  .modal-actions button {
     width: 100%;
   }
 
@@ -6512,7 +6535,6 @@ button.insight-card:hover {
   .flow-progress-stats,
   .flow-results,
   .flow-lead-grid,
-  .flow-action-buttons,
   .call-control-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -7209,6 +7231,86 @@ button:active,
   transform: translateY(1px) scale(0.99);
 }
 
+body[data-demo-focus="true"] .demo-collapsible {
+  overflow: hidden;
+  position: relative;
+}
+
+body[data-demo-focus="true"] .demo-collapsible.demo-collapsed {
+  gap: 8px;
+  min-height: 0;
+}
+
+body[data-demo-focus="true"] .demo-collapsible.demo-collapsed > :not(.panel-heading):not(.section-heading):not(.time-saved-hero):not(.communications-column-heading):not(.demo-focus-toggle):not(.eyebrow):not(h2):not(h3) {
+  display: none !important;
+}
+
+body[data-demo-focus="true"] .demo-collapsible.demo-collapsed::after {
+  color: var(--muted);
+  content: attr(data-demo-focus-detail);
+  display: block;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  padding-top: 2px;
+}
+
+.demo-focus-toggle {
+  align-items: center;
+  background: color-mix(in srgb, var(--surface) 90%, var(--soft));
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  box-shadow: none;
+  color: var(--navy);
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 0.74rem;
+  font-weight: 950;
+  justify-content: center;
+  line-height: 1;
+  margin-left: auto;
+  min-height: 30px;
+  padding: 0 11px;
+  white-space: nowrap;
+  width: auto;
+}
+
+.demo-focus-toggle:hover {
+  background: var(--navy);
+  color: #ffffff;
+}
+
+body[data-demo-focus="true"] .contact-summary,
+body[data-demo-focus="true"] .task-summary {
+  display: none;
+}
+
+body[data-demo-focus="true"] .panel-actions,
+body[data-demo-focus="true"] .automation-actions,
+body[data-demo-focus="true"] .activity-actions,
+body[data-demo-focus="true"] .manager-hero-actions,
+body[data-demo-focus="true"] .billing-actions,
+body[data-demo-focus="true"] .customization-actions,
+body[data-demo-focus="true"] .modal-actions {
+  align-items: center;
+  gap: 8px;
+}
+
+body[data-demo-focus="true"] .secondary-button,
+body[data-demo-focus="true"] .task-form button {
+  min-height: 34px;
+  padding-inline: 12px;
+}
+
+body[data-demo-focus="true"] .primary-button {
+  min-height: 40px;
+  padding-inline: 16px;
+}
+
+body[data-demo-focus="true"] .command-start-button {
+  min-height: 52px;
+  padding-inline: 28px;
+}
+
 .sidebar {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.07), transparent 22rem),
@@ -7714,10 +7816,12 @@ body[data-dashboard-layout="compact"] .today-focus-card {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   grid-column: 1 / -1;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  justify-self: start;
+  max-width: 100%;
   padding: 6px;
 }
 
@@ -7728,6 +7832,8 @@ body[data-dashboard-layout="compact"] .today-focus-card {
   color: var(--muted);
   font-weight: 900;
   min-height: 36px;
+  min-width: max-content;
+  padding: 0 14px;
 }
 
 .theme-toggle button.active,

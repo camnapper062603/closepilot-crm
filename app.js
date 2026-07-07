@@ -979,6 +979,28 @@ const subpageCatalog = {
   ],
 };
 
+const demoFocusPanels = [
+  { selector: "#opportunityHealthWidget", label: "Opportunity Health", detail: "Pipeline scoring and risk context" },
+  { selector: "#dashboardSalesCopilotCard", label: "AI Sales Copilot", detail: "Script and message suggestions" },
+  { selector: "#communicationStatsWidget", label: "Communication Stats", detail: "Call, text, and inbox proof points" },
+  { selector: "#timeSavedWidget", label: "Time Saved", detail: "Automation value proof" },
+  { selector: "#revenueSnapshotWidget", label: "Revenue Snapshot", detail: "Forecast and pipeline totals" },
+  { selector: "#salesActivityWidget", label: "Sales Activity", detail: "Daily sales analytics" },
+  { selector: "#teamActivityWidget", label: "Team Activity", detail: "Recent workspace pulse" },
+  { selector: "#dashboardCalendarWidget", label: "Calendar", detail: "Today's schedule preview" },
+  { selector: ".leaderboard-section", label: "Sales Leaderboard", detail: "Rep-by-rep performance" },
+  { selector: ".forecast-section", label: "Revenue Forecast", detail: "Best, likely, and worst case" },
+  { selector: ".pipeline-health-section", label: "Pipeline Health", detail: "Stage-level health details" },
+  { selector: ".coaching-section", label: "AI Coaching", detail: "Rep coaching cards" },
+  { selector: ".risk-section", label: "Risk Center", detail: "Deals and follow-ups that need manager review" },
+  { selector: ".manager-notifications-section", label: "Notifications", detail: "Manager alert feed" },
+  { selector: ".manager-analytics-section", label: "Analytics", detail: "Interactive performance charts" },
+  { selector: "#appointmentsPanel", label: "Appointments", detail: "Booked work from the dial floor" },
+  { selector: ".communication-notifications", label: "Notifications", detail: "Conversation alerts" },
+  { selector: "#aiAssistantPanel", label: "AI Assistant", detail: "Suggested replies and coaching prompts" },
+  { selector: "#quickActionsPanel", label: "Quick Actions", detail: "Schedule, quote, task, and deposit shortcuts" },
+];
+
 const roleAccessCatalog = {
   owner: {
     pages: ["pipeline", "manager", "contacts", "recruiting", "automation", "tasks", "activity", "communications", "dial", "calendar", "admin", "settings"],
@@ -1265,6 +1287,7 @@ subpageNav.addEventListener("click", (event) => {
 window.addEventListener("hashchange", () => {
   routeFromHash();
   renderRoute();
+  queueDemoScrollTop();
 });
 
 window.addEventListener("online", () => {
@@ -1336,6 +1359,7 @@ async function boot() {
 
 async function startCloudWorkspace() {
   publicDemoMode = false;
+  syncDemoFocusMode();
   hideAuth();
   setCloudMode(true);
   await acceptPendingInviteIfNeeded();
@@ -1351,6 +1375,7 @@ async function startCloudWorkspace() {
 
 async function startPublicDemoWorkspace(options = {}) {
   publicDemoMode = true;
+  syncDemoFocusMode();
   currentUser = null;
   store = createLocalStore();
   state = createMarketerDemoState();
@@ -1374,11 +1399,13 @@ async function startPublicDemoWorkspace(options = {}) {
   routeFromHash();
   setActivePage(activePage || "pipeline");
   render();
+  queueDemoScrollTop();
   showAppToast("Demo workspace loaded", "Explore the CRM with sample leads, team activity, add-ons, and AI workflows.");
 }
 
 function exitPublicDemoWorkspace() {
   publicDemoMode = false;
+  syncDemoFocusMode();
   localStorage.removeItem(publicDemoSessionKey());
   localStorage.removeItem("closepilot-demo-role");
   signOutButton.textContent = "Sign out";
@@ -1391,6 +1418,7 @@ function exitPublicDemoWorkspace() {
 
 function showAuth() {
   publicDemoMode = false;
+  syncDemoFocusMode();
   authPanel.hidden = false;
   appShell.hidden = true;
   signOutButton.hidden = true;
@@ -1603,6 +1631,7 @@ function sortedContactLeads(leads) {
 }
 
 function render() {
+  syncDemoFocusMode();
   applyCustomizationPreferences();
   renderWorkspaceIdentity();
   renderMetrics();
@@ -1627,6 +1656,7 @@ function render() {
   renderWorkspaceBackup();
   renderSaasAdmin();
   renderRoute();
+  applyDemoFocusPanels();
 }
 
 function routeFromHash() {
@@ -1658,6 +1688,7 @@ function renderRoute() {
     });
     pageTitle.textContent = "Access needed";
     document.body.dataset.activePage = "access-denied";
+    applyDemoFocusPanels();
     return;
   }
 
@@ -1686,6 +1717,91 @@ function renderRoute() {
   if (window.location.hash !== `#${activePage}`) {
     history.replaceState(null, "", `#${activePage}`);
   }
+  applyDemoFocusPanels();
+}
+
+function syncDemoFocusMode() {
+  document.body.dataset.demoFocus = publicDemoMode ? "true" : "false";
+}
+
+function applyDemoFocusPanels() {
+  syncDemoFocusMode();
+  if (!publicDemoMode) {
+    document.querySelectorAll(".demo-collapsible").forEach((panel) => {
+      panel.classList.remove("demo-collapsible", "demo-collapsed");
+      panel.querySelectorAll(".demo-focus-toggle").forEach((button) => button.remove());
+    });
+    return;
+  }
+
+  demoFocusPanels.forEach((config) => {
+    document.querySelectorAll(config.selector).forEach((panel) => configureDemoFocusPanel(panel, config));
+  });
+}
+
+function configureDemoFocusPanel(panel, config) {
+  if (!panel) return;
+  const heading = demoFocusHeading(panel);
+  if (!heading) return;
+
+  panel.classList.add("demo-collapsible");
+  panel.dataset.demoFocusLabel = config.label;
+  panel.dataset.demoFocusDetail = config.detail;
+
+  let toggle = heading.querySelector(".demo-focus-toggle");
+  if (!toggle) {
+    toggle = document.createElement("button");
+    toggle.className = "demo-focus-toggle";
+    toggle.type = "button";
+    if (heading === panel) {
+      const title = panel.querySelector(":scope > h2, :scope > h3");
+      if (title) title.insertAdjacentElement("afterend", toggle);
+      else panel.prepend(toggle);
+    } else {
+      heading.append(toggle);
+    }
+    toggle.addEventListener("click", () => {
+      const nextCollapsed = !panel.classList.contains("demo-collapsed");
+      panel.classList.toggle("demo-collapsed", nextCollapsed);
+      localStorage.setItem(demoFocusPanelKey(config.selector), nextCollapsed ? "collapsed" : "open");
+      updateDemoFocusToggle(toggle, panel, config);
+    });
+  }
+
+  const savedState = localStorage.getItem(demoFocusPanelKey(config.selector));
+  const collapsed = savedState ? savedState === "collapsed" : true;
+  panel.classList.toggle("demo-collapsed", collapsed);
+  updateDemoFocusToggle(toggle, panel, config);
+}
+
+function demoFocusHeading(panel) {
+  return (
+    panel.querySelector(":scope > .panel-heading") ||
+    panel.querySelector(":scope > .section-heading") ||
+    panel.querySelector(":scope > .time-saved-hero") ||
+    panel.querySelector(":scope > .communications-column-heading") ||
+    panel.querySelector(":scope > .calendar-connect-actions") ||
+    panel.querySelector(":scope > .manager-hero") ||
+    panel
+  );
+}
+
+function updateDemoFocusToggle(toggle, panel, config) {
+  const collapsed = panel.classList.contains("demo-collapsed");
+  toggle.textContent = collapsed ? "Show" : "Hide";
+  toggle.setAttribute("aria-expanded", String(!collapsed));
+  toggle.setAttribute("aria-label", `${collapsed ? "Show" : "Hide"} ${config.label}: ${config.detail}`);
+}
+
+function demoFocusPanelKey(selector) {
+  return `closepilot-demo-focus:${selector}`;
+}
+
+function queueDemoScrollTop() {
+  if (!publicDemoMode) return;
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => window.scrollTo(0, 0));
+  });
 }
 
 function setSubpage(page, subpage) {
@@ -1902,6 +2018,7 @@ function setActivePage(page) {
   if (window.location.hash !== `#${activePage}`) {
     history.replaceState(null, "", `#${activePage}`);
   }
+  queueDemoScrollTop();
 }
 
 function renderOnboarding() {
