@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import Stripe from "stripe";
 import { sendInviteEmailWithResend } from "./email-service.js";
 
@@ -64,6 +64,10 @@ export function isClosePilotApiPath(pathname) {
     pathname === "/api/stripe/webhook" ||
     pathname === "/api/invites/send" ||
     pathname === "/api/invites/accept" ||
+    pathname === "/api/google/calendar/connect" ||
+    pathname === "/api/google/calendar/callback" ||
+    pathname === "/api/google/calendar/status" ||
+    pathname === "/api/google/calendar/create-event" ||
     pathname === "/api/system/readiness" ||
     aiEndpoints.has(pathname) ||
     communicationEndpoints.has(pathname)
@@ -75,6 +79,11 @@ export async function handleClosePilotApiRequest(request, response) {
 
   if (request.method === "OPTIONS") {
     sendJson(response, 204, {});
+    return;
+  }
+
+  if (url.pathname === "/api/google/calendar/callback" && request.method === "GET") {
+    await handleGoogleCalendarCallback(request, response, url);
     return;
   }
 
@@ -111,6 +120,18 @@ export async function handleClosePilotApiRequest(request, response) {
     }
     if (url.pathname === "/api/system/readiness") {
       await handleSystemReadiness(request, response, payload);
+      return;
+    }
+    if (url.pathname === "/api/google/calendar/connect") {
+      await handleGoogleCalendarConnect(request, response, payload);
+      return;
+    }
+    if (url.pathname === "/api/google/calendar/status") {
+      await handleGoogleCalendarStatus(response, payload);
+      return;
+    }
+    if (url.pathname === "/api/google/calendar/create-event") {
+      await handleGoogleCalendarCreateEvent(response, payload);
       return;
     }
     if (aiEndpoints.has(url.pathname)) {
@@ -469,6 +490,185 @@ async function handleAcceptInvite(response, payload) {
   });
 }
 
+async function handleGoogleCalendarConnect(request, response, payload) {
+  const workspaceId = cleanText(payload.workspaceId);
+  const ownerEmail = cleanEmail(payload.ownerEmail);
+  const baseUrl = appBaseUrl(request);
+
+  if (!hasGoogleCalendarConfig()) {
+    sendJson(response, 200, {
+      demo: true,
+      connected: false,
+      message: "Google Calendar is not configured. Add GOOGLE_CALENDAR_CLIENT_ID and GOOGLE_CALENDAR_CLIENT_SECRET.",
+    });
+    return;
+  }
+
+  if (!workspaceId) {
+    sendJson(response, 200, {
+      demo: true,
+      connected: false,
+      message: "Google Calendar connect needs cloud mode so a workspace ID can safely store OAuth tokens.",
+    });
+    return;
+  }
+
+  const state = signCalendarState({ workspaceId, ownerEmail, createdAt: Date.now(), nonce: randomBytes(12).toString("hex") });
+  const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+  authUrl.searchParams.set("client_id", process.env.GOOGLE_CALENDAR_CLIENT_ID);
+  authUrl.searchParams.set("redirect_uri", googleCalendarRedirectUri(baseUrl));
+  authUrl.searchParams.set("response_type", "code");
+  authUrl.searchParams.set("access_type", "offline");
+  authUrl.searchParams.set("prompt", "consent");
+  authUrl.searchParams.set("include_granted_scopes", "true");
+  authUrl.searchParams.set("scope", "openid email https://www.googleapis.com/auth/calendar.events");
+  authUrl.searchParams.set("state", state);
+
+  sendJson(response, 200, {
+    connected: false,
+    authUrl: authUrl.toString(),
+    message: "Open Google to connect Calendar.",
+  });
+}
+
+async function handleGoogleCalendarCallback(request, response, url) {
+  const code = cleanText(url.searchParams.get("code"));
+  const state = cleanText(url.searchParams.get("state"));
+  const baseUrl = appBaseUrl(request);
+
+  try {
+    if (!code || !state) throwInputError("Google Calendar callback is missing code or state.");
+    const stateValue = verifyCalendarState(state);
+    if (!stateValue?.workspaceId) throwInputError("Google Calendar state is invalid.");
+    if (!hasSupabaseServiceConfig()) throwInputError("Supabase service role is required to store Google Calendar tokens.");
+
+    const token = await exchangeGoogleCalendarCode(code, baseUrl);
+    const profile = await fetchGoogleProfile(token.access_token);
+    await saveGoogleCalendarConnection({
+      workspaceId: stateValue.workspaceId,
+      googleAccountEmail: profile.email || stateValue.ownerEmail || "",
+      accessToken: token.access_token,
+      refreshToken: token.refresh_token,
+      expiresIn: token.expires_in,
+      scope: token.scope,
+    });
+
+    sendRedirectHtml(response, `${baseUrl}/?calendar=connected#calendar`, "Google Calendar connected. Returning to Kira Home...");
+  } catch (error) {
+    const target = `${baseUrl}/?calendar=error&calendarMessage=${encodeURIComponent(error.message || "Google Calendar connect failed.")}#calendar`;
+    sendRedirectHtml(response, target, "Google Calendar needs attention. Returning to Kira Home...");
+  }
+}
+
+async function handleGoogleCalendarStatus(response, payload) {
+  const workspaceId = cleanText(payload.workspaceId);
+  if (!hasGoogleCalendarConfig()) {
+    sendJson(response, 200, {
+      configured: false,
+      connected: false,
+      message: "Google Calendar credentials are not configured.",
+    });
+    return;
+  }
+  if (!workspaceId) {
+    sendJson(response, 200, {
+      configured: true,
+      connected: false,
+      message: "Sign in with cloud mode to connect a workspace calendar.",
+    });
+    return;
+  }
+
+  const connection = await loadGoogleCalendarConnection(workspaceId);
+  sendJson(response, 200, {
+    configured: true,
+    connected: Boolean(connection?.refresh_token || connection?.access_token),
+    status: connection?.status || "not_connected",
+    googleAccountEmail: connection?.google_account_email || "",
+    calendarId: connection?.calendar_id || "primary",
+    expiresAt: connection?.expires_at || "",
+    message: connection ? "Google Calendar is connected." : "Google Calendar is ready to connect.",
+  });
+}
+
+async function handleGoogleCalendarCreateEvent(response, payload) {
+  const workspaceId = cleanText(payload.workspaceId);
+  const appointment = payload.appointment || {};
+
+  if (!hasGoogleCalendarConfig()) {
+    sendJson(response, 200, {
+      demo: true,
+      synced: false,
+      message: "Google Calendar credentials are not configured.",
+    });
+    return;
+  }
+  if (!workspaceId) {
+    sendJson(response, 200, {
+      demo: true,
+      synced: false,
+      message: "Calendar event saved in CRM only. Cloud mode is required for Google Calendar sync.",
+    });
+    return;
+  }
+
+  const connection = await loadGoogleCalendarConnection(workspaceId);
+  if (!connection) {
+    sendJson(response, 200, {
+      synced: false,
+      connected: false,
+      message: "Connect Google Calendar before syncing appointment events.",
+    });
+    return;
+  }
+
+  const accessToken = await validGoogleAccessToken(connection);
+  const startsAt = new Date(cleanText(appointment.startsAt));
+  if (Number.isNaN(startsAt.getTime())) throwInputError("Appointment start time is invalid.");
+  const endsAt = new Date(startsAt.getTime() + 60 * 60 * 1000);
+  const assignedTo = cleanEmail(appointment.assignedTo);
+  const calendarId = cleanText(connection.calendar_id) || "primary";
+  const event = {
+    summary: cleanText(appointment.leadName || appointment.title || "Kira Home appointment"),
+    description: [
+      `Contact: ${cleanText(appointment.contactName || "Contact")}`,
+      cleanText(appointment.notes),
+      cleanText(appointment.outcome),
+    ]
+      .filter(Boolean)
+      .join("\n"),
+    start: { dateTime: startsAt.toISOString() },
+    end: { dateTime: endsAt.toISOString() },
+    attendees: assignedTo ? [{ email: assignedTo }] : undefined,
+  };
+
+  const googleResponse = await fetchWithTimeout(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?sendUpdates=all`,
+    {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(event),
+    },
+  );
+  const data = await googleResponse.json();
+  if (!googleResponse.ok) {
+    const error = new Error(data.error?.message || `Google Calendar event failed with ${googleResponse.status}.`);
+    error.statusCode = 502;
+    throw error;
+  }
+
+  sendJson(response, 200, {
+    synced: true,
+    provider: "google-calendar",
+    eventId: data.id,
+    htmlLink: data.htmlLink,
+    message: "Appointment synced to Google Calendar.",
+  });
+}
+
 function validateWorkspacePayload(payload, options = {}) {
   const workspaceId = cleanText(payload.workspaceId);
   const leadId = cleanText(payload.leadId);
@@ -807,6 +1007,144 @@ async function markInvitationAccepted(inviteId) {
   });
 }
 
+function hasGoogleCalendarConfig() {
+  return Boolean(process.env.GOOGLE_CALENDAR_CLIENT_ID && process.env.GOOGLE_CALENDAR_CLIENT_SECRET);
+}
+
+function googleCalendarRedirectUri(baseUrl) {
+  return cleanText(process.env.GOOGLE_CALENDAR_REDIRECT_URI) || `${baseUrl}/api/google/calendar/callback`;
+}
+
+function signCalendarState(value) {
+  const payload = Buffer.from(JSON.stringify(value)).toString("base64url");
+  const signature = createHmac("sha256", googleCalendarStateSecret()).update(payload).digest("base64url");
+  return `${payload}.${signature}`;
+}
+
+function verifyCalendarState(state) {
+  const [payload, signature] = state.split(".");
+  if (!payload || !signature) return null;
+  const expected = createHmac("sha256", googleCalendarStateSecret()).update(payload).digest("base64url");
+  if (!timingSafeEqualText(signature, expected)) return null;
+  const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+  if (!parsed.createdAt || Date.now() - Number(parsed.createdAt) > 10 * 60 * 1000) return null;
+  return parsed;
+}
+
+function googleCalendarStateSecret() {
+  return process.env.GOOGLE_CALENDAR_CLIENT_SECRET || process.env.STRIPE_WEBHOOK_SECRET || "closepilot-calendar-demo";
+}
+
+function timingSafeEqualText(left, right) {
+  const leftBuffer = Buffer.from(String(left));
+  const rightBuffer = Buffer.from(String(right));
+  if (leftBuffer.length !== rightBuffer.length) return false;
+  return timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+async function exchangeGoogleCalendarCode(code, baseUrl) {
+  const response = await fetchWithTimeout("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      code,
+      client_id: process.env.GOOGLE_CALENDAR_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CALENDAR_CLIENT_SECRET,
+      redirect_uri: googleCalendarRedirectUri(baseUrl),
+      grant_type: "authorization_code",
+    }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    const error = new Error(data.error_description || data.error || `Google token exchange failed with ${response.status}.`);
+    error.statusCode = 502;
+    throw error;
+  }
+  return data;
+}
+
+async function fetchGoogleProfile(accessToken) {
+  const response = await fetchWithTimeout("https://openidconnect.googleapis.com/v1/userinfo", {
+    headers: { authorization: `Bearer ${accessToken}` },
+  });
+  const data = await response.json();
+  return response.ok ? data : {};
+}
+
+async function saveGoogleCalendarConnection(connection) {
+  if (!hasSupabaseServiceConfig()) throwInputError("Supabase service role is required for calendar token storage.");
+  const expiresAt = connection.expiresIn
+    ? new Date(Date.now() + Math.max(0, Number(connection.expiresIn) - 60) * 1000).toISOString()
+    : null;
+
+  const existing = await loadGoogleCalendarConnection(connection.workspaceId);
+  const refreshToken = cleanText(connection.refreshToken || existing?.refresh_token);
+  await supabaseRequest("calendar_connections?on_conflict=workspace_id", {
+    method: "POST",
+    body: [
+      {
+        workspace_id: connection.workspaceId,
+        provider: "google",
+        google_account_email: cleanEmail(connection.googleAccountEmail),
+        calendar_id: "primary",
+        access_token: cleanText(connection.accessToken),
+        refresh_token: refreshToken,
+        scope: cleanText(connection.scope),
+        expires_at: expiresAt,
+        status: "connected",
+        updated_at: new Date().toISOString(),
+      },
+    ],
+    prefer: "resolution=merge-duplicates,return=minimal",
+  });
+}
+
+async function loadGoogleCalendarConnection(workspaceId) {
+  if (!hasSupabaseServiceConfig() || !workspaceId) return null;
+  try {
+    const rows = await supabaseRequest(
+      `calendar_connections?workspace_id=eq.${encodeURIComponent(workspaceId)}&provider=eq.google&select=*`,
+      { method: "GET" },
+    );
+    return Array.isArray(rows) ? rows[0] || null : null;
+  } catch (error) {
+    if (isMissingTableError(error, "calendar_connections")) return null;
+    throw error;
+  }
+}
+
+async function validGoogleAccessToken(connection) {
+  const expiresAt = new Date(connection.expires_at || 0).getTime();
+  if (connection.access_token && expiresAt - Date.now() > 2 * 60 * 1000) return connection.access_token;
+  if (!connection.refresh_token) throwInputError("Google Calendar refresh token is missing. Reconnect Calendar.");
+
+  const response = await fetchWithTimeout("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: process.env.GOOGLE_CALENDAR_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CALENDAR_CLIENT_SECRET,
+      refresh_token: connection.refresh_token,
+      grant_type: "refresh_token",
+    }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    const error = new Error(data.error_description || data.error || `Google token refresh failed with ${response.status}.`);
+    error.statusCode = 502;
+    throw error;
+  }
+  await saveGoogleCalendarConnection({
+    workspaceId: connection.workspace_id,
+    googleAccountEmail: connection.google_account_email,
+    accessToken: data.access_token,
+    refreshToken: connection.refresh_token,
+    expiresIn: data.expires_in,
+    scope: data.scope || connection.scope,
+  });
+  return data.access_token;
+}
+
 async function supabaseRequest(path, { method, body, prefer } = {}) {
   const response = await fetch(`${process.env.SUPABASE_URL.replace(/\/$/, "")}/rest/v1/${path}`, {
     method: method || "GET",
@@ -930,6 +1268,15 @@ function firstName(value) {
   return cleanText(value).split(/\s+/)[0] || "there";
 }
 
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function throwInputError(message) {
   const error = new Error(message);
   error.statusCode = 400;
@@ -1013,4 +1360,25 @@ function sendJson(response, statusCode, payload) {
     "content-type": "application/json; charset=utf-8",
   });
   response.end(statusCode === 204 ? "" : JSON.stringify(payload));
+}
+
+function sendRedirectHtml(response, targetUrl, message) {
+  response.writeHead(200, {
+    "content-type": "text/html; charset=utf-8",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY",
+  });
+  response.end(`<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="refresh" content="0;url=${escapeHtml(targetUrl)}" />
+    <title>Kira Home Calendar</title>
+  </head>
+  <body>
+    <p>${escapeHtml(message)} <a href="${escapeHtml(targetUrl)}">Continue</a></p>
+    <script>window.location.replace(${JSON.stringify(targetUrl)});</script>
+  </body>
+</html>`);
 }

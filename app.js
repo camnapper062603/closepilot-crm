@@ -604,6 +604,13 @@ let communicationCallState = {
   hold: false,
 };
 let salesCopilotStatus = { leadId: "", message: "" };
+let calendarConnectionStatus = {
+  loaded: false,
+  loading: false,
+  connected: false,
+  configured: false,
+  message: "Checking Google Calendar...",
+};
 let inviteAcceptanceStatus = "";
 let serverReadiness = null;
 let serverReadinessLoaded = false;
@@ -731,6 +738,10 @@ const appointmentList = document.querySelector("#appointmentList");
 const dialScheduleGrid = document.querySelector("#dialScheduleGrid");
 const scheduleMessage = document.querySelector("#scheduleMessage");
 const calendarBoard = document.querySelector("#calendarBoard");
+const calendarConnectTitle = document.querySelector("#calendarConnectTitle");
+const calendarConnectStatus = document.querySelector("#calendarConnectStatus");
+const connectGoogleCalendarButton = document.querySelector("#connectGoogleCalendar");
+const refreshCalendarStatusButton = document.querySelector("#refreshCalendarStatus");
 const bulkContactTaskButton = document.querySelector("#bulkContactTask");
 const bulkContactWonButton = document.querySelector("#bulkContactWon");
 const bulkContactNextButton = document.querySelector("#bulkContactNext");
@@ -1159,6 +1170,8 @@ document.querySelectorAll("[data-calendar-view]").forEach((button) => {
     renderSubpages();
   });
 });
+connectGoogleCalendarButton.addEventListener("click", connectGoogleCalendar);
+refreshCalendarStatusButton.addEventListener("click", loadCalendarStatus);
 
 document.querySelectorAll("[data-dial-view]").forEach((button) => {
   button.addEventListener("click", () => {
@@ -1248,6 +1261,7 @@ async function startCloudWorkspace() {
   await store.ensureWorkspace();
   routeFromHash();
   await reloadState();
+  handleCalendarCallbackStatus();
   if (inviteAcceptanceStatus) {
     adminMessage.textContent = inviteAcceptanceStatus;
   }
@@ -1314,6 +1328,30 @@ async function acceptPendingInviteIfNeeded() {
     }
   } catch (error) {
     inviteAcceptanceStatus = `Invite acceptance needs attention: ${error.message}`;
+  }
+}
+
+function handleCalendarCallbackStatus() {
+  const params = new URLSearchParams(window.location.search);
+  const status = params.get("calendar");
+  if (!status) return;
+  calendarConnectionStatus = {
+    ...calendarConnectionStatus,
+    loaded: false,
+    loading: false,
+    connected: status === "connected",
+    message:
+      status === "connected"
+        ? "Google Calendar connected. Refreshing connection status..."
+        : params.get("calendarMessage") || "Google Calendar needs attention.",
+  };
+  params.delete("calendar");
+  params.delete("calendarMessage");
+  const query = params.toString();
+  history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}#calendar`);
+  if (activePage === "calendar") {
+    renderCalendar();
+    loadCalendarStatus();
   }
 }
 
@@ -8517,6 +8555,10 @@ function renderCalendar() {
   document.querySelectorAll("[data-calendar-view]").forEach((button) => {
     button.classList.toggle("active", button.dataset.calendarView === calendarView);
   });
+  renderCalendarConnection();
+  if (!calendarConnectionStatus.loaded && !calendarConnectionStatus.loading) {
+    loadCalendarStatus();
+  }
 
   const appointments = calendarAppointments();
   if (!appointments.length) {
@@ -8534,11 +8576,77 @@ function renderCalendar() {
             <strong>${escapeHtml(lead?.company || appointment.leadName || "Appointment")}</strong>
             <span>${escapeHtml(appointment.contactName)} · ${escapeHtml(appointment.assignedTo)}</span>
             ${appointment.notes ? `<p>${escapeHtml(appointment.notes)}</p>` : ""}
+            ${appointment.googleEventLink ? `<a href="${escapeHtml(appointment.googleEventLink)}" target="_blank" rel="noreferrer">Open in Google Calendar</a>` : ""}
+            ${appointment.calendarSyncStatus ? `<small>${escapeHtml(appointment.calendarSyncStatus)}</small>` : ""}
           </div>
         </article>
       `;
     })
     .join("");
+}
+
+function renderCalendarConnection() {
+  if (!calendarConnectStatus || !connectGoogleCalendarButton) return;
+  calendarConnectTitle.textContent = calendarConnectionStatus.connected ? "Google Calendar connected" : "Google Calendar";
+  calendarConnectStatus.textContent = calendarConnectionStatus.loading
+    ? "Checking Google Calendar connection..."
+    : calendarConnectionStatus.message || "Connect Google Calendar to sync booked appointments.";
+  connectGoogleCalendarButton.disabled = calendarConnectionStatus.loading;
+  refreshCalendarStatusButton.disabled = calendarConnectionStatus.loading;
+  connectGoogleCalendarButton.textContent = calendarConnectionStatus.connected ? "Reconnect Calendar" : "Connect Google Calendar";
+}
+
+async function loadCalendarStatus() {
+  calendarConnectionStatus = { ...calendarConnectionStatus, loading: true };
+  renderCalendarConnection();
+  const result = await postBackendJson("/api/google/calendar/status", workspaceApiContext());
+  calendarConnectionStatus = {
+    loaded: true,
+    loading: false,
+    configured: Boolean(result.configured),
+    connected: Boolean(result.connected),
+    message: result.googleAccountEmail
+      ? `${result.message} ${result.googleAccountEmail}`
+      : result.message || "Google Calendar status checked.",
+  };
+  renderCalendarConnection();
+}
+
+async function connectGoogleCalendar() {
+  calendarConnectionStatus = { ...calendarConnectionStatus, loading: true, message: "Preparing Google Calendar connection..." };
+  renderCalendarConnection();
+  const result = await postBackendJson("/api/google/calendar/connect", workspaceApiContext());
+  calendarConnectionStatus = {
+    loaded: true,
+    loading: false,
+    configured: !result.demo,
+    connected: false,
+    message: result.message || "Google Calendar needs attention.",
+  };
+  renderCalendarConnection();
+  if (result.authUrl) {
+    window.location.href = result.authUrl;
+  }
+}
+
+async function syncAppointmentToGoogleCalendar(appointment) {
+  const result = await postBackendJson("/api/google/calendar/create-event", {
+    ...workspaceApiContext(),
+    appointment,
+  });
+  if (!result.synced) {
+    return {
+      ...appointment,
+      calendarSyncStatus: result.message || "Google Calendar not connected.",
+    };
+  }
+  return {
+    ...appointment,
+    googleEventId: result.eventId || "",
+    googleEventLink: result.htmlLink || "",
+    calendarSyncedAt: new Date().toISOString(),
+    calendarSyncStatus: "Synced to Google Calendar.",
+  };
 }
 
 function calendarAppointments() {
@@ -8667,7 +8775,7 @@ async function saveDialOutcome(event) {
 
   if (outcome === "Appointment set") {
     const assignedTo = nextRoundRobinCloser().email;
-    await store.createAppointment({
+    const createdAppointment = await store.createAppointment({
       leadId: lead.id,
       leadName: lead.company,
       contactName: lead.name,
@@ -8676,6 +8784,10 @@ async function saveDialOutcome(event) {
       notes: note,
       outcome,
     });
+    const syncedAppointment = await syncAppointmentToGoogleCalendar(createdAppointment);
+    if (store.updateAppointment) {
+      await store.updateAppointment(syncedAppointment);
+    }
     updatedLead = {
       ...updatedLead,
       stage: "qualified",
@@ -9632,6 +9744,28 @@ function backendDemoFallback(path, payload = {}) {
       warnings: ["Production backend readiness endpoint is unavailable. Showing browser-side setup guidance."],
     };
   }
+  if (path.includes("/api/google/calendar/status")) {
+    return {
+      demo: true,
+      configured: false,
+      connected: false,
+      message: "Google Calendar backend is unavailable. CRM calendar remains active.",
+    };
+  }
+  if (path.includes("/api/google/calendar/connect")) {
+    return {
+      demo: true,
+      connected: false,
+      message: "Google Calendar connect needs the production backend and cloud workspace.",
+    };
+  }
+  if (path.includes("/api/google/calendar/create-event")) {
+    return {
+      demo: true,
+      synced: false,
+      message: "Appointment saved in CRM only. Google Calendar sync is unavailable.",
+    };
+  }
   if (path.includes("/api/ai/")) {
     return {
       demo: true,
@@ -10556,6 +10690,13 @@ function createLocalStore() {
       this.save(state);
       return created;
     },
+    async updateAppointment(appointment) {
+      state.appointments = normalizedAppointments(state.appointments).map((item) =>
+        item.id === appointment.id ? normalizedAppointment(appointment) : item,
+      );
+      this.save(state);
+      return normalizedAppointment(appointment);
+    },
     async createTask(task) {
       const created = { id: crypto.randomUUID(), ...task };
       state.tasks.unshift(created);
@@ -11048,6 +11189,14 @@ function createSupabaseStore(client, user) {
       state.appointments = appointments;
       return created;
     },
+    async updateAppointment(appointment) {
+      const appointments = normalizedAppointments(this.loadAppointments()).map((item) =>
+        item.id === appointment.id ? normalizedAppointment(appointment) : item,
+      );
+      this.saveAppointments(appointments);
+      state.appointments = appointments;
+      return normalizedAppointment(appointment);
+    },
     async createTask(task) {
       const { data, error } = await client
         .from("tasks")
@@ -11503,6 +11652,10 @@ function normalizedAppointment(appointment = {}) {
     startsAt: String(appointment.startsAt),
     notes: String(appointment.notes || ""),
     outcome: String(appointment.outcome || "Appointment set"),
+    googleEventId: String(appointment.googleEventId || ""),
+    googleEventLink: String(appointment.googleEventLink || ""),
+    calendarSyncedAt: String(appointment.calendarSyncedAt || ""),
+    calendarSyncStatus: String(appointment.calendarSyncStatus || ""),
     createdAt: appointment.createdAt || new Date().toISOString(),
   };
 }

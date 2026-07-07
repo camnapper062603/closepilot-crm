@@ -1318,6 +1318,31 @@ test('production API fallbacks are honest when providers are missing', async ({ 
   const smsBody = await sms.json();
   expect(smsBody.demo).toBeTruthy();
   expect(smsBody.message).toContain('SMS provider is not configured');
+
+  const calendarStatus = await request.post('/api/google/calendar/status', { data: { workspaceId: 'demo-workspace' } });
+  expect(calendarStatus.ok()).toBeTruthy();
+  const calendarStatusBody = await calendarStatus.json();
+  expect(calendarStatusBody.connected).toBeFalsy();
+
+  const calendarConnect = await request.post('/api/google/calendar/connect', { data: { workspaceId: 'demo-workspace' } });
+  expect(calendarConnect.ok()).toBeTruthy();
+  const calendarConnectBody = await calendarConnect.json();
+  expect(calendarConnectBody.connected).toBeFalsy();
+
+  const calendarEvent = await request.post('/api/google/calendar/create-event', {
+    data: {
+      workspaceId: 'demo-workspace',
+      appointment: {
+        leadName: 'Test appointment',
+        contactName: 'Taylor',
+        assignedTo: 'closer@example.com',
+        startsAt: '2026-07-08T15:00:00.000Z',
+      },
+    },
+  });
+  expect(calendarEvent.ok()).toBeTruthy();
+  const calendarEventBody = await calendarEvent.json();
+  expect(calendarEventBody.synced).toBeFalsy();
 });
 
 test('saves an expanded workspace profile for SaaS operations', async ({ page }) => {
@@ -1894,8 +1919,13 @@ test('shows booked appointments in calendar and my appointments views', async ({
   await page.getByRole('button', { name: 'Save outcome' }).click();
 
   await navigateTo(page, 'Calendar', 'calendar');
+  await expect(page.locator('#calendarConnectTitle')).toContainText('Google Calendar');
+  await expect(page.locator('#calendarConnectStatus')).toContainText(/credentials are not configured|Sign in with cloud mode|ready to connect|CRM calendar/);
+  await page.locator('#connectGoogleCalendar').click();
+  await expect(page.locator('#calendarConnectStatus')).toContainText(/Google Calendar is not configured|cloud workspace|needs attention/);
   await expect(page.locator('#calendarBoard')).toContainText('100 Cedar St');
   await expect(page.locator('#calendarBoard')).toContainText('owner@kira.local');
+  await expect(page.locator('#calendarBoard')).toContainText(/CRM only|not connected|not configured|Cloud mode/);
 
   await page.getByRole('button', { name: 'My appointments' }).click();
   await expect(page.locator('#calendarBoard')).toContainText('100 Cedar St');

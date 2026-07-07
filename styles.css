@@ -3412,6 +3412,40 @@ button.insight-card:hover {
   gap: 10px;
 }
 
+.calendar-connect-card {
+  align-items: center;
+  background: linear-gradient(135deg, rgba(238, 244, 255, 0.92), rgba(248, 250, 252, 0.96));
+  border: 1px solid #c9d8f0;
+  border-radius: 8px;
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding: 12px;
+}
+
+.calendar-connect-card strong,
+.calendar-connect-card span {
+  display: block;
+}
+
+.calendar-connect-card strong {
+  color: var(--navy);
+}
+
+.calendar-connect-card span {
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 750;
+}
+
+.calendar-connect-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .calendar-appointment {
   align-items: center;
   background: #f8fafc;
@@ -5479,6 +5513,7 @@ button.insight-card:hover {
   .contact-profile-stats article,
   .contact-profile-section,
   .stage-column,
+  .calendar-connect-card,
   .calendar-appointment,
   .dial-summary article,
   .dial-info-grid article,
@@ -6093,6 +6128,7 @@ button.insight-card:hover {
   .task-controls,
   .task-form,
   .task-edit-form,
+  .calendar-connect-card,
   .calendar-appointment,
   .appointment-time-picker,
   .invite-form,
@@ -6594,6 +6630,7 @@ button.insight-card:hover {
   .launch-check,
   .audit-row,
   .extension-grid article,
+  .calendar-connect-card,
   .calendar-appointment {
     align-items: center;
     gap: 6px;
@@ -6628,6 +6665,19 @@ button.insight-card:hover {
 
   .calendar-appointment {
     grid-template-columns: minmax(72px, 0.52fr) minmax(0, 1fr);
+  }
+
+  .calendar-connect-card {
+    flex-direction: column;
+  }
+
+  .calendar-connect-actions {
+    justify-content: stretch;
+    width: 100%;
+  }
+
+  .calendar-connect-actions button {
+    flex: 1 1 160px;
   }
 
   .team-row,

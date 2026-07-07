@@ -272,6 +272,21 @@ create table if not exists public.integration_settings (
   unique (workspace_id, provider)
 );
 
+create table if not exists public.calendar_connections (
+  workspace_id uuid primary key references public.workspaces(id) on delete cascade,
+  provider text not null default 'google',
+  google_account_email text not null default '',
+  calendar_id text not null default 'primary',
+  access_token text not null default '',
+  refresh_token text not null default '',
+  scope text not null default '',
+  expires_at timestamptz,
+  status text not null default 'connected',
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 alter table if exists public.workspace_subscriptions
   add column if not exists current_period_end timestamptz,
   add column if not exists stripe_customer_id text,
@@ -312,6 +327,7 @@ alter table public.ai_outputs enable row level security;
 alter table public.onboarding_state enable row level security;
 alter table public.workspace_settings enable row level security;
 alter table public.integration_settings enable row level security;
+alter table public.calendar_connections enable row level security;
 
 create index if not exists leads_workspace_stage_idx on public.leads(workspace_id, stage);
 create index if not exists tasks_workspace_due_idx on public.tasks(workspace_id, due);
@@ -323,6 +339,7 @@ create index if not exists files_workspace_lead_idx on public.files(workspace_id
 create index if not exists jobs_workspace_status_idx on public.jobs(workspace_id, status);
 create index if not exists automation_runs_workspace_created_idx on public.automation_runs(workspace_id, created_at desc);
 create index if not exists ai_outputs_workspace_lead_idx on public.ai_outputs(workspace_id, lead_id, created_at desc);
+create index if not exists calendar_connections_workspace_status_idx on public.calendar_connections(workspace_id, status);
 
 create or replace function public.is_workspace_member(target_workspace_id uuid)
 returns boolean
@@ -406,6 +423,7 @@ drop policy if exists "Members can manage AI outputs" on public.ai_outputs;
 drop policy if exists "Members can manage onboarding state" on public.onboarding_state;
 drop policy if exists "Members can manage workspace settings" on public.workspace_settings;
 drop policy if exists "Members can manage integration settings" on public.integration_settings;
+drop policy if exists "Members can manage calendar connections" on public.calendar_connections;
 
 create policy "Users can see their workspaces"
   on public.workspaces for select

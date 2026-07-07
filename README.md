@@ -146,6 +146,27 @@ POST /api/invites/accept
 
 When a signed-in user opens `?invite=...`, the app accepts the invite and joins the correct workspace. If Resend or `INVITE_FROM_EMAIL` is not configured, the Admin page shows and copies a fallback invite link instead of crashing.
 
+## Google Calendar Setup
+
+1. In Google Cloud Console, enable the Google Calendar API.
+2. Configure the OAuth consent screen for the `kirahome.org` domain.
+3. Create an OAuth Client ID with type **Web application**.
+4. Add an authorized redirect URI:
+
+```text
+https://your-domain.com/api/google/calendar/callback
+```
+
+5. Add these environment variables:
+   - `GOOGLE_CALENDAR_CLIENT_ID`
+   - `GOOGLE_CALENDAR_CLIENT_SECRET`
+   - `GOOGLE_CALENDAR_REDIRECT_URI`
+   - `APP_BASE_URL`
+6. Rerun `supabase-schema.sql` so the `calendar_connections` table exists.
+7. Redeploy, then use the Calendar page to connect Google Calendar.
+
+OAuth tokens are stored server-side in Supabase and are not exposed to the browser. If Calendar credentials or the Supabase table are missing, appointments remain in the CRM calendar and show setup guidance.
+
 ## Local Demo Mode
 
 Local demo mode is still fully supported:
@@ -153,6 +174,7 @@ Local demo mode is still fully supported:
 - Missing Supabase variables: CRM/account data stays in `localStorage`.
 - Missing Stripe variables: billing buttons show setup guidance instead of opening Checkout.
 - Missing Resend variables: invites are staged locally and a fallback invite link is copied/shown.
+- Missing Google Calendar variables or cloud workspace: appointments remain in the CRM calendar.
 - Missing production backend on a static host: frontend calls fail gracefully with demo messages.
 
 ## Production Deployment Checklist
@@ -198,9 +220,10 @@ Before launch:
    - `SUPPORT_EMAIL`
 7. Create Stripe products/prices and connect the webhook endpoint at `/api/stripe/webhook`.
 8. Verify the Resend sender domain and confirm `INVITE_FROM_EMAIL` can send invites.
-9. Smoke test CRM dashboard, Admin billing, billing portal, invite send/accept, mobile viewport, Kira Recruit, and Lead Generator on the deployed URL.
-10. Confirm `/api/...` routes return JSON from the backend and not the SPA fallback page.
-11. Leave demo mode available so missing production services show setup guidance instead of breaking the app.
+9. Enable Google Calendar API, add OAuth credentials, rerun `supabase-schema.sql`, and connect Calendar from the Calendar page.
+10. Smoke test CRM dashboard, Admin billing, billing portal, invite send/accept, mobile viewport, Kira Recruit, Lead Generator, and Google Calendar appointment sync on the deployed URL.
+11. Confirm `/api/...` routes return JSON from the backend and not the SPA fallback page.
+12. Leave demo mode available so missing production services show setup guidance instead of breaking the app.
 
 ## Deploy On Netlify
 
@@ -227,6 +250,7 @@ This build includes:
 - Plan/seat management for Starter, Growth, and Scale
 - Stripe checkout, customer portal, and webhook backend endpoints with demo fallback
 - Resend-ready team invite delivery with secure invite token fallback
+- Google Calendar OAuth connection and appointment event sync
 - Launch readiness checklist and admin audit trail
 - Supabase schema and RLS policies for CRM data, subscriptions, and invitations
 - CRM pipeline, contacts, tasks, automations, activity, CSV import/export, backups, revenue goals, and channel reporting
