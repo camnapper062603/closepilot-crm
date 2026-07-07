@@ -1335,12 +1335,18 @@ async function boot() {
       currentUser = session?.user || null;
       if (currentUser) {
         await startCloudWorkspace();
-      } else {
+      } else if (!publicDemoMode) {
         showAuth();
       }
     });
 
     if (!currentUser) {
+      const wantsCloudLogin = params.get("login") === "1";
+      const dismissedDemo = localStorage.getItem(publicDemoDismissedKey()) === "true";
+      if (!wantsCloudLogin && !dismissedDemo) {
+        await startPublicDemoWorkspace({ fromBoot: true, auto: true });
+        return;
+      }
       showAuth();
       return;
     }
@@ -1388,6 +1394,7 @@ async function startPublicDemoWorkspace(options = {}) {
   signOutButton.hidden = false;
   signOutButton.textContent = "Exit demo";
   localStorage.setItem(publicDemoSessionKey(), "true");
+  localStorage.removeItem(publicDemoDismissedKey());
   localStorage.setItem("closepilot-demo-role", "admin");
   const url = new URL(window.location.href);
   if (!options.fromBoot && url.searchParams.get("demo") !== "1") {
@@ -1408,6 +1415,7 @@ function exitPublicDemoWorkspace() {
   publicDemoMode = false;
   syncDemoFocusMode();
   localStorage.removeItem(publicDemoSessionKey());
+  localStorage.setItem(publicDemoDismissedKey(), "true");
   localStorage.removeItem("closepilot-demo-role");
   signOutButton.textContent = "Sign out";
   const url = new URL(window.location.href);
@@ -10654,6 +10662,10 @@ function onboardingDismissalKey() {
 
 function publicDemoSessionKey() {
   return "closepilot-public-demo-session";
+}
+
+function publicDemoDismissedKey() {
+  return "closepilot-public-demo-dismissed";
 }
 
 function temporaryPasswordRequirementKey() {

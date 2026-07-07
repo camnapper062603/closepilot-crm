@@ -22,8 +22,10 @@ test('CRM pages adapt to a phone viewport', async ({ page }) => {
   await openMobile(page, '/');
 
   await expect(page.locator('.topbar h1')).toHaveText('Dashboard');
-  await expect(page.locator('.nav-links')).toHaveCSS('position', 'fixed');
-  await expect(page.locator('#mobileQuickAction')).toBeVisible();
+  await expect(page.locator('.nav-links')).toHaveCSS('position', 'static');
+  await expect(page.locator('.nav-links')).toHaveCSS('overflow-x', 'auto');
+  await expect(page.locator('#subpageNav')).toHaveCSS('overflow-x', 'auto');
+  await expect(page.locator('#mobileQuickAction')).toBeHidden();
   await expectPageFitsViewport(page);
 
   await page.getByRole('link', { name: 'Contacts' }).click();
