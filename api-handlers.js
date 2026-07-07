@@ -395,7 +395,8 @@ async function handleSendInvite(request, response, payload) {
   const workspaceId = cleanText(payload.workspaceId);
   const inviteId = cleanText(payload.inviteId);
   const email = cleanEmail(payload.email);
-  const role = ["admin", "member"].includes(payload.role) ? payload.role : "member";
+  const role = ["admin", "manager", "member"].includes(payload.role) ? payload.role : "member";
+  const teamFunction = ["dialer", "setter", "closer"].includes(payload.teamFunction) ? payload.teamFunction : "";
   const workspaceName = cleanText(payload.workspaceName) || "Kira Home";
   const inviterEmail = cleanEmail(payload.inviterEmail) || process.env.SUPPORT_EMAIL || "support@kira.local";
   const productUrl = cleanUrl(payload.productUrl, appBaseUrl(request));
@@ -410,21 +411,53 @@ async function handleSendInvite(request, response, payload) {
   const inviteTokenHash = hashToken(token);
   const expiresAt = new Date(Date.now() + 7 * 86400000).toISOString();
   const inviteLink = `${appBaseUrl(request)}/?invite=${token}`;
+  const temporaryPassword = generateTemporaryPassword();
+  const temporaryPasswordHash = hashToken(temporaryPassword);
+  const temporaryPasswordExpiresAt = expiresAt;
+  const authProvisioning = await provisionTemporaryAuthUser({
+    email,
+    temporaryPassword,
+    workspaceId,
+    inviteId,
+    role,
+    teamFunction,
+  });
 
   if (workspaceId && inviteId) {
-    await updateInviteTokenInSupabase({ workspaceId, inviteId, inviteTokenHash, expiresAt });
+    await updateInviteTokenInSupabase({
+      workspaceId,
+      inviteId,
+      inviteTokenHash,
+      expiresAt,
+      teamFunction,
+      temporaryPasswordHash,
+      temporaryPasswordExpiresAt,
+    });
   }
 
-  const delivery = await sendInviteEmailWithResend({
-    to: email,
-    from: inviteFromEmail,
-    replyTo: inviterEmail,
-    workspaceName,
-    appName: "Kira Home",
-    role,
-    productUrl,
-    inviteLink,
-  });
+  let delivery;
+  try {
+    delivery = await sendInviteEmailWithResend({
+      to: email,
+      from: inviteFromEmail,
+      replyTo: inviterEmail,
+      workspaceName,
+      appName: "Kira Home",
+      role: teamFunction ? `${role} / ${teamFunction}` : role,
+      productUrl,
+      inviteLink,
+      temporaryPassword,
+      temporaryPasswordWorks: authProvisioning.provisioned,
+      existingUser: authProvisioning.existingUser,
+      authMessage: authProvisioning.message,
+    });
+  } catch (error) {
+    delivery = {
+      sent: false,
+      setupError: true,
+      message: `Invite link generated, but email delivery needs attention: ${error.message}`,
+    };
+  }
 
   if (!delivery.sent) {
     sendJson(response, 200, {
@@ -432,6 +465,8 @@ async function handleSendInvite(request, response, payload) {
       sent: false,
       inviteLink,
       expiresAt,
+      temporaryPassword,
+      requiresPasswordChange: true,
       message: delivery.message,
     });
     return;
@@ -441,7 +476,9 @@ async function handleSendInvite(request, response, payload) {
     sent: true,
     inviteLink,
     expiresAt,
+    requiresPasswordChange: true,
     message: `Invite email sent to ${email}.`,
+    authProvisioning,
   });
 }
 
@@ -480,12 +517,14 @@ async function handleAcceptInvite(response, payload) {
     workspaceId: invitation.workspace_id,
     userId,
     role: invitation.role,
+    teamFunction: invitation.team_function || "",
   });
   await markInvitationAccepted(invitation.id);
 
   sendJson(response, 200, {
     accepted: true,
     workspaceId: invitation.workspace_id,
+    requiresPasswordChange: true,
     message: "Invite accepted. Workspace access is ready.",
   });
 }
@@ -900,12 +939,21 @@ async function saveAiOutput(payload, type, output, options = {}) {
 function launchWarnings(groups) {
   const warnings = [];
   if (!groups.database) warnings.push("Supabase is not fully configured; the app will use demo/localStorage fallback.");
+  if (!groups.app) warnings.push("APP_BASE_URL is missing; invite links and OAuth redirects should be set to the production domain before live demos.");
+  if (looksLikePreviewUrl(process.env.APP_BASE_URL)) {
+    warnings.push("APP_BASE_URL looks like a Vercel preview URL. Use the production domain so invites do not send users to protected preview deployments.");
+  }
   if (!groups.billing) warnings.push("Stripe checkout and billing portal remain in setup mode.");
   if (!groups.email) warnings.push("Team invites and outbound email use fallback links/logging until Resend is configured.");
   if (!groups.sms) warnings.push("SMS is logged only until Twilio credentials and a sending number are configured.");
   if (!groups.ai) warnings.push("AI features use deterministic fallback until OPENAI_API_KEY is configured.");
   if (!groups.calendar) warnings.push("Calendar events are CRM-only until Google Calendar OAuth is configured.");
   return warnings;
+}
+
+function looksLikePreviewUrl(value) {
+  const text = cleanText(value);
+  return Boolean(text && /\.vercel\.app/i.test(text) && !/kirahome\.org/i.test(text));
 }
 
 async function syncStripeSubscription(subscription, override = {}) {
@@ -962,7 +1010,15 @@ async function loadSubscriptionFromSupabase(workspaceId) {
   return Array.isArray(rows) ? rows[0] || null : null;
 }
 
-async function updateInviteTokenInSupabase({ workspaceId, inviteId, inviteTokenHash, expiresAt }) {
+async function updateInviteTokenInSupabase({
+  workspaceId,
+  inviteId,
+  inviteTokenHash,
+  expiresAt,
+  teamFunction = "",
+  temporaryPasswordHash = "",
+  temporaryPasswordExpiresAt = "",
+}) {
   if (!hasSupabaseServiceConfig()) return;
   await supabaseRequest(
     `workspace_invitations?id=eq.${encodeURIComponent(inviteId)}&workspace_id=eq.${encodeURIComponent(workspaceId)}`,
@@ -971,11 +1027,79 @@ async function updateInviteTokenInSupabase({ workspaceId, inviteId, inviteTokenH
       body: {
         invite_token_hash: inviteTokenHash,
         expires_at: expiresAt,
+        temporary_password_hash: temporaryPasswordHash || null,
+        temporary_password_expires_at: temporaryPasswordExpiresAt || null,
+        temporary_password_changed_at: null,
+        onboarding_started_at: null,
+        team_function: teamFunction || null,
         status: "pending",
       },
       prefer: "return=minimal",
     },
   );
+}
+
+async function provisionTemporaryAuthUser({ email, temporaryPassword, workspaceId, inviteId, role, teamFunction = "" }) {
+  if (!hasSupabaseServiceConfig()) {
+    return {
+      provisioned: false,
+      demo: true,
+      message: "Supabase service role is missing, so the temporary password is demo-only.",
+    };
+  }
+
+  const response = await fetch(`${process.env.SUPABASE_URL.replace(/\/$/, "")}/auth/v1/admin/users`, {
+    method: "POST",
+    headers: {
+      apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+      authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      email,
+      password: temporaryPassword,
+      email_confirm: true,
+      user_metadata: {
+        invited_workspace_id: workspaceId || "",
+        invited_invite_id: inviteId || "",
+        invited_role: role,
+        invited_team_function: teamFunction || "",
+        temporary_password_required: true,
+      },
+    }),
+  });
+
+  const text = await response.text();
+  let body = null;
+  if (text) {
+    try {
+      body = JSON.parse(text);
+    } catch {
+      body = { message: text };
+    }
+  }
+
+  if (response.ok) {
+    return {
+      provisioned: true,
+      userId: body?.id || "",
+      message: "Temporary auth user created.",
+    };
+  }
+
+  const message = body?.message || body?.msg || text || `Supabase Auth request failed with ${response.status}.`;
+  if (/already|registered|exists/i.test(message)) {
+    return {
+      provisioned: false,
+      existingUser: true,
+      message: "A user already exists for this email. They can use the invite link with their current password.",
+    };
+  }
+
+  return {
+    provisioned: false,
+    message,
+  };
 }
 
 async function findInvitationByTokenHash(tokenHash) {
@@ -988,10 +1112,10 @@ async function findInvitationByTokenHash(tokenHash) {
   return Array.isArray(rows) ? rows[0] || null : null;
 }
 
-async function upsertWorkspaceMember({ workspaceId, userId, role }) {
+async function upsertWorkspaceMember({ workspaceId, userId, role, teamFunction = "" }) {
   await supabaseRequest("workspace_members?on_conflict=workspace_id,user_id", {
     method: "POST",
-    body: [{ workspace_id: workspaceId, user_id: userId, role }],
+    body: [{ workspace_id: workspaceId, user_id: userId, role, team_function: teamFunction || null }],
     prefer: "resolution=merge-duplicates,return=minimal",
   });
 }
@@ -1238,6 +1362,20 @@ function appBaseUrl(request) {
 
 function hashToken(token) {
   return createHash("sha256").update(token).digest("hex");
+}
+
+function generateTemporaryPassword() {
+  const groups = ["Kira", randomPasswordSegment(4), randomPasswordSegment(4), randomPasswordSegment(4)];
+  return `${groups.join("-")}!7`;
+}
+
+function randomPasswordSegment(length) {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+  let value = "";
+  for (let index = 0; index < length; index += 1) {
+    value += alphabet[randomBytes(1)[0] % alphabet.length];
+  }
+  return value;
 }
 
 function cleanText(value) {

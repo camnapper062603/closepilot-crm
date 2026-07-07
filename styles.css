@@ -123,6 +123,39 @@ button:disabled {
   grid-template-columns: 1fr 1fr;
 }
 
+.auth-demo-card {
+  background:
+    linear-gradient(135deg, rgba(47, 111, 237, 0.08), transparent 42%),
+    var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  margin-top: 2px;
+  padding: 12px;
+}
+
+.auth-demo-card strong,
+.auth-demo-card span {
+  display: block;
+}
+
+.auth-demo-card strong {
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+
+.auth-demo-card span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.42;
+  margin-top: 3px;
+}
+
+.auth-demo-card .secondary-button {
+  width: 100%;
+}
+
 .auth-message {
   min-height: 20px;
 }
@@ -216,7 +249,7 @@ button:disabled {
 
 .topbar {
   align-items: center;
-  background: #ffffff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 8px;
   box-shadow: 0 8px 18px rgba(5, 5, 5, 0.04);
@@ -260,7 +293,7 @@ h2 {
 
 .subpage-nav {
   align-items: center;
-  background: #f4f6f9;
+  background: var(--soft);
   border: 1px solid var(--line);
   border-radius: 8px;
   display: flex;
@@ -270,7 +303,7 @@ h2 {
 }
 
 .subpage-nav button {
-  background: #ffffff;
+  background: var(--surface);
   border: 1px solid transparent;
   border-radius: 6px;
   color: var(--navy);
@@ -366,7 +399,8 @@ h2 {
 
 .metrics article,
 .panel,
-.onboarding-panel {
+.onboarding-panel,
+.password-onboarding-panel {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -1259,7 +1293,7 @@ button.ai-card:hover {
 }
 
 .goal-summary article {
-  background: #f8fafc;
+  background: var(--soft);
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
@@ -1302,6 +1336,61 @@ button.ai-card:hover {
   color: var(--muted);
   margin-bottom: 0;
   max-width: 660px;
+}
+
+.password-onboarding-panel {
+  align-items: center;
+  background:
+    linear-gradient(135deg, rgba(47, 111, 237, 0.1), transparent 34%),
+    var(--surface-elevated);
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 0.9fr) minmax(360px, 1.1fr);
+  margin-bottom: 18px;
+  padding: 18px;
+}
+
+.password-onboarding-panel h2,
+.password-onboarding-panel p {
+  margin: 0;
+}
+
+.password-onboarding-panel p:not(.eyebrow) {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.password-onboarding-form {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+}
+
+.password-onboarding-form label {
+  color: var(--muted);
+  display: grid;
+  font-size: 0.8rem;
+  font-weight: 900;
+  gap: 5px;
+  text-transform: uppercase;
+}
+
+.password-onboarding-form input {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  min-height: 42px;
+  padding: 0 12px;
+}
+
+.password-onboarding-message {
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 750;
+  grid-column: 1 / -1;
+  margin: 0;
 }
 
 .onboarding-actions {
@@ -1362,7 +1451,7 @@ body[data-active-page="activity"] .workspace-grid {
 }
 
 .source-card {
-  background: #f8fafc;
+  background: var(--soft);
   border: 1px solid var(--line);
   border-radius: 8px;
   overflow: hidden;
@@ -1380,7 +1469,7 @@ body[data-active-page="activity"] .workspace-grid {
 }
 
 .source-card-main:hover {
-  background: #eef4ff;
+  background: var(--navy-soft);
 }
 
 .source-card-main span,
@@ -1443,7 +1532,7 @@ body[data-active-page="activity"] .workspace-grid {
 }
 
 .follow-up-item {
-  background: #f8fafc;
+  background: var(--soft);
   border: 1px solid var(--line);
   border-left: 4px solid var(--navy);
   border-radius: 8px;
@@ -1497,7 +1586,7 @@ body[data-active-page="activity"] .workspace-grid {
 }
 
 .priority-pill.high {
-  background: #fff3d8;
+  background: rgba(197, 123, 34, 0.14);
   color: var(--warning);
 }
 
@@ -1581,7 +1670,7 @@ body[data-active-page="activity"] .workspace-grid {
 }
 
 .insight-card {
-  background: #f8fafc;
+  background: var(--soft);
   border: 1px solid var(--line);
   border-left: 4px solid var(--blue);
   border-radius: 8px;
@@ -1594,7 +1683,7 @@ body[data-active-page="activity"] .workspace-grid {
 }
 
 button.insight-card:hover {
-  background: #eef4ff;
+  background: var(--navy-soft);
 }
 
 .insight-card span {
@@ -1636,7 +1725,7 @@ button.insight-card:hover {
 }
 
 .backup-summary article {
-  background: #f8fafc;
+  background: var(--soft);
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
@@ -1682,7 +1771,7 @@ button.insight-card:hover {
 }
 
 .admin-dropdown {
-  background: #ffffff;
+  background: var(--surface);
 }
 
 .admin-dropdown summary {
@@ -1743,7 +1832,7 @@ button.insight-card:hover {
 }
 
 .invite-form {
-  grid-template-columns: minmax(0, 1fr) 120px auto;
+  grid-template-columns: minmax(0, 1fr) 140px 160px auto;
 }
 
 .plan-summary,
@@ -1757,7 +1846,7 @@ button.insight-card:hover {
 .plan-summary article,
 .team-summary article,
 .workspace-profile-summary article {
-  background: #f8fafc;
+  background: var(--soft);
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
@@ -1781,14 +1870,9 @@ button.insight-card:hover {
 }
 
 .plan-addon-list {
-  background: #f8fafc;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  color: var(--muted);
-  font-size: 0.84rem;
-  font-weight: 800;
-  line-height: 1.45;
-  padding: 10px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .workspace-profile-summary {
@@ -1846,6 +1930,147 @@ button.insight-card:hover {
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
+.addon-card,
+.product-overview-card,
+.access-denied-panel {
+  background:
+    linear-gradient(135deg, rgba(47, 111, 237, 0.08), transparent 38%),
+    var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+}
+
+.addon-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.addon-card p,
+.demo-flow-card p,
+.product-overview-hero p {
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.addon-card strong,
+.addon-card small {
+  display: block;
+}
+
+.addon-card small,
+.addon-setup-copy {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.addon-badge,
+.role-badge {
+  background: var(--navy-soft);
+  border: 1px solid rgba(11, 47, 99, 0.18);
+  border-radius: 999px;
+  color: var(--navy-dark);
+  display: inline-flex;
+  font-size: 0.68rem;
+  font-weight: 950;
+  letter-spacing: 0;
+  line-height: 1;
+  padding: 6px 8px;
+  text-transform: uppercase;
+}
+
+.role-badge.function {
+  background: rgba(15, 122, 79, 0.1);
+  border-color: rgba(15, 122, 79, 0.22);
+  color: #0f7a4f;
+}
+
+.addon-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.addon-actions a,
+.addon-actions button {
+  min-height: 36px;
+  text-decoration: none;
+}
+
+.locked-action {
+  opacity: 0.82;
+}
+
+.invite-preview,
+.invite-fallback,
+.demo-flow-card {
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+}
+
+.invite-preview strong,
+.demo-flow-card strong {
+  color: var(--ink);
+}
+
+.invite-preview span,
+.invite-preview small,
+.invite-fallback {
+  font-size: 0.8rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.product-overview-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.product-overview-hero h3 {
+  font-size: 1.35rem;
+  max-width: 780px;
+}
+
+.product-overview-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.product-overview-grid article {
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+}
+
+.product-overview-grid span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.product-overview-grid small {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.seat-warning {
+  border-color: rgba(197, 123, 34, 0.42) !important;
+}
+
 .extension-grid strong,
 .extension-grid span {
   display: block;
@@ -1884,7 +2109,7 @@ button.insight-card:hover {
 }
 
 .launch-check > span {
-  background: #fff8ef;
+  background: rgba(197, 123, 34, 0.12);
   border-radius: 999px;
   color: #8b5d17;
   flex: 0 0 auto;
@@ -1933,7 +2158,7 @@ button.insight-card:hover {
 }
 
 .status-pill.pending {
-  background: #fff8ef;
+  background: rgba(197, 123, 34, 0.12);
   color: #8b5d17 !important;
 }
 
@@ -1970,7 +2195,7 @@ button.insight-card:hover {
 }
 
 .segmented-control {
-  background: #f4f6f9;
+  background: var(--soft);
   border: 1px solid var(--line);
   border-radius: 8px;
   display: inline-flex;
@@ -1978,7 +2203,7 @@ button.insight-card:hover {
 }
 
 .segmented-control button {
-  background: #ffffff;
+  background: var(--surface);
   border: 1px solid transparent;
   border-radius: 6px;
   color: var(--navy);
@@ -2078,7 +2303,7 @@ button.insight-card:hover {
 .manager-analytics-chart {
   animation: dashboard-rise 220ms ease both;
   animation-delay: var(--delay, 0ms);
-  background: #f8fafc;
+  background: var(--soft);
   border: 1px solid var(--line);
   border-radius: 8px;
 }
@@ -2320,7 +2545,7 @@ button.insight-card:hover {
 }
 
 .coaching-grid section {
-  background: #ffffff;
+  background: var(--surface-elevated);
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
@@ -2388,7 +2613,7 @@ button.insight-card:hover {
 }
 
 .manager-analytics-tabs button {
-  background: #ffffff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 8px;
   color: var(--navy);
@@ -2472,7 +2697,7 @@ button.insight-card:hover {
 
 .recruiting-inbox-summary article,
 .recruiting-candidate-grid article {
-  background: #f8fafc;
+  background: var(--soft);
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
@@ -2565,7 +2790,7 @@ button.insight-card:hover {
 }
 
 .candidate-tags span {
-  background: #eef4ff;
+  background: var(--navy-soft);
   border-radius: 999px;
   color: var(--navy);
   font-size: 0.72rem;
@@ -2660,7 +2885,7 @@ button.insight-card:hover {
 .composer-input-label textarea,
 .composer-tool select,
 .composer-customer-select select {
-  background: #ffffff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 8px;
   color: var(--ink);
@@ -2681,7 +2906,7 @@ button.insight-card:hover {
 .emoji-picker button,
 .call-control-grid button,
 .call-log-actions button {
-  background: #ffffff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 8px;
   color: var(--navy);
@@ -2725,7 +2950,7 @@ button.insight-card:hover {
 
 .conversation-item {
   align-items: start;
-  background: #ffffff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 8px;
   color: inherit;
@@ -2744,7 +2969,7 @@ button.insight-card:hover {
 
 .conversation-item.active,
 .conversation-item:hover {
-  background: #f4f8ff;
+  background: var(--navy-soft);
   border-color: rgba(11, 47, 99, 0.28);
   box-shadow: 0 12px 28px rgba(11, 47, 99, 0.1);
   transform: translateY(-1px);
@@ -2824,7 +3049,7 @@ button.insight-card:hover {
 
 .pin-badge,
 .customer-tags span {
-  background: #eef4ff;
+  background: var(--navy-soft);
   color: var(--navy);
 }
 
@@ -2836,7 +3061,7 @@ button.insight-card:hover {
 }
 
 .stage-pill {
-  background: #eef4ff;
+  background: var(--navy-soft);
   color: var(--navy);
 }
 
@@ -2864,7 +3089,7 @@ button.insight-card:hover {
 }
 
 .call-controls {
-  background: #f8fafc;
+  background: var(--soft);
   border-bottom: 1px solid var(--line);
   display: grid;
   gap: 12px;
@@ -2953,7 +3178,7 @@ button.insight-card:hover {
 }
 
 .conversation-timeline {
-  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  background: linear-gradient(180deg, var(--surface), var(--soft));
   display: grid;
   gap: 12px;
   overflow: auto;
@@ -2975,18 +3200,18 @@ button.insight-card:hover {
 }
 
 .message-bubble.incoming {
-  background: #ffffff;
+  background: var(--surface);
   justify-self: start;
 }
 
 .message-bubble.outgoing {
-  background: #eef4ff;
+  background: var(--navy-soft);
   border-color: rgba(11, 47, 99, 0.18);
   justify-self: end;
 }
 
 .message-bubble.system {
-  background: #f8fafc;
+  background: var(--soft);
   justify-self: center;
   max-width: min(92%, 760px);
 }
@@ -3115,7 +3340,7 @@ button.insight-card:hover {
 .customer-detail-grid article,
 .ai-assistant-grid article,
 .communication-notification-feed article {
-  background: #f8fafc;
+  background: var(--soft);
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
@@ -3236,7 +3461,7 @@ button.insight-card:hover {
 .dial-summary article,
 .dial-info-grid article,
 .appointment-row {
-  background: #f8fafc;
+  background: var(--soft);
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 12px;
@@ -3263,7 +3488,7 @@ button.insight-card:hover {
 
 .dial-lead-hero {
   align-items: center;
-  background: linear-gradient(180deg, #ffffff, #f4f7fb);
+  background: linear-gradient(180deg, var(--surface), var(--soft));
   border: 1px solid var(--line);
   border-radius: 8px;
   display: flex;
@@ -3372,7 +3597,7 @@ button.insight-card:hover {
 .schedule-day,
 .schedule-hour {
   align-items: center;
-  background: #f8fafc;
+  background: var(--soft);
   border: 1px solid var(--line);
   border-radius: 6px;
   color: var(--muted);
@@ -3389,7 +3614,7 @@ button.insight-card:hover {
 }
 
 .schedule-cell {
-  background: #ffffff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 6px;
   color: #ffffff;
@@ -3448,7 +3673,7 @@ button.insight-card:hover {
 
 .calendar-appointment {
   align-items: center;
-  background: #f8fafc;
+  background: var(--soft);
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
@@ -3522,7 +3747,7 @@ button.insight-card:hover {
 .contact-summary article,
 .task-summary article,
 .pipeline-health article {
-  background: #f8fafc;
+  background: var(--soft);
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
@@ -3574,7 +3799,7 @@ button.insight-card:hover {
 }
 
 .stage-column {
-  background: #f8fafc;
+  background: var(--soft);
   border: 1px solid var(--line);
   border-radius: 8px;
   min-height: 320px;
@@ -3653,7 +3878,7 @@ button.insight-card:hover {
 }
 
 .intelligence-badge.warm {
-  background: #fff3d8;
+  background: rgba(197, 123, 34, 0.14);
   border-color: rgba(161, 98, 7, 0.26);
   color: #88540a;
 }
@@ -3710,7 +3935,7 @@ button.insight-card:hover {
 }
 
 .opportunity-health-badge.at-risk {
-  background: #fff3d8;
+  background: rgba(197, 123, 34, 0.14);
   border-color: rgba(161, 98, 7, 0.26);
   color: #88540a;
 }
@@ -3835,7 +4060,7 @@ button.insight-card:hover {
 
 .forecast-summary article,
 .forecast-row {
-  background: #f8fafc;
+  background: var(--soft);
   border: 1px solid var(--line);
   border-radius: 8px;
 }
@@ -3904,7 +4129,7 @@ button.insight-card:hover {
 
 .lead-intelligence-panel,
 .opportunity-health-panel {
-  background: #f8fafc;
+  background: var(--soft);
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
@@ -4030,7 +4255,7 @@ button.insight-card:hover {
 }
 
 .sequence-preview {
-  background: #f8fafc;
+  background: var(--soft);
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
@@ -4039,7 +4264,7 @@ button.insight-card:hover {
 }
 
 .assistant-card {
-  background: #f8fafc;
+  background: var(--soft);
   border: 1px solid var(--line);
   border-left: 4px solid var(--blue);
   border-radius: 8px;
@@ -4071,7 +4296,7 @@ button.insight-card:hover {
 }
 
 .sales-copilot-panel {
-  background: #f8fafc;
+  background: var(--soft);
   border: 1px solid var(--line);
   border-radius: 8px;
   box-shadow: 0 18px 46px rgba(11, 47, 99, 0.08);
@@ -4206,7 +4431,7 @@ button.insight-card:hover {
 }
 
 .brief-grid div {
-  background: #f8fafc;
+  background: var(--soft);
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 10px;
@@ -4251,7 +4476,7 @@ button.insight-card:hover {
 }
 
 .automation-summary article {
-  background: #f8fafc;
+  background: var(--soft);
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
@@ -4339,7 +4564,7 @@ button.insight-card:hover {
 }
 
 .automation-preview {
-  background: #f8fafc;
+  background: var(--soft);
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
@@ -4410,7 +4635,7 @@ button.insight-card:hover {
 }
 
 .autosave-pill {
-  background: #eef4ff;
+  background: var(--navy-soft);
   border: 1px solid rgba(11, 47, 99, 0.16);
   border-radius: 999px;
   color: var(--navy);
@@ -4432,7 +4657,7 @@ button.insight-card:hover {
 .ai-workflow-assistant,
 .automation-analytics,
 .execution-log {
-  background: #f8fafc;
+  background: var(--soft);
   border: 1px solid var(--line);
   border-radius: 8px;
 }
@@ -4471,7 +4696,7 @@ button.insight-card:hover {
 
 .palette-node,
 .workflow-node {
-  background: #ffffff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 8px;
   color: inherit;
@@ -4531,9 +4756,9 @@ button.insight-card:hover {
 
 .workflow-canvas {
   background:
-    linear-gradient(#edf1f6 1px, transparent 1px),
-    linear-gradient(90deg, #edf1f6 1px, transparent 1px),
-    #ffffff;
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px),
+    var(--surface);
   background-size: 28px 28px;
   height: 100%;
   min-height: 560px;
@@ -4591,7 +4816,7 @@ button.insight-card:hover {
 }
 
 .workflow-properties-card {
-  background: #ffffff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
@@ -4639,7 +4864,7 @@ button.insight-card:hover {
 
 .workflow-template-card {
   align-items: center;
-  background: #f8fafc;
+  background: var(--soft);
   border: 1px solid var(--line);
   border-radius: 8px;
   display: flex;
@@ -4661,7 +4886,7 @@ button.insight-card:hover {
 }
 
 .automation-analytics article {
-  background: #ffffff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
@@ -4690,7 +4915,7 @@ button.insight-card:hover {
 }
 
 .execution-log-row {
-  background: #ffffff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 8px;
@@ -4901,7 +5126,7 @@ button.insight-card:hover {
 
 .contact-profile-hero {
   align-items: start;
-  background: #f8fafc;
+  background: var(--soft);
   border: 1px solid var(--line);
   border-radius: 8px;
   display: flex;
@@ -4932,7 +5157,7 @@ button.insight-card:hover {
 
 .contact-profile-stats article,
 .contact-profile-section {
-  background: #f8fafc;
+  background: var(--soft);
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 10px;
@@ -5184,7 +5409,7 @@ button.insight-card:hover {
 
 .detail-hero {
   align-items: start;
-  background: #f8fafc;
+  background: var(--soft);
   border: 1px solid var(--line);
   border-radius: 8px;
   display: flex;
@@ -5284,7 +5509,7 @@ button.insight-card:hover {
 }
 
 .import-summary article {
-  background: #f8fafc;
+  background: var(--soft);
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
@@ -5323,7 +5548,7 @@ button.insight-card:hover {
 }
 
 .import-errors {
-  background: #fff8ef;
+  background: rgba(197, 123, 34, 0.12);
   border: 1px solid #ead2b6;
   border-radius: 8px;
   display: grid;
@@ -5751,6 +5976,7 @@ button.insight-card:hover {
   .today-focus-card,
   .dashboard-follow-up-card,
   .dashboard-split,
+  .password-onboarding-panel,
   .time-saved-breakdown,
   .sales-copilot-grid,
   .sales-copilot-scripts,
@@ -5808,6 +6034,7 @@ button.insight-card:hover {
   }
 
   .call-controls,
+  .password-onboarding-form,
   .composer-tool-grid {
     grid-template-columns: 1fr;
   }
@@ -6065,7 +6292,8 @@ button.insight-card:hover {
   .auth-card,
   .panel,
   .topbar,
-  .onboarding-panel {
+  .onboarding-panel,
+  .password-onboarding-panel {
     padding: 14px;
   }
 
@@ -6132,6 +6360,7 @@ button.insight-card:hover {
   .calendar-appointment,
   .appointment-time-picker,
   .invite-form,
+  .password-onboarding-form,
   .plan-summary,
   .team-summary,
   .workspace-profile-summary,
@@ -6996,6 +7225,18 @@ button:active,
   min-height: 42px;
 }
 
+.nav-links a[data-addon-badge]::after {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.82);
+  content: attr(data-addon-badge);
+  font-size: 0.62rem;
+  font-weight: 950;
+  margin-left: auto;
+  padding: 3px 6px;
+}
+
 .nav-links a.active,
 .nav-links a:hover {
   border-color: rgba(255, 255, 255, 0.12);
@@ -7133,7 +7374,7 @@ button:active,
 .role-permission-grid {
   display: grid;
   gap: 8px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .role-permission-grid article {
@@ -7166,6 +7407,15 @@ button:active,
   display: flex;
   flex: 0 0 auto;
   gap: 8px;
+}
+
+.team-row-actions select {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  min-height: 36px;
+  padding: 0 8px;
 }
 
 .team-invite-row.pending {
@@ -7317,6 +7567,7 @@ html[data-theme="dark"] .topbar,
 html[data-theme="dark"] .metrics article,
 html[data-theme="dark"] .panel,
 html[data-theme="dark"] .onboarding-panel,
+html[data-theme="dark"] .password-onboarding-panel,
 html[data-theme="dark"] .auth-card,
 html[data-theme="dark"] .dashboard-greeting,
 html[data-theme="dark"] .today-focus-card,
@@ -7457,6 +7708,33 @@ body[data-dashboard-layout="compact"] .today-focus-card {
 .customization-form {
   display: grid;
   gap: 14px;
+}
+
+.theme-toggle {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  display: grid;
+  gap: 6px;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 6px;
+}
+
+.theme-toggle button {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: var(--muted);
+  font-weight: 900;
+  min-height: 36px;
+}
+
+.theme-toggle button.active,
+.theme-toggle button:hover {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: #ffffff;
 }
 
 .customization-form fieldset {
@@ -7640,13 +7918,22 @@ body[data-dashboard-layout="compact"] .today-focus-card {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .invite-form,
+  .password-onboarding-form,
+  .plan-addon-list,
+  .product-overview-grid {
+    grid-template-columns: 1fr;
+  }
+
   .team-row,
   .team-row-actions {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .team-row-actions .secondary-button {
+  .team-row-actions .secondary-button,
+  .team-row-actions select,
+  .addon-actions > * {
     width: 100%;
   }
 
@@ -7686,6 +7973,9 @@ body[data-dashboard-layout="compact"] .today-focus-card {
 
 @media (max-width: 560px) {
   .role-permission-grid,
+  .plan-summary,
+  .team-summary,
+  .workspace-profile-summary,
   .sales-copilot-grid,
   .sales-copilot-scripts,
   .customization-form fieldset,

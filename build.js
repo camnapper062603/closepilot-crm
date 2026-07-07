@@ -1,4 +1,5 @@
 import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import "./local-env.js";
 
 const config = {
   supabaseUrl: process.env.SUPABASE_URL || "",
@@ -30,6 +31,10 @@ mkdirSync("dist", { recursive: true });
   "recruiting.js",
   "SafeLeadGenerator-Standalone.html",
 ].forEach(copyToDist);
+
+if (existsSync("SafeLeadGenerator-Standalone.html")) {
+  cpSync("SafeLeadGenerator-Standalone.html", "dist/lead-generator.html");
+}
 
 ["assets", "lead-generator-outputs"].forEach(copyToDist);
 

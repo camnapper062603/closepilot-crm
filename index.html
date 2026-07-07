@@ -40,6 +40,13 @@
             <button class="primary-button" id="signInButton" type="submit">Sign in</button>
             <button class="secondary-button" id="signUpButton" type="button">Create account</button>
           </div>
+          <div class="auth-demo-card">
+            <div>
+              <strong>Showing a marketer or investor?</strong>
+              <span>Open a preloaded demo workspace with leads, appointments, team activity, add-ons, and AI workflows.</span>
+            </div>
+            <button class="secondary-button" id="viewDemoWorkspaceButton" type="button">View Demo Workspace</button>
+          </div>
           <p id="authMessage" class="auth-message" role="status"></p>
         </form>
       </div>
@@ -59,7 +66,7 @@
           <a class="active" data-nav-page="pipeline" href="#pipeline">Dashboard</a>
           <a data-nav-page="manager" href="#manager">AI Sales Manager</a>
           <a data-nav-page="contacts" href="#contacts">Contacts</a>
-          <a data-nav-page="recruiting" href="#recruiting">Recruiting Inbox</a>
+          <a data-nav-page="recruiting" data-addon-badge="Add-on" href="#recruiting">Recruiting Inbox</a>
           <a data-nav-page="automation" href="#automation">Automations</a>
           <a data-nav-page="tasks" href="#tasks">Tasks</a>
           <a data-nav-page="activity" href="#activity">Activity</a>
@@ -67,6 +74,7 @@
           <a data-nav-page="dial" href="#dial">Dial</a>
           <a data-nav-page="calendar" href="#calendar">Calendar</a>
           <a data-nav-page="admin" href="#admin">Admin</a>
+          <a data-nav-page="settings" href="#settings">Settings</a>
         </nav>
 
         <div class="workspace-card">
@@ -96,6 +104,30 @@
         </header>
 
         <nav class="subpage-nav" id="subpageNav" aria-label="Section pages"></nav>
+        <section class="panel access-denied-panel" id="accessDeniedPanel" aria-labelledby="accessDeniedHeading" hidden>
+          <p class="eyebrow">Access control</p>
+          <h2 id="accessDeniedHeading">You do not have access</h2>
+          <p id="accessDeniedMessage">Ask an admin to update your access tier or assign the module to your role.</p>
+        </section>
+        <section class="password-onboarding-panel" id="passwordOnboardingPanel" aria-labelledby="passwordOnboardingHeading" hidden>
+          <div>
+            <p class="eyebrow">Team onboarding</p>
+            <h2 id="passwordOnboardingHeading">Change your temporary password</h2>
+            <p>Use the temporary password from your invite email to sign in, then set a new password here to start your automated onboarding checklist.</p>
+          </div>
+          <form class="password-onboarding-form" id="passwordOnboardingForm">
+            <label>
+              New password
+              <input id="temporaryNewPassword" type="password" autocomplete="new-password" minlength="8" required />
+            </label>
+            <label>
+              Confirm password
+              <input id="temporaryConfirmPassword" type="password" autocomplete="new-password" minlength="8" required />
+            </label>
+            <button class="primary-button" type="submit">Change password & start onboarding</button>
+          </form>
+          <p class="password-onboarding-message" id="passwordOnboardingMessage" role="status"></p>
+        </section>
         <button class="mobile-quick-action" id="mobileQuickAction" type="button" aria-label="Add lead">+ Lead</button>
 
         <section class="daily-command-center" id="dailyCommandCenter" data-page="pipeline" aria-labelledby="dailyCommandHeading">
@@ -1135,7 +1167,7 @@
           <p class="backup-message" id="backupMessage" role="status"></p>
         </section>
 
-        <section class="panel saas-admin-panel" id="saasAdmin" data-page="admin" aria-labelledby="saasAdminHeading">
+        <section class="panel saas-admin-panel" id="saasAdmin" data-page-group="admin settings" aria-labelledby="saasAdminHeading">
           <div class="panel-heading">
             <div>
               <p class="eyebrow">SaaS operations</p>
@@ -1145,7 +1177,7 @@
           </div>
 
           <div class="saas-grid">
-            <details class="admin-card admin-dropdown" data-admin-subpage="settings" open>
+            <details class="admin-card admin-dropdown" data-admin-subpage="settings" data-settings-subpage="workspace" open>
               <summary>
                 <p class="eyebrow">Account</p>
                 <h3 id="workspaceSettingsHeading">Workspace settings</h3>
@@ -1214,6 +1246,56 @@
               </div>
             </details>
 
+            <section class="admin-card product-overview-card" data-admin-subpage="overview" aria-labelledby="productOverviewHeading">
+              <div class="product-overview-hero">
+                <p class="eyebrow">Marketer demo guide</p>
+                <h3 id="productOverviewHeading">ClosePilot is an AI sales operating system for home improvement teams</h3>
+                <p>
+                  The CRM helps owners, managers, dialers, setters, and closers know what to do next across leads,
+                  follow-ups, appointments, communications, automations, hiring, and residential prospecting.
+                </p>
+              </div>
+              <div class="product-overview-grid" id="productOverviewGuide">
+                <article>
+                  <span>Core CRM</span>
+                  <strong>Daily Command Center</strong>
+                  <small>Prioritizes hot leads, follow-ups, appointments, risk, and tasks before analytics.</small>
+                </article>
+                <article>
+                  <span>Guided selling</span>
+                  <strong>Flow Mode + AI Copilot</strong>
+                  <small>Walks reps through the next best lead with score factors, scripts, texts, and emails.</small>
+                </article>
+                <article>
+                  <span>Operations</span>
+                  <strong>Communications + Automations</strong>
+                  <small>Centralized calls, texts, emails, notes, workflow templates, and execution logs.</small>
+                </article>
+                <article>
+                  <span>Access tiers</span>
+                  <strong>Admin, Manager, Member</strong>
+                  <small>Admins control billing and setup; managers coach teams; members work assigned leads.</small>
+                </article>
+                <article>
+                  <span>Paid add-on</span>
+                  <strong>Kira Recruit</strong>
+                  <small>Applicant pipeline, interview tracking, AI candidate summaries, onboarding, and CRM sync.</small>
+                </article>
+                <article>
+                  <span>Paid add-on</span>
+                  <strong>Residential Lead Generator</strong>
+                  <small>Territory property lists, skip trace planning, DNC-aware workflows, and CRM handoff.</small>
+                </article>
+              </div>
+              <div class="demo-flow-card">
+                <strong>Five-minute demo flow</strong>
+                <p>
+                  Start on Dashboard, click Start My Day, open Communications, show Automations, review Team roles,
+                  then open Kira Recruit and Residential Lead Gen as paid expansion modules.
+                </p>
+              </div>
+            </section>
+
             <details class="admin-card team-card admin-dropdown" data-admin-subpage="team" open>
               <summary>
                 <p class="eyebrow">Team</p>
@@ -1227,24 +1309,37 @@
                 <select id="inviteRole" aria-label="Invite role">
                   <option value="admin">Admin</option>
                   <option value="manager">Manager</option>
-                  <option value="rep">Rep</option>
+                  <option value="member">Member</option>
+                </select>
+                <select id="inviteFunction" aria-label="Function label">
+                  <option value="none">No function label</option>
+                  <option value="dialer">Dialer</option>
+                  <option value="setter">Setter</option>
+                  <option value="closer">Closer</option>
                 </select>
                 <button class="primary-button" type="submit">Invite</button>
               </form>
               <p class="invite-role-hint" id="inviteRoleHint">Admins can manage billing, team members, automations, and workspace settings.</p>
               <div class="role-permission-grid" id="rolePermissionGrid" aria-label="Role permissions"></div>
+              <div class="invite-preview" id="inviteEmailPreview" aria-label="Invite email preview"></div>
+              <p class="invite-fallback" id="inviteLinkFallback" role="status"></p>
               <div class="team-summary" id="teamSummary" aria-label="Team summary"></div>
               <div class="team-list" id="teamList"></div>
             </details>
 
-            <details class="admin-card customization-card admin-dropdown" data-admin-subpage="customization" open>
+            <details class="admin-card customization-card admin-dropdown" data-admin-subpage="customization" data-settings-subpage="appearance" open>
               <summary>
                 <p class="eyebrow">Personalization</p>
                 <h3 id="customizationHeading">Look, feel, and defaults</h3>
               </summary>
               <form class="customization-form" id="customizationForm">
-                <fieldset>
+                <fieldset data-settings-section="appearance">
                   <legend>Workspace appearance</legend>
+                  <div class="theme-toggle" id="themeModeToggle" role="group" aria-label="Theme mode quick switch">
+                    <button data-theme-mode-choice="light" type="button">Light</button>
+                    <button data-theme-mode-choice="dark" type="button">Dark</button>
+                    <button data-theme-mode-choice="system" type="button">System</button>
+                  </div>
                   <label>
                     Theme mode
                     <select id="customThemeMode">
@@ -1278,7 +1373,7 @@
                     </select>
                   </label>
                 </fieldset>
-                <fieldset>
+                <fieldset data-settings-section="workflow">
                   <legend>Daily workflow</legend>
                   <label>
                     Default landing page
@@ -1289,6 +1384,7 @@
                       <option value="dial">Dial floor</option>
                       <option value="tasks">Tasks</option>
                       <option value="admin">Admin</option>
+                      <option value="settings">Settings</option>
                     </select>
                   </label>
                   <label>
@@ -1320,7 +1416,7 @@
                     </select>
                   </label>
                 </fieldset>
-                <fieldset class="customization-widget-fieldset">
+                <fieldset class="customization-widget-fieldset" data-settings-section="dashboard">
                   <legend>Visible dashboard widgets</legend>
                   <label><input id="widgetFocus" type="checkbox" /> Today's Focus</label>
                   <label><input id="widgetHealth" type="checkbox" /> Opportunity Health</label>
@@ -1332,7 +1428,7 @@
                   <label><input id="widgetActivity" type="checkbox" /> Team Activity</label>
                   <label><input id="widgetCalendar" type="checkbox" /> Calendar</label>
                 </fieldset>
-                <fieldset>
+                <fieldset data-settings-section="appearance">
                   <legend>Branding</legend>
                   <label>
                     Brand display name
@@ -1365,16 +1461,16 @@
                 <article>
                   <div>
                     <strong>Kira Recruit</strong>
-                    <span>Recruiting background app</span>
+                    <span>Paid add-on · recruiting background app</span>
                   </div>
-                  <a class="primary-button" href="/recruiting.html">Open Recruit</a>
+                  <a class="primary-button" href="/recruiting.html">View Demo</a>
                 </article>
                 <article>
                   <div>
                     <strong>Residential Lead Gen</strong>
-                    <span>Consumer property lead builder</span>
+                    <span>Paid add-on · consumer property lead builder</span>
                   </div>
-                  <a class="primary-button" href="/SafeLeadGenerator-Standalone.html">Open Lead Gen</a>
+                  <a class="primary-button" href="/lead-generator">View Demo</a>
                 </article>
               </div>
             </details>

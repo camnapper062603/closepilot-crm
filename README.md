@@ -28,6 +28,8 @@ If that port is already busy, run another port:
 PORT=4174 npm start
 ```
 
+Local `npm start` and `npm run build` load `.env.local` first and `.env` second. Keep secrets out of Git, and use `.env` only on your machine or in Vercel environment variables.
+
 ## Test
 
 ```bash
@@ -44,6 +46,9 @@ npm test
 - `AI_SETUP.md`
 - `MOBILE_SETUP.md`
 - `SELLABLE_SAAS_CHECKLIST.md`
+- `MARKETER_DEMO_READINESS.md`
+- `ROLE_ACCESS_MATRIX.md`
+- `PRICING_AND_ADDONS.md`
 - `TROUBLESHOOTING.md`
 - `API.md`
 
@@ -102,6 +107,9 @@ Without those variables, the app runs in demo mode using browser storage.
    - `STRIPE_PRICE_STARTER`
    - `STRIPE_PRICE_GROWTH`
    - `STRIPE_PRICE_SCALE`
+   - `STRIPE_PRICE_ADDON_RECRUIT` (future add-on checkout)
+   - `STRIPE_PRICE_ADDON_LEADGEN` (future add-on checkout)
+   - `STRIPE_PRICE_ADDON_BUNDLE` (future add-on checkout)
    - `APP_BASE_URL`
 3. Add a Stripe webhook endpoint pointing to:
 
@@ -121,6 +129,18 @@ https://your-domain.com/api/stripe/webhook
 
 If Stripe variables are missing, the Admin page stays in demo mode and shows a useful setup message instead of breaking.
 
+Add-on checkout hardening is intentionally out of scope for the current marketer-demo pass. Kira Recruit, Residential Lead Gen, and the bundle are displayed as paid expansion modules with demo CTAs and setup guidance.
+
+## Roles And Add-Ons
+
+The user-facing access tiers are:
+
+- Admin: full CRM, billing, team/invites, workspace settings, launch readiness, automations, import/export, reporting, and paid add-on visibility.
+- Manager: CRM, team execution, assigned/team leads, follow-up queue, communications, reporting, Flow Mode, AI Copilot, and limited automations. No billing or owner-level settings.
+- Member: assigned lead workflow, Flow Mode, follow-up tasks, assigned communications, and basic AI Copilot. No billing, team management, launch readiness, full export, or add-on purchasing.
+
+Optional sales function labels are Dialer, Setter, and Closer. See `ROLE_ACCESS_MATRIX.md` and `PRICING_AND_ADDONS.md`.
+
 ## Resend Invite Email Setup
 
 1. Create a Resend API key and verify a sending domain.
@@ -136,7 +156,7 @@ If Stripe variables are missing, the Admin page stays in demo mode and shows a u
 POST /api/invites/send
 ```
 
-The backend creates a secure invite token, stores only its SHA-256 hash in Supabase, sets an expiration, and sends the invite email through Resend. Invite emails include the invited email address, role, workspace/app name, product URL, and secure invite link.
+The backend creates a secure invite token, stores only its SHA-256 hash in Supabase, sets an expiration, generates a temporary password, and sends the invite email through Resend. Invite emails include the invited email address, role, workspace/app name, product URL, secure invite link, temporary password, and a prompt to change that password after first sign-in.
 
 Invite acceptance uses:
 
@@ -144,7 +164,7 @@ Invite acceptance uses:
 POST /api/invites/accept
 ```
 
-When a signed-in user opens `?invite=...`, the app accepts the invite and joins the correct workspace. If Resend or `INVITE_FROM_EMAIL` is not configured, the Admin page shows and copies a fallback invite link instead of crashing.
+When a signed-in user opens `?invite=...`, the app accepts the invite and joins the correct workspace. If Supabase service credentials are available, the send route attempts to provision the invited auth user with the temporary password. Changing that password in-app starts the automated onboarding checklist. If Resend or `INVITE_FROM_EMAIL` is not configured, the Admin page shows and copies a fallback invite link plus demo temporary password instead of crashing.
 
 ## Google Calendar Setup
 
@@ -173,7 +193,7 @@ Local demo mode is still fully supported:
 
 - Missing Supabase variables: CRM/account data stays in `localStorage`.
 - Missing Stripe variables: billing buttons show setup guidance instead of opening Checkout.
-- Missing Resend variables: invites are staged locally and a fallback invite link is copied/shown.
+- Missing Resend variables: invites are staged locally and a fallback invite link plus demo temporary password is copied/shown.
 - Missing Google Calendar variables or cloud workspace: appointments remain in the CRM calendar.
 - Missing production backend on a static host: frontend calls fail gracefully with demo messages.
 

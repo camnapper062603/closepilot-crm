@@ -10,7 +10,8 @@ create table if not exists public.workspaces (
 create table if not exists public.workspace_members (
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
   user_id uuid not null references auth.users(id) on delete cascade,
-  role text not null default 'owner' check (role in ('owner', 'admin', 'member')),
+  role text not null default 'owner' check (role in ('owner', 'admin', 'manager', 'member')),
+  team_function text check (team_function is null or team_function in ('dialer', 'setter', 'closer')),
   created_at timestamptz not null default now(),
   primary key (workspace_id, user_id)
 );
@@ -99,11 +100,16 @@ create table if not exists public.workspace_invitations (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
   email text not null,
-  role text not null default 'member' check (role in ('admin', 'member')),
+  role text not null default 'member' check (role in ('admin', 'manager', 'member')),
+  team_function text check (team_function is null or team_function in ('dialer', 'setter', 'closer')),
   status text not null default 'pending' check (status in ('pending', 'accepted', 'revoked')),
   invite_token_hash text,
   expires_at timestamptz,
   accepted_at timestamptz,
+  temporary_password_hash text,
+  temporary_password_expires_at timestamptz,
+  temporary_password_changed_at timestamptz,
+  onboarding_started_at timestamptz,
   created_at timestamptz not null default now(),
   unique (workspace_id, email)
 );
@@ -298,7 +304,31 @@ alter table if exists public.workspace_subscriptions
 alter table if exists public.workspace_invitations
   add column if not exists invite_token_hash text,
   add column if not exists expires_at timestamptz,
-  add column if not exists accepted_at timestamptz;
+  add column if not exists accepted_at timestamptz,
+  add column if not exists temporary_password_hash text,
+  add column if not exists temporary_password_expires_at timestamptz,
+  add column if not exists temporary_password_changed_at timestamptz,
+  add column if not exists onboarding_started_at timestamptz,
+  add column if not exists team_function text;
+
+alter table if exists public.workspace_members
+  add column if not exists team_function text;
+
+alter table if exists public.workspace_members
+  drop constraint if exists workspace_members_role_check,
+  add constraint workspace_members_role_check check (role in ('owner', 'admin', 'manager', 'member'));
+
+alter table if exists public.workspace_members
+  drop constraint if exists workspace_members_team_function_check,
+  add constraint workspace_members_team_function_check check (team_function is null or team_function in ('dialer', 'setter', 'closer'));
+
+alter table if exists public.workspace_invitations
+  drop constraint if exists workspace_invitations_role_check,
+  add constraint workspace_invitations_role_check check (role in ('admin', 'manager', 'member'));
+
+alter table if exists public.workspace_invitations
+  drop constraint if exists workspace_invitations_team_function_check,
+  add constraint workspace_invitations_team_function_check check (team_function is null or team_function in ('dialer', 'setter', 'closer'));
 
 create unique index if not exists workspace_invitations_invite_token_hash_idx
   on public.workspace_invitations(invite_token_hash)

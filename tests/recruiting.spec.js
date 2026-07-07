@@ -10,6 +10,8 @@ test('runs the auto recruiting workflow and creates a CRM feed', async ({ page }
   await expect(page).toHaveTitle(/Kira Recruit/);
   await expect(page.getByRole('heading', { name: 'Auto recruiting' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Next best candidate action' })).toBeVisible();
+  await expect(page.locator('.recruit-hero')).toContainText('paid recruiting add-on');
+  await expect(page.locator('.recruit-hero')).toContainText('Requires active ClosePilot CRM subscription');
   await expect(page.locator('.recruit-hero')).toContainText('AI recruiter');
   await expect(page.locator('.recruit-sidebar')).toHaveCount(0);
   await expect(page.locator('#recruitSubpageNav')).toContainText('Job details');

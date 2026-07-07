@@ -45,6 +45,11 @@ test('CRM pages adapt to a phone viewport', async ({ page }) => {
   await page.getByRole('link', { name: 'Admin' }).click();
   await expect(page.locator('.topbar h1')).toHaveText('Workspace admin');
   await expectPageFitsViewport(page);
+
+  await page.getByRole('link', { name: 'Settings' }).click();
+  await expect(page.locator('.topbar h1')).toHaveText('Settings');
+  await expect(page.locator('#customizationForm')).toBeVisible();
+  await expectPageFitsViewport(page);
 });
 
 test('CRM mobile layout works with reduced motion enabled', async ({ page }) => {
@@ -58,7 +63,7 @@ test('CRM mobile layout works with reduced motion enabled', async ({ page }) => 
 });
 
 test('lead generator and cost planner adapt to a phone viewport', async ({ page }) => {
-  await openMobile(page, '/SafeLeadGenerator-Standalone.html');
+  await openMobile(page, '/lead-generator');
 
   await expect(page.getByRole('heading', { name: 'Compliant Property Lead Builder' })).toBeVisible();
   await expectPageFitsViewport(page);

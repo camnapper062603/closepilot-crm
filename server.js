@@ -2,6 +2,7 @@ import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
+import "./local-env.js";
 import { handleClosePilotApiRequest, isClosePilotApiPath } from "./api-handlers.js";
 import { handleBusinessEnrichmentRequest } from "./business-enrichment-service.js";
 
@@ -50,7 +51,12 @@ createServer((request, response) => {
     return;
   }
 
-  const requestedPath = normalize(decodeURIComponent(url.pathname)).replace(/^(\.\.[/\\])+/, "");
+  const routeAliases = {
+    "/recruiting": "/recruiting.html",
+    "/lead-generator": "/SafeLeadGenerator-Standalone.html",
+  };
+  const aliasedPath = routeAliases[url.pathname] || url.pathname;
+  const requestedPath = normalize(decodeURIComponent(aliasedPath)).replace(/^(\.\.[/\\])+/, "");
   let filePath = join(root, requestedPath);
 
   if (!existsSync(filePath) || statSync(filePath).isDirectory()) {

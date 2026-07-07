@@ -3,13 +3,15 @@ import { test, expect } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.clear());
-  await page.goto('/SafeLeadGenerator-Standalone.html', { waitUntil: 'domcontentloaded' });
+  await page.goto('/lead-generator', { waitUntil: 'domcontentloaded' });
 });
 
 test('opens the lead generator cost planner and estimates paid stack costs', async ({ page }) => {
   await expect(page).toHaveTitle(/Safe Property Lead Generator/);
   await expect(page.getByRole('heading', { name: 'Compliant Property Lead Builder' })).toBeVisible();
+  await expect(page.locator('.topbar')).toContainText('Paid Residential Lead Generator add-on');
   await expect(page.getByRole('heading', { name: 'Best area to target today' })).toBeVisible();
+  await expect(page.locator('.territory-command')).toContainText('View Demo');
   await expect(page.locator('.territory-command')).toContainText('DNC first');
 
   await page.getByRole('button', { name: 'Cost planner' }).click();

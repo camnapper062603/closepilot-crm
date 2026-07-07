@@ -31,7 +31,7 @@
     },
     {
       "source": "/lead-generator",
-      "destination": "/SafeLeadGenerator-Standalone.html"
+      "destination": "/lead-generator.html"
     },
     {
       "source": "/(.*)",

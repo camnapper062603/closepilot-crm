@@ -134,6 +134,31 @@ test('renders the CRM dashboard MVP', async ({ page }) => {
   await expect(page.getByText('Create next-step tasks')).toBeVisible();
 });
 
+test('opens the public marketer demo workspace with sample operating data', async ({ page }) => {
+  await page.goto('/?demo=1', { waitUntil: 'load' });
+
+  await expect(page.locator('.topbar h1')).toHaveText('Dashboard');
+  await expect(page.locator('#modePill')).toHaveText('Demo workspace');
+  await expect(page.locator('#signOutButton')).toHaveText('Exit demo');
+  await expect(page.locator('#workspaceNameLabel')).toHaveText('Kira Home Demo Co');
+  await expect(page.locator('#dailyCommandCenter')).toContainText('What should I do next?');
+  await expect(page.locator('#hotLeadCount')).toHaveText(/[1-9]/);
+  await expect(page.locator('#dashboardAppointmentsToday')).toHaveText(/[1-9]/);
+  await expect(page.locator('#dashboardRecommendations')).toContainText('Maya Johnson');
+
+  await navigateTo(page, 'Communications', 'communications');
+  await expect(page.locator('#conversationList')).toContainText('Maya Johnson');
+  await expect(page.locator('#conversationList')).toContainText('Caleb Stone');
+
+  await navigateTo(page, 'Recruiting Inbox', 'recruiting');
+  await expect(page.locator('#recruitingCandidateList')).toContainText('Alyssa Moreno');
+  await expect(page.locator('#recruitingCandidateList')).toContainText('Indeed');
+
+  await page.getByRole('button', { name: 'Exit demo' }).click();
+  await expect(page.locator('#authPanel')).toBeVisible();
+  await expect(page.locator('#authMessage')).toContainText('Demo closed');
+});
+
 test('guides Start My Day through Flow Mode actions', async ({ page }) => {
   test.setTimeout(60_000);
 
@@ -250,6 +275,10 @@ test('opens primary sidebar items as separate app pages', async ({ page }) => {
   await navigateTo(page, 'Admin', 'admin');
   await expect(page.locator('#saasAdmin')).toBeVisible();
   await expect(page.locator('#calendar')).toBeHidden();
+
+  await navigateTo(page, 'Settings', 'settings');
+  await expect(page.locator('#saasAdmin')).toBeVisible();
+  await expect(page.locator('.topbar h1')).toHaveText('Settings');
 });
 
 test('syncs Kira Recruit candidates into the CRM Recruiting Inbox', async ({ page }) => {
@@ -1182,17 +1211,32 @@ test('manages SaaS workspace plan, seats, and invites', async ({ page }) => {
   await expect(admin.locator('#planAddonList')).toContainText('Kira Recruit $99/mo');
   await expect(admin.locator('#planAddonList')).toContainText('Residential Lead Gen $149/mo');
   await expect(admin.locator('#planAddonList')).toContainText('Recruit + Lead Gen bundle $199/mo');
+  await expect(admin.locator('#planAddonList')).toContainText('Paid add-on');
+  await admin.locator('[data-addon-card="recruiting"]').getByRole('button', { name: 'Add to Plan' }).click();
+  await expect(admin.locator('#adminMessage')).toContainText('Kira Recruit setup requested');
 
   await page.getByRole('button', { name: 'Connected apps' }).click();
-  await expect(admin.getByRole('link', { name: 'Open Recruit' })).toHaveAttribute('href', '/recruiting.html');
-  await expect(admin.getByRole('link', { name: 'Open Lead Gen' })).toHaveAttribute('href', '/SafeLeadGenerator-Standalone.html');
+  await expect(admin.getByRole('link', { name: 'View Demo' }).first()).toHaveAttribute('href', '/recruiting.html');
+  await expect(admin.locator('#extensionGrid')).toContainText('Paid add-on');
+  await expect(admin.locator('#extensionGrid')).toContainText('Residential Lead Gen');
+
+  await page.getByRole('button', { name: 'Product Overview' }).click();
+  await expect(admin.locator('#productOverviewGuide')).toContainText('Daily Command Center');
+  await expect(admin.locator('#productOverviewGuide')).toContainText('Flow Mode + AI Copilot');
+  await expect(admin.locator('#productOverviewGuide')).toContainText('Kira Recruit');
+  await expect(admin.locator('#productOverviewGuide')).toContainText('Residential Lead Generator');
 
   await page.getByRole('button', { name: 'Members and invites' }).click();
   await expect(admin.locator('#teamSummary')).toContainText('Active members');
   await expect(admin.locator('#teamSummary')).toContainText('1');
-  await expect(admin.locator('#rolePermissionGrid')).toContainText('Owner');
+  await expect(admin.locator('#rolePermissionGrid')).toContainText('Admin');
   await expect(admin.locator('#rolePermissionGrid')).toContainText('Manager');
+  await expect(admin.locator('#rolePermissionGrid')).toContainText('Member');
+  await expect(admin.locator('#inviteFunction')).toContainText('Dialer');
+  await expect(admin.locator('#inviteFunction')).toContainText('Setter');
+  await expect(admin.locator('#inviteFunction')).toContainText('Closer');
   await expect(admin.locator('#inviteRoleHint')).toContainText('Can manage billing');
+  await expect(admin.locator('#inviteEmailPreview')).toContainText('temporary password');
 
   await page.getByRole('button', { name: 'Production readiness' }).click();
   await expect(admin.locator('#launchChecklist')).toContainText('Overall launch readiness');
@@ -1223,11 +1267,13 @@ test('manages SaaS workspace plan, seats, and invites', async ({ page }) => {
   await page.getByRole('button', { name: 'Members and invites' }).click();
   await admin.locator('#inviteEmail').fill('sales@example.com');
   await admin.getByLabel('Invite role').selectOption('admin');
-  await admin.getByRole('button', { name: 'Invite' }).click();
+  await admin.locator('#inviteFunction').selectOption('setter');
+  await admin.getByRole('button', { name: 'Invite', exact: true }).click();
 
   await expect(admin.locator('#teamList')).toContainText('sales@example.com');
   await expect(admin.locator('#teamList')).toContainText('Admin');
-  await expect(admin.locator('#teamList')).toContainText('Send email');
+  await expect(admin.locator('#teamList')).toContainText('Setter');
+  await expect(admin.locator('#teamList')).toContainText('Resend invite');
   await expect(admin.locator('#teamSummary')).toContainText('1');
 
   await page.getByRole('button', { name: 'Plan and seats' }).click();
@@ -1237,28 +1283,42 @@ test('manages SaaS workspace plan, seats, and invites', async ({ page }) => {
   await expect(admin.locator('#adminMessage')).toContainText('RESEND_API_KEY');
   await expect(admin.locator('#adminMessage')).toContainText('INVITE_FROM_EMAIL');
   await expect(admin.locator('#adminMessage')).toContainText('/?invite=');
+  await expect(admin.locator('#adminMessage')).toContainText('Temporary password');
   await expect(admin.locator('#auditList')).toContainText('Invite staged');
   await expect(admin.locator('#auditList')).toContainText('Invite link generated');
 
-  await admin.getByRole('button', { name: 'Send email' }).click();
+  await admin.getByRole('button', { name: 'Resend invite' }).click();
   await expect(admin.locator('#adminMessage')).toContainText('Invite link generated');
   await expect(admin.locator('#adminMessage')).toContainText('/?invite=');
   const copiedInviteLink = await page.evaluate(() => localStorage.getItem('closepilot-last-copied-text'));
   expect(copiedInviteLink).toContain('/?invite=');
+  expect(copiedInviteLink).toContain('Temporary password');
 
   await admin.locator('#inviteEmail').fill('sales@example.com');
-  await admin.getByRole('button', { name: 'Invite' }).click();
+  await admin.getByRole('button', { name: 'Invite', exact: true }).click();
   await expect(admin.locator('#adminMessage')).toContainText('already has access or a pending invite');
+});
 
-  await page.getByRole('button', { name: 'Workspace settings' }).click();
-  await admin.locator('#adminBusinessName').fill('Kira Home Agency');
-  await admin.locator('#adminWorkspaceType').selectOption('Team');
-  await admin.locator('#adminSalesGoal').selectOption('Forecast revenue');
-  await admin.getByRole('button', { name: 'Update workspace' }).click();
+test('starts automated onboarding after temporary password change', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('closepilot-temporary-password-required-demo', 'true'));
+  await page.reload({ waitUntil: 'load' });
 
-  await expect(page.locator('#workspaceNameLabel')).toContainText('Kira Home Agency');
-  await expect(page.locator('#workspaceModeLabel')).toContainText('Team workspace - Forecast revenue.');
-  await expect(admin.locator('#adminMessage')).toContainText('Workspace settings saved.');
+  await expect(page.locator('#passwordOnboardingPanel')).toBeVisible();
+  await page.locator('#temporaryNewPassword').fill('NewPassword123!');
+  await page.locator('#temporaryConfirmPassword').fill('Different123!');
+  await page.getByRole('button', { name: 'Change password & start onboarding' }).click();
+  await expect(page.locator('#passwordOnboardingMessage')).toContainText('does not match');
+
+  await page.locator('#temporaryConfirmPassword').fill('NewPassword123!');
+  await page.getByRole('button', { name: 'Change password & start onboarding' }).click();
+  await expect(page.locator('#passwordOnboardingPanel')).toBeHidden();
+
+  await navigateTo(page, 'Tasks', 'tasks');
+  await expect(page.locator('#taskList')).toContainText('Complete Kira Home onboarding tour');
+  await expect(page.locator('#taskList')).toContainText('Confirm calendar, communications, and notification preferences');
+
+  await navigateTo(page, 'Activity', 'activity');
+  await expect(page.locator('#activityFeed')).toContainText('started automated onboarding');
 });
 
 test('loads scale test data for 20 dialers and 10 closers', async ({ page }) => {
@@ -1285,6 +1345,24 @@ test('loads scale test data for 20 dialers and 10 closers', async ({ page }) => 
   await expect(page.locator('#appointmentCloser option')).toHaveCount(10);
   await expect(page.locator('#appointmentCloser')).toContainText('closer01@kirahome.test');
   await expect(page.locator('#appointmentCloser')).not.toContainText('dialer01@kirahome.test');
+});
+
+test('gates admin-only navigation for member access', async ({ page }) => {
+  await page.evaluate(() => {
+    localStorage.setItem('closepilot-demo-role', 'member');
+    window.location.hash = '#admin';
+  });
+
+  await expect(page.getByRole('link', { name: 'Admin' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Settings' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'AI Sales Manager' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Automations' })).toHaveCount(0);
+  await expect(page.locator('#accessDeniedPanel')).toBeVisible();
+  await expect(page.locator('#accessDeniedPanel')).toContainText('You do not have access');
+  await expect(page.locator('#accessDeniedPanel')).toContainText('Member access does not include Workspace admin');
+
+  await page.getByRole('link', { name: 'Communications' }).click();
+  await expect(page.locator('.topbar h1')).toHaveText('Communications');
 });
 
 test('production API fallbacks are honest when providers are missing', async ({ request }) => {
@@ -1345,9 +1423,10 @@ test('production API fallbacks are honest when providers are missing', async ({ 
   expect(calendarEventBody.synced).toBeFalsy();
 });
 
-test('saves an expanded workspace profile for SaaS operations', async ({ page }) => {
-  await navigateTo(page, 'Admin', 'admin');
+test('saves an expanded workspace profile from Settings', async ({ page }) => {
+  await navigateTo(page, 'Settings', 'settings');
   const admin = page.locator('#saasAdmin');
+  await openSubpage(page, 'Workspace');
 
   await admin.getByLabel('Owner email').fill('cameron@example.com');
   await admin.getByLabel('Industry').fill('Roofing and home services');
@@ -1367,20 +1446,25 @@ test('saves an expanded workspace profile for SaaS operations', async ({ page })
 });
 
 test('saves UI customization preferences and applies them to the workspace shell', async ({ page }) => {
-  await navigateTo(page, 'Admin', 'admin');
+  await navigateTo(page, 'Settings', 'settings');
   const admin = page.locator('#saasAdmin');
 
-  await page.getByRole('button', { name: 'Customization' }).click();
+  await openSubpage(page, 'Appearance');
   await expect(admin.locator('#customizationForm')).toContainText('Workspace appearance');
-  await admin.getByLabel('Theme mode').selectOption('dark');
+  await admin.locator('[data-theme-mode-choice="dark"]').click();
+  await expect(admin.locator('#customizationMessage')).toContainText('Dark mode saved');
   await admin.getByLabel('Accent color').selectOption('green');
   await admin.getByLabel('Density').selectOption('compact');
   await admin.getByLabel('Sidebar').selectOption('compact');
+  await admin.getByLabel('Brand display name').fill('Kira Roofing Studio');
+
+  await openSubpage(page, 'Workflow and AI');
   await admin.getByLabel('Default landing page').selectOption('communications');
   await admin.getByLabel('Dashboard layout').selectOption('compact');
   await admin.getByLabel('AI tone').selectOption('friendly');
   await admin.getByLabel('Default trade').selectOption('roofing');
-  await admin.getByLabel('Brand display name').fill('Kira Roofing Studio');
+
+  await openSubpage(page, 'Dashboard');
   await admin.locator('#widgetRecommendations').setChecked(false);
   await admin.getByRole('button', { name: 'Save preferences' }).click();
 

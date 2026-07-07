@@ -39,40 +39,73 @@ const extensionCatalog = [
     label: "Kira Recruit",
     price: 99,
     href: "/recruiting.html",
-    detail: "Job intake, applicant feed, and interview booking.",
+    badge: "Paid add-on",
+    priceEnv: "STRIPE_PRICE_ADDON_RECRUIT",
+    detail: "Applicant pipeline, AI candidate summaries, interview tracking, onboarding, and CRM candidate sync.",
+    value: "Keeps hiring motion running in the background while the CRM stays focused on revenue.",
   },
   {
     id: "leadgen",
     label: "Residential Lead Gen",
     price: 149,
-    href: "/SafeLeadGenerator-Standalone.html",
-    detail: "Texas property imports, BatchLeads skip trace planning, and DNC-safe exports.",
+    href: "/lead-generator",
+    badge: "Paid add-on",
+    priceEnv: "STRIPE_PRICE_ADDON_LEADGEN",
+    detail: "Residential territory lists, property data imports, skip trace planning, DNC-aware exports, and CRM handoff.",
+    value: "Turns property research into safer homeowner prospecting lists for dialers.",
   },
   {
     id: "bundle",
     label: "Recruit + Lead Gen bundle",
     price: 199,
     href: "",
-    detail: "Both background apps connected through the CRM admin hub.",
+    badge: "Bundle",
+    priceEnv: "STRIPE_PRICE_ADDON_BUNDLE",
+    detail: "Both paid background apps connected through the CRM admin hub.",
+    value: "Best fit for teams scaling both lead flow and staffing at the same time.",
   },
 ];
 
 const teamRoleCatalog = {
   owner: {
-    label: "Owner",
-    description: "Owns billing, workspace settings, team access, and final security controls.",
+    label: "Admin",
+    badge: "Owner",
+    description: "Workspace owner with full Admin access, billing, team management, launch readiness, and final account controls.",
   },
   admin: {
     label: "Admin",
-    description: "Can manage billing, team members, automations, integrations, and workspace settings.",
+    description: "Can manage billing, team members, invites, workspace settings, launch readiness, automations, imports, exports, reporting, and paid add-on visibility.",
   },
   manager: {
     label: "Manager",
-    description: "Can coach reps, assign leads, review pipeline health, and manage daily sales execution.",
+    description: "CRM access, team leads, performance, lead assignment, follow-up queue, communications, reporting, Flow Mode, AI Copilot, and limited automation access.",
+  },
+  member: {
+    label: "Member",
+    description: "Assigned leads, Flow Mode, follow-up tasks, assigned communications, and basic AI Copilot. No billing, team management, admin settings, launch readiness, full export, or add-on purchasing.",
   },
   rep: {
-    label: "Rep",
-    description: "Can work assigned leads, run Flow Mode, log calls, send messages, and manage personal tasks.",
+    label: "Member",
+    description: "Assigned leads, Flow Mode, follow-up tasks, assigned communications, and basic AI Copilot. No billing, team management, admin settings, launch readiness, full export, or add-on purchasing.",
+  },
+};
+
+const salesFunctionCatalog = {
+  none: {
+    label: "No function label",
+    description: "Use only the access tier.",
+  },
+  dialer: {
+    label: "Dialer",
+    description: "Call list and dial floor access, basic lead info, outcome logging, and follow-up disposition.",
+  },
+  setter: {
+    label: "Setter",
+    description: "Assigned leads, appointment setting, follow-up tasks, and communication tools.",
+  },
+  closer: {
+    label: "Closer",
+    description: "Assigned hot leads, booked appointments, proposal/estimate context, AI Copilot, Flow Mode, and assigned communications.",
   },
 };
 
@@ -572,6 +605,7 @@ let state = structuredClone(seedState);
 let store;
 let currentUser = null;
 let supabaseClient = null;
+let publicDemoMode = false;
 let editingLeadId = null;
 let pipelineView = "board";
 let pendingImport = null;
@@ -807,6 +841,7 @@ const taskForm = document.querySelector("#taskForm");
 const authPanel = document.querySelector("#authPanel");
 const authForm = document.querySelector("#authForm");
 const authMessage = document.querySelector("#authMessage");
+const viewDemoWorkspaceButton = document.querySelector("#viewDemoWorkspaceButton");
 const modePill = document.querySelector("#modePill");
 const appShell = document.querySelector(".app-shell");
 const signOutButton = document.querySelector("#signOutButton");
@@ -816,6 +851,11 @@ const revenueProgressBar = document.querySelector("#revenueProgressBar");
 const revenueGoalSummary = document.querySelector("#revenueGoalSummary");
 const revenueGoalMessage = document.querySelector("#revenueGoalMessage");
 const onboardingPanel = document.querySelector("#onboardingPanel");
+const passwordOnboardingPanel = document.querySelector("#passwordOnboardingPanel");
+const passwordOnboardingForm = document.querySelector("#passwordOnboardingForm");
+const temporaryNewPassword = document.querySelector("#temporaryNewPassword");
+const temporaryConfirmPassword = document.querySelector("#temporaryConfirmPassword");
+const passwordOnboardingMessage = document.querySelector("#passwordOnboardingMessage");
 const seedWorkspaceButton = document.querySelector("#seedWorkspaceButton");
 const dismissOnboardingButton = document.querySelector("#dismissOnboardingButton");
 const setupBusinessName = document.querySelector("#setupBusinessName");
@@ -853,8 +893,11 @@ const openBillingPortalButton = document.querySelector("#openBillingPortal");
 const inviteForm = document.querySelector("#inviteForm");
 const inviteEmail = document.querySelector("#inviteEmail");
 const inviteRole = document.querySelector("#inviteRole");
+const inviteFunction = document.querySelector("#inviteFunction");
 const inviteRoleHint = document.querySelector("#inviteRoleHint");
 const rolePermissionGrid = document.querySelector("#rolePermissionGrid");
+const inviteEmailPreview = document.querySelector("#inviteEmailPreview");
+const inviteLinkFallback = document.querySelector("#inviteLinkFallback");
 const teamList = document.querySelector("#teamList");
 const customizationForm = document.querySelector("#customizationForm");
 const customThemeMode = document.querySelector("#customThemeMode");
@@ -894,6 +937,7 @@ const pageTitles = {
   dial: "Dial floor",
   calendar: "Calendar",
   admin: "Workspace admin",
+  settings: "Settings",
 };
 const subpageCatalog = {
   pipeline: [
@@ -919,15 +963,39 @@ const subpageCatalog = {
   tasks: [{ id: "list", label: "Tasks" }],
   activity: [{ id: "feed", label: "Activity feed" }],
   admin: [
-    { id: "settings", label: "Workspace settings" },
+    { id: "overview", label: "Product Overview" },
     { id: "billing", label: "Plan and seats" },
     { id: "team", label: "Members and invites" },
-    { id: "customization", label: "Customization" },
     { id: "extensions", label: "Connected apps" },
     { id: "launch", label: "Production readiness" },
     { id: "audit", label: "Audit trail" },
     { id: "backup", label: "Backup center" },
   ],
+  settings: [
+    { id: "appearance", label: "Appearance" },
+    { id: "dashboard", label: "Dashboard" },
+    { id: "workflow", label: "Workflow and AI" },
+    { id: "workspace", label: "Workspace", adminOnly: true },
+  ],
+};
+
+const roleAccessCatalog = {
+  owner: {
+    pages: ["pipeline", "manager", "contacts", "recruiting", "automation", "tasks", "activity", "communications", "dial", "calendar", "admin", "settings"],
+    restrictedActions: [],
+  },
+  admin: {
+    pages: ["pipeline", "manager", "contacts", "recruiting", "automation", "tasks", "activity", "communications", "dial", "calendar", "admin", "settings"],
+    restrictedActions: [],
+  },
+  manager: {
+    pages: ["pipeline", "manager", "contacts", "automation", "tasks", "activity", "communications", "dial", "calendar", "settings"],
+    restrictedActions: ["billing", "team", "workspace-settings", "launch", "export"],
+  },
+  member: {
+    pages: ["pipeline", "contacts", "tasks", "communications", "dial", "calendar", "settings"],
+    restrictedActions: ["billing", "team", "workspace-settings", "launch", "automation-admin", "export", "addon-purchase"],
+  },
 };
 const appointmentTimes = Array.from({ length: 12 }, (_item, index) => {
   const hour = index + 9;
@@ -1081,9 +1149,11 @@ authForm.addEventListener("submit", async (event) => {
 });
 
 document.querySelector("#signUpButton").addEventListener("click", signUp);
+viewDemoWorkspaceButton?.addEventListener("click", startPublicDemoWorkspace);
 signOutButton.addEventListener("click", signOut);
 seedWorkspaceButton.addEventListener("click", seedStarterWorkspace);
 dismissOnboardingButton.addEventListener("click", dismissOnboarding);
+passwordOnboardingForm?.addEventListener("submit", changeTemporaryPasswordAndStartOnboarding);
 exportLeadsButton.addEventListener("click", exportLeadsCsv);
 importLeadsButton.addEventListener("click", () => importLeadsInput.click());
 importLeadsInput.addEventListener("change", importLeadsCsv);
@@ -1094,8 +1164,13 @@ importWorkspaceBackupInput.addEventListener("change", importWorkspaceBackup);
 workspaceAdminForm.addEventListener("submit", saveAdminWorkspaceSettings);
 customizationForm?.addEventListener("submit", saveCustomizationPreferences);
 resetCustomizationButton?.addEventListener("click", resetCustomizationPreferences);
+document.querySelectorAll("[data-theme-mode-choice]").forEach((button) => {
+  button.addEventListener("click", () => saveThemeModePreference(button.dataset.themeModeChoice));
+});
 inviteForm.addEventListener("submit", inviteTeamMember);
 inviteRole.addEventListener("change", renderInviteRoleGuidance);
+inviteFunction?.addEventListener("change", renderInviteRoleGuidance);
+inviteEmail?.addEventListener("input", renderInviteRoleGuidance);
 openCheckoutButton.addEventListener("click", openCheckout);
 openBillingPortalButton.addEventListener("click", openBillingPortal);
 confirmImportButton.addEventListener("click", confirmLeadsImport);
@@ -1211,6 +1286,12 @@ window.addEventListener("unhandledrejection", (event) => {
 });
 
 async function boot() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("demo") === "1" || localStorage.getItem(publicDemoSessionKey()) === "true") {
+    await startPublicDemoWorkspace({ fromBoot: true });
+    return;
+  }
+
   if (!hasSupabaseConfig) {
     store = createLocalStore();
     state = await store.load();
@@ -1254,6 +1335,7 @@ async function boot() {
 }
 
 async function startCloudWorkspace() {
+  publicDemoMode = false;
   hideAuth();
   setCloudMode(true);
   await acceptPendingInviteIfNeeded();
@@ -1267,10 +1349,52 @@ async function startCloudWorkspace() {
   }
 }
 
+async function startPublicDemoWorkspace(options = {}) {
+  publicDemoMode = true;
+  currentUser = null;
+  store = createLocalStore();
+  state = createMarketerDemoState();
+  store.save(state);
+  installMarketerDemoPreferences();
+  normalizeLoadedState();
+  hideAuth();
+  setCloudMode(false, "Demo workspace");
+  signOutButton.hidden = false;
+  signOutButton.textContent = "Exit demo";
+  localStorage.setItem(publicDemoSessionKey(), "true");
+  localStorage.setItem("closepilot-demo-role", "admin");
+  const url = new URL(window.location.href);
+  if (!options.fromBoot && url.searchParams.get("demo") !== "1") {
+    url.searchParams.set("demo", "1");
+    history.replaceState(null, "", `${url.pathname}${url.search}#pipeline`);
+  }
+  if (options.fromBoot && url.searchParams.get("demo") === "1" && !window.location.hash) {
+    history.replaceState(null, "", `${url.pathname}${url.search}#pipeline`);
+  }
+  routeFromHash();
+  setActivePage(activePage || "pipeline");
+  render();
+  showAppToast("Demo workspace loaded", "Explore the CRM with sample leads, team activity, add-ons, and AI workflows.");
+}
+
+function exitPublicDemoWorkspace() {
+  publicDemoMode = false;
+  localStorage.removeItem(publicDemoSessionKey());
+  localStorage.removeItem("closepilot-demo-role");
+  signOutButton.textContent = "Sign out";
+  const url = new URL(window.location.href);
+  url.searchParams.delete("demo");
+  history.replaceState(null, "", `${url.pathname}${url.search}`);
+  showAuth();
+  setAuthMessage("Demo closed. Sign in or reopen the demo workspace anytime.");
+}
+
 function showAuth() {
+  publicDemoMode = false;
   authPanel.hidden = false;
   appShell.hidden = true;
   signOutButton.hidden = true;
+  signOutButton.textContent = "Sign out";
   modePill.textContent = "Cloud mode";
 }
 
@@ -1322,6 +1446,9 @@ async function acceptPendingInviteIfNeeded() {
     });
     inviteAcceptanceStatus = result.message || "Invite accepted. Workspace access is ready.";
     if (result.accepted) {
+      if (result.requiresPasswordChange !== false) {
+        localStorage.setItem(temporaryPasswordRequirementKey(), "true");
+      }
       const url = new URL(window.location.href);
       url.searchParams.delete("invite");
       history.replaceState(null, "", `${url.pathname}${url.search}${url.hash || "#admin"}`);
@@ -1356,6 +1483,10 @@ function handleCalendarCallbackStatus() {
 }
 
 async function signOut() {
+  if (publicDemoMode || !supabaseClient) {
+    exitPublicDemoWorkspace();
+    return;
+  }
   await supabaseClient.auth.signOut();
 }
 
@@ -1478,6 +1609,7 @@ function render() {
   renderDailyCommandCenter();
   renderRevenueGoal();
   renderOnboarding();
+  renderPasswordOnboardingPrompt();
   renderInsights();
   renderSourceReport();
   renderFollowUpQueue();
@@ -1504,6 +1636,31 @@ function routeFromHash() {
 }
 
 function renderRoute() {
+  const accessDeniedPanel = document.querySelector("#accessDeniedPanel");
+  const hasPageAccess = canAccessPage(activePage);
+  if (accessDeniedPanel) {
+    accessDeniedPanel.hidden = hasPageAccess;
+  }
+
+  if (!hasPageAccess) {
+    document.querySelectorAll("[data-page]").forEach((section) => {
+      section.hidden = true;
+    });
+    subpageNav.hidden = true;
+    const role = teamRoleCatalog[currentAccessRole()] || teamRoleCatalog.member;
+    const message = document.querySelector("#accessDeniedMessage");
+    if (message) {
+      message.textContent = `${role.label} access does not include ${pageTitles[activePage] || "this page"}. Ask an admin to update your access tier or enable this module.`;
+    }
+    document.querySelectorAll("[data-nav-page]").forEach((link) => {
+      link.hidden = !canAccessPage(link.dataset.navPage);
+      link.classList.toggle("active", link.dataset.navPage === activePage);
+    });
+    pageTitle.textContent = "Access needed";
+    document.body.dataset.activePage = "access-denied";
+    return;
+  }
+
   document.querySelectorAll("[data-page]").forEach((section) => {
     const visible = section.dataset.page === activePage;
     section.hidden = !visible;
@@ -1518,6 +1675,7 @@ function renderRoute() {
   renderSubpages();
 
   document.querySelectorAll("[data-nav-page]").forEach((link) => {
+    link.hidden = !canAccessPage(link.dataset.navPage);
     link.classList.toggle("active", link.dataset.navPage === activePage);
   });
 
@@ -1563,12 +1721,60 @@ function renderSubpages() {
   renderAutomationSubpage(activeSubpage);
   renderContactSubpage(activeSubpage);
   renderAdminSubpage(activeSubpage);
+  renderSettingsSubpage(activeSubpage);
 }
 
 function availableSubpages(page) {
   const pages = subpageCatalog[page] || [];
+  if (page === "settings") return pages.filter((subpage) => !subpage.adminOnly || canUseAdminAction("workspace-settings"));
+  if (page === "admin") return pages.filter((subpage) => canAccessAdminSubpage(subpage.id));
   if (page !== "pipeline") return pages;
   return pages.filter((subpage) => subpage.id !== "setup" || !onboardingPanel.hidden);
+}
+
+function normalizeRoleId(role) {
+  const value = String(role || "").toLowerCase();
+  if (value === "rep") return "member";
+  if (["owner", "admin", "manager", "member"].includes(value)) return value;
+  return "member";
+}
+
+function currentWorkspaceMember() {
+  const account = accountState();
+  const email = (currentUser?.email || workspaceSetupSettings().ownerEmail || account.members[0]?.email || "").toLowerCase();
+  return (
+    account.members.find((member) => String(member.email || "").toLowerCase() === email) ||
+    account.members.find((member) => normalizeRoleId(member.role) === "owner") ||
+    account.members[0] ||
+    { role: "owner", email: "owner@kira.local" }
+  );
+}
+
+function currentAccessRole() {
+  const rawDemoRoleOverride = localStorage.getItem("closepilot-demo-role") || "";
+  if (!currentUser && ["admin", "manager", "member"].includes(rawDemoRoleOverride)) {
+    return normalizeRoleId(rawDemoRoleOverride);
+  }
+  return normalizeRoleId(currentWorkspaceMember().role);
+}
+
+function canAccessPage(page) {
+  const role = currentAccessRole();
+  const access = roleAccessCatalog[role] || roleAccessCatalog.member;
+  return access.pages.includes(page);
+}
+
+function canAccessAdminSubpage(subpage) {
+  const role = currentAccessRole();
+  if (role === "owner" || role === "admin") return true;
+  return false;
+}
+
+function canUseAdminAction(action) {
+  const role = currentAccessRole();
+  if (role === "owner" || role === "admin") return true;
+  const access = roleAccessCatalog[role] || roleAccessCatalog.member;
+  return !access.restrictedActions.includes(action);
 }
 
 function showOnly(selectors, visibleSelector) {
@@ -1635,9 +1841,50 @@ function renderAdminSubpage(activeSubpage) {
   if (activePage !== "admin") return;
   workspaceBackupPanelVisibility(activeSubpage);
   setHidden("#saasAdmin", activeSubpage === "backup");
+  setAdminPanelMode("admin");
   document.querySelectorAll("[data-admin-subpage]").forEach((card) => {
     card.hidden = card.dataset.adminSubpage !== activeSubpage;
   });
+  document.querySelectorAll("[data-settings-subpage]").forEach((card) => {
+    card.hidden = true;
+  });
+}
+
+function renderSettingsSubpage(activeSubpage) {
+  if (activePage !== "settings") return;
+  setHidden("#workspaceBackup", true);
+  setHidden("#saasAdmin", false);
+  setAdminPanelMode("settings");
+  document.querySelectorAll("[data-admin-subpage]").forEach((card) => {
+    card.hidden = true;
+  });
+  document.querySelectorAll("[data-settings-subpage]").forEach((card) => {
+    const isCustomizationCard = card.classList.contains("customization-card");
+    const showCustomization = ["appearance", "dashboard", "workflow"].includes(activeSubpage);
+    card.hidden = isCustomizationCard ? !showCustomization : card.dataset.settingsSubpage !== activeSubpage;
+  });
+  document.querySelectorAll("[data-settings-section]").forEach((section) => {
+    const sectionId = section.dataset.settingsSection;
+    section.hidden =
+      (activeSubpage === "appearance" && sectionId !== "appearance") ||
+      (activeSubpage === "dashboard" && sectionId !== "dashboard") ||
+      (activeSubpage === "workflow" && sectionId !== "workflow");
+  });
+}
+
+function setAdminPanelMode(mode) {
+  const heading = document.querySelector("#saasAdminHeading");
+  if (!heading || !subscriptionStatus) return;
+  if (mode === "settings") {
+    heading.textContent = "Settings";
+    subscriptionStatus.textContent = "Preferences";
+    return;
+  }
+  heading.textContent = "Workspace admin";
+  const account = accountState();
+  const subscription = account.subscription;
+  const plan = planCatalog[subscription.plan] || planCatalog.starter;
+  subscriptionStatus.textContent = `${plan.label} ${subscription.status === "trialing" ? "trial" : "plan"}`;
 }
 
 function workspaceBackupPanelVisibility(activeSubpage) {
@@ -1665,6 +1912,15 @@ function renderOnboarding() {
     setupBusinessName.value = settings.name;
     setupWorkspaceType.value = settings.type;
     setupSalesGoal.value = settings.goal;
+  }
+}
+
+function renderPasswordOnboardingPrompt() {
+  if (!passwordOnboardingPanel) return;
+  const required = localStorage.getItem(temporaryPasswordRequirementKey()) === "true";
+  passwordOnboardingPanel.hidden = !required;
+  if (required && passwordOnboardingMessage && !passwordOnboardingMessage.textContent) {
+    passwordOnboardingMessage.textContent = "Your onboarding checklist will begin after this password is changed.";
   }
 }
 
@@ -3354,8 +3610,10 @@ function renderSaasAdmin() {
   const subscription = account.subscription;
   const plan = planCatalog[subscription.plan] || planCatalog.starter;
   const activeMembers = account.members.filter((member) => member.status === "active");
-  const pendingInvites = account.invites.filter((invite) => invite.status === "pending");
+  const visibleInvites = account.invites.filter((invite) => !["cancelled", "revoked"].includes(invite.status || ""));
+  const pendingInvites = visibleInvites.filter((invite) => isPendingInvite(invite));
   const usedSeats = activeMembers.length + pendingInvites.length;
+  const adminAccess = canUseAdminAction("billing");
 
   adminBusinessName.value = settings.name;
   adminWorkspaceType.value = settings.type;
@@ -3408,11 +3666,14 @@ function renderSaasAdmin() {
     </article>
   `;
 
-  const extensionPricing = extensionCatalog
-    .map((extension) => `${escapeHtml(extension.label)} ${formatter.format(extension.price)}/mo`)
-    .join(" · ");
-
-  planAddonList.innerHTML = extensionPricing;
+  planAddonList.innerHTML = extensionCatalog.map((extension) => renderAddOnPricingCard(extension, adminAccess)).join("");
+  const extensionGrid = document.querySelector("#extensionGrid");
+  if (extensionGrid) {
+    extensionGrid.innerHTML = extensionCatalog.map((extension) => renderExtensionCard(extension, adminAccess)).join("");
+  }
+  document.querySelectorAll("[data-addon-request]").forEach((button) => {
+    button.addEventListener("click", () => handleAddonRequest(button.dataset.addonRequest));
+  });
 
   document.querySelectorAll("[data-plan-choice]").forEach((button) => {
     const planId = button.dataset.planChoice;
@@ -3437,15 +3698,35 @@ function renderSaasAdmin() {
       <span>Seats left</span>
       <strong>${Math.max(0, subscription.seatLimit - usedSeats)}</strong>
     </article>
+    <article class="${Math.max(0, subscription.seatLimit - usedSeats) <= 1 ? "seat-warning" : ""}">
+      <span>Seat limit</span>
+      <strong>${usedSeats}/${subscription.seatLimit}</strong>
+      <small>${Math.max(0, subscription.seatLimit - usedSeats) <= 1 ? "Add seats before scaling invites." : "Ready for more teammates."}</small>
+    </article>
   `;
 
   teamList.innerHTML = [
     ...activeMembers.map(renderTeamMember),
-    ...pendingInvites.map(renderTeamInvite),
+    ...visibleInvites.map(renderTeamInvite),
   ].join("");
 
   teamList.querySelectorAll("[data-send-invite]").forEach((button) => {
     button.addEventListener("click", () => sendInviteEmail(button.dataset.sendInvite));
+  });
+  teamList.querySelectorAll("[data-copy-invite]").forEach((button) => {
+    button.addEventListener("click", () => copyInviteLink(button.dataset.copyInvite));
+  });
+  teamList.querySelectorAll("[data-cancel-invite]").forEach((button) => {
+    button.addEventListener("click", () => cancelTeamInvite(button.dataset.cancelInvite));
+  });
+  teamList.querySelectorAll("[data-member-role]").forEach((select) => {
+    select.addEventListener("change", () => updateMemberRole(select.dataset.memberRole, select.value));
+  });
+  teamList.querySelectorAll("[data-member-function]").forEach((select) => {
+    select.addEventListener("change", () => updateMemberFunction(select.dataset.memberFunction, select.value));
+  });
+  teamList.querySelectorAll("[data-remove-member]").forEach((button) => {
+    button.addEventListener("click", () => removeTeamMember(button.dataset.removeMember));
   });
 
   launchChecklist.innerHTML = renderLaunchReadinessSummary() + launchChecks().map(renderLaunchCheck).join("");
@@ -3470,52 +3751,128 @@ function renderSaasAdmin() {
     : "<p class=\"empty-state\">No admin activity yet.</p>";
 }
 
+function renderAddOnPricingCard(extension, adminAccess) {
+  const cta = adminAccess ? "Add to Plan" : "Ask an admin to enable this add-on";
+  const setupCopy = `${extension.priceEnv} future Stripe price ID`;
+  return `
+    <article class="addon-card" data-addon-card="${escapeHtml(extension.id)}">
+      <div>
+        <span class="addon-badge">${escapeHtml(extension.badge)}</span>
+        <strong>${escapeHtml(extension.label)} ${formatter.format(extension.price)}/mo</strong>
+        <small>${escapeHtml(extension.detail)}</small>
+      </div>
+      <p>${escapeHtml(extension.value)}</p>
+      <div class="addon-actions">
+        ${extension.href ? `<a class="secondary-button" href="${escapeAttribute(extension.href)}">View Demo</a>` : `<span class="status-pill">Included in bundle</span>`}
+        <button class="primary-button ${adminAccess ? "" : "locked-action"}" type="button" data-addon-request="${escapeHtml(extension.id)}">${escapeHtml(cta)}</button>
+      </div>
+      <small class="addon-setup-copy">Setup required if ${escapeHtml(setupCopy)} is missing.</small>
+    </article>
+  `;
+}
+
+async function handleAddonRequest(addonId) {
+  const extension = extensionCatalog.find((item) => item.id === addonId);
+  if (!extension) return;
+  if (!canUseAdminAction("addon-purchase")) {
+    adminMessage.textContent = "Ask an admin to enable this paid add-on for the workspace.";
+    return;
+  }
+  await logAuditEvent("Add-on requested", `${extension.label} setup requested from Admin.`);
+  adminMessage.textContent = `${extension.label} setup requested. Stripe add-on checkout is intentionally unchanged in this demo pass.`;
+}
+
+function renderExtensionCard(extension, adminAccess) {
+  const requestLabel = adminAccess ? "Contact Sales" : "Ask Admin";
+  return `
+    <article class="extension-card ${adminAccess ? "" : "locked"}">
+      <div>
+        <span class="addon-badge">${escapeHtml(extension.badge)}</span>
+        <strong>${escapeHtml(extension.label)}</strong>
+        <span>${escapeHtml(extension.detail)}</span>
+      </div>
+      <div class="addon-actions">
+        ${extension.href ? `<a class="secondary-button" href="${escapeAttribute(extension.href)}">View Demo</a>` : `<span class="status-pill">Bundle option</span>`}
+        <button class="primary-button ${adminAccess ? "" : "locked-action"}" type="button" data-addon-request="${escapeHtml(extension.id)}">${escapeHtml(requestLabel)}</button>
+      </div>
+    </article>
+  `;
+}
+
 function renderTeamMember(member) {
   const role = teamRoleCatalog[member.role] || teamRoleCatalog.rep;
   const functionLabel = memberFunctionLabel(member);
   const description = memberFunctionDescription(member) || role.description;
   const isOwner = member.role === "owner";
+  const isSelf = isCurrentMember(member);
+  const safeRole = normalizeRoleId(member.role);
+  const safeFunction = String(member.teamFunction || "none").toLowerCase();
   return `
     <article class="team-row team-member-row">
       <div>
         <strong>${escapeHtml(member.email)}</strong>
-        <span>${escapeHtml(functionLabel || role.label)} · active</span>
+        <span>
+          <span class="role-badge">${escapeHtml(role.label)}</span>
+          ${functionLabel ? `<span class="role-badge function">${escapeHtml(functionLabel)}</span>` : ""}
+          active
+        </span>
         <small>${escapeHtml(description)}</small>
       </div>
-      <span class="status-pill">${isOwner ? "Owner" : "Member"}</span>
+      <div class="team-row-actions">
+        ${
+          isOwner
+            ? `<span class="status-pill">Owner</span>`
+            : `<select data-member-role="${escapeAttribute(member.id)}" aria-label="Role for ${escapeAttribute(member.email)}">
+                <option value="admin" ${safeRole === "admin" ? "selected" : ""}>Admin</option>
+                <option value="manager" ${safeRole === "manager" ? "selected" : ""}>Manager</option>
+                <option value="member" ${safeRole === "member" ? "selected" : ""}>Member</option>
+              </select>`
+        }
+        <select data-member-function="${escapeAttribute(member.id)}" aria-label="Function label for ${escapeAttribute(member.email)}" ${isOwner ? "disabled" : ""}>
+          ${Object.entries(salesFunctionCatalog)
+            .map(
+              ([id, item]) => `<option value="${escapeAttribute(id)}" ${safeFunction === id ? "selected" : ""}>${escapeHtml(item.label)}</option>`,
+            )
+            .join("")}
+        </select>
+        <button class="secondary-button" data-remove-member="${escapeAttribute(member.id)}" type="button" ${isOwner || isSelf ? "disabled" : ""}>Remove</button>
+      </div>
     </article>
   `;
 }
 
 function memberFunctionLabel(member) {
   const value = String(member.teamFunction || "").toLowerCase();
-  if (value === "dialer") return "Dialer";
-  if (value === "closer") return "Closer";
-  if (value === "owner") return "Owner";
-  return "";
+  return salesFunctionCatalog[value]?.label && value !== "none" ? salesFunctionCatalog[value].label : "";
 }
 
 function memberFunctionDescription(member) {
   const value = String(member.teamFunction || "").toLowerCase();
-  if (value === "dialer") return "Works generated leads, logs calls and texts, and books appointments.";
-  if (value === "closer") return "Receives round-robin appointments and manages closing follow-up.";
-  return "";
+  return salesFunctionCatalog[value]?.description || "";
 }
 
 function renderTeamInvite(invite) {
   const role = teamRoleCatalog[invite.role] || teamRoleCatalog.rep;
+  const functionLabel = memberFunctionLabel(invite);
+  const expired = isInviteExpired(invite);
   const expiresAt = invite.expiresAt ? ` · expires ${formatShortDate(invite.expiresAt)}` : "";
-  const statusLabel = invite.status === "accepted" ? "Accepted" : invite.status === "expired" ? "Expired" : "Pending";
+  const statusLabel = invite.status === "accepted" ? "Accepted" : expired ? "Expired" : invite.status === "revoked" ? "Cancelled" : "Pending";
   return `
     <article class="team-row team-invite-row ${escapeHtml(invite.status || "pending")}">
       <div>
         <strong>${escapeHtml(invite.email)}</strong>
-        <span>${escapeHtml(role.label)} · ${statusLabel} · invited ${formatShortDate(invite.createdAt)}${expiresAt}</span>
-        <small>${escapeHtml(role.description)}</small>
+        <span>
+          <span class="role-badge">${escapeHtml(role.label)}</span>
+          ${functionLabel ? `<span class="role-badge function">${escapeHtml(functionLabel)}</span>` : ""}
+          ${statusLabel} · invited ${formatShortDate(invite.createdAt)}${expiresAt}
+        </span>
+        <small>${escapeHtml(memberFunctionDescription(invite) || role.description)}</small>
       </div>
       <div class="team-row-actions">
         <span class="status-pill">${statusLabel}</span>
-        <button class="secondary-button" data-send-invite="${invite.id}" type="button">Send email</button>
+        ${statusLabel === "Pending" ? `<button class="secondary-button" data-send-invite="${escapeAttribute(invite.id)}" type="button">Resend invite</button>` : ""}
+        ${invite.inviteLink ? `<button class="secondary-button" data-copy-invite="${escapeAttribute(invite.id)}" type="button">Copy link</button>` : ""}
+        ${statusLabel === "Pending" ? `<button class="secondary-button" data-cancel-invite="${escapeAttribute(invite.id)}" type="button">Cancel</button>` : ""}
       </div>
     </article>
   `;
@@ -3523,9 +3880,10 @@ function renderTeamInvite(invite) {
 
 function renderInviteRoleGuidance() {
   if (!inviteRoleHint || !rolePermissionGrid) return;
-  const role = teamRoleCatalog[inviteRole.value] || teamRoleCatalog.rep;
-  inviteRoleHint.textContent = role.description;
-  rolePermissionGrid.innerHTML = ["owner", "admin", "manager", "rep"]
+  const role = teamRoleCatalog[inviteRole.value] || teamRoleCatalog.member;
+  const salesFunction = salesFunctionCatalog[inviteFunction?.value || "none"] || salesFunctionCatalog.none;
+  inviteRoleHint.textContent = `${role.description} ${salesFunction.description !== salesFunctionCatalog.none.description ? salesFunction.description : ""}`.trim();
+  rolePermissionGrid.innerHTML = ["admin", "manager", "member"]
     .map((roleId) => {
       const item = teamRoleCatalog[roleId];
       return `
@@ -3536,6 +3894,120 @@ function renderInviteRoleGuidance() {
       `;
     })
     .join("");
+  if (inviteEmailPreview) {
+    const email = inviteEmail?.value.trim() || "teammate@example.com";
+    inviteEmailPreview.innerHTML = `
+      <strong>Invite email preview</strong>
+      <span>${escapeHtml(email)} will be invited to ${escapeHtml(workspaceSetupSettings().name)} as ${escapeHtml(role.label)}${
+        inviteFunction?.value && inviteFunction.value !== "none" ? ` · ${escapeHtml(salesFunction.label)}` : ""
+      }.</span>
+      <small>Resend sends the invite link and temporary password when configured; otherwise ClosePilot creates a copyable setup handoff.</small>
+    `;
+  }
+}
+
+function isCurrentMember(member) {
+  const email = (currentUser?.email || workspaceSetupSettings().ownerEmail || "").toLowerCase();
+  return Boolean(email && String(member.email || "").toLowerCase() === email);
+}
+
+function isInviteExpired(invite) {
+  return Boolean(invite.expiresAt && new Date(invite.expiresAt).getTime() < Date.now() && invite.status !== "accepted");
+}
+
+function isPendingInvite(invite) {
+  return ["pending", "sent"].includes(invite.status || "pending") && !isInviteExpired(invite);
+}
+
+async function updateMemberRole(memberId, role) {
+  const account = accountState();
+  const member = account.members.find((item) => item.id === memberId);
+  const nextRole = normalizeRoleId(role);
+  if (!member || member.role === "owner" || isCurrentMember(member)) {
+    adminMessage.textContent = "Admins cannot change the owner or their own access tier from this screen.";
+    renderSaasAdmin();
+    return;
+  }
+  if (!window.confirm(`Change ${member.email} to ${teamRoleCatalog[nextRole].label}?`)) {
+    renderSaasAdmin();
+    return;
+  }
+  const nextAccount = {
+    ...account,
+    members: account.members.map((item) => (item.id === memberId ? { ...item, role: nextRole } : item)),
+  };
+  await store.updateSaasAccount(nextAccount);
+  state.account = normalizedAccount(nextAccount);
+  await logAuditEvent("Member role changed", `${member.email} changed to ${teamRoleCatalog[nextRole].label}.`);
+  adminMessage.textContent = `${member.email} is now ${teamRoleCatalog[nextRole].label}.`;
+  render();
+}
+
+async function updateMemberFunction(memberId, teamFunction) {
+  const account = accountState();
+  const member = account.members.find((item) => item.id === memberId);
+  const nextFunction = salesFunctionCatalog[teamFunction] ? teamFunction : "none";
+  if (!member || member.role === "owner") {
+    adminMessage.textContent = "Owner function labels are managed by workspace settings.";
+    renderSaasAdmin();
+    return;
+  }
+  if (!window.confirm(`Set ${member.email}'s function label to ${salesFunctionCatalog[nextFunction].label}?`)) {
+    renderSaasAdmin();
+    return;
+  }
+  const nextAccount = {
+    ...account,
+    members: account.members.map((item) => (item.id === memberId ? { ...item, teamFunction: nextFunction } : item)),
+  };
+  await store.updateSaasAccount(nextAccount);
+  state.account = normalizedAccount(nextAccount);
+  await logAuditEvent("Member function changed", `${member.email} labeled as ${salesFunctionCatalog[nextFunction].label}.`);
+  adminMessage.textContent = `${member.email} function label updated.`;
+  render();
+}
+
+async function removeTeamMember(memberId) {
+  const account = accountState();
+  const member = account.members.find((item) => item.id === memberId);
+  if (!member || member.role === "owner" || isCurrentMember(member)) {
+    adminMessage.textContent = "Admins cannot remove the owner or their own account.";
+    renderSaasAdmin();
+    return;
+  }
+  if (!window.confirm(`Remove ${member.email} from this workspace?`)) return;
+  const nextAccount = {
+    ...account,
+    members: account.members.filter((item) => item.id !== memberId),
+  };
+  await store.updateSaasAccount(nextAccount);
+  state.account = normalizedAccount(nextAccount);
+  await logAuditEvent("Member removed", `${member.email} removed from the workspace.`);
+  adminMessage.textContent = `${member.email} removed from the workspace.`;
+  render();
+}
+
+async function copyInviteLink(inviteId) {
+  const invite = accountState().invites.find((item) => item.id === inviteId);
+  if (!invite?.inviteLink) {
+    adminMessage.textContent = "Send or resend the invite first to generate a copyable invite link.";
+    return;
+  }
+  await copyTextToClipboard(invite.inviteLink);
+  adminMessage.textContent = `Invite link copied for ${invite.email}.`;
+}
+
+async function cancelTeamInvite(inviteId) {
+  const invite = accountState().invites.find((item) => item.id === inviteId);
+  if (!invite) return;
+  if (!window.confirm(`Cancel the invite for ${invite.email}?`)) return;
+  const updatedInvite = { ...invite, status: "revoked" };
+  await maybeUpdateTeamInvite(updatedInvite);
+  state.account = accountState();
+  state.account.invites = state.account.invites.map((item) => (item.id === inviteId ? updatedInvite : item));
+  await logAuditEvent("Invite cancelled", `${invite.email} invite cancelled.`);
+  adminMessage.textContent = `Invite cancelled for ${invite.email}.`;
+  render();
 }
 
 function userCustomizationPreferences() {
@@ -3615,7 +4087,14 @@ function renderCustomizationSettings() {
   setCustomizationWidgetCheckbox("widgetRevenue", preferences.visibleWidgets.revenue);
   setCustomizationWidgetCheckbox("widgetActivity", preferences.visibleWidgets.activity);
   setCustomizationWidgetCheckbox("widgetCalendar", preferences.visibleWidgets.calendar);
+  renderThemeToggleButtons(preferences.themeMode);
   renderBrandPreview(preferences);
+}
+
+function renderThemeToggleButtons(themeMode) {
+  document.querySelectorAll("[data-theme-mode-choice]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.themeModeChoice === themeMode);
+  });
 }
 
 function setCustomizationWidgetCheckbox(id, checked) {
@@ -3677,6 +4156,19 @@ async function saveCustomizationPreferences(event) {
   renderSaasAdmin();
 }
 
+async function saveThemeModePreference(themeMode) {
+  if (!["light", "dark", "system"].includes(themeMode)) return;
+  const preferences = {
+    ...userCustomizationPreferences(),
+    themeMode,
+  };
+  localStorage.setItem(customizationPreferenceKey(), JSON.stringify(preferences));
+  applyCustomizationPreferences(preferences);
+  renderCustomizationSettings();
+  customizationMessage.textContent = `${themeMode === "system" ? "System" : themeMode === "dark" ? "Dark" : "Light"} mode saved.`;
+  await logAuditEvent("Theme changed", `${preferences.companyName || "Workspace"} switched to ${themeMode} mode.`);
+}
+
 async function resetCustomizationPreferences() {
   localStorage.removeItem(customizationPreferenceKey());
   applyCustomizationPreferences(defaultCustomizationPreferences);
@@ -3716,6 +4208,19 @@ function renderLaunchReadinessSummary() {
 function launchChecks() {
   const groups = serverReadiness?.groups || {};
   return [
+    {
+      title: "Domain connected",
+      detail: serverReadiness?.appBaseUrl || config.appBaseUrl || window.location.origin,
+      ready: Boolean(serverReadiness?.groups?.app || config.appBaseUrl || window.location.origin),
+    },
+    {
+      title: "APP_BASE_URL configured",
+      detail:
+        serverReadiness?.groups?.app || config.appBaseUrl
+          ? "Production invite links and redirects have a stable app base URL."
+          : "Set APP_BASE_URL to the production domain before sending live invites.",
+      ready: Boolean(serverReadiness?.groups?.app || config.appBaseUrl),
+    },
     {
       title: "Cloud database",
       detail: groups.database || hasSupabaseConfig ? "Supabase browser config is present. Run the schema before live onboarding." : "Add SUPABASE_URL, SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY.",
@@ -3758,6 +4263,31 @@ function launchChecks() {
       title: "Calendar integration",
       detail: groups.calendar ? "Google Calendar OAuth is configured." : "Add Google Calendar OAuth credentials when ready.",
       ready: Boolean(groups.calendar),
+    },
+    {
+      title: "Demo data loaded",
+      detail: state.leads.length ? `${state.leads.length} demo leads are available for the walkthrough.` : "Load starter or scale test data before a marketer walkthrough.",
+      ready: state.leads.length > 0,
+    },
+    {
+      title: "Pricing visible",
+      detail: "Starter, Growth, Scale, and paid add-on price positioning render in Admin.",
+      ready: true,
+    },
+    {
+      title: "Add-ons visible",
+      detail: "Kira Recruit, Residential Lead Gen, and bundle positioning are visible as paid expansion modules.",
+      ready: true,
+    },
+    {
+      title: "Roles configured",
+      detail: "Admin, Manager, Member access tiers and Dialer, Setter, Closer function labels are available.",
+      ready: true,
+    },
+    {
+      title: "Product overview ready",
+      detail: "The Product Overview page gives a five-minute marketer demo flow.",
+      ready: true,
     },
     {
       title: "Mobile/PWA",
@@ -9199,6 +9729,62 @@ function renderTaskSummary(summary) {
   `;
 }
 
+async function changeTemporaryPasswordAndStartOnboarding(event) {
+  event.preventDefault();
+  const password = temporaryNewPassword.value;
+  const confirmation = temporaryConfirmPassword.value;
+  if (password.length < 8) {
+    passwordOnboardingMessage.textContent = "Use at least 8 characters for the new password.";
+    return;
+  }
+  if (password !== confirmation) {
+    passwordOnboardingMessage.textContent = "The confirmation password does not match.";
+    return;
+  }
+
+  passwordOnboardingForm.querySelector("button").disabled = true;
+  passwordOnboardingMessage.textContent = "Changing password and starting onboarding...";
+  try {
+    if (supabaseClient && currentUser) {
+      const { error } = await supabaseClient.auth.updateUser({ password });
+      if (error) throw error;
+    }
+
+    await startAutomatedTeamOnboarding();
+    localStorage.removeItem(temporaryPasswordRequirementKey());
+    localStorage.setItem(automatedOnboardingStartedKey(), "true");
+    temporaryNewPassword.value = "";
+    temporaryConfirmPassword.value = "";
+    passwordOnboardingMessage.textContent = "Password changed. Your onboarding checklist is ready in Tasks.";
+    await reloadState();
+  } catch (error) {
+    passwordOnboardingMessage.textContent = `Password update needs attention: ${error.message}`;
+  } finally {
+    passwordOnboardingForm.querySelector("button").disabled = false;
+  }
+}
+
+async function startAutomatedTeamOnboarding() {
+  if (localStorage.getItem(automatedOnboardingStartedKey()) === "true") return;
+  const role = teamRoleCatalog[currentAccessRole()] || teamRoleCatalog.member;
+  const functionLabel = memberFunctionLabel(currentWorkspaceMember()) || "workspace";
+  const onboardingTasks = [
+    `Complete Kira Home onboarding tour as ${role.label}`,
+    `Review your ${functionLabel.toLowerCase()} workspace checklist`,
+    "Confirm calendar, communications, and notification preferences",
+  ];
+  await Promise.all(onboardingTasks.map((text) => store.createTask({ text, done: false, due: "today" })));
+  await store.createActivity({
+    leadId: null,
+    type: "onboarding",
+    message: `${currentUser?.email || workspaceSetupSettings().ownerEmail} started automated onboarding after changing a temporary password.`,
+  });
+  await logAuditEvent(
+    "Onboarding started",
+    `${currentUser?.email || workspaceSetupSettings().ownerEmail} changed a temporary password and started automated onboarding.`,
+  );
+}
+
 async function seedStarterWorkspace() {
   seedWorkspaceButton.disabled = true;
   seedWorkspaceButton.textContent = "Loading...";
@@ -9326,7 +9912,7 @@ function createScaleTestAccount() {
   const dialers = Array.from({ length: scaleTestConfig.dialerCount }, (_, index) => ({
     id: `scale-dialer-${index + 1}`,
     email: `dialer${padNumber(index + 1)}@kirahome.test`,
-    role: "rep",
+    role: "member",
     teamFunction: "dialer",
     status: "active",
   }));
@@ -9358,6 +9944,534 @@ function createScaleTestAccount() {
   });
 }
 
+function createMarketerDemoState() {
+  const leads = createMarketerDemoLeads();
+  const recruitingCandidates = createMarketerDemoCandidates();
+  const appointments = createMarketerDemoAppointments();
+
+  return {
+    selectedLeadId: "demo-lead-1",
+    workspaceName: "Kira Home Demo Co",
+    leads,
+    recruitingCandidates,
+    tasks: createMarketerDemoTasks(),
+    automations: defaultAutomations.map((automation, index) => ({
+      id: `demo-auto-${index + 1}`,
+      ...automation,
+      enabled: true,
+    })),
+    automationTemplates: structuredClone(defaultAutomationTemplates),
+    automationRuns: createMarketerDemoAutomationRuns(),
+    appointments,
+    schedule: createMarketerDemoSchedule(),
+    account: createMarketerDemoAccount(),
+    activities: createMarketerDemoActivities(),
+  };
+}
+
+function createMarketerDemoLeads() {
+  return [
+    {
+      id: "demo-lead-1",
+      name: "Maya Johnson",
+      company: "1840 Northstar Dr, Austin",
+      stage: "proposal",
+      value: 18400,
+      score: 96,
+      source: "Residential Lead Gen",
+      notes: [
+        "Phone: (512) 555-0184",
+        "Email: maya.johnson@example.test",
+        "Project: Roof replacement after hail damage.",
+        "Estimate sent and opened twice.",
+        "Neighbor referral from the Carter project.",
+      ].join("\n"),
+      nextAction: "Call now and ask for the final decision window before the 2 PM estimate review.",
+    },
+    {
+      id: "demo-lead-2",
+      name: "Caleb Stone",
+      company: "49 Finch Ct, Denver",
+      stage: "qualified",
+      value: 12800,
+      score: 88,
+      source: "Kira Lead Generator",
+      notes: [
+        "Phone: (720) 555-0118",
+        "Email: caleb.stone@example.test",
+        "Project: Exterior paint and trim refresh.",
+        "No contact in four days after a strong first call.",
+      ].join("\n"),
+      nextAction: "Send a short follow-up text, then call if he replies with a window.",
+    },
+    {
+      id: "demo-lead-3",
+      name: "Nia Brooks",
+      company: "720 Harbor View Ln, Tampa",
+      stage: "qualified",
+      value: 9700,
+      score: 91,
+      source: "Website",
+      notes: [
+        "Phone: (813) 555-0197",
+        "Email: nia.brooks@example.test",
+        "Project: Window replacement for west-facing rooms.",
+        "Appointment tomorrow. Wants financing options ready.",
+      ].join("\n"),
+      nextAction: "Confirm tomorrow's appointment and send the financing checklist.",
+    },
+    {
+      id: "demo-lead-4",
+      name: "Jordan Lee",
+      company: "91 Pine Acre Rd, Raleigh",
+      stage: "new",
+      value: 6200,
+      score: 78,
+      source: "Referral",
+      notes: [
+        "Phone: (919) 555-0155",
+        "Email: jordan.lee@example.test",
+        "Project: Kitchen floor replacement.",
+        "Referred by a past customer and asked for earliest install windows.",
+      ].join("\n"),
+      nextAction: "Qualify timing, budget, and preferred material.",
+    },
+    {
+      id: "demo-lead-5",
+      name: "Avery Flores",
+      company: "1208 Cedar Bend Dr, Round Rock",
+      stage: "proposal",
+      value: 23100,
+      score: 84,
+      source: "Paid Search",
+      notes: [
+        "Phone: (737) 555-0162",
+        "Email: avery.flores@example.test",
+        "Project: Full bathroom remodel.",
+        "Estimate sent last week. Price objection needs manager help.",
+      ].join("\n"),
+      nextAction: "Send a value recap and offer two scope options before this deal cools off.",
+    },
+    {
+      id: "demo-lead-6",
+      name: "Elena Carter",
+      company: "33 Briar Lake Way, Plano",
+      stage: "won",
+      value: 15600,
+      score: 93,
+      source: "Repeat customer",
+      notes: [
+        "Phone: (469) 555-0130",
+        "Email: elena.carter@example.test",
+        "Project: Patio doors and follow-up gutter work.",
+        "Won yesterday. Good review and referral opportunity.",
+      ].join("\n"),
+      nextAction: "Send onboarding checklist, review request, and referral ask.",
+    },
+    {
+      id: "demo-lead-7",
+      name: "Brooke Nguyen",
+      company: "308 Magnolia Crossing, Nashville",
+      stage: "qualified",
+      value: 14200,
+      score: 89,
+      source: "Home show",
+      notes: [
+        "Phone: (615) 555-0124",
+        "Email: brooke.nguyen@example.test",
+        "Project: Garage conversion estimate.",
+        "Asked for a late-day appointment with a closer.",
+      ].join("\n"),
+      nextAction: "Confirm the 5 PM appointment and prepare scope notes for Sarah.",
+    },
+    {
+      id: "demo-lead-8",
+      name: "Owen Patel",
+      company: "640 Ridgewalk Blvd, Phoenix",
+      stage: "new",
+      value: 7600,
+      score: 72,
+      source: "Missed call",
+      notes: [
+        "Phone: (602) 555-0189",
+        "Email: owen.patel@example.test",
+        "Project: AC replacement quote.",
+        "Inbound missed call and voicemail from this morning.",
+      ].join("\n"),
+      nextAction: "Return missed call and log whether an appointment is needed.",
+    },
+  ];
+}
+
+function createMarketerDemoTasks() {
+  return [
+    { id: "demo-task-1", text: "Call Maya Johnson before the 2 PM estimate review", done: false, due: "today" },
+    { id: "demo-task-2", text: "Confirm Nia Brooks window appointment and financing options", done: false, due: "today" },
+    { id: "demo-task-3", text: "Send Caleb Stone exterior paint follow-up text", done: false, due: "today" },
+    { id: "demo-task-4", text: "Prepare Brooke Nguyen scope notes for Sarah", done: false, due: "today" },
+    {
+      id: "demo-task-5",
+      text: "Send onboarding checklist to Elena Carter",
+      done: true,
+      due: "today",
+      completedAt: demoDateIso(0, 8, 40),
+    },
+    { id: "demo-task-6", text: "Review Kira Recruit candidate shortlist", done: false, due: "tomorrow" },
+    { id: "demo-task-7", text: "Export next DNC-safe residential lead batch", done: false, due: "in 3 days" },
+  ];
+}
+
+function createMarketerDemoAppointments() {
+  return [
+    {
+      id: "demo-appointment-1",
+      leadId: "demo-lead-1",
+      leadName: "Maya Johnson",
+      contactName: "Maya Johnson",
+      assignedTo: "sarah@kirahome.demo",
+      startsAt: demoDateIso(0, 14, 0),
+      notes: "Estimate review for hail-damage roof replacement.",
+      outcome: "Appointment set",
+      calendarSyncStatus: "Demo calendar",
+      createdAt: demoDateIso(-1, 16, 20),
+    },
+    {
+      id: "demo-appointment-2",
+      leadId: "demo-lead-3",
+      leadName: "Nia Brooks",
+      contactName: "Nia Brooks",
+      assignedTo: "marcus@kirahome.demo",
+      startsAt: demoDateIso(1, 10, 0),
+      notes: "Window measurement and financing walk-through.",
+      outcome: "Appointment set",
+      calendarSyncStatus: "Demo calendar",
+      createdAt: demoDateIso(-2, 12, 15),
+    },
+    {
+      id: "demo-appointment-3",
+      leadId: "demo-lead-7",
+      leadName: "Brooke Nguyen",
+      contactName: "Brooke Nguyen",
+      assignedTo: "sarah@kirahome.demo",
+      startsAt: demoDateIso(0, 17, 0),
+      notes: "Garage conversion scope call.",
+      outcome: "Appointment set",
+      calendarSyncStatus: "Demo calendar",
+      createdAt: demoDateIso(-1, 9, 45),
+    },
+  ];
+}
+
+function createMarketerDemoActivities() {
+  return [
+    {
+      id: "demo-activity-1",
+      leadId: "demo-lead-1",
+      type: "email",
+      message: "Estimate recap sent to Maya Johnson and opened twice.",
+      createdAt: demoDateIso(-1, 15, 5),
+    },
+    {
+      id: "demo-activity-2",
+      leadId: "demo-lead-1",
+      type: "call",
+      message: "Call logged with Maya. Decision window depends on insurance confirmation.",
+      createdAt: demoDateIso(0, 9, 20),
+    },
+    {
+      id: "demo-activity-3",
+      leadId: "demo-lead-2",
+      type: "call",
+      message: "Connected with Caleb four days ago. He asked for proof photos and paint options.",
+      createdAt: demoDateIso(-4, 13, 10),
+    },
+    {
+      id: "demo-activity-4",
+      leadId: "demo-lead-3",
+      type: "appointment",
+      message: "Nia Brooks appointment booked through round robin for Marcus.",
+      createdAt: demoDateIso(-2, 12, 15),
+    },
+    {
+      id: "demo-activity-5",
+      leadId: "demo-lead-5",
+      type: "automation",
+      message: "Estimate follow-up automation started for Avery Flores.",
+      createdAt: demoDateIso(-7, 10, 30),
+    },
+    {
+      id: "demo-activity-6",
+      leadId: "demo-lead-6",
+      type: "won",
+      message: "Elena Carter marked won. Onboarding and review request queued.",
+      createdAt: demoDateIso(-1, 17, 25),
+    },
+    {
+      id: "demo-activity-7",
+      leadId: "demo-lead-8",
+      type: "call",
+      message: "Missed call and voicemail from Owen Patel. Return call recommended.",
+      createdAt: demoDateIso(0, 8, 12),
+    },
+    {
+      id: "demo-activity-8",
+      leadId: null,
+      type: "recruiting-import",
+      message: "Imported 3 Kira Recruit candidates into the CRM Recruiting Inbox.",
+      createdAt: demoDateIso(0, 8, 30),
+    },
+    {
+      id: "demo-activity-9",
+      leadId: null,
+      type: "lead-generator",
+      message: "Generated 4 DNC-safe residential lead rows from the Lead Generator app.",
+      createdAt: demoDateIso(0, 8, 45),
+    },
+  ];
+}
+
+function createMarketerDemoAutomationRuns() {
+  return [
+    {
+      id: "demo-run-1",
+      templateId: "proposal-close-plan",
+      templateName: "Estimate Reminder",
+      trigger: "stage-proposal",
+      leadId: "demo-lead-1",
+      leadName: "Maya Johnson",
+      stepCount: 4,
+      createdAt: demoDateIso(-1, 15, 6),
+    },
+    {
+      id: "demo-run-2",
+      templateId: "no-response-check-in",
+      templateName: "New Lead Follow-Up",
+      trigger: "new-lead",
+      leadId: "demo-lead-2",
+      leadName: "Caleb Stone",
+      stepCount: 3,
+      createdAt: demoDateIso(-4, 13, 12),
+    },
+    {
+      id: "demo-run-3",
+      templateId: "won-onboarding",
+      templateName: "Job Completion",
+      trigger: "won-deal",
+      leadId: "demo-lead-6",
+      leadName: "Elena Carter",
+      stepCount: 5,
+      createdAt: demoDateIso(-1, 17, 26),
+    },
+  ];
+}
+
+function createMarketerDemoCandidates() {
+  return [
+    {
+      id: "demo-candidate-alyssa",
+      externalId: "demo-candidate-alyssa",
+      name: "Alyssa Moreno",
+      email: "alyssa.moreno@example.test",
+      phone: "(512) 555-0142",
+      role: "Inside Sales Dialer",
+      source: "Indeed",
+      interviewStatus: "Booked",
+      interviewAt: demoDateIso(1, 13, 0),
+      score: 94,
+      nextAction: "Prep interview call and confirm dialer schedule.",
+      experience: "2 years appointment setting, Spanish bilingual.",
+      skills: ["Phone confidence", "CRM notes", "Objection handling"],
+      syncedAt: demoDateIso(0, 8, 30),
+    },
+    {
+      id: "demo-candidate-derek",
+      externalId: "demo-candidate-derek",
+      name: "Derek Shaw",
+      email: "derek.shaw@example.test",
+      phone: "(214) 555-0188",
+      role: "Closer",
+      source: "MonsterZip",
+      interviewStatus: "Needs review",
+      score: 87,
+      nextAction: "Review sales samples, then book closer screen.",
+      experience: "Former home services estimator with outbound follow-up experience.",
+      skills: ["Estimates", "Pipeline discipline", "CRM logging"],
+      syncedAt: demoDateIso(0, 8, 32),
+    },
+    {
+      id: "demo-candidate-priya",
+      externalId: "demo-candidate-priya",
+      name: "Priya Raman",
+      email: "priya.raman@example.test",
+      phone: "(469) 555-0170",
+      role: "Setter",
+      source: "Kira Recruit",
+      interviewStatus: "New",
+      score: 82,
+      nextAction: "Send interview invite and temporary password.",
+      experience: "Retail sales lead with weekend availability.",
+      skills: ["Customer service", "Follow-up texting"],
+      syncedAt: demoDateIso(0, 8, 35),
+    },
+  ];
+}
+
+function createMarketerDemoSchedule() {
+  return scheduleDays.reduce((schedule, day) => {
+    scheduleHours.forEach((hour) => {
+      if (["Mon", "Tue", "Wed", "Thu", "Fri"].includes(day) && hour >= 9 && hour <= 17) {
+        schedule[`${day}-${hour}`] = true;
+      }
+    });
+    return schedule;
+  }, {});
+}
+
+function createMarketerDemoAccount() {
+  return normalizedAccount({
+    subscription: {
+      plan: "scale",
+      status: "active",
+      seatLimit: 25,
+      trialEndsAt: "",
+      currentPeriodEnd: demoDateIso(30, 0, 0),
+      stripeCustomerId: "cus_demo_marketer",
+      stripeSubscriptionId: "sub_demo_scale",
+    },
+    members: [
+      {
+        id: "demo-member-owner",
+        email: "cameron@kirahome.demo",
+        role: "owner",
+        teamFunction: "owner",
+        status: "active",
+      },
+      {
+        id: "demo-member-manager",
+        email: "john@kirahome.demo",
+        role: "admin",
+        teamFunction: "manager",
+        status: "active",
+      },
+      {
+        id: "demo-member-closer-sarah",
+        email: "sarah@kirahome.demo",
+        role: "manager",
+        teamFunction: "closer",
+        status: "active",
+      },
+      {
+        id: "demo-member-closer-marcus",
+        email: "marcus@kirahome.demo",
+        role: "manager",
+        teamFunction: "closer",
+        status: "active",
+      },
+      {
+        id: "demo-member-dialer-maya",
+        email: "maya.rep@kirahome.demo",
+        role: "member",
+        teamFunction: "dialer",
+        status: "active",
+      },
+      {
+        id: "demo-member-dialer-eli",
+        email: "eli.rep@kirahome.demo",
+        role: "member",
+        teamFunction: "dialer",
+        status: "active",
+      },
+    ],
+    invites: [
+      {
+        id: "demo-invite-setter",
+        email: "new.setter@example.test",
+        role: "member",
+        teamFunction: "dialer",
+        status: "pending",
+        temporaryPassword: "DemoPass-4821",
+        inviteLink: `${window.location.origin}${window.location.pathname}?demo=1&invite=demo-setter`,
+        expiresAt: demoDateIso(7, 17, 0),
+        createdAt: demoDateIso(0, 9, 10),
+      },
+    ],
+    auditEvents: [
+      {
+        id: "demo-audit-1",
+        action: "Demo workspace opened",
+        detail: "Investor-ready sample workspace loaded from local demo data.",
+        createdAt: demoDateIso(0, 8, 0),
+      },
+      {
+        id: "demo-audit-2",
+        action: "Invite sent",
+        detail: "Temporary-password invite staged for new.setter@example.test.",
+        createdAt: demoDateIso(0, 9, 10),
+      },
+      {
+        id: "demo-audit-3",
+        action: "Checkout verified",
+        detail: "Scale plan subscription state synced in demo mode.",
+        createdAt: demoDateIso(0, 9, 20),
+      },
+    ],
+  });
+}
+
+function installMarketerDemoPreferences() {
+  localStorage.setItem(
+    workspaceSetupKey(),
+    JSON.stringify({
+      name: "Kira Home Demo Co",
+      type: "Team",
+      goal: "Close every high-intent follow-up today",
+      ownerEmail: "cameron@kirahome.demo",
+      industry: "Residential home improvement",
+      timezone: "America/Chicago",
+      defaultSource: "Residential Lead Gen",
+    }),
+  );
+  localStorage.setItem(
+    customizationPreferenceKey(),
+    JSON.stringify({
+      ...defaultCustomizationPreferences,
+      themeMode: "light",
+      density: "comfortable",
+      defaultLandingPage: "pipeline",
+      companyName: "Kira Home Demo Co",
+      logoName: "Demo workspace",
+    }),
+  );
+  const recruitingFeed = {
+    app: "Kira Recruit",
+    version: 1,
+    syncedAt: demoDateIso(0, 8, 35),
+    job: { title: "Residential sales team" },
+    recruits: createMarketerDemoCandidates(),
+    interviews: [
+      {
+        id: "demo-interview-alyssa",
+        candidateId: "demo-candidate-alyssa",
+        email: "alyssa.moreno@example.test",
+        status: "Booked",
+        startsAt: demoDateIso(1, 13, 0),
+      },
+    ],
+  };
+  localStorage.setItem(recruitingLegacyFeedKey, JSON.stringify(recruitingFeed));
+  localStorage.setItem(recruitingSharedFeedKey, JSON.stringify(recruitingFeed));
+  localStorage.setItem(onboardingDismissalKey(), "true");
+  localStorage.removeItem(temporaryPasswordRequirementKey());
+  localStorage.removeItem(automatedOnboardingStartedKey());
+}
+
+function demoDateIso(dayOffset, hour, minute = 0) {
+  const date = new Date();
+  date.setDate(date.getDate() + dayOffset);
+  date.setHours(hour, minute, 0, 0);
+  return date.toISOString();
+}
+
 function scaleTestNextAction(stage, project) {
   if (stage === "won") return `Send onboarding checklist for ${project}.`;
   if (stage === "proposal") return `Closer should review estimate and ask for the decision timeline on ${project}.`;
@@ -9381,6 +10495,18 @@ async function dismissOnboarding() {
 
 function onboardingDismissalKey() {
   return currentUser ? `closepilot-onboarding-dismissed-${currentUser.id}` : "closepilot-onboarding-dismissed-demo";
+}
+
+function publicDemoSessionKey() {
+  return "closepilot-public-demo-session";
+}
+
+function temporaryPasswordRequirementKey() {
+  return currentUser ? `closepilot-temporary-password-required-${currentUser.id}` : "closepilot-temporary-password-required-demo";
+}
+
+function automatedOnboardingStartedKey() {
+  return currentUser ? `closepilot-automated-onboarding-started-${currentUser.id}` : "closepilot-automated-onboarding-started-demo";
 }
 
 function workspaceSetupKey() {
@@ -9470,6 +10596,10 @@ async function persistWorkspaceSetup(settings) {
 
 async function saveAdminWorkspaceSettings(event) {
   event.preventDefault();
+  if (!canUseAdminAction("workspace-settings")) {
+    adminMessage.textContent = "You do not have access to workspace settings. Ask an admin to update account-level settings.";
+    return;
+  }
   const settings = {
     ...workspaceSetupSettings(),
     name: adminBusinessName.value.trim() || "Personal workspace",
@@ -9492,6 +10622,10 @@ async function saveAdminWorkspaceSettings(event) {
 async function changeSubscriptionPlan(planId) {
   const plan = planCatalog[planId];
   if (!plan) return;
+  if (!canUseAdminAction("billing")) {
+    adminMessage.textContent = "You do not have access to change billing. Ask an admin to update the plan.";
+    return;
+  }
 
   const account = accountState();
   await store.updateSaasAccount({
@@ -9509,6 +10643,10 @@ async function changeSubscriptionPlan(planId) {
 }
 
 async function openCheckout() {
+  if (!canUseAdminAction("billing")) {
+    adminMessage.textContent = "You do not have access to billing checkout. Ask an admin to enable this.";
+    return;
+  }
   const account = accountState();
   const context = workspaceApiContext();
   openCheckoutButton.disabled = true;
@@ -9539,6 +10677,10 @@ async function openCheckout() {
 }
 
 async function openBillingPortal() {
+  if (!canUseAdminAction("billing")) {
+    adminMessage.textContent = "You do not have access to the billing portal. Ask an admin for help.";
+    return;
+  }
   const account = accountState();
   openBillingPortalButton.disabled = true;
   adminMessage.textContent = "Opening secure billing portal...";
@@ -9567,6 +10709,10 @@ async function openBillingPortal() {
 
 async function inviteTeamMember(event) {
   event.preventDefault();
+  if (!canUseAdminAction("team")) {
+    adminMessage.textContent = "You do not have access to team management. Ask an admin to invite teammates.";
+    return;
+  }
   const email = inviteEmail.value.trim().toLowerCase();
   if (!isValidInviteEmail(email)) {
     adminMessage.textContent = "Enter a valid email address before sending an invite.";
@@ -9594,12 +10740,16 @@ async function inviteTeamMember(event) {
 
   const invite = await store.createTeamInvite({
     email,
-    role: inviteRole.value,
+    role: normalizeRoleId(inviteRole.value),
+    teamFunction: inviteFunction?.value || "none",
     status: "pending",
   });
-  await logAuditEvent("Invite staged", `${email} invited as ${inviteRole.value}.`);
+  const functionCopy =
+    inviteFunction?.value && inviteFunction.value !== "none" ? ` with ${salesFunctionCatalog[inviteFunction.value].label} label` : "";
+  await logAuditEvent("Invite staged", `${email} invited as ${teamRoleCatalog[normalizeRoleId(inviteRole.value)].label}${functionCopy}.`);
   inviteEmail.value = "";
-  inviteRole.value = "rep";
+  inviteRole.value = "member";
+  if (inviteFunction) inviteFunction.value = "none";
   renderInviteRoleGuidance();
   adminMessage.textContent = `Invite staged for ${email}. Sending invite...`;
   await sendInviteThroughBackend(invite);
@@ -9622,16 +10772,24 @@ async function sendInviteThroughBackend(invite) {
       ...workspaceApiContext(),
       inviteId: invite.id,
       email: invite.email,
-      role: invite.role,
+      role: normalizeRoleId(invite.role),
+      teamFunction: invite.teamFunction || "none",
     });
 
     if (result.inviteLink) {
-      await copyTextToClipboard(result.inviteLink);
+      const shareText = result.temporaryPassword
+        ? `${result.inviteLink}\nTemporary password: ${result.temporaryPassword}`
+        : result.inviteLink;
+      await copyTextToClipboard(shareText);
       await maybeUpdateTeamInvite({
         ...invite,
         inviteLink: result.inviteLink,
+        status: invite.status || "pending",
         expiresAt: result.expiresAt || invite.expiresAt || "",
       });
+      if (inviteLinkFallback) {
+        inviteLinkFallback.textContent = shareText;
+      }
     }
 
     if (result.sent) {
@@ -9639,7 +10797,8 @@ async function sendInviteThroughBackend(invite) {
       adminMessage.textContent = result.message || `Invite email sent to ${invite.email}.`;
     } else {
       await logAuditEvent("Invite link generated", `${invite.email} invite link generated for manual sharing.`);
-      adminMessage.textContent = `${result.message || "Invite link generated."} ${result.inviteLink || ""}`.trim();
+      const passwordMessage = result.temporaryPassword ? ` Temporary password: ${result.temporaryPassword}` : "";
+      adminMessage.textContent = `${result.message || "Invite link generated."} ${result.inviteLink || ""}${passwordMessage}`.trim();
     }
   } catch (error) {
     const fallbackLink = `${window.location.origin}${window.location.pathname}?invite=demo-${invite.id}`;
@@ -9712,10 +10871,13 @@ function backendDemoFallback(path, payload = {}) {
   }
   if (path.includes("/invites/send")) {
     const token = `demo-${payload.inviteId || crypto.randomUUID()}`;
+    const temporaryPassword = `Kira-${String(token).slice(-4)}-Demo!7`;
     return {
       demo: true,
       sent: false,
       inviteLink: `${window.location.origin}${window.location.pathname}?invite=${token}`,
+      temporaryPassword,
+      requiresPasswordChange: true,
       message: "Invite link generated. Add RESEND_API_KEY and INVITE_FROM_EMAIL to send email automatically.",
     };
   }
@@ -11041,7 +12203,7 @@ function createSupabaseStore(client, user) {
       ] =
         await Promise.all([
           client.from("workspace_subscriptions").select("*").eq("workspace_id", workspaceId).maybeSingle(),
-          client.from("workspace_members").select("user_id, role").eq("workspace_id", workspaceId),
+          client.from("workspace_members").select("user_id, role, team_function").eq("workspace_id", workspaceId),
           client.from("workspace_invitations").select("*").eq("workspace_id", workspaceId).order("created_at", { ascending: false }),
           client.from("workspace_audit_events").select("*").eq("workspace_id", workspaceId).order("created_at", { ascending: false }).limit(25),
         ]);
@@ -11068,6 +12230,7 @@ function createSupabaseStore(client, user) {
           id: member.user_id,
           email: member.user_id === user.id ? user.email || "Current user" : `member-${member.user_id.slice(0, 8)}@workspace.local`,
           role: member.role,
+          teamFunction: member.team_function || "none",
           status: "active",
         })),
         invites: (invites || []).map(fromInviteRow),
@@ -11321,6 +12484,7 @@ function createSupabaseStore(client, user) {
           workspace_id: workspaceId,
           email: invite.email,
           role: invite.role,
+          team_function: invite.teamFunction || null,
           status: invite.status,
         })
         .select("*")
@@ -11343,6 +12507,7 @@ function createSupabaseStore(client, user) {
     async updateTeamInvite(invite) {
       const patch = {
         status: invite.status,
+        team_function: invite.teamFunction || null,
         expires_at: invite.expiresAt || null,
         accepted_at: invite.acceptedAt || null,
       };
@@ -11510,6 +12675,7 @@ function fromInviteRow(row) {
     id: row.id,
     email: row.email,
     role: row.role,
+    teamFunction: row.team_function || "none",
     status: row.status,
     createdAt: row.created_at,
     expiresAt: row.expires_at,
@@ -11682,6 +12848,16 @@ function accountState() {
 function normalizedAccount(account = {}) {
   const plan = planCatalog[account.subscription?.plan] ? account.subscription.plan : "starter";
   const ownerEmail = currentUser?.email || account.members?.[0]?.email || "owner@kira.local";
+  const normalizeAccountMember = (member) => ({
+    ...member,
+    role: normalizeRoleId(member.role),
+    teamFunction: salesFunctionCatalog[member.teamFunction] ? member.teamFunction : "none",
+  });
+  const normalizeAccountInvite = (invite) => ({
+    ...invite,
+    role: normalizeRoleId(invite.role),
+    teamFunction: salesFunctionCatalog[invite.teamFunction] ? invite.teamFunction : "none",
+  });
   return {
     subscription: {
       plan,
@@ -11693,16 +12869,17 @@ function normalizedAccount(account = {}) {
       stripeSubscriptionId: account.subscription?.stripeSubscriptionId || "",
     },
     members: Array.isArray(account.members) && account.members.length
-      ? account.members
+      ? account.members.map(normalizeAccountMember)
       : [
           {
             id: "member-owner",
             email: ownerEmail,
             role: "owner",
+            teamFunction: "none",
             status: "active",
           },
     ],
-    invites: Array.isArray(account.invites) ? account.invites : [],
+    invites: Array.isArray(account.invites) ? account.invites.map(normalizeAccountInvite) : [],
     auditEvents: Array.isArray(account.auditEvents) ? account.auditEvents : [],
   };
 }
@@ -11716,6 +12893,7 @@ function isMissingSaasTable(error) {
     error?.code === "42P01" ||
     error?.message?.includes("workspace_subscriptions") ||
     error?.message?.includes("workspace_invitations") ||
+    error?.message?.includes("team_function") ||
     error?.message?.includes("workspace_audit_events")
   );
 }
@@ -11927,6 +13105,10 @@ function escapeHtml(value) {
     const entities = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
     return entities[char];
   });
+}
+
+function escapeAttribute(value) {
+  return escapeHtml(value).replaceAll("`", "&#096;");
 }
 
 boot();
