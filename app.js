@@ -2145,6 +2145,12 @@ function currentWorkspaceMember() {
   );
 }
 
+function currentUserEmail() {
+  return String(currentUser?.email || currentWorkspaceMember().email || workspaceSetupSettings().ownerEmail || "")
+    .trim()
+    .toLowerCase();
+}
+
 function currentAccessRole() {
   const rawDemoRoleOverride = localStorage.getItem("closepilot-demo-role") || "";
   if (!currentUser && ["admin", "manager", "member"].includes(rawDemoRoleOverride)) {

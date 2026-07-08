@@ -549,7 +549,7 @@ create policy "Invited users can join workspaces"
       select 1
       from public.workspace_invitations invitation
       where invitation.workspace_id = workspace_members.workspace_id
-        and lower(invitation.email) = lower(auth.email())
+        and lower(invitation.email) = lower(coalesce(auth.jwt() ->> 'email', ''))
         and invitation.status = 'pending'
         and (invitation.expires_at is null or invitation.expires_at > now())
     )
@@ -621,7 +621,7 @@ create policy "Members can read workspace settings"
 create policy "Invited users can read their own pending invitations"
   on public.workspace_invitations for select
   using (
-    lower(email) = lower(auth.email())
+    lower(email) = lower(coalesce(auth.jwt() ->> 'email', ''))
     and status = 'pending'
     and (expires_at is null or expires_at > now())
   );
