@@ -131,7 +131,7 @@
         <button class="mobile-quick-action" id="mobileQuickAction" type="button" aria-label="Add lead">+ Lead</button>
 
         <section class="daily-command-center" id="dailyCommandCenter" data-page="pipeline" aria-labelledby="dailyCommandHeading">
-          <section class="dashboard-greeting" aria-labelledby="dailyCommandHeading">
+          <section class="dashboard-greeting" id="dashboardGreetingWidget" aria-labelledby="dailyCommandHeading">
             <div>
               <p class="eyebrow">Daily command center</p>
               <h2 id="dailyCommandHeading">Good Morning, Cameron</h2>
@@ -381,27 +381,25 @@
             </div>
           </section>
 
-          <section class="dashboard-split">
-            <section class="dashboard-section" id="teamActivityWidget" aria-labelledby="teamActivityHeading">
-              <div class="section-heading">
-                <div>
-                  <p class="eyebrow">Team activity</p>
-                  <h2 id="teamActivityHeading">Recent activity</h2>
-                </div>
-                <span class="soft-pill">Automation saved <strong id="automationSaved">0h</strong></span>
+          <section class="dashboard-section" id="teamActivityWidget" aria-labelledby="teamActivityHeading">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Team activity</p>
+                <h2 id="teamActivityHeading">Recent activity</h2>
               </div>
-              <div class="dashboard-activity-feed" id="dashboardActivityFeed"></div>
-            </section>
+              <span class="soft-pill">Automation saved <strong id="automationSaved">0h</strong></span>
+            </div>
+            <div class="dashboard-activity-feed" id="dashboardActivityFeed"></div>
+          </section>
 
-            <section class="dashboard-section" id="dashboardCalendarWidget" aria-labelledby="dashboardCalendarHeading">
-              <div class="section-heading">
-                <div>
-                  <p class="eyebrow">Calendar</p>
-                  <h2 id="dashboardCalendarHeading">Today's schedule</h2>
-                </div>
+          <section class="dashboard-section" id="dashboardCalendarWidget" aria-labelledby="dashboardCalendarHeading">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Calendar</p>
+                <h2 id="dashboardCalendarHeading">Today's schedule</h2>
               </div>
-              <div class="dashboard-schedule" id="dashboardSchedule"></div>
-            </section>
+            </div>
+            <div class="dashboard-schedule" id="dashboardSchedule"></div>
           </section>
         </section>
 
@@ -1391,7 +1389,9 @@
                     Dashboard layout
                     <select id="customDashboardLayout">
                       <option value="command">Command center</option>
+                      <option value="balanced">Balanced grid</option>
                       <option value="compact">Compact operator</option>
+                      <option value="focus">Focus stack</option>
                     </select>
                   </label>
                   <label>
@@ -1418,15 +1418,26 @@
                 </fieldset>
                 <fieldset class="customization-widget-fieldset" data-settings-section="dashboard">
                   <legend>Visible dashboard widgets</legend>
+                  <label><input id="widgetGreeting" type="checkbox" /> Greeting</label>
                   <label><input id="widgetFocus" type="checkbox" /> Today's Focus</label>
+                  <label><input id="widgetFollowups" type="checkbox" /> Follow-Up Queue</label>
                   <label><input id="widgetHealth" type="checkbox" /> Opportunity Health</label>
                   <label><input id="widgetCopilot" type="checkbox" /> AI Copilot</label>
                   <label><input id="widgetCommunications" type="checkbox" /> Communications</label>
                   <label><input id="widgetTime" type="checkbox" /> Time Saved</label>
                   <label><input id="widgetRecommendations" type="checkbox" /> AI Recommendations</label>
                   <label><input id="widgetRevenue" type="checkbox" /> Revenue</label>
+                  <label><input id="widgetSales" type="checkbox" /> Sales Activity</label>
                   <label><input id="widgetActivity" type="checkbox" /> Team Activity</label>
                   <label><input id="widgetCalendar" type="checkbox" /> Calendar</label>
+                  <div class="dashboard-template-controls">
+                    <div>
+                      <strong>Dashboard templates</strong>
+                      <span>Start with a proven layout, then personalize widget order and size.</span>
+                    </div>
+                    <div class="dashboard-template-grid" id="dashboardTemplateGrid" aria-label="Dashboard templates"></div>
+                  </div>
+                  <div class="dashboard-widget-builder" id="dashboardWidgetBuilder" aria-label="Personal dashboard widget layout"></div>
                 </fieldset>
                 <fieldset data-settings-section="appearance">
                   <legend>Branding</legend>

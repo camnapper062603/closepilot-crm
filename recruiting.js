@@ -95,9 +95,12 @@ let state = loadState();
 let activeSubpage = "dashboard";
 let selectedWorkerIds = new Set();
 let selectedPayrollRunIds = new Set();
+let accessContext = recruitingAccessContext();
 
 const elements = {
   subpageNav: document.querySelector("#recruitSubpageNav"),
+  accessBanner: document.querySelector("#recruitingAccessBanner"),
+  syncMode: document.querySelector("#syncMode"),
   livePostings: document.querySelector("#livePostings"),
   applicantCount: document.querySelector("#applicantCount"),
   qualifiedCount: document.querySelector("#qualifiedCount"),
@@ -362,6 +365,7 @@ function readJobForm() {
 }
 
 function publishJob() {
+  if (!guardRecruitingAccess("list jobs")) return;
   if (!elements.jobForm.reportValidity()) return;
   const now = new Date().toISOString();
   state.job = { ...readJobForm(), status: "Live", listedAt: now };
@@ -378,6 +382,7 @@ function publishJob() {
 
 function saveIntegration(event) {
   event.preventDefault();
+  if (!guardRecruitingAccess("save job board integrations")) return;
   const provider = elements.integrationProvider.value;
   const existing = state.integrations[provider] || emptyIntegration(provider);
   const tokenValue = elements.integrationApiToken.value.trim();
@@ -401,6 +406,7 @@ function saveIntegration(event) {
 }
 
 function testIntegrationConnection() {
+  if (!guardRecruitingAccess("test job board connections")) return;
   const provider = elements.integrationProvider.value;
   const integration = state.integrations[provider] || emptyIntegration(provider);
   if (!integration.accountId || !integration.email || !integration.tokenConfigured) {
@@ -418,6 +424,7 @@ function testIntegrationConnection() {
 }
 
 function refreshBoards() {
+  if (!guardRecruitingAccess("refresh job boards")) return;
   const now = new Date().toISOString();
   state.postings = state.postings.map((posting, index) => ({
     ...posting,
@@ -431,6 +438,7 @@ function refreshBoards() {
 }
 
 function syncApplicants() {
+  if (!guardRecruitingAccess("sync applicants")) return;
   const existingEmails = new Set(state.candidates.map((candidate) => candidate.email));
   const nextCandidates = candidatePool
     .filter((candidate) => !existingEmails.has(candidate.email))
@@ -457,6 +465,7 @@ function syncApplicants() {
 }
 
 function bookInterviews() {
+  if (!guardRecruitingAccess("book interviews")) return;
   const qualified = [...state.candidates]
     .filter((candidate) => candidate.score >= 75 && !candidate.bookedInterviewId)
     .sort((left, right) => right.score - left.score);
@@ -512,6 +521,7 @@ function nextInterviewSlots(time, count) {
 }
 
 function syncCrmFeed() {
+  if (!guardRecruitingAccess("sync CRM feed")) return;
   const feed = buildFeed();
   localStorage.setItem(crmFeedKey, JSON.stringify(feed));
   localStorage.setItem(sharedRecruitingFeedKey, JSON.stringify(feed));
@@ -575,6 +585,7 @@ function recruitNextAction(candidate, interview) {
 }
 
 function downloadFeed() {
+  if (!guardRecruitingAccess("download the recruiting feed")) return;
   const feed = buildFeed();
   const blob = new Blob([JSON.stringify(feed, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -601,6 +612,8 @@ function resetRecruiting() {
 }
 
 function render() {
+  accessContext = recruitingAccessContext();
+  renderAccessState();
   renderMetrics();
   renderBoards();
   renderIntegrations();
@@ -610,6 +623,37 @@ function render() {
   renderPayroll();
   renderFeed();
   renderSubpages();
+}
+
+function recruitingAccessContext() {
+  const params = new URLSearchParams(window.location.search);
+  const role = String(params.get("role") || localStorage.getItem("closepilot-demo-role") || "admin").toLowerCase();
+  const demo = params.get("demo") === "1" || (!params.has("role") && !params.has("addon"));
+  const enabled = params.get("addon") === "enabled" || demo || ["owner", "admin", "manager"].includes(role);
+  return {
+    role,
+    demo,
+    enabled,
+    locked: !demo && !enabled,
+    label: demo ? "Demo add-on" : enabled ? "Add-on enabled" : "Locked add-on",
+  };
+}
+
+function renderAccessState() {
+  elements.syncMode.textContent = accessContext.label;
+  elements.accessBanner.hidden = !accessContext.locked;
+  document.body.dataset.addonAccess = accessContext.locked ? "locked" : accessContext.demo ? "demo" : "enabled";
+}
+
+function guardRecruitingAccess(action) {
+  if (!accessContext.locked) return true;
+  const message = `Kira Recruit is a paid add-on. Ask an admin to enable it before you ${action}.`;
+  elements.jobMessage.textContent = message;
+  elements.integrationMessage.textContent = message;
+  elements.feedMessage.textContent = message;
+  elements.onboardingMessage.textContent = message;
+  elements.payrollMessage.textContent = message;
+  return false;
 }
 
 function routeFromHash() {
@@ -797,6 +841,7 @@ function renderFeed() {
 
 function createOnboardingPacket(event) {
   event.preventDefault();
+  if (!guardRecruitingAccess("create onboarding packets")) return;
   if (!elements.onboardingForm.reportValidity()) return;
   const worker = readWorkerForm();
   const existingIndex = state.onboardingWorkers.findIndex((item) => item.email.toLowerCase() === worker.email.toLowerCase());
@@ -840,6 +885,7 @@ function sanitizeSensitiveNotes(value) {
 }
 
 function sendLatestOnboardingPacket() {
+  if (!guardRecruitingAccess("send onboarding packets")) return;
   if (!state.onboardingWorkers.length) {
     elements.onboardingMessage.textContent = "Create a worker packet before sending an onboarding link.";
     return;
@@ -864,6 +910,7 @@ function clearWorkerSelection() {
 }
 
 function bulkSendOnboardingPackets() {
+  if (!guardRecruitingAccess("bulk email onboarding packets")) return;
   const selected = selectedOnboardingWorkers();
   if (!selected.length) {
     elements.onboardingMessage.textContent = "Select at least one worker before emailing packets.";
@@ -977,6 +1024,7 @@ function renderWorkerCard(worker) {
 
 function savePayrollProvider(event) {
   event.preventDefault();
+  if (!guardRecruitingAccess("save payroll providers")) return;
   const tokenValue = elements.payrollApiToken.value.trim();
   state.payrollProvider = {
     provider: elements.payrollProvider.value,
@@ -993,6 +1041,7 @@ function savePayrollProvider(event) {
 
 function stagePayrollRun(event) {
   event.preventDefault();
+  if (!guardRecruitingAccess("stage payroll runs")) return;
   if (!elements.payrollRunForm.reportValidity()) return;
   const worker = state.onboardingWorkers.find((item) => item.id === elements.payrollWorker.value);
   if (!worker) {
@@ -1022,6 +1071,7 @@ function stagePayrollRun(event) {
 }
 
 function markLatestPayrollPaid() {
+  if (!guardRecruitingAccess("mark payroll paid")) return;
   const run = state.payrollRuns.find((item) => item.status !== "Paid");
   if (!run) {
     elements.payrollMessage.textContent = "No staged payroll run is waiting for payment.";
@@ -1045,6 +1095,7 @@ function clearPayrollSelection() {
 }
 
 function emailSelectedPayrollRuns() {
+  if (!guardRecruitingAccess("email payroll summaries")) return;
   const selected = selectedPayrollRuns();
   if (!selected.length) {
     elements.payrollMessage.textContent = "Select at least one payroll run before emailing summaries.";
@@ -1069,6 +1120,7 @@ function emailSelectedPayrollRuns() {
 }
 
 function markSelectedPayrollRunsPaid() {
+  if (!guardRecruitingAccess("mark payroll runs paid")) return;
   const selected = selectedPayrollRuns().filter((run) => run.status !== "Paid");
   if (!selected.length) {
     elements.payrollMessage.textContent = "Select at least one unpaid payroll run.";

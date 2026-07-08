@@ -66,6 +66,22 @@ npm test
 
 The included `vercel.json` already applies those settings and routes `/recruiting` and `/lead-generator` to the companion apps.
 
+## Platform Modules
+
+| Module | Status | Notes |
+| --- | --- | --- |
+| ClosePilot CRM | Core | Daily Command Center, Flow Mode, Communications, Automations, AI Sales Manager, Admin, billing/invite backend endpoints, and demo fallback |
+| Kira Recruit | Paid add-on | Demo is public, enabled workspaces can use the workflow, locked members see View Demo / Ask Admin to Enable |
+| Residential Lead Generator | Paid add-on | Demo is public, generation/export actions require enabled access, exports add audit rows and compliance reminders |
+
+Open demos:
+
+```text
+http://localhost:4173/
+http://localhost:4173/recruiting.html?demo=1
+http://localhost:4173/lead-generator?demo=1
+```
+
 ## Mobile App Store Packaging
 
 The CRM, Kira Recruit, and Lead Generator are packaged as one Capacitor app suite named Kira Home.
@@ -196,6 +212,14 @@ Local demo mode is still fully supported:
 - Missing Resend variables: invites are staged locally and a fallback invite link plus demo temporary password is copied/shown.
 - Missing Google Calendar variables or cloud workspace: appointments remain in the CRM calendar.
 - Missing production backend on a static host: frontend calls fail gracefully with demo messages.
+- Public demo access: visitors can explore without login, but demo mode does not cloud sync or unlock paid production usage.
+- Locked add-ons: Kira Recruit and Residential Lead Generator show upgrade/enable prompts for non-enabled roles.
+
+## Live Vs Demo Vs Manual
+
+- Live/back-end-ready: CRM workflows, role navigation, Supabase-ready persistence, Stripe base plan endpoints, Resend invite endpoint, Google Calendar endpoint, AI/SMS/email endpoint fallbacks.
+- Demo/fallback: AI when `OPENAI_API_KEY` is missing, SMS/email when Twilio/provider env vars are missing, billing when Stripe env vars are missing, calendar when OAuth is missing.
+- Manual/beta: job board posting, payroll provider payout, lead enrichment/skip trace vendors, DNC vendor contracts, add-on checkout purchase flows, compliance/legal review.
 
 ## Production Deployment Checklist
 

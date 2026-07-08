@@ -62,6 +62,23 @@ test('runs the auto recruiting workflow and creates a CRM feed', async ({ page }
   expect(feed.interviews.map((interview) => new Date(interview.startsAt).getDay()).every((day) => [1, 3, 5].includes(day))).toBe(true);
 });
 
+test('shows a paid add-on locked state for non-enabled members', async ({ page }) => {
+  await page.goto('/recruiting.html?role=member', { waitUntil: 'domcontentloaded' });
+
+  await expect(page.locator('#syncMode')).toHaveText('Locked add-on');
+  await expect(page.locator('#recruitingAccessBanner')).toBeVisible();
+  await expect(page.locator('#recruitingAccessBanner')).toContainText('Kira Recruit is a paid add-on');
+  await expect(page.locator('#recruitingAccessBanner').getByRole('link', { name: 'View Demo' })).toHaveAttribute('href', '/recruiting.html?demo=1');
+
+  await page.getByRole('button', { name: 'Job details' }).click();
+  await page.getByRole('button', { name: 'List job' }).click();
+  await expect(page.locator('#jobMessage')).toContainText('Kira Recruit is a paid add-on');
+
+  await page.getByRole('button', { name: 'Recruiting feed' }).click();
+  await page.getByRole('button', { name: 'Sync CRM feed' }).click();
+  await expect(page.locator('#feedMessage')).toContainText('Kira Recruit is a paid add-on');
+});
+
 test('configures job board integrations and stages onboarding payroll', async ({ page }) => {
   await page.getByRole('button', { name: 'Integrations' }).click();
   await expect(page.getByRole('heading', { name: 'Indeed and MonsterZip integrations' })).toBeVisible();

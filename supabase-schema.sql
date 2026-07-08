@@ -314,6 +314,9 @@ alter table if exists public.workspace_invitations
 alter table if exists public.workspace_members
   add column if not exists team_function text;
 
+alter table if exists public.leads
+  add column if not exists assigned_to text;
+
 alter table if exists public.workspace_members
   drop constraint if exists workspace_members_role_check,
   add constraint workspace_members_role_check check (role in ('owner', 'admin', 'manager', 'member'));
@@ -399,6 +402,42 @@ as $$
   );
 $$;
 
+create or replace function public.is_workspace_admin(target_workspace_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.workspaces
+    where id = target_workspace_id
+      and owner_id = auth.uid()
+  )
+  or exists (
+    select 1
+    from public.workspace_members
+    where workspace_id = target_workspace_id
+      and user_id = auth.uid()
+      and role in ('owner', 'admin')
+  );
+$$;
+
+create or replace function public.is_workspace_manager(target_workspace_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.workspace_members
+    where workspace_id = target_workspace_id
+      and user_id = auth.uid()
+      and role in ('owner', 'admin', 'manager')
+  );
+$$;
+
 revoke execute on function public.is_workspace_member(uuid) from public;
 revoke execute on function public.is_workspace_member(uuid) from anon;
 grant execute on function public.is_workspace_member(uuid) to authenticated;
@@ -406,6 +445,14 @@ grant execute on function public.is_workspace_member(uuid) to authenticated;
 revoke execute on function public.is_workspace_owner(uuid) from public;
 revoke execute on function public.is_workspace_owner(uuid) from anon;
 grant execute on function public.is_workspace_owner(uuid) to authenticated;
+
+revoke execute on function public.is_workspace_admin(uuid) from public;
+revoke execute on function public.is_workspace_admin(uuid) from anon;
+grant execute on function public.is_workspace_admin(uuid) to authenticated;
+
+revoke execute on function public.is_workspace_manager(uuid) from public;
+revoke execute on function public.is_workspace_manager(uuid) from anon;
+grant execute on function public.is_workspace_manager(uuid) to authenticated;
 
 do $$
 begin
@@ -454,6 +501,20 @@ drop policy if exists "Members can manage onboarding state" on public.onboarding
 drop policy if exists "Members can manage workspace settings" on public.workspace_settings;
 drop policy if exists "Members can manage integration settings" on public.integration_settings;
 drop policy if exists "Members can manage calendar connections" on public.calendar_connections;
+drop policy if exists "Members can read calendar connections" on public.calendar_connections;
+drop policy if exists "Admins can manage calendar connections" on public.calendar_connections;
+drop policy if exists "Admins can delete leads" on public.leads;
+drop policy if exists "Members can read automations" on public.automations;
+drop policy if exists "Managers can manage automations" on public.automations;
+drop policy if exists "Managers can manage recruiting candidates" on public.recruiting_candidates;
+drop policy if exists "Members can read subscriptions" on public.workspace_subscriptions;
+drop policy if exists "Admins can manage subscriptions" on public.workspace_subscriptions;
+drop policy if exists "Members can read invitations" on public.workspace_invitations;
+drop policy if exists "Admins can manage invitations" on public.workspace_invitations;
+drop policy if exists "Members can read workspace settings" on public.workspace_settings;
+drop policy if exists "Admins can manage workspace settings" on public.workspace_settings;
+drop policy if exists "Members can read integration settings" on public.integration_settings;
+drop policy if exists "Admins can manage integration settings" on public.integration_settings;
 
 create policy "Users can see their workspaces"
   on public.workspaces for select
@@ -507,39 +568,55 @@ create policy "Members can update leads"
   using (public.is_workspace_member(workspace_id))
   with check (public.is_workspace_member(workspace_id));
 
-create policy "Members can delete leads"
+create policy "Admins can delete leads"
   on public.leads for delete
-  using (public.is_workspace_member(workspace_id));
+  using (public.is_workspace_admin(workspace_id));
 
 create policy "Members can manage tasks"
   on public.tasks for all
   using (public.is_workspace_member(workspace_id))
   with check (public.is_workspace_member(workspace_id));
 
-create policy "Members can manage automations"
+create policy "Members can read automations"
+  on public.automations for select
+  using (public.is_workspace_member(workspace_id));
+
+create policy "Managers can manage automations"
   on public.automations for all
-  using (public.is_workspace_member(workspace_id))
-  with check (public.is_workspace_member(workspace_id));
+  using (public.is_workspace_manager(workspace_id))
+  with check (public.is_workspace_manager(workspace_id));
 
 create policy "Members can manage activities"
   on public.activities for all
   using (public.is_workspace_member(workspace_id))
   with check (public.is_workspace_member(workspace_id));
 
-create policy "Members can manage recruiting candidates"
+create policy "Managers can manage recruiting candidates"
   on public.recruiting_candidates for all
-  using (public.is_workspace_member(workspace_id))
-  with check (public.is_workspace_member(workspace_id));
+  using (public.is_workspace_manager(workspace_id))
+  with check (public.is_workspace_manager(workspace_id));
 
-create policy "Members can manage subscriptions"
+create policy "Members can read subscriptions"
+  on public.workspace_subscriptions for select
+  using (public.is_workspace_member(workspace_id));
+
+create policy "Admins can manage subscriptions"
   on public.workspace_subscriptions for all
-  using (public.is_workspace_member(workspace_id))
-  with check (public.is_workspace_member(workspace_id));
+  using (public.is_workspace_admin(workspace_id))
+  with check (public.is_workspace_admin(workspace_id));
 
-create policy "Members can manage invitations"
+create policy "Members can read invitations"
+  on public.workspace_invitations for select
+  using (public.is_workspace_member(workspace_id));
+
+create policy "Admins can manage invitations"
   on public.workspace_invitations for all
-  using (public.is_workspace_member(workspace_id))
-  with check (public.is_workspace_member(workspace_id));
+  using (public.is_workspace_admin(workspace_id))
+  with check (public.is_workspace_admin(workspace_id));
+
+create policy "Members can read workspace settings"
+  on public.workspace_settings for select
+  using (public.is_workspace_member(workspace_id));
 
 create policy "Invited users can read their own pending invitations"
   on public.workspace_invitations for select
@@ -609,12 +686,25 @@ create policy "Members can manage onboarding state"
   using (public.is_workspace_member(workspace_id))
   with check (public.is_workspace_member(workspace_id));
 
-create policy "Members can manage workspace settings"
+create policy "Admins can manage workspace settings"
   on public.workspace_settings for all
-  using (public.is_workspace_member(workspace_id))
-  with check (public.is_workspace_member(workspace_id));
+  using (public.is_workspace_admin(workspace_id))
+  with check (public.is_workspace_admin(workspace_id));
 
-create policy "Members can manage integration settings"
+create policy "Members can read integration settings"
+  on public.integration_settings for select
+  using (public.is_workspace_member(workspace_id));
+
+create policy "Admins can manage integration settings"
   on public.integration_settings for all
-  using (public.is_workspace_member(workspace_id))
-  with check (public.is_workspace_member(workspace_id));
+  using (public.is_workspace_admin(workspace_id))
+  with check (public.is_workspace_admin(workspace_id));
+
+create policy "Members can read calendar connections"
+  on public.calendar_connections for select
+  using (public.is_workspace_member(workspace_id));
+
+create policy "Admins can manage calendar connections"
+  on public.calendar_connections for all
+  using (public.is_workspace_admin(workspace_id))
+  with check (public.is_workspace_admin(workspace_id));

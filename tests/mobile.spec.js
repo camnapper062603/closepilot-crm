@@ -90,3 +90,15 @@ test('Kira Recruit subpages adapt to a phone viewport', async ({ page }) => {
   await expect(page.locator('#applicants')).toBeVisible();
   await expectPageFitsViewport(page);
 });
+
+test('paid add-on locked states fit a phone viewport', async ({ page }) => {
+  await openMobile(page, '/lead-generator?role=member');
+  await expect(page.locator('#leadAccessBanner')).toBeVisible();
+  await expect(page.locator('#leadAccessBanner')).toContainText('Residential Lead Generator is a paid add-on');
+  await expectPageFitsViewport(page);
+
+  await openMobile(page, '/recruiting.html?role=member');
+  await expect(page.locator('#recruitingAccessBanner')).toBeVisible();
+  await expect(page.locator('#recruitingAccessBanner')).toContainText('Kira Recruit is a paid add-on');
+  await expectPageFitsViewport(page);
+});

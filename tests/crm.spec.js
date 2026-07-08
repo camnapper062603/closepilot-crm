@@ -23,7 +23,9 @@ async function navigateTo(page, label, hash) {
 async function openSubpage(page, label) {
   const nav = page.locator('#subpageNav');
   await expect(nav).toContainText(label);
-  await nav.getByRole('button', { name: label, exact: true }).click();
+  const button = nav.getByRole('button', { name: label, exact: true });
+  if (await button.evaluate((element) => element.classList.contains('active'))) return;
+  await button.click();
 }
 
 async function openDashboardOverview(page) {
@@ -408,8 +410,15 @@ test('renders AI Sales Copilot suggestions and runs Copilot actions', async ({ p
   await expect(page.locator('#taskList')).toContainText('Copilot:');
 
   await navigateTo(page, 'Dashboard', 'pipeline');
-  await dashboardCopilot.getByRole('button', { name: 'Log Activity' }).click();
-  await expect(dashboardCopilot.locator('.sales-copilot-status')).toContainText('Copilot activity logged');
+  const refreshedDashboardCopilot = page.locator('#dashboardSalesCopilotCard');
+  await expect(refreshedDashboardCopilot).toBeVisible();
+  const logActivityButton = refreshedDashboardCopilot.getByRole('button', { name: 'Log Activity' });
+  await expect(logActivityButton).toBeVisible();
+  await logActivityButton.scrollIntoViewIfNeeded();
+  await logActivityButton.click();
+  await expect(refreshedDashboardCopilot.locator('.sales-copilot-status')).toContainText('Copilot activity logged', {
+    timeout: 10000,
+  });
   await navigateTo(page, 'Activity', 'activity');
   await page.getByPlaceholder('Search activity').fill('AI Sales Copilot recommendation');
   await expect(page.locator('#activityFeed')).toContainText('AI Sales Copilot recommendation logged');
@@ -1382,6 +1391,7 @@ test('gates admin-only navigation for member access', async ({ page }) => {
   await page.evaluate(() => {
     localStorage.setItem('closepilot-demo-role', 'member');
     window.location.hash = '#admin';
+    window.dispatchEvent(new Event('hashchange'));
   });
 
   await expect(page.getByRole('link', { name: 'Admin' })).toHaveCount(0);
@@ -1394,6 +1404,30 @@ test('gates admin-only navigation for member access', async ({ page }) => {
 
   await page.getByRole('link', { name: 'Communications' }).click();
   await expect(page.locator('.topbar h1')).toHaveText('Communications');
+
+  await page.getByRole('link', { name: 'Dashboard' }).click();
+  await openSubpage(page, 'Channel report');
+  await page.getByRole('button', { name: 'Export source report' }).click();
+  await expect(page.locator('#communicationToastRegion')).toContainText('Access needed');
+  await expect(page.locator('#communicationToastRegion')).toContainText('Source report exports are Admin-only');
+});
+
+test('hides billing and workspace admin areas for manager access', async ({ page }) => {
+  await page.evaluate(() => {
+    localStorage.setItem('closepilot-demo-role', 'manager');
+    window.location.hash = '#admin';
+    window.dispatchEvent(new Event('hashchange'));
+  });
+
+  await expect(page.getByRole('link', { name: 'Admin' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'AI Sales Manager' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Automations' })).toBeVisible();
+  await expect(page.locator('#accessDeniedPanel')).toBeVisible();
+  await expect(page.locator('#accessDeniedPanel')).toContainText('Manager access does not include Workspace admin');
+
+  await page.getByRole('link', { name: 'Automations' }).click();
+  await expect(page.locator('.topbar h1')).toHaveText('Automations');
+  await expect(page.locator('#automation')).toBeVisible();
 });
 
 test('production API fallbacks are honest when providers are missing', async ({ request }) => {
@@ -1496,6 +1530,12 @@ test('saves UI customization preferences and applies them to the workspace shell
   await admin.getByLabel('Default trade').selectOption('roofing');
 
   await openSubpage(page, 'Dashboard');
+  await expect(admin.locator('#dashboardTemplateGrid')).toContainText('Manager overview');
+  await admin.getByRole('button', { name: /Manager overview/ }).click();
+  await expect(admin.locator('#customizationMessage')).toContainText('Manager overview dashboard template applied');
+  await expect(page.locator('body')).toHaveAttribute('data-dashboard-template', 'manager');
+  await admin.locator('#dashWidgetRevenueSize').selectOption('full');
+  await admin.locator('#dashWidgetRevenueOrder').fill('2');
   await admin.locator('#widgetRecommendations').setChecked(false);
   await admin.getByRole('button', { name: 'Save preferences' }).click();
 
@@ -1503,9 +1543,11 @@ test('saves UI customization preferences and applies them to the workspace shell
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await expect(page.locator('body')).toHaveAttribute('data-density', 'compact');
   await expect(page.locator('body')).toHaveAttribute('data-sidebar', 'compact');
+  await expect(page.locator('body')).toHaveAttribute('data-dashboard-layout', 'balanced');
   await expect(admin.locator('#brandPreviewCard')).toContainText('Kira Roofing Studio');
 
   await page.getByRole('link', { name: 'Dashboard' }).click();
+  await expect(page.locator('#revenueSnapshotWidget')).toHaveAttribute('data-dashboard-size', 'full');
   await expect(page.locator('#aiRecommendationsWidget')).toBeHidden();
 });
 

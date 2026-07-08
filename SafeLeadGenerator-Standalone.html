@@ -254,6 +254,37 @@
         color: var(--navy-dark);
       }
 
+      .locked-addon-banner {
+        align-items: center;
+        background:
+          linear-gradient(135deg, rgba(11, 47, 99, 0.1), transparent 48%),
+          var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow);
+        display: flex;
+        gap: 14px;
+        justify-content: space-between;
+        padding: 16px;
+      }
+
+      .locked-addon-banner h2,
+      .locked-addon-banner p {
+        margin: 0;
+      }
+
+      .locked-addon-banner p {
+        color: var(--muted);
+        line-height: 1.45;
+        max-width: 72ch;
+      }
+
+      body[data-addon-access="locked"] .panel,
+      body[data-addon-access="locked"] .territory-command,
+      body[data-addon-access="locked"] .metric {
+        border-color: rgba(161, 98, 7, 0.34);
+      }
+
       .upload-card,
       .metric,
       .status-card {
@@ -349,11 +380,15 @@
       }
 
       .button {
+        align-items: center;
         border: 0;
         border-radius: 8px;
+        display: inline-flex;
         font-weight: 850;
+        justify-content: center;
         min-height: 40px;
         padding: 0 14px;
+        text-decoration: none;
         white-space: nowrap;
       }
 
@@ -753,6 +788,11 @@
           padding: 14px;
         }
 
+        .locked-addon-banner {
+          align-items: stretch;
+          display: grid;
+        }
+
         .territory-command-grid {
           grid-template-columns: 1fr;
         }
@@ -1007,7 +1047,9 @@
           </div>
           <div class="actions">
             <span class="pill info">Paid add-on</span>
+            <span class="pill warn" id="leadSyncMode">Demo add-on</span>
             <span class="pill warn">No live scraping</span>
+            <a class="button secondary" href="/">Back to CRM</a>
           </div>
         </header>
 
@@ -1015,6 +1057,21 @@
           <button class="active" data-lead-tab-button="generator" type="button">Generator</button>
           <button data-lead-tab-button="costs" type="button">Cost planner</button>
         </nav>
+
+        <section class="locked-addon-banner" id="leadAccessBanner" hidden>
+          <div>
+            <span class="pill warn">Paid add-on</span>
+            <h2>Residential Lead Generator is a paid add-on</h2>
+            <p>
+              Admins can enable property data, skip trace, and DNC-safe exports from the CRM plan area.
+              Demo mode is viewable, but live enrichment, scraping alternatives, CRM sync, and exports require enabled access plus compliance setup.
+            </p>
+          </div>
+          <div class="actions">
+            <a class="button secondary" href="/lead-generator?demo=1">View Demo</a>
+            <a class="button primary" href="/#admin">Ask Admin to Enable</a>
+          </div>
+        </section>
 
         <section class="territory-command" data-lead-tab="generator" aria-labelledby="territoryCommandHeading">
           <div>
@@ -1558,6 +1615,7 @@
 
       let activeLeadTab = "generator";
       let costPlanner = loadCostPlanner();
+      let accessContext = leadGeneratorAccessContext();
 
       const templateFiles = {
         property: {
@@ -1611,6 +1669,8 @@ Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,78731,78731,TX-1001,512-555-018
         recencySelect: document.querySelector("#recencySelect"),
         scrubDateInput: document.querySelector("#scrubDateInput"),
         autoGenerateInput: document.querySelector("#autoGenerateInput"),
+        leadAccessBanner: document.querySelector("#leadAccessBanner"),
+        leadSyncMode: document.querySelector("#leadSyncMode"),
         statusMessage: document.querySelector("#statusMessage"),
         propertyCount: document.querySelector("#propertyCount"),
         contactCount: document.querySelector("#contactCount"),
@@ -1663,14 +1723,26 @@ Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,78731,78731,TX-1001,512-555-018
       });
 
       document.querySelector("#loadSampleButton").addEventListener("click", loadSampleData);
-      document.querySelector("#generateButton").addEventListener("click", () => generateLeads());
-      document.querySelector("#generateResidentialButton").addEventListener("click", generateResidentialMailLeads);
-      document.querySelector("#exportLeadButton").addEventListener("click", () => exportCsv(leadExportFilename(), state.leads.map(leadToCsvRow)));
-      document.querySelector("#exportMatchReviewButton").addEventListener("click", () => exportCsv("match-review.csv", state.matchReview.map(matchReviewToCsvRow)));
-      document.querySelector("#exportAuditButton").addEventListener("click", () => exportCsv("suppression-audit.csv", state.audit.map(auditToCsvRow)));
+      document.querySelector("#generateButton").addEventListener("click", () => {
+        if (guardLeadGeneratorAccess("generate phone-ready leads")) generateLeads();
+      });
+      document.querySelector("#generateResidentialButton").addEventListener("click", () => {
+        if (guardLeadGeneratorAccess("generate residential mail leads")) generateResidentialMailLeads();
+      });
+      document.querySelector("#exportLeadButton").addEventListener("click", () => {
+        if (guardLeadGeneratorAccess("export lead files")) exportCsv(leadExportFilename(), state.leads.map(leadToCsvRow));
+      });
+      document.querySelector("#exportMatchReviewButton").addEventListener("click", () => {
+        if (guardLeadGeneratorAccess("export match review files")) exportCsv("match-review.csv", state.matchReview.map(matchReviewToCsvRow));
+      });
+      document.querySelector("#exportAuditButton").addEventListener("click", () => {
+        if (guardLeadGeneratorAccess("export audit files")) exportCsv("suppression-audit.csv", state.audit.map(auditToCsvRow));
+      });
       document.querySelector("#clearButton").addEventListener("click", clearAll);
       document.querySelector("#useHcadButton").addEventListener("click", useHcadSource);
-      document.querySelector("#pullPropertySourceButton").addEventListener("click", () => pullPropertyRecords().catch(showError));
+      document.querySelector("#pullPropertySourceButton").addEventListener("click", () => {
+        if (guardLeadGeneratorAccess("pull property records")) pullPropertyRecords().catch(showError);
+      });
       document.querySelector("#resetCostPlannerButton").addEventListener("click", resetCostPlanner);
       document.querySelectorAll("[data-template]").forEach((button) => {
         button.addEventListener("click", () => downloadTemplate(button.dataset.template));
@@ -1684,6 +1756,33 @@ Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,78731,78731,TX-1001,512-555-018
       [els.costRecordsInput, els.costMatchRateInput, els.costMatchRateHighInput, els.costSuppressionRateInput, els.costConversionRateInput].forEach((input) => {
         input.addEventListener("input", updateCostAssumptions);
       });
+
+      function leadGeneratorAccessContext() {
+        const params = new URLSearchParams(window.location.search);
+        const role = (params.get("role") || localStorage.getItem("closepilot-demo-role") || "admin").toLowerCase();
+        const demo = params.get("demo") === "1" || (!params.has("role") && !params.has("addon"));
+        const enabled = params.get("addon") === "enabled" || demo || ["owner", "admin"].includes(role);
+        return {
+          role,
+          demo,
+          enabled,
+          locked: !enabled,
+          label: demo ? "Demo add-on" : enabled ? "Add-on enabled" : "Locked add-on",
+        };
+      }
+
+      function renderAccessState() {
+        accessContext = leadGeneratorAccessContext();
+        document.body.dataset.addonAccess = accessContext.locked ? "locked" : accessContext.demo ? "demo" : "enabled";
+        if (els.leadAccessBanner) els.leadAccessBanner.hidden = !accessContext.locked;
+        if (els.leadSyncMode) els.leadSyncMode.textContent = accessContext.label;
+      }
+
+      function guardLeadGeneratorAccess(action) {
+        if (!accessContext.locked) return true;
+        setStatus(`Residential Lead Generator is a paid add-on. Ask an admin to enable it before you ${action}.`);
+        return false;
+      }
 
       function readCsvFile(file) {
         return file.text().then(parseCsv);
@@ -1702,6 +1801,12 @@ Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,78731,78731,TX-1001,512-555-018
         if (!autoChannel) {
           render();
           setStatus(`${message} Import property records and BatchLeads skip trace files to auto-generate leads.`);
+          return;
+        }
+
+        if (!guardLeadGeneratorAccess("auto-generate leads from imports")) {
+          render();
+          setStatus(`${message} Add-on access required before auto generation or export.`);
           return;
         }
 
@@ -2667,6 +2772,19 @@ Jordan Lee,91 Pine Acre Rd,91 Pine Acre Rd,27601,27601,NC-5531,919-555-0102,jord
         link.download = filename;
         link.click();
         URL.revokeObjectURL(link.href);
+        recordExportAudit(filename, records.length);
+      }
+
+      function recordExportAudit(filename, count) {
+        state.audit.unshift({
+          ownerName: "Workspace export",
+          phone: "",
+          reason: `${count} row(s) exported`,
+          list: filename,
+          source: "Lead Generator compliance audit",
+        });
+        setStatus(`${filename} exported. Verify consent and DNC compliance before outreach.`);
+        render();
       }
 
       function downloadTemplate(key) {
@@ -2898,6 +3016,7 @@ Jordan Lee,91 Pine Acre Rd,91 Pine Acre Rd,27601,27601,NC-5531,919-555-0102,jord
       }
 
       function render() {
+        renderAccessState();
         els.propertyCount.textContent = state.properties.length;
         els.contactCount.textContent = state.contacts.length;
         els.suppressionCount.textContent = state.federalDnc.size + state.stateDnc.size + state.optOutPhones.size;

@@ -25,9 +25,32 @@ ClosePilot / Kira Home is positioned as a premium AI sales operating system for 
 ## Current Setup / Demo Status
 
 - Demo mode remains honest when Supabase, Stripe, Resend, Twilio, OpenAI, or Google Calendar are missing.
+- Public demo mode is still frictionless: the CRM, Kira Recruit, and Residential Lead Generator can be opened without a login for show-and-tell.
+- Demo mode does not cloud sync. Real workspace sync, invites, billing, calendar tokens, and provider delivery require env vars plus Supabase.
 - Billing add-on checkout is not rebuilt in this pass; existing Stripe behavior is preserved.
 - Invite emails send through Resend when configured; otherwise a copyable invite link is shown.
 - APP_BASE_URL should be set to the production domain before sending real invites.
+
+## Access And Add-On Story
+
+- CRM: Core product. Admins see the full workspace, managers see team execution/reporting, and members stay focused on assigned-lead workflows.
+- Kira Recruit: Paid add-on. Demo is viewable, but non-enabled members see the locked add-on card with View Demo and Ask Admin to Enable.
+- Residential Lead Generator: Paid add-on. Demo is viewable, but generation/export actions are gated when the add-on is locked.
+- Dialer, Setter, and Closer are sales function labels. Admin, Manager, and Member are the permission tiers.
+
+## 5-Minute Marketer Demo Script
+
+1. "ClosePilot tells the rep what to do next." Show Dashboard, Start My Day, Flow Mode, lead score, script, and time saved.
+2. "Managers see the business, not just task lists." Show AI Sales Manager, pipeline health, and team coaching.
+3. "Communication is centralized." Show Communications, simulated send states, call logging, and follow-up creation.
+4. "Ops can automate repeat work." Show Automations templates and the AI workflow prompt.
+5. "Expansion revenue is built in." Show Admin Product Overview, Pricing/Add-ons, Kira Recruit, and Residential Lead Generator locked/demo states.
+
+## Honest Demo Phrases
+
+- Live-ready: CRM workflows, local demo persistence, role navigation, billing endpoints, invite endpoints, launch readiness checks.
+- Demo/fallback: AI replies without OpenAI, SMS/email without provider keys, Stripe without price/env setup, Calendar without OAuth.
+- Manual setup: Supabase schema run, Vercel env vars, Stripe webhook, Resend sender, Twilio number, OpenAI key, Google OAuth.
 
 ## Manual Setup Remaining
 

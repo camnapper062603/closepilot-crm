@@ -274,6 +274,7 @@ async function handleCommunicationRequest(pathname, request, response, payload) 
 }
 
 async function handleCreateCheckoutSession(request, response, payload) {
+  assertAdminPayload(payload, "Only Admin or Owner access can create Stripe checkout sessions.");
   const stripe = getStripeClient();
   const planId = normalizePlanId(payload.plan);
   const priceId = stripe ? await resolveStripePlanPriceId(stripe, planId) : "";
@@ -323,6 +324,7 @@ async function handleCreateCheckoutSession(request, response, payload) {
 }
 
 async function handleCreatePortalSession(request, response, payload) {
+  assertAdminPayload(payload, "Only Admin or Owner access can open the billing portal.");
   const stripe = getStripeClient();
   const workspaceId = cleanText(payload.workspaceId);
   const baseUrl = appBaseUrl(request);
@@ -392,6 +394,7 @@ async function handleStripeWebhook(request, response) {
 }
 
 async function handleSendInvite(request, response, payload) {
+  assertAdminPayload(payload, "Only Admin or Owner access can send workspace invites.");
   const workspaceId = cleanText(payload.workspaceId);
   const inviteId = cleanText(payload.inviteId);
   const email = cleanEmail(payload.email);
@@ -715,6 +718,15 @@ function validateWorkspacePayload(payload, options = {}) {
   if (options.requireLead && !leadId) throwInputError("Lead ID is required.");
   if (cleanText(payload.body).length > 5000) throwInputError("Message body is too long.");
   if (cleanText(payload.prompt).length > 4000) throwInputError("AI prompt is too long.");
+}
+
+function assertAdminPayload(payload, message = "Admin access is required.") {
+  const role = cleanText(payload.actorRole || "");
+  if (role && !["owner", "admin"].includes(role)) {
+    const error = new Error(message);
+    error.statusCode = 403;
+    throw error;
+  }
 }
 
 function buildRuleBasedAiResponse(intent, payload = {}) {

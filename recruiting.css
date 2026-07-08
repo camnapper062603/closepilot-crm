@@ -198,6 +198,44 @@ button {
   padding: 7px 10px;
 }
 
+.locked-addon-banner {
+  align-items: center;
+  background:
+    linear-gradient(135deg, rgba(11, 47, 99, 0.1), transparent 46%),
+    var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow);
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  padding: 18px;
+}
+
+.locked-addon-banner h2,
+.locked-addon-banner p {
+  margin: 0;
+}
+
+.locked-addon-banner p {
+  color: var(--muted);
+  line-height: 1.45;
+  max-width: 70ch;
+}
+
+.locked-addon-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+body[data-addon-access="locked"] .panel,
+body[data-addon-access="locked"] .metrics article,
+body[data-addon-access="locked"] .recruit-hero {
+  border-color: rgba(161, 98, 7, 0.34);
+}
+
 .recruit-hero-grid {
   display: grid;
   gap: 10px;
@@ -974,6 +1012,20 @@ textarea {
 
   .recruit-hero {
     padding: 14px;
+  }
+
+  .locked-addon-banner {
+    align-items: stretch;
+    display: grid;
+  }
+
+  .locked-addon-actions {
+    justify-content: stretch;
+  }
+
+  .locked-addon-actions > * {
+    justify-content: center;
+    width: 100%;
   }
 
   .recruit-hero-grid {

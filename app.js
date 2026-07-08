@@ -188,11 +188,204 @@ const customizationAccentCatalog = {
   slate: { label: "Executive slate", value: "#334155" },
 };
 
+const dashboardWidgetCatalog = [
+  {
+    id: "greeting",
+    label: "Greeting",
+    detail: "Date, weather placeholder, and daily motivation.",
+    selector: "#dashboardGreetingWidget",
+    inputId: "widgetGreeting",
+    defaultOrder: 1,
+    defaultSize: "full",
+  },
+  {
+    id: "focus",
+    label: "Today's Focus",
+    detail: "The Start My Day card and highest-priority counts.",
+    selector: ".today-focus-card",
+    inputId: "widgetFocus",
+    defaultOrder: 2,
+    defaultSize: "full",
+  },
+  {
+    id: "followups",
+    label: "Follow-Up Queue",
+    detail: "Smart follow-ups due today.",
+    selector: "#dashboardFollowUpQueueCard",
+    inputId: "widgetFollowups",
+    defaultOrder: 3,
+    defaultSize: "half",
+  },
+  {
+    id: "health",
+    label: "Opportunity Health",
+    detail: "Hot, warm, at-risk, and best-next-lead signals.",
+    selector: "#opportunityHealthWidget",
+    inputId: "widgetHealth",
+    defaultOrder: 4,
+    defaultSize: "half",
+  },
+  {
+    id: "copilot",
+    label: "AI Copilot",
+    detail: "Best next action, scripts, and close explanation.",
+    selector: "#dashboardSalesCopilotCard",
+    inputId: "widgetCopilot",
+    defaultOrder: 5,
+    defaultSize: "full",
+  },
+  {
+    id: "communications",
+    label: "Communications",
+    detail: "Calls, texts, emails, and missed follow-up stats.",
+    selector: "#communicationStatsWidget",
+    inputId: "widgetCommunications",
+    defaultOrder: 6,
+    defaultSize: "half",
+  },
+  {
+    id: "time",
+    label: "Time Saved",
+    detail: "Today, week, month, and team time saved.",
+    selector: "#timeSavedWidget",
+    inputId: "widgetTime",
+    defaultOrder: 7,
+    defaultSize: "half",
+  },
+  {
+    id: "recommendations",
+    label: "AI Recommendations",
+    detail: "Suggested next moves across leads and estimates.",
+    selector: "#aiRecommendationsWidget",
+    inputId: "widgetRecommendations",
+    defaultOrder: 8,
+    defaultSize: "full",
+  },
+  {
+    id: "revenue",
+    label: "Revenue Snapshot",
+    detail: "Goal, projected, closed, and pipeline value.",
+    selector: "#revenueSnapshotWidget",
+    inputId: "widgetRevenue",
+    defaultOrder: 9,
+    defaultSize: "half",
+  },
+  {
+    id: "sales",
+    label: "Sales Activity",
+    detail: "Calls, appointments, close rate, and win rate.",
+    selector: "#salesActivityWidget",
+    inputId: "widgetSales",
+    defaultOrder: 10,
+    defaultSize: "half",
+  },
+  {
+    id: "activity",
+    label: "Team Activity",
+    detail: "Recent activity feed and automation time saved.",
+    selector: "#teamActivityWidget",
+    inputId: "widgetActivity",
+    defaultOrder: 11,
+    defaultSize: "half",
+  },
+  {
+    id: "calendar",
+    label: "Calendar",
+    detail: "Today's schedule preview.",
+    selector: "#dashboardCalendarWidget",
+    inputId: "widgetCalendar",
+    defaultOrder: 12,
+    defaultSize: "half",
+  },
+];
+
+const defaultDashboardWidgets = Object.fromEntries(
+  dashboardWidgetCatalog.map((widget) => [
+    widget.id,
+    {
+      visible: true,
+      order: widget.defaultOrder,
+      size: widget.defaultSize,
+    },
+  ]),
+);
+
+const dashboardTemplateCatalog = {
+  command: {
+    label: "Command center",
+    detail: "Best all-around morning operating view.",
+    layout: "command",
+    widgets: defaultDashboardWidgets,
+  },
+  manager: {
+    label: "Manager overview",
+    detail: "Pipeline, revenue, team activity, and calendar first.",
+    layout: "balanced",
+    widgets: {
+      ...defaultDashboardWidgets,
+      greeting: { visible: true, order: 1, size: "full" },
+      health: { visible: true, order: 2, size: "half" },
+      revenue: { visible: true, order: 3, size: "half" },
+      sales: { visible: true, order: 4, size: "half" },
+      activity: { visible: true, order: 5, size: "half" },
+      calendar: { visible: true, order: 6, size: "half" },
+      recommendations: { visible: true, order: 7, size: "half" },
+      communications: { visible: true, order: 8, size: "half" },
+      time: { visible: true, order: 9, size: "half" },
+      focus: { visible: true, order: 10, size: "full" },
+      followups: { visible: true, order: 11, size: "half" },
+      copilot: { visible: true, order: 12, size: "half" },
+    },
+  },
+  salesSprint: {
+    label: "Sales sprint",
+    detail: "Flow Mode, follow-ups, scripts, comms, and time saved.",
+    layout: "focus",
+    widgets: {
+      ...defaultDashboardWidgets,
+      greeting: { visible: true, order: 1, size: "full" },
+      focus: { visible: true, order: 2, size: "full" },
+      followups: { visible: true, order: 3, size: "half" },
+      copilot: { visible: true, order: 4, size: "half" },
+      communications: { visible: true, order: 5, size: "half" },
+      time: { visible: true, order: 6, size: "half" },
+      recommendations: { visible: true, order: 7, size: "full" },
+      calendar: { visible: true, order: 8, size: "half" },
+      health: { visible: true, order: 9, size: "half" },
+      revenue: { visible: false, order: 10, size: "half" },
+      sales: { visible: false, order: 11, size: "half" },
+      activity: { visible: false, order: 12, size: "half" },
+    },
+  },
+  minimal: {
+    label: "Minimal focus",
+    detail: "Quiet view for reps who only need what to do next.",
+    layout: "compact",
+    widgets: {
+      ...defaultDashboardWidgets,
+      greeting: { visible: true, order: 1, size: "full" },
+      focus: { visible: true, order: 2, size: "full" },
+      copilot: { visible: true, order: 3, size: "full" },
+      followups: { visible: true, order: 4, size: "half" },
+      calendar: { visible: true, order: 5, size: "half" },
+      health: { visible: false, order: 6, size: "half" },
+      communications: { visible: false, order: 7, size: "half" },
+      time: { visible: false, order: 8, size: "half" },
+      recommendations: { visible: false, order: 9, size: "half" },
+      revenue: { visible: false, order: 10, size: "half" },
+      sales: { visible: false, order: 11, size: "half" },
+      activity: { visible: false, order: 12, size: "half" },
+    },
+  },
+};
+
 const defaultCustomizationPreferences = {
   themeMode: "system",
   accentColor: "navy",
   density: "comfortable",
   dashboardLayout: "command",
+  dashboardTemplate: "command",
+  dashboardWidgets: structuredClone(defaultDashboardWidgets),
   sidebarMode: "expanded",
   defaultLandingPage: "pipeline",
   aiTone: "professional",
@@ -201,13 +394,16 @@ const defaultCustomizationPreferences = {
   brandAccent: "#2f6fed",
   logoName: "Logo upload placeholder",
   visibleWidgets: {
+    greeting: true,
     focus: true,
+    followups: true,
     health: true,
     copilot: true,
     communications: true,
     time: true,
     recommendations: true,
     revenue: true,
+    sales: true,
     activity: true,
     calendar: true,
   },
@@ -914,6 +1110,8 @@ const customLogoName = document.querySelector("#customLogoName");
 const customizationMessage = document.querySelector("#customizationMessage");
 const brandPreviewCard = document.querySelector("#brandPreviewCard");
 const resetCustomizationButton = document.querySelector("#resetCustomization");
+const dashboardTemplateGrid = document.querySelector("#dashboardTemplateGrid");
+const dashboardWidgetBuilder = document.querySelector("#dashboardWidgetBuilder");
 const mobileQuickActionButton = document.querySelector("#mobileQuickAction");
 const launchChecklist = document.querySelector("#launchChecklist");
 const auditList = document.querySelector("#auditList");
@@ -1012,11 +1210,23 @@ const roleAccessCatalog = {
   },
   manager: {
     pages: ["pipeline", "manager", "contacts", "automation", "tasks", "activity", "communications", "dial", "calendar", "settings"],
-    restrictedActions: ["billing", "team", "workspace-settings", "launch", "export"],
+    restrictedActions: ["billing", "team", "workspace-settings", "launch", "data-export", "backup", "lead-import", "delete-leads", "addon-purchase"],
   },
   member: {
     pages: ["pipeline", "contacts", "tasks", "communications", "dial", "calendar", "settings"],
-    restrictedActions: ["billing", "team", "workspace-settings", "launch", "automation-admin", "export", "addon-purchase"],
+    restrictedActions: [
+      "billing",
+      "team",
+      "workspace-settings",
+      "launch",
+      "automation-admin",
+      "data-export",
+      "backup",
+      "lead-import",
+      "delete-leads",
+      "bulk-lead-update",
+      "addon-purchase",
+    ],
   },
 };
 const appointmentTimes = Array.from({ length: 12 }, (_item, index) => {
@@ -1186,6 +1396,10 @@ importWorkspaceBackupInput.addEventListener("change", importWorkspaceBackup);
 workspaceAdminForm.addEventListener("submit", saveAdminWorkspaceSettings);
 customizationForm?.addEventListener("submit", saveCustomizationPreferences);
 resetCustomizationButton?.addEventListener("click", resetCustomizationPreferences);
+dashboardTemplateGrid?.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-dashboard-template-choice]");
+  if (button) applyDashboardTemplate(button.dataset.dashboardTemplateChoice);
+});
 document.querySelectorAll("[data-theme-mode-choice]").forEach((button) => {
   button.addEventListener("click", () => saveThemeModePreference(button.dataset.themeModeChoice));
 });
@@ -1546,6 +1760,7 @@ async function createLeadFromForm() {
       document.querySelector("#leadNextAction").value.trim() ||
       nextActionForStage(document.querySelector("#leadStage").value),
     source: document.querySelector("#leadSource").value.trim() || "Manual",
+    assignedTo: currentAccessRole() === "member" ? currentUserEmail() : "",
     score: calculateLeadScore({
       value: Number(document.querySelector("#leadValue").value),
       stage: document.querySelector("#leadStage").value,
@@ -1611,10 +1826,37 @@ async function reloadState(options = {}) {
 }
 
 function filteredLeads() {
-  return state.leads.filter((lead) => {
+  return visibleLeadsForCurrentUser().filter((lead) => {
     const matchesStage = contactFilter === "all" || lead.stage === contactFilter;
     return matchesStage && contactSearchMatches(lead);
   });
+}
+
+function visibleLeadsForCurrentUser() {
+  if (!shouldLimitToAssignedLeads()) return state.leads;
+  const assignee = currentUserEmail();
+  if (!assignee) return state.leads;
+  const assigned = state.leads.filter((lead) => leadAssignedToCurrentUser(lead, assignee));
+  const hasAnyAssignments = state.leads.some(leadHasAssignmentSignal);
+  return hasAnyAssignments ? assigned : state.leads;
+}
+
+function shouldLimitToAssignedLeads() {
+  return currentAccessRole() === "member" && !publicDemoMode;
+}
+
+function leadHasAssignmentSignal(lead) {
+  return Boolean(lead.assignedTo || lead.assignedDialer || lead.assignedCloser || /assigned\s+(dialer|closer):/i.test(lead.notes || ""));
+}
+
+function leadAssignedToCurrentUser(lead, email = currentUserEmail()) {
+  const normalizedEmail = String(email || "").toLowerCase();
+  if (!normalizedEmail) return false;
+  const candidates = [lead.assignedTo, lead.assignedDialer, lead.assignedCloser, lead.ownerEmail]
+    .filter(Boolean)
+    .map((value) => String(value).toLowerCase());
+  if (candidates.includes(normalizedEmail)) return true;
+  return new RegExp(`assigned\\s+(dialer|closer):\\s*${escapeRegExp(normalizedEmail)}`, "i").test(lead.notes || "");
 }
 
 function sortedContactLeads(leads) {
@@ -1937,6 +2179,15 @@ function canUseAdminAction(action) {
   if (role === "owner" || role === "admin") return true;
   const access = roleAccessCatalog[role] || roleAccessCatalog.member;
   return !access.restrictedActions.includes(action);
+}
+
+function guardRestrictedAction(action, messageElement = adminMessage, detail = "") {
+  if (canUseAdminAction(action)) return true;
+  const role = teamRoleCatalog[currentAccessRole()] || teamRoleCatalog.member;
+  const message = detail || `${role.label} access cannot use this production action. Ask an admin to upgrade permissions.`;
+  if (messageElement) messageElement.textContent = message;
+  showAppToast("Access needed", message);
+  return false;
 }
 
 function showOnly(selectors, visibleSelector) {
@@ -4083,6 +4334,7 @@ function isPendingInvite(invite) {
 }
 
 async function updateMemberRole(memberId, role) {
+  if (!guardRestrictedAction("team", adminMessage, "Only Admins can change team access tiers.")) return;
   const account = accountState();
   const member = account.members.find((item) => item.id === memberId);
   const nextRole = normalizeRoleId(role);
@@ -4107,6 +4359,7 @@ async function updateMemberRole(memberId, role) {
 }
 
 async function updateMemberFunction(memberId, teamFunction) {
+  if (!guardRestrictedAction("team", adminMessage, "Only Admins can change team function labels.")) return;
   const account = accountState();
   const member = account.members.find((item) => item.id === memberId);
   const nextFunction = salesFunctionCatalog[teamFunction] ? teamFunction : "none";
@@ -4131,6 +4384,7 @@ async function updateMemberFunction(memberId, teamFunction) {
 }
 
 async function removeTeamMember(memberId) {
+  if (!guardRestrictedAction("team", adminMessage, "Only Admins can remove team members.")) return;
   const account = accountState();
   const member = account.members.find((item) => item.id === memberId);
   if (!member || member.role === "owner" || isCurrentMember(member)) {
@@ -4151,6 +4405,7 @@ async function removeTeamMember(memberId) {
 }
 
 async function copyInviteLink(inviteId) {
+  if (!guardRestrictedAction("team", adminMessage, "Only Admins can manage workspace invite links.")) return;
   const invite = accountState().invites.find((item) => item.id === inviteId);
   if (!invite?.inviteLink) {
     adminMessage.textContent = "Send or resend the invite first to generate a copyable invite link.";
@@ -4161,6 +4416,7 @@ async function copyInviteLink(inviteId) {
 }
 
 async function cancelTeamInvite(inviteId) {
+  if (!guardRestrictedAction("team", adminMessage, "Only Admins can cancel workspace invites.")) return;
   const invite = accountState().invites.find((item) => item.id === inviteId);
   if (!invite) return;
   if (!window.confirm(`Cancel the invite for ${invite.email}?`)) return;
@@ -4179,14 +4435,17 @@ function userCustomizationPreferences() {
   if (!saved) return fallback;
   try {
     const parsed = JSON.parse(saved);
-    return {
+    const merged = {
       ...fallback,
       ...parsed,
+      dashboardWidgets: normalizeDashboardWidgets(parsed.dashboardWidgets, parsed.visibleWidgets),
       visibleWidgets: {
         ...fallback.visibleWidgets,
         ...(parsed.visibleWidgets || {}),
       },
     };
+    merged.visibleWidgets = legacyVisibleWidgetsFromDashboardWidgets(merged.dashboardWidgets);
+    return merged;
   } catch {
     return fallback;
   }
@@ -4199,37 +4458,73 @@ function customizationPreferenceKey() {
 function applyCustomizationPreferences(preferences = userCustomizationPreferences()) {
   const accent = customizationAccentCatalog[preferences.accentColor] || customizationAccentCatalog.navy;
   const theme = ["light", "dark", "system"].includes(preferences.themeMode) ? preferences.themeMode : "system";
+  const layout = ["command", "balanced", "compact", "focus"].includes(preferences.dashboardLayout)
+    ? preferences.dashboardLayout
+    : "command";
   document.documentElement.dataset.theme = theme;
   document.body.dataset.themePreference = theme;
   document.body.dataset.accent = preferences.accentColor || "navy";
   document.body.dataset.density = preferences.density === "compact" ? "compact" : "comfortable";
-  document.body.dataset.dashboardLayout = preferences.dashboardLayout === "compact" ? "compact" : "command";
+  document.body.dataset.dashboardLayout = layout;
+  document.body.dataset.dashboardTemplate = dashboardTemplateCatalog[preferences.dashboardTemplate] ? preferences.dashboardTemplate : "command";
   document.body.dataset.sidebar = preferences.sidebarMode === "compact" ? "compact" : "expanded";
   document.documentElement.style.setProperty("--accent", preferences.brandAccent || accent.value);
   document.documentElement.style.setProperty("--brand-accent", preferences.brandAccent || accent.value);
 
-  const widgetSelectors = {
-    focus: "#dashboardFollowUpQueueCard, .today-focus-card",
-    health: "#opportunityHealthWidget",
-    copilot: "#dashboardSalesCopilotCard",
-    communications: "#communicationStatsWidget",
-    time: "#timeSavedWidget",
-    recommendations: "#aiRecommendationsWidget",
-    revenue: "#revenueSnapshotWidget, #salesActivityWidget",
-    activity: "#teamActivityWidget",
-    calendar: "#dashboardCalendarWidget",
-  };
-
-  Object.entries(widgetSelectors).forEach(([widget, selector]) => {
-    document.querySelectorAll(selector).forEach((element) => {
-      element.hidden = preferences.visibleWidgets?.[widget] === false;
+  const dashboardWidgets = normalizeDashboardWidgets(preferences.dashboardWidgets, preferences.visibleWidgets);
+  dashboardWidgetCatalog.forEach((widget) => {
+    const settings = dashboardWidgets[widget.id];
+    document.querySelectorAll(widget.selector).forEach((element) => {
+      element.hidden = settings.visible === false;
+      element.dataset.dashboardWidget = widget.id;
+      element.dataset.dashboardSize = normalizedDashboardWidgetSize(settings.size);
+      element.style.order = String(Number(settings.order) || widget.defaultOrder);
     });
   });
+}
+
+function normalizeDashboardWidgets(widgets = {}, legacyVisible = {}) {
+  return Object.fromEntries(
+    dashboardWidgetCatalog.map((widget) => {
+      const next = widgets[widget.id] || {};
+      const visible = typeof next.visible === "boolean" ? next.visible : legacyDashboardWidgetVisible(widget.id, legacyVisible);
+      return [
+        widget.id,
+        {
+          visible,
+          order: normalizedDashboardWidgetOrder(next.order, widget.defaultOrder),
+          size: normalizedDashboardWidgetSize(next.size || widget.defaultSize),
+        },
+      ];
+    }),
+  );
+}
+
+function legacyDashboardWidgetVisible(widgetId, legacyVisible = {}) {
+  if (widgetId === "greeting") return legacyVisible.greeting !== false;
+  if (widgetId === "followups") return legacyVisible.followups ?? legacyVisible.focus ?? true;
+  if (widgetId === "sales") return legacyVisible.sales ?? legacyVisible.revenue ?? true;
+  return legacyVisible[widgetId] !== false;
+}
+
+function normalizedDashboardWidgetOrder(value, fallback) {
+  return Math.max(1, Math.min(99, Number.parseInt(value, 10) || fallback || 1));
+}
+
+function normalizedDashboardWidgetSize(value) {
+  return ["full", "half", "third", "compact"].includes(value) ? value : "full";
+}
+
+function legacyVisibleWidgetsFromDashboardWidgets(dashboardWidgets) {
+  return Object.fromEntries(
+    dashboardWidgetCatalog.map((widget) => [widget.id, dashboardWidgets?.[widget.id]?.visible !== false]),
+  );
 }
 
 function renderCustomizationSettings() {
   if (!customizationForm) return;
   const preferences = userCustomizationPreferences();
+  const dashboardWidgets = normalizeDashboardWidgets(preferences.dashboardWidgets, preferences.visibleWidgets);
   customThemeMode.value = preferences.themeMode;
   customAccentColor.value = preferences.accentColor;
   customDensity.value = preferences.density;
@@ -4241,17 +4536,66 @@ function renderCustomizationSettings() {
   customCompanyName.value = preferences.companyName;
   customBrandAccent.value = preferences.brandAccent;
   customLogoName.value = preferences.logoName;
-  setCustomizationWidgetCheckbox("widgetFocus", preferences.visibleWidgets.focus);
-  setCustomizationWidgetCheckbox("widgetHealth", preferences.visibleWidgets.health);
-  setCustomizationWidgetCheckbox("widgetCopilot", preferences.visibleWidgets.copilot);
-  setCustomizationWidgetCheckbox("widgetCommunications", preferences.visibleWidgets.communications);
-  setCustomizationWidgetCheckbox("widgetTime", preferences.visibleWidgets.time);
-  setCustomizationWidgetCheckbox("widgetRecommendations", preferences.visibleWidgets.recommendations);
-  setCustomizationWidgetCheckbox("widgetRevenue", preferences.visibleWidgets.revenue);
-  setCustomizationWidgetCheckbox("widgetActivity", preferences.visibleWidgets.activity);
-  setCustomizationWidgetCheckbox("widgetCalendar", preferences.visibleWidgets.calendar);
+  dashboardWidgetCatalog.forEach((widget) => {
+    setCustomizationWidgetCheckbox(widget.inputId, dashboardWidgets[widget.id]?.visible);
+  });
+  renderDashboardTemplateButtons(preferences.dashboardTemplate);
+  renderDashboardWidgetBuilder(dashboardWidgets);
   renderThemeToggleButtons(preferences.themeMode);
   renderBrandPreview(preferences);
+}
+
+function renderDashboardTemplateButtons(activeTemplate = "command") {
+  if (!dashboardTemplateGrid) return;
+  dashboardTemplateGrid.innerHTML = Object.entries(dashboardTemplateCatalog)
+    .map(
+      ([id, template]) => `
+        <button class="${id === activeTemplate ? "active" : ""}" data-dashboard-template-choice="${escapeHtml(id)}" type="button">
+          <strong>${escapeHtml(template.label)}</strong>
+          <span>${escapeHtml(template.detail)}</span>
+        </button>
+      `,
+    )
+    .join("");
+}
+
+function renderDashboardWidgetBuilder(dashboardWidgets) {
+  if (!dashboardWidgetBuilder) return;
+  dashboardWidgetBuilder.innerHTML = dashboardWidgetCatalog
+    .map((widget) => {
+      const settings = dashboardWidgets[widget.id] || defaultDashboardWidgets[widget.id];
+      return `
+        <article class="dashboard-widget-control" data-dashboard-widget-control="${escapeHtml(widget.id)}">
+          <div>
+            <strong>${escapeHtml(widget.label)}</strong>
+            <span>${escapeHtml(widget.detail)}</span>
+          </div>
+          <label>
+            Order
+            <input id="dashWidget${pascalCase(widget.id)}Order" data-dashboard-widget-order="${escapeHtml(widget.id)}" type="number" min="1" max="99" value="${escapeHtml(settings.order)}" />
+          </label>
+          <label>
+            Size
+            <select id="dashWidget${pascalCase(widget.id)}Size" data-dashboard-widget-size="${escapeHtml(widget.id)}">
+              ${dashboardWidgetSizeOptions(settings.size)}
+            </select>
+          </label>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function dashboardWidgetSizeOptions(selected) {
+  const options = [
+    ["full", "Full row"],
+    ["half", "Half row"],
+    ["third", "Third row"],
+    ["compact", "Compact tile"],
+  ];
+  return options
+    .map(([value, label]) => `<option value="${value}" ${value === selected ? "selected" : ""}>${label}</option>`)
+    .join("");
 }
 
 function renderThemeToggleButtons(themeMode) {
@@ -4285,6 +4629,7 @@ function renderBrandPreview(preferences) {
 
 async function saveCustomizationPreferences(event) {
   event.preventDefault();
+  const dashboardWidgets = dashboardWidgetsFromCustomizationForm();
   const preferences = {
     ...userCustomizationPreferences(),
     themeMode: customThemeMode.value,
@@ -4293,22 +4638,13 @@ async function saveCustomizationPreferences(event) {
     sidebarMode: customSidebarMode.value,
     defaultLandingPage: customDefaultLanding.value,
     dashboardLayout: customDashboardLayout.value,
+    dashboardWidgets,
     aiTone: customAiTone.value,
     defaultTrade: customDefaultTrade.value,
     companyName: customCompanyName.value.trim() || "Kira Home",
     brandAccent: customBrandAccent.value || customizationAccentCatalog.navy.value,
     logoName: customLogoName.value.trim() || "Logo upload placeholder",
-    visibleWidgets: {
-      focus: customizationWidgetChecked("widgetFocus"),
-      health: customizationWidgetChecked("widgetHealth"),
-      copilot: customizationWidgetChecked("widgetCopilot"),
-      communications: customizationWidgetChecked("widgetCommunications"),
-      time: customizationWidgetChecked("widgetTime"),
-      recommendations: customizationWidgetChecked("widgetRecommendations"),
-      revenue: customizationWidgetChecked("widgetRevenue"),
-      activity: customizationWidgetChecked("widgetActivity"),
-      calendar: customizationWidgetChecked("widgetCalendar"),
-    },
+    visibleWidgets: legacyVisibleWidgetsFromDashboardWidgets(dashboardWidgets),
   };
 
   localStorage.setItem(customizationPreferenceKey(), JSON.stringify(preferences));
@@ -4317,6 +4653,59 @@ async function saveCustomizationPreferences(event) {
   customizationMessage.textContent = "Preferences saved for this workspace demo. Cloud sync can reuse the same shape later.";
   await logAuditEvent("UI preferences saved", `${preferences.companyName} selected ${preferences.themeMode} mode and ${preferences.density} density.`);
   renderSaasAdmin();
+}
+
+function dashboardWidgetsFromCustomizationForm() {
+  const current = normalizeDashboardWidgets(userCustomizationPreferences().dashboardWidgets, userCustomizationPreferences().visibleWidgets);
+  return Object.fromEntries(
+    dashboardWidgetCatalog.map((widget) => {
+      const orderInput = document.querySelector(`[data-dashboard-widget-order="${widget.id}"]`);
+      const sizeInput = document.querySelector(`[data-dashboard-widget-size="${widget.id}"]`);
+      return [
+        widget.id,
+        {
+          visible: customizationWidgetChecked(widget.inputId),
+          order: normalizedDashboardWidgetOrder(orderInput?.value, current[widget.id]?.order || widget.defaultOrder),
+          size: normalizedDashboardWidgetSize(sizeInput?.value || current[widget.id]?.size || widget.defaultSize),
+        },
+      ];
+    }),
+  );
+}
+
+async function applyDashboardTemplate(templateId = "command") {
+  const template = dashboardTemplateCatalog[templateId] || dashboardTemplateCatalog.command;
+  const preferences = {
+    ...currentCustomizationFormPreferences(),
+    dashboardTemplate: templateId,
+    dashboardLayout: template.layout,
+    dashboardWidgets: normalizeDashboardWidgets(template.widgets),
+  };
+  preferences.visibleWidgets = legacyVisibleWidgetsFromDashboardWidgets(preferences.dashboardWidgets);
+  localStorage.setItem(customizationPreferenceKey(), JSON.stringify(preferences));
+  applyCustomizationPreferences(preferences);
+  renderCustomizationSettings();
+  customizationMessage.textContent = `${template.label} dashboard template applied. Adjust any widget order or size, then save preferences.`;
+  await logAuditEvent("Dashboard template applied", `${template.label} dashboard template selected.`);
+}
+
+function currentCustomizationFormPreferences() {
+  const preferences = userCustomizationPreferences();
+  if (!customizationForm) return preferences;
+  return {
+    ...preferences,
+    themeMode: customThemeMode.value || preferences.themeMode,
+    accentColor: customAccentColor.value || preferences.accentColor,
+    density: customDensity.value || preferences.density,
+    sidebarMode: customSidebarMode.value || preferences.sidebarMode,
+    defaultLandingPage: customDefaultLanding.value || preferences.defaultLandingPage,
+    dashboardLayout: customDashboardLayout.value || preferences.dashboardLayout,
+    aiTone: customAiTone.value || preferences.aiTone,
+    defaultTrade: customDefaultTrade.value || preferences.defaultTrade,
+    companyName: customCompanyName.value.trim() || preferences.companyName,
+    brandAccent: customBrandAccent.value || preferences.brandAccent,
+    logoName: customLogoName.value.trim() || preferences.logoName,
+  };
 }
 
 async function saveThemeModePreference(themeMode) {
@@ -4549,7 +4938,7 @@ function renderInsightCard(insight) {
 
 function sourcePerformanceInsight() {
   const sourceMap = new Map();
-  state.leads.forEach((lead) => {
+  visibleLeadsForCurrentUser().forEach((lead) => {
     const current = sourceMap.get(lead.source) || { source: lead.source, value: 0, count: 0, lead: lead };
     current.value += lead.value;
     current.count += 1;
@@ -6682,7 +7071,7 @@ function contactSearchMatches(lead) {
 }
 
 function renderContactFilterCounts() {
-  const searchableLeads = state.leads.filter(contactSearchMatches);
+  const searchableLeads = visibleLeadsForCurrentUser().filter(contactSearchMatches);
   document.querySelector("#contactCountAll").textContent = searchableLeads.length;
   document.querySelector("#contactCountNew").textContent = searchableLeads.filter(
     (lead) => lead.stage === "new",
@@ -10927,12 +11316,14 @@ function isValidInviteEmail(email) {
 }
 
 async function sendInviteEmail(inviteId) {
+  if (!guardRestrictedAction("team", adminMessage, "Only Admins can send or resend workspace invites.")) return;
   const invite = accountState().invites.find((item) => item.id === inviteId);
   if (!invite) return;
   await sendInviteThroughBackend(invite);
 }
 
 async function sendInviteThroughBackend(invite) {
+  if (!guardRestrictedAction("team", adminMessage, "Only Admins can send or resend workspace invites.")) return;
   adminMessage.textContent = `Sending invite to ${invite.email}...`;
   try {
     const result = await postBackendJson("/api/invites/send", {
@@ -10991,6 +11382,8 @@ function workspaceApiContext() {
     ownerEmail: settings.ownerEmail,
     inviterEmail: settings.ownerEmail,
     productUrl,
+    actorRole: currentAccessRole(),
+    actorTeamFunction: currentTeamFunction(),
   };
 }
 
@@ -11171,6 +11564,7 @@ async function createTasksForSelectedContacts() {
 }
 
 async function markSelectedContactsWon() {
+  if (!guardRestrictedAction("bulk-lead-update", contactSelectionStatus, "Bulk contact stage changes are not available to Member access.")) return;
   const selectedLeads = [...selectedContactIds]
     .map((leadId) => state.leads.find((lead) => lead.id === leadId))
     .filter(Boolean);
@@ -11184,6 +11578,7 @@ async function markSelectedContactsWon() {
 }
 
 async function moveSelectedContactsNext() {
+  if (!guardRestrictedAction("bulk-lead-update", contactSelectionStatus, "Bulk contact stage changes are not available to Member access.")) return;
   const selectedLeads = [...selectedContactIds]
     .map((leadId) => state.leads.find((lead) => lead.id === leadId))
     .filter(Boolean);
@@ -11324,6 +11719,7 @@ async function updateLeadNextAction(leadId, nextAction) {
 }
 
 async function deleteLead(leadId) {
+  if (!guardRestrictedAction("delete-leads", backupMessage, "Members and managers cannot delete workspace leads.")) return;
   const lead = state.leads.find((item) => item.id === leadId);
   if (lead) {
     await store.createActivity({
@@ -11338,16 +11734,19 @@ async function deleteLead(leadId) {
 }
 
 function exportLeadsCsv() {
+  if (!guardRestrictedAction("data-export", backupMessage, "Full lead exports are Admin-only.")) return;
   downloadLeadsCsv(state.leads, "closepilot-leads.csv");
 }
 
 function exportSelectedContactsCsv() {
+  if (!guardRestrictedAction("data-export", backupMessage, "Contact exports are Admin-only.")) return;
   const leads = selectedContactLeads();
   if (!leads.length) return;
   downloadLeadsCsv(leads, "closepilot-selected-leads.csv");
 }
 
 function exportSourceReportCsv() {
+  if (!guardRestrictedAction("data-export", backupMessage, "Source report exports are Admin-only.")) return;
   const rows = sourcePerformanceRows();
   if (!rows.length) return;
 
@@ -11375,6 +11774,7 @@ function exportSourceReportCsv() {
 }
 
 function exportWorkspaceBackup() {
+  if (!guardRestrictedAction("backup", backupMessage, "Workspace backup exports are Admin-only.")) return;
   const payload = {
     app: "Kira Home",
     version: 1,
@@ -11398,6 +11798,7 @@ function exportWorkspaceBackup() {
 }
 
 async function importWorkspaceBackup(event) {
+  if (!guardRestrictedAction("backup", backupMessage, "Workspace backup imports are Admin-only.")) return;
   const file = event.target.files?.[0];
   if (!file) return;
 
@@ -11846,6 +12247,7 @@ function renderImportPreview() {
 }
 
 async function confirmLeadsImport() {
+  if (!guardRestrictedAction("lead-import", backupMessage, "Lead CSV imports are Admin-only for production workspaces.")) return;
   const importedLeads = pendingImport?.leads || [];
   if (!importedLeads.length) return;
 
@@ -11900,6 +12302,7 @@ function parseLeadsCsv(text) {
       source: record.source || "CSV import",
       nextAction: record.nextAction || nextActionForStage(stage),
       notes,
+      assignedTo: record.assignedTo || record.assigned_to || "",
     });
   });
 
@@ -12804,6 +13207,7 @@ function fromLeadRow(row) {
     notes: row.notes,
     nextAction: row.next_action,
     source: row.source,
+    assignedTo: row.assigned_to || "",
   };
 }
 
@@ -12909,6 +13313,10 @@ function fromRecruitingCandidateRow(row) {
 
 function normalizeLoadedState() {
   state.leads ||= [];
+  state.leads = state.leads.map((lead) => ({
+    ...lead,
+    assignedTo: lead.assignedTo || lead.assigned_to || "",
+  }));
   state.tasks ||= [];
   state.automations ||= defaultAutomations.map((automation, index) => ({
     id: `auto-${index + 1}`,
@@ -13276,6 +13684,16 @@ function escapeHtml(value) {
 
 function escapeAttribute(value) {
   return escapeHtml(value).replaceAll("`", "&#096;");
+}
+
+function escapeRegExp(value) {
+  return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function pascalCase(value) {
+  return String(value || "")
+    .replace(/(^|[-_\s]+)([a-z0-9])/gi, (_match, _separator, char) => char.toUpperCase())
+    .replace(/[^a-z0-9]/gi, "");
 }
 
 boot();

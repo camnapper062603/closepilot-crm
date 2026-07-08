@@ -39,6 +39,21 @@ test('opens the lead generator cost planner and estimates paid stack costs', asy
   await expect(page.locator('#leadRows')).toBeVisible();
 });
 
+test('shows a paid add-on locked state for non-enabled members', async ({ page }) => {
+  await page.goto('/lead-generator?role=member', { waitUntil: 'domcontentloaded' });
+
+  await expect(page.locator('#leadSyncMode')).toHaveText('Locked add-on');
+  await expect(page.locator('#leadAccessBanner')).toBeVisible();
+  await expect(page.locator('#leadAccessBanner')).toContainText('Residential Lead Generator is a paid add-on');
+  await expect(page.locator('#leadAccessBanner').getByRole('link', { name: 'View Demo' })).toHaveAttribute('href', '/lead-generator?demo=1');
+
+  await page.getByRole('button', { name: 'Generate safe leads' }).click();
+  await expect(page.locator('#statusMessage')).toContainText('Residential Lead Generator is a paid add-on');
+
+  await page.getByRole('button', { name: 'Export leads' }).click();
+  await expect(page.locator('#statusMessage')).toContainText('Residential Lead Generator is a paid add-on');
+});
+
 test('imports Redfin or Zillow style property exports without scraping', async ({ page }) => {
   await page.locator('#portalFile').setInputFiles({
     name: 'redfin-export.csv',
