@@ -70,9 +70,9 @@ The included `vercel.json` already applies those settings and routes `/recruitin
 
 | Module | Status | Notes |
 | --- | --- | --- |
-| ClosePilot CRM | Core | Daily Command Center, Flow Mode, Communications, Automations, AI Sales Manager, Admin, billing/invite backend endpoints, and demo fallback |
-| Kira Recruit | Paid add-on | Demo is public, enabled workspaces can use the workflow, locked members see View Demo / Ask Admin to Enable |
-| Residential Lead Generator | Paid add-on | Demo is public, generation/export actions require enabled access, exports add audit rows and compliance reminders |
+| ClosePilot CRM | Live SaaS product | Daily Command Center, Flow Mode, Communications, Automations, AI Sales Manager, Admin, billing/invite backend endpoints, and demo fallback |
+| Kira Recruit | Coming soon preview | CRM customers can view demo mode; live recruiting sync, onboarding delivery, and payroll handoff stay in early-access preview |
+| Residential Lead Generator | Coming soon preview | CRM customers can view demo mode; live enrichment, provider imports, CRM sync, and exports require compliance setup before early access |
 
 Open demos:
 
@@ -123,9 +123,9 @@ Without those variables, the app runs in demo mode using browser storage.
    - `STRIPE_PRICE_STARTER`
    - `STRIPE_PRICE_GROWTH`
    - `STRIPE_PRICE_SCALE`
-   - `STRIPE_PRICE_ADDON_RECRUIT` (future add-on checkout)
-   - `STRIPE_PRICE_ADDON_LEADGEN` (future add-on checkout)
-   - `STRIPE_PRICE_ADDON_BUNDLE` (future add-on checkout)
+   - `STRIPE_PRICE_ADDON_RECRUIT` (optional future add-on checkout)
+   - `STRIPE_PRICE_ADDON_LEADGEN` (optional future add-on checkout)
+   - `STRIPE_PRICE_ADDON_BUNDLE` (optional future add-on checkout)
    - `APP_BASE_URL`
 3. Add a Stripe webhook endpoint pointing to:
 
@@ -145,13 +145,13 @@ https://your-domain.com/api/stripe/webhook
 
 If Stripe variables are missing, the Admin page stays in demo mode and shows a useful setup message instead of breaking.
 
-Add-on checkout hardening is intentionally out of scope for the current marketer-demo pass. Kira Recruit, Residential Lead Gen, and the bundle are displayed as paid expansion modules with demo CTAs and setup guidance.
+Add-on checkout hardening is intentionally out of scope for the first CRM customer launch. Kira Recruit, Residential Lead Gen, and the bundle are displayed as coming soon previews with demo CTAs and early-access interest logging.
 
 ## Roles And Add-Ons
 
 The user-facing access tiers are:
 
-- Admin: full CRM, billing, team/invites, workspace settings, launch readiness, automations, import/export, reporting, and paid add-on visibility.
+- Admin: full CRM, billing, team/invites, workspace settings, launch readiness, automations, import/export, reporting, and coming soon app previews.
 - Manager: CRM, team execution, assigned/team leads, follow-up queue, communications, reporting, Flow Mode, AI Copilot, and limited automations. No billing or owner-level settings.
 - Member: assigned lead workflow, Flow Mode, follow-up tasks, assigned communications, and basic AI Copilot. No billing, team management, launch readiness, full export, or add-on purchasing.
 
@@ -213,7 +213,7 @@ Local demo mode is still fully supported:
 - Missing Google Calendar variables or cloud workspace: appointments remain in the CRM calendar.
 - Missing production backend on a static host: frontend calls fail gracefully with demo messages.
 - Public demo access: visitors can explore without login, but demo mode does not cloud sync or unlock paid production usage.
-- Locked add-ons: Kira Recruit and Residential Lead Generator show upgrade/enable prompts for non-enabled roles.
+- Coming soon previews: Kira Recruit and Residential Lead Generator show demo links and early-access prompts for non-enabled roles.
 
 ## Live Vs Demo Vs Manual
 

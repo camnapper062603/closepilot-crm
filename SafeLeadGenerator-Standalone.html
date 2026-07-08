@@ -1041,13 +1041,13 @@
           <div>
             <h1>Compliant Property Lead Builder</h1>
             <p class="muted">
-              Paid Residential Lead Generator add-on for territory lists, property imports, enrichment planning,
+              Coming soon Residential Lead Generator preview for territory lists, property imports, enrichment planning,
               DNC-aware exports, and CRM pipeline handoff.
             </p>
           </div>
           <div class="actions">
-            <span class="pill info">Paid add-on</span>
-            <span class="pill warn" id="leadSyncMode">Demo add-on</span>
+            <span class="pill info">Coming soon</span>
+            <span class="pill warn" id="leadSyncMode">Demo preview</span>
             <span class="pill warn">No live scraping</span>
             <a class="button secondary" href="/">Back to CRM</a>
           </div>
@@ -1060,16 +1060,15 @@
 
         <section class="locked-addon-banner" id="leadAccessBanner" hidden>
           <div>
-            <span class="pill warn">Paid add-on</span>
-            <h2>Residential Lead Generator is a paid add-on</h2>
+            <span class="pill warn">Coming soon</span>
+            <h2>Residential Lead Generator is coming soon</h2>
             <p>
-              Admins can enable property data, skip trace, and DNC-safe exports from the CRM plan area.
-              Demo mode is viewable, but live enrichment, scraping alternatives, CRM sync, and exports require enabled access plus compliance setup.
+              CRM customers can view the demo preview. Live enrichment, provider imports, CRM sync, and exports require compliance setup before early access opens.
             </p>
           </div>
           <div class="actions">
             <a class="button secondary" href="/lead-generator?demo=1">View Demo</a>
-            <a class="button primary" href="/#admin">Ask Admin to Enable</a>
+            <a class="button primary" href="/#admin">Back to CRM</a>
           </div>
         </section>
 
@@ -1767,7 +1766,7 @@ Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,78731,78731,TX-1001,512-555-018
           demo,
           enabled,
           locked: !enabled,
-          label: demo ? "Demo add-on" : enabled ? "Add-on enabled" : "Locked add-on",
+          label: demo ? "Demo preview" : enabled ? "Preview enabled" : "Preview locked",
         };
       }
 
@@ -1780,7 +1779,7 @@ Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,78731,78731,TX-1001,512-555-018
 
       function guardLeadGeneratorAccess(action) {
         if (!accessContext.locked) return true;
-        setStatus(`Residential Lead Generator is a paid add-on. Ask an admin to enable it before you ${action}.`);
+        setStatus(`Residential Lead Generator is coming soon. Use demo preview or ask an admin for early access before you ${action}.`);
         return false;
       }
 
@@ -1806,7 +1805,7 @@ Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,78731,78731,TX-1001,512-555-018
 
         if (!guardLeadGeneratorAccess("auto-generate leads from imports")) {
           render();
-          setStatus(`${message} Add-on access required before auto generation or export.`);
+          setStatus(`${message} Preview access required before auto generation or export.`);
           return;
         }
 

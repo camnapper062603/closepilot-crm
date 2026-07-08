@@ -635,7 +635,7 @@ function recruitingAccessContext() {
     demo,
     enabled,
     locked: !demo && !enabled,
-    label: demo ? "Demo add-on" : enabled ? "Add-on enabled" : "Locked add-on",
+    label: demo ? "Demo preview" : enabled ? "Preview enabled" : "Preview locked",
   };
 }
 
@@ -647,7 +647,7 @@ function renderAccessState() {
 
 function guardRecruitingAccess(action) {
   if (!accessContext.locked) return true;
-  const message = `Kira Recruit is a paid add-on. Ask an admin to enable it before you ${action}.`;
+  const message = `Kira Recruit is coming soon. Use demo preview or ask an admin for early access before you ${action}.`;
   elements.jobMessage.textContent = message;
   elements.integrationMessage.textContent = message;
   elements.feedMessage.textContent = message;

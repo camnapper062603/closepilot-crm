@@ -1251,13 +1251,13 @@ test('manages SaaS workspace plan, seats, and invites', async ({ page }) => {
   await expect(admin.locator('#planAddonList')).toContainText('Kira Recruit $99/mo');
   await expect(admin.locator('#planAddonList')).toContainText('Residential Lead Gen $149/mo');
   await expect(admin.locator('#planAddonList')).toContainText('Recruit + Lead Gen bundle $199/mo');
-  await expect(admin.locator('#planAddonList')).toContainText('Paid add-on');
-  await admin.locator('[data-addon-card="recruiting"]').getByRole('button', { name: 'Add to Plan' }).click();
-  await expect(admin.locator('#adminMessage')).toContainText('Kira Recruit setup requested');
+  await expect(admin.locator('#planAddonList')).toContainText('Coming soon');
+  await admin.locator('[data-addon-card="recruiting"]').getByRole('button', { name: 'Join early access' }).click();
+  await expect(admin.locator('#adminMessage')).toContainText('Kira Recruit early access interest logged');
 
   await page.getByRole('button', { name: 'Connected apps' }).click();
-  await expect(admin.getByRole('link', { name: 'View Demo' }).first()).toHaveAttribute('href', '/recruiting.html');
-  await expect(admin.locator('#extensionGrid')).toContainText('Paid add-on');
+  await expect(admin.getByRole('link', { name: 'View Demo' }).first()).toHaveAttribute('href', '/recruiting.html?demo=1');
+  await expect(admin.locator('#extensionGrid')).toContainText('Coming soon');
   await expect(admin.locator('#extensionGrid')).toContainText('Residential Lead Gen');
 
   await page.getByRole('button', { name: 'Product Overview' }).click();

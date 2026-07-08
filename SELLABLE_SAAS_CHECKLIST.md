@@ -10,15 +10,15 @@ Implemented:
 - Communications Hub with provider abstraction
 - AI Sales Manager UI
 - Automation builder
-- Recruiting app and CRM recruiting inbox
-- Lead generator and cost planner
+- Recruiting preview app and CRM recruiting inbox
+- Lead generator preview and cost planner
 - Stripe backend checkout/portal/webhook stubs with live support
 - Resend invite delivery
 - Supabase schema/RLS foundation
 - Production readiness panel
 - Demo fallback mode
-- Role-restricted navigation and action guards for billing, team invites, exports, backups, lead deletes, and add-on purchase paths
-- Paid add-on locked states for Kira Recruit and Residential Lead Generator
+- Role-restricted navigation and action guards for billing, team invites, exports, backups, lead deletes, and future app early-access paths
+- Coming soon preview locked states for Kira Recruit and Residential Lead Generator
 - Lead Generator export audit entries and compliance-safe export messaging
 - Mobile/PWA readiness
 
@@ -43,7 +43,7 @@ What is live/back-end-ready:
 
 What is still demo/fallback/manual:
 
-- Add-on checkout for Kira Recruit and Residential Lead Generator is positioned/priced but not fully wired to Stripe purchase flows.
+- Add-on checkout for Kira Recruit and Residential Lead Generator is intentionally held as coming soon early-access interest, not a live Stripe purchase flow.
 - Job board, payroll, lead enrichment, skip tracing, and DNC vendors are setup screens and demo workflows until provider contracts/API keys are added.
 - Public records/Zillow/Redfin workflows must use authorized exports or approved APIs. The app should not be sold as an unauthorized scraper.
 - Production support process, billing support, cancellation/refund terms, and compliance review still need owner approval.
@@ -62,7 +62,7 @@ Before first paying customer:
 2. Verify Stripe checkout, customer portal, and webhook state changes on the deployed domain.
 3. Send and accept a Resend invite from the production domain.
 4. Confirm no provider screens imply live job posting, SMS, email, payroll, skip tracing, or AI when env vars/API contracts are missing.
-5. Decide which add-ons are enabled manually for beta customers and document the internal process.
+5. Keep Kira Recruit and Residential Lead Generator as preview-only until provider contracts, compliance, and support processes are documented.
 
 Before public launch:
 

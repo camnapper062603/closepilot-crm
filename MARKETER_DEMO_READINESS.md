@@ -9,9 +9,9 @@ ClosePilot / Kira Home is positioned as a premium AI sales operating system for 
 - AI Sales Copilot with deterministic/local suggestions.
 - Communications hub for calls, texts, emails, notes, call logging, quick actions, and AI assistant panels.
 - Automations builder, templates, logs, and placeholder AI workflow generation.
-- Admin workspace with pricing, seat limits, invites, roles, add-ons, product overview, launch readiness, and audit trail.
-- Kira Recruit paid add-on demo with job intake, candidate pipeline, interviews, onboarding, payroll staging, and CRM sync.
-- Residential Lead Generator paid add-on demo with property imports, cost planning, DNC-aware workflow, and CRM handoff.
+- Admin workspace with pricing, seat limits, invites, roles, coming soon previews, product overview, launch readiness, and audit trail.
+- Kira Recruit coming soon preview with job intake, candidate pipeline, interviews, onboarding, payroll staging, and CRM sync.
+- Residential Lead Generator coming soon preview with property imports, cost planning, DNC-aware workflow, and CRM handoff.
 
 ## Five-Minute Demo Flow
 
@@ -19,23 +19,23 @@ ClosePilot / Kira Home is positioned as a premium AI sales operating system for 
 2. Click Start My Day and show Flow Mode, Lead Intelligence, scripts, and time saved.
 3. Open Communications and show conversation history, composer, call controls, and AI suggestions.
 4. Open Automations and show templates plus the workflow canvas.
-5. Open Admin, then Product Overview, Team roles, Pricing/Add-ons, and Ready to Demo checklist.
-6. Open Kira Recruit and Residential Lead Generator as paid add-ons.
+5. Open Admin, then Product Overview, Team roles, Pricing, coming soon previews, and Ready to Demo checklist.
+6. Open Kira Recruit and Residential Lead Generator as preview apps.
 
 ## Current Setup / Demo Status
 
 - Demo mode remains honest when Supabase, Stripe, Resend, Twilio, OpenAI, or Google Calendar are missing.
 - Public demo mode is still frictionless: the CRM, Kira Recruit, and Residential Lead Generator can be opened without a login for show-and-tell.
 - Demo mode does not cloud sync. Real workspace sync, invites, billing, calendar tokens, and provider delivery require env vars plus Supabase.
-- Billing add-on checkout is not rebuilt in this pass; existing Stripe behavior is preserved.
+- Billing add-on checkout is intentionally not live yet; early-access interest is logged while base CRM Stripe behavior is preserved.
 - Invite emails send through Resend when configured; otherwise a copyable invite link is shown.
 - APP_BASE_URL should be set to the production domain before sending real invites.
 
 ## Access And Add-On Story
 
-- CRM: Core product. Admins see the full workspace, managers see team execution/reporting, and members stay focused on assigned-lead workflows.
-- Kira Recruit: Paid add-on. Demo is viewable, but non-enabled members see the locked add-on card with View Demo and Ask Admin to Enable.
-- Residential Lead Generator: Paid add-on. Demo is viewable, but generation/export actions are gated when the add-on is locked.
+- CRM: Live core SaaS product. Admins see the full workspace, managers see team execution/reporting, and members stay focused on assigned-lead workflows.
+- Kira Recruit: Coming soon preview. Demo is viewable, but live recruiting sync, onboarding delivery, and payroll handoff stay in early access.
+- Residential Lead Generator: Coming soon preview. Demo is viewable, but live enrichment, CRM sync, and exports stay gated until compliance setup is complete.
 - Dialer, Setter, and Closer are sales function labels. Admin, Manager, and Member are the permission tiers.
 
 ## 5-Minute Marketer Demo Script
@@ -44,7 +44,7 @@ ClosePilot / Kira Home is positioned as a premium AI sales operating system for 
 2. "Managers see the business, not just task lists." Show AI Sales Manager, pipeline health, and team coaching.
 3. "Communication is centralized." Show Communications, simulated send states, call logging, and follow-up creation.
 4. "Ops can automate repeat work." Show Automations templates and the AI workflow prompt.
-5. "Expansion revenue is built in." Show Admin Product Overview, Pricing/Add-ons, Kira Recruit, and Residential Lead Generator locked/demo states.
+5. "Expansion revenue is visible without overpromising." Show Admin Product Overview, CRM pricing, Kira Recruit, and Residential Lead Generator coming soon previews.
 
 ## Honest Demo Phrases
 

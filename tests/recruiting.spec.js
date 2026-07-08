@@ -10,7 +10,7 @@ test('runs the auto recruiting workflow and creates a CRM feed', async ({ page }
   await expect(page).toHaveTitle(/Kira Recruit/);
   await expect(page.getByRole('heading', { name: 'Auto recruiting' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Next best candidate action' })).toBeVisible();
-  await expect(page.locator('.recruit-hero')).toContainText('paid recruiting add-on');
+  await expect(page.locator('.recruit-hero')).toContainText('coming soon recruiting preview');
   await expect(page.locator('.recruit-hero')).toContainText('Requires active ClosePilot CRM subscription');
   await expect(page.locator('.recruit-hero')).toContainText('AI recruiter');
   await expect(page.locator('.recruit-sidebar')).toHaveCount(0);
@@ -62,21 +62,21 @@ test('runs the auto recruiting workflow and creates a CRM feed', async ({ page }
   expect(feed.interviews.map((interview) => new Date(interview.startsAt).getDay()).every((day) => [1, 3, 5].includes(day))).toBe(true);
 });
 
-test('shows a paid add-on locked state for non-enabled members', async ({ page }) => {
+test('shows a coming soon locked state for non-enabled members', async ({ page }) => {
   await page.goto('/recruiting.html?role=member', { waitUntil: 'domcontentloaded' });
 
-  await expect(page.locator('#syncMode')).toHaveText('Locked add-on');
+  await expect(page.locator('#syncMode')).toHaveText('Preview locked');
   await expect(page.locator('#recruitingAccessBanner')).toBeVisible();
-  await expect(page.locator('#recruitingAccessBanner')).toContainText('Kira Recruit is a paid add-on');
+  await expect(page.locator('#recruitingAccessBanner')).toContainText('Kira Recruit is coming soon');
   await expect(page.locator('#recruitingAccessBanner').getByRole('link', { name: 'View Demo' })).toHaveAttribute('href', '/recruiting.html?demo=1');
 
   await page.getByRole('button', { name: 'Job details' }).click();
   await page.getByRole('button', { name: 'List job' }).click();
-  await expect(page.locator('#jobMessage')).toContainText('Kira Recruit is a paid add-on');
+  await expect(page.locator('#jobMessage')).toContainText('Kira Recruit is coming soon');
 
   await page.getByRole('button', { name: 'Recruiting feed' }).click();
   await page.getByRole('button', { name: 'Sync CRM feed' }).click();
-  await expect(page.locator('#feedMessage')).toContainText('Kira Recruit is a paid add-on');
+  await expect(page.locator('#feedMessage')).toContainText('Kira Recruit is coming soon');
 });
 
 test('configures job board integrations and stages onboarding payroll', async ({ page }) => {

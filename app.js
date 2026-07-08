@@ -38,31 +38,31 @@ const extensionCatalog = [
     id: "recruiting",
     label: "Kira Recruit",
     price: 99,
-    href: "/recruiting.html",
-    badge: "Paid add-on",
+    href: "/recruiting.html?demo=1",
+    badge: "Coming soon",
     priceEnv: "STRIPE_PRICE_ADDON_RECRUIT",
-    detail: "Applicant pipeline, AI candidate summaries, interview tracking, onboarding, and CRM candidate sync.",
-    value: "Keeps hiring motion running in the background while the CRM stays focused on revenue.",
+    detail: "Preview applicant pipelines, AI candidate summaries, interview tracking, onboarding, payroll setup, and CRM candidate sync.",
+    value: "Shows where hiring automation is headed while the CRM stays focused on revenue today.",
   },
   {
     id: "leadgen",
     label: "Residential Lead Gen",
     price: 149,
-    href: "/lead-generator",
-    badge: "Paid add-on",
+    href: "/lead-generator?demo=1",
+    badge: "Coming soon",
     priceEnv: "STRIPE_PRICE_ADDON_LEADGEN",
-    detail: "Residential territory lists, property data imports, skip trace planning, DNC-aware exports, and CRM handoff.",
-    value: "Turns property research into safer homeowner prospecting lists for dialers.",
+    detail: "Preview residential territory lists, property data imports, skip trace planning, DNC-aware exports, and CRM handoff.",
+    value: "Shows how homeowner prospecting will connect to the CRM after compliance and provider setup are finished.",
   },
   {
     id: "bundle",
     label: "Recruit + Lead Gen bundle",
     price: 199,
     href: "",
-    badge: "Bundle",
+    badge: "Coming soon",
     priceEnv: "STRIPE_PRICE_ADDON_BUNDLE",
-    detail: "Both paid background apps connected through the CRM admin hub.",
-    value: "Best fit for teams scaling both lead flow and staffing at the same time.",
+    detail: "Future bundle for both background apps connected through the CRM admin hub.",
+    value: "Best fit for teams that want to preview both lead flow and staffing automation before launch.",
   },
 ];
 
@@ -74,7 +74,7 @@ const teamRoleCatalog = {
   },
   admin: {
     label: "Admin",
-    description: "Can manage billing, team members, invites, workspace settings, launch readiness, automations, imports, exports, reporting, and paid add-on visibility.",
+    description: "Can manage billing, team members, invites, workspace settings, launch readiness, automations, imports, exports, reporting, and coming soon app previews.",
   },
   manager: {
     label: "Manager",
@@ -4074,9 +4074,9 @@ function renderSaasAdmin() {
       <small>${plan.detail}</small>
     </article>
     <article class="plan-addon-summary">
-      <span>App add-ons</span>
+      <span>Coming soon apps</span>
       <strong>${formatter.format(plan.price + extensionCatalog[2].price)}/mo</strong>
-      <small>CRM + both apps estimate</small>
+      <small>CRM + future app estimate</small>
     </article>
   `;
 
@@ -4166,7 +4166,7 @@ function renderSaasAdmin() {
 }
 
 function renderAddOnPricingCard(extension, adminAccess) {
-  const cta = adminAccess ? "Add to Plan" : "Ask an admin to enable this add-on";
+  const cta = adminAccess ? "Join early access" : "Ask an admin for preview";
   const setupCopy = `${extension.priceEnv} future Stripe price ID`;
   return `
     <article class="addon-card" data-addon-card="${escapeHtml(extension.id)}">
@@ -4177,10 +4177,10 @@ function renderAddOnPricingCard(extension, adminAccess) {
       </div>
       <p>${escapeHtml(extension.value)}</p>
       <div class="addon-actions">
-        ${extension.href ? `<a class="secondary-button" href="${escapeAttribute(extension.href)}">View Demo</a>` : `<span class="status-pill">Included in bundle</span>`}
+        ${extension.href ? `<a class="secondary-button" href="${escapeAttribute(extension.href)}">View Demo</a>` : `<span class="status-pill">Future bundle</span>`}
         <button class="primary-button ${adminAccess ? "" : "locked-action"}" type="button" data-addon-request="${escapeHtml(extension.id)}">${escapeHtml(cta)}</button>
       </div>
-      <small class="addon-setup-copy">Setup required if ${escapeHtml(setupCopy)} is missing.</small>
+      <small class="addon-setup-copy">Coming soon. ${escapeHtml(setupCopy)} is optional until checkout opens.</small>
     </article>
   `;
 }
@@ -4189,15 +4189,15 @@ async function handleAddonRequest(addonId) {
   const extension = extensionCatalog.find((item) => item.id === addonId);
   if (!extension) return;
   if (!canUseAdminAction("addon-purchase")) {
-    adminMessage.textContent = "Ask an admin to enable this paid add-on for the workspace.";
+    adminMessage.textContent = "Ask an admin to open the coming soon preview or join early access.";
     return;
   }
-  await logAuditEvent("Add-on requested", `${extension.label} setup requested from Admin.`);
-  adminMessage.textContent = `${extension.label} setup requested. Stripe add-on checkout is intentionally unchanged in this demo pass.`;
+  await logAuditEvent("Coming soon interest", `${extension.label} early access interest logged from Admin.`);
+  adminMessage.textContent = `${extension.label} early access interest logged. The CRM is live now; this app stays in preview until provider contracts and compliance setup are finished.`;
 }
 
 function renderExtensionCard(extension, adminAccess) {
-  const requestLabel = adminAccess ? "Contact Sales" : "Ask Admin";
+  const requestLabel = adminAccess ? "Join early access" : "Ask Admin";
   return `
     <article class="extension-card ${adminAccess ? "" : "locked"}">
       <div>
@@ -4206,7 +4206,7 @@ function renderExtensionCard(extension, adminAccess) {
         <span>${escapeHtml(extension.detail)}</span>
       </div>
       <div class="addon-actions">
-        ${extension.href ? `<a class="secondary-button" href="${escapeAttribute(extension.href)}">View Demo</a>` : `<span class="status-pill">Bundle option</span>`}
+        ${extension.href ? `<a class="secondary-button" href="${escapeAttribute(extension.href)}">View Demo</a>` : `<span class="status-pill">Coming soon bundle</span>`}
         <button class="primary-button ${adminAccess ? "" : "locked-action"}" type="button" data-addon-request="${escapeHtml(extension.id)}">${escapeHtml(requestLabel)}</button>
       </div>
     </article>
@@ -4823,12 +4823,12 @@ function launchChecks() {
     },
     {
       title: "Pricing visible",
-      detail: "Starter, Growth, Scale, and paid add-on price positioning render in Admin.",
+      detail: "Starter, Growth, and Scale CRM plan pricing render in Admin with checkout buttons.",
       ready: true,
     },
     {
-      title: "Add-ons visible",
-      detail: "Kira Recruit, Residential Lead Gen, and bundle positioning are visible as paid expansion modules.",
+      title: "Coming soon previews visible",
+      detail: "Kira Recruit, Residential Lead Gen, and the future bundle are marked as preview apps with demo links.",
       ready: true,
     },
     {

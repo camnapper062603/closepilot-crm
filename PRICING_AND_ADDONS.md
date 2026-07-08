@@ -1,6 +1,6 @@
-# Pricing And Add-Ons
+# Pricing And Coming Soon Apps
 
-ClosePilot base CRM plans and paid add-ons should be shown separately so marketers and buyers understand what is included.
+ClosePilot base CRM plans and coming soon app previews should be shown separately so marketers and buyers understand what is included today.
 
 ## Base CRM Plans
 
@@ -10,7 +10,7 @@ ClosePilot base CRM plans and paid add-ons should be shown separately so markete
 | Growth | $79/mo | 10 | Team seats, source reporting, automations, forecasting |
 | Scale | $199/mo | 25 | Higher seat limits, admin controls, rollout support |
 
-## Paid Add-Ons
+## Coming Soon App Previews
 
 | Add-On | Demo Price | Positioning |
 | --- | ---: | --- |
@@ -18,19 +18,21 @@ ClosePilot base CRM plans and paid add-ons should be shown separately so markete
 | Residential Lead Gen | $149/mo | Territory lists, property data imports, skip trace planning, DNC-aware exports, CRM handoff |
 | Recruit + Lead Gen Bundle | $199/mo | Both background apps for teams scaling staffing and lead flow together |
 
-## Add-On Access States
+These prices are positioning estimates for future checkout. The CRM is the live paid product today.
+
+## Preview Access States
 
 | State | What Users See | Intended Use |
 | --- | --- | --- |
-| Demo add-on | Full demo experience, clear demo labels, local/browser persistence only | Sales demos, marketer walkthroughs, internal testing |
-| Add-on enabled | Working add-on UI, CRM handoff, local/Supabase-ready persistence where configured | Private beta customers after plan enablement |
-| Locked add-on | Paid add-on card with View Demo and Ask Admin to Enable | Manager/member accounts without paid access |
+| Demo preview | Full demo experience, clear demo labels, local/browser persistence only | Sales demos, marketer walkthroughs, internal testing |
+| Preview enabled | Working preview UI, CRM handoff, local/Supabase-ready persistence where configured | Private beta customers after manual early-access approval |
+| Preview locked | Coming soon card with View Demo and Back to CRM | Manager/member accounts without preview access |
 
-Kira Recruit and Residential Lead Generator both include consistent navigation back to the CRM, paid add-on badges, and locked-state cards. Lead Generator exports also create audit-style rows and remind users to verify consent/DNC compliance before outreach.
+Kira Recruit and Residential Lead Generator both include consistent navigation back to the CRM, coming soon badges, and locked-state cards. Lead Generator exports also create audit-style rows and remind users to verify consent/DNC compliance before outreach.
 
 ## Future Stripe Env Vars
 
-These are documented for future add-on checkout work. This pass does not rebuild Stripe add-on checkout.
+These are documented for future add-on checkout work. Current CRM launch keeps these apps in preview mode.
 
 ```text
 STRIPE_PRICE_ADDON_RECRUIT=
@@ -40,7 +42,7 @@ STRIPE_PRICE_ADDON_BUNDLE=
 
 ## Demo/Fallback Notes
 
-- Add-on cards show View Demo and Add to Plan/Contact Sales positioning.
-- Managers and Members should see guidance to ask an admin to enable paid add-ons.
-- If add-on Stripe price IDs are missing, the UI should remain in setup/demo mode rather than pretending checkout is live.
-- Add-on price IDs are documented now so checkout can be wired later without changing the pricing story.
+- Coming soon cards show View Demo and early-access interest positioning.
+- Managers and Members should see guidance to use demo preview or ask an admin for early access.
+- If future app Stripe price IDs are missing, the UI should remain in setup/demo mode rather than pretending checkout is live.
+- Future app price IDs are documented now so checkout can be wired later without changing the pricing story.
