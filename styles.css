@@ -8215,6 +8215,334 @@ body[data-dashboard-layout="focus"] .daily-command-center > [data-dashboard-size
   }
 }
 
+/* Mobile app shell cleanup: keep the CRM usable instead of shrinking the desktop layout. */
+@media (max-width: 820px) {
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .app-shell {
+    display: block;
+  }
+
+  .sidebar {
+    gap: 10px;
+    padding: 12px 12px 10px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+
+  .brand {
+    align-items: center;
+    gap: 10px;
+  }
+
+  .brand-mark {
+    flex: 0 0 34px;
+    font-size: 0.78rem;
+    height: 34px;
+    width: 34px;
+  }
+
+  .brand strong {
+    font-size: 1rem;
+    line-height: 1.05;
+  }
+
+  .brand span {
+    font-size: 0.72rem;
+  }
+
+  .nav-links {
+    gap: 4px;
+    margin: 0 -2px;
+    padding: 4px;
+    scroll-padding-inline: 4px;
+    scroll-snap-type: x proximity;
+  }
+
+  .nav-links a {
+    align-items: center;
+    display: inline-flex;
+    flex: 0 0 auto;
+    font-size: 0.72rem;
+    min-height: 30px;
+    padding: 6px 9px;
+    scroll-snap-align: start;
+  }
+
+  .nav-links a[data-addon-badge]::after {
+    display: none;
+  }
+
+  .main {
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .topbar {
+    align-items: start;
+    display: grid;
+    gap: 10px;
+    grid-template-columns: minmax(0, 1fr);
+    padding: 12px;
+  }
+
+  .topbar > *,
+  .topbar-actions,
+  .search,
+  .search input {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .topbar h1 {
+    font-size: clamp(1.45rem, 7vw, 1.9rem);
+    line-height: 1.02;
+    overflow-wrap: anywhere;
+  }
+
+  .topbar .eyebrow {
+    font-size: 0.64rem;
+    margin-bottom: 2px;
+  }
+
+  .topbar-actions {
+    display: grid;
+    gap: 8px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    width: 100%;
+  }
+
+  .topbar-actions .mode-pill,
+  .topbar-actions .search {
+    grid-column: 1 / -1;
+  }
+
+  .mode-pill {
+    font-size: 0.72rem;
+    justify-content: center;
+    min-height: 30px;
+    padding: 5px 10px;
+  }
+
+  .search {
+    min-width: 0;
+    padding: 0 10px;
+  }
+
+  .search input {
+    font-size: 0.92rem;
+    min-height: 36px;
+  }
+
+  .topbar-actions .primary-button,
+  .topbar-actions .secondary-button,
+  .topbar-actions button {
+    font-size: 0.82rem;
+    min-height: 36px;
+    padding: 6px 10px;
+    white-space: nowrap;
+    width: 100%;
+  }
+
+  .subpage-nav {
+    gap: 4px;
+    padding: 4px;
+  }
+
+  .subpage-nav button,
+  .segmented-control button {
+    font-size: 0.72rem;
+    min-height: 30px;
+    padding: 0 9px;
+  }
+
+  .panel,
+  .topbar,
+  .onboarding-panel,
+  .password-onboarding-panel,
+  .dashboard-greeting,
+  .today-focus-card,
+  .dashboard-follow-up-card,
+  .time-saved-widget,
+  .dashboard-section,
+  .flow-mode-panel,
+  .manager-hero,
+  .manager-section,
+  .workflow-builder-panel,
+  .workflow-templates-panel,
+  .communications-column,
+  .sales-copilot-panel,
+  .lead-intelligence-panel,
+  .opportunity-health-panel {
+    border-radius: 8px;
+    padding: 12px;
+  }
+
+  .panel-heading,
+  .section-heading,
+  .manager-hero,
+  .sales-copilot-header {
+    gap: 8px;
+  }
+
+  .panel-heading h2,
+  .section-heading h2,
+  .dashboard-greeting h2,
+  .today-focus-card h2,
+  .dashboard-section h2,
+  .manager-hero h2,
+  .flow-mode-panel h2 {
+    font-size: 1.18rem;
+    line-height: 1.12;
+  }
+
+  .eyebrow {
+    font-size: 0.66rem;
+  }
+
+  .primary-button,
+  .secondary-button,
+  .danger-button,
+  .task-form button,
+  .card-actions button {
+    font-size: 0.8rem;
+    line-height: 1.12;
+    min-height: 36px;
+    padding: 6px 10px;
+    white-space: nowrap;
+    width: auto;
+  }
+
+  .panel-actions,
+  .contact-actions,
+  .task-actions,
+  .brief-actions,
+  .detail-actions,
+  .contact-profile-actions,
+  .manager-hero-actions,
+  .composer-actions,
+  .workflow-toolbar-actions,
+  .automation-builder-actions,
+  .automation-template-actions,
+  .billing-actions,
+  .plan-options {
+    gap: 6px;
+  }
+
+  .contact-controls {
+    align-items: center;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .contact-controls > *,
+  .contact-controls button,
+  .contact-sort {
+    flex: 0 1 auto;
+    width: auto;
+  }
+
+  .contact-sort {
+    min-width: min(100%, 260px);
+  }
+
+  .product-overview-hero h3,
+  .product-overview-card h3 {
+    font-size: 1.38rem;
+    line-height: 1.12;
+  }
+
+  .toast-region {
+    bottom: 8px;
+    left: 10px;
+    max-width: none;
+    pointer-events: none;
+    right: 10px;
+    z-index: 80;
+  }
+
+  .communication-toast {
+    gap: 1px;
+    padding: 9px 11px;
+  }
+
+  .communication-toast strong {
+    font-size: 0.86rem;
+  }
+
+  .communication-toast span {
+    font-size: 0.72rem;
+    line-height: 1.25;
+  }
+}
+
+@media (max-width: 560px) {
+  .main {
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .topbar {
+    gap: 9px;
+    padding: 10px;
+  }
+
+  .topbar h1 {
+    font-size: clamp(1.32rem, 7vw, 1.72rem);
+  }
+
+  .product-overview-hero h3,
+  .product-overview-card h3 {
+    font-size: 1.18rem;
+  }
+
+  .topbar-actions {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .panel,
+  .onboarding-panel,
+  .password-onboarding-panel,
+  .dashboard-greeting,
+  .today-focus-card,
+  .dashboard-follow-up-card,
+  .time-saved-widget,
+  .dashboard-section,
+  .flow-mode-panel,
+  .manager-hero,
+  .manager-section,
+  .workflow-builder-panel,
+  .workflow-templates-panel,
+  .communications-column,
+  .sales-copilot-panel {
+    padding: 10px;
+  }
+
+  .panel-heading h2,
+  .section-heading h2,
+  .dashboard-greeting h2,
+  .today-focus-card h2,
+  .dashboard-section h2 {
+    font-size: 1.08rem;
+  }
+
+  .primary-button,
+  .secondary-button,
+  .danger-button,
+  .task-form button,
+  .card-actions button {
+    font-size: 0.76rem;
+    min-height: 34px;
+    padding: 5px 9px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

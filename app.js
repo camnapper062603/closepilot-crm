@@ -1622,7 +1622,9 @@ async function startPublicDemoWorkspace(options = {}) {
   setActivePage(activePage || "pipeline");
   render();
   queueDemoScrollTop();
-  showAppToast("Demo workspace loaded", "Explore the CRM with sample leads, team activity, add-ons, and AI workflows.");
+  if (!window.matchMedia("(max-width: 820px)").matches) {
+    showAppToast("Demo workspace loaded", "Explore the CRM with sample leads, team activity, add-ons, and AI workflows.");
+  }
 }
 
 function exitPublicDemoWorkspace() {
@@ -1988,6 +1990,7 @@ function renderRoute() {
     link.hidden = !canAccessPage(link.dataset.navPage);
     link.classList.toggle("active", link.dataset.navPage === activePage);
   });
+  syncActiveMobileNav();
 
   document.body.dataset.activePage = activePage;
   pageTitle.textContent = pageTitles[activePage] || pageTitles.pipeline;
@@ -1997,6 +2000,14 @@ function renderRoute() {
     history.replaceState(null, "", `#${activePage}`);
   }
   applyDemoFocusPanels();
+}
+
+function syncActiveMobileNav() {
+  if (!window.matchMedia("(max-width: 820px)").matches) return;
+  const activeLink = document.querySelector(`.nav-links [data-nav-page="${activePage}"]`);
+  window.requestAnimationFrame(() => {
+    activeLink?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  });
 }
 
 function syncDemoFocusMode() {
