@@ -898,6 +898,7 @@ const flowCompletionState = document.querySelector("#flowCompletionState");
 const flowCompletionSummary = document.querySelector("#flowCompletionSummary");
 const flowCompletionResults = document.querySelector("#flowCompletionResults");
 const flowCompleteNextButton = document.querySelector("#flowCompleteNext");
+const exitFlowModeButton = document.querySelector("#exitFlowModeButton");
 const restartFlowButton = document.querySelector("#restartFlowButton");
 const sourceReportGrid = document.querySelector("#sourceReportGrid");
 const exportSourceReportButton = document.querySelector("#exportSourceReport");
@@ -1370,6 +1371,7 @@ document.querySelectorAll("[data-open-page]").forEach((button) => {
   });
 });
 flowCompleteNextButton.addEventListener("click", completeCurrentFlowAction);
+exitFlowModeButton?.addEventListener("click", exitFlowMode);
 restartFlowButton.addEventListener("click", startMyDay);
 document.querySelectorAll("[data-flow-outcome]").forEach((button) => {
   button.addEventListener("click", () => selectFlowOutcome(button.dataset.flowOutcome));
@@ -3527,6 +3529,7 @@ function createFlowSession(actions = []) {
 
 function renderFlowMode() {
   flowModePanel.hidden = !flowSession.active;
+  document.body.dataset.flowMode = flowSession.active ? "active" : "inactive";
   if (!flowSession.active) return;
 
   const isComplete = flowSession.currentIndex >= flowSession.actions.length || flowSession.actions.length === 0;
@@ -3557,6 +3560,15 @@ function renderFlowMode() {
   document.querySelectorAll("[data-flow-outcome]").forEach((button) => {
     button.classList.toggle("active", button.dataset.flowOutcome === flowSession.pendingOutcome);
   });
+}
+
+function exitFlowMode() {
+  flowSession.active = false;
+  flowSession.pendingOutcome = "";
+  flowSession.status = "";
+  flowSession.savingsStatus = "";
+  render();
+  document.querySelector("#dailyCommandCenter")?.scrollIntoView({ block: "start" });
 }
 
 function renderFlowCompletion() {

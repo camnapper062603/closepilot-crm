@@ -8543,6 +8543,29 @@ body[data-dashboard-layout="focus"] .daily-command-center > [data-dashboard-size
   }
 }
 
+body[data-flow-mode="active"][data-active-page="pipeline"] #subpageNav,
+body[data-flow-mode="active"][data-active-page="pipeline"] #pipeline {
+  display: none !important;
+}
+
+body[data-flow-mode="active"][data-active-page="pipeline"] #dailyCommandCenter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+body[data-flow-mode="active"][data-active-page="pipeline"] #dailyCommandCenter > :not(#flowModePanel) {
+  display: none !important;
+}
+
+body[data-flow-mode="active"][data-active-page="pipeline"] #flowModePanel {
+  display: grid;
+  grid-column: 1 / -1;
+}
+
+.flow-exit-button {
+  margin-top: 10px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
