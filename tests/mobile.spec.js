@@ -79,14 +79,26 @@ test('lead generator and cost planner adapt to a phone viewport', async ({ page 
 test('Kira Recruit subpages adapt to a phone viewport', async ({ page }) => {
   await openMobile(page, '/recruiting.html');
 
-  await expect(page.getByRole('heading', { name: 'Auto recruiting' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Kira Recruit Command Center' })).toBeVisible();
+  await expect(page.locator('#mobileRecruitTabs')).toBeVisible();
+  await expect(page.locator('#dashboard')).toHaveAttribute('data-mobile-tab', 'overview');
+  await page.getByRole('button', { name: 'Pipeline' }).click();
+  await expect(page.locator('#dashboard')).toHaveAttribute('data-mobile-tab', 'pipeline');
+  await expect(page.locator('#mobilePipelineStages')).toBeVisible();
+  await expect(page.locator('#mobilePipelineStages')).toContainText('New');
+  await page.locator('#mobilePipelineStages').getByRole('button', { name: /Screened/ }).click();
+  await expect(page.locator('#dashboard')).toHaveAttribute('data-mobile-stage', 'screened');
+  await expect(page.locator('#pipelineBoard')).toBeVisible();
+  await page.getByRole('button', { name: 'AI' }).click();
+  await expect(page.locator('#dashboard')).toHaveAttribute('data-mobile-tab', 'ai');
+  await expect(page.locator('#aiRecruiterPanel')).toBeVisible();
   await expectPageFitsViewport(page);
 
-  await page.getByRole('button', { name: 'Job details' }).click();
+  await page.getByRole('link', { name: 'Job details' }).click();
   await expect(page.locator('#job')).toBeVisible();
   await expectPageFitsViewport(page);
 
-  await page.getByRole('button', { name: 'Single candidate location' }).click();
+  await page.getByRole('link', { name: 'Single candidate location' }).click();
   await expect(page.locator('#applicants')).toBeVisible();
   await expectPageFitsViewport(page);
 });
@@ -94,11 +106,12 @@ test('Kira Recruit subpages adapt to a phone viewport', async ({ page }) => {
 test('coming soon preview locked states fit a phone viewport', async ({ page }) => {
   await openMobile(page, '/lead-generator?role=member');
   await expect(page.locator('#leadAccessBanner')).toBeVisible();
-  await expect(page.locator('#leadAccessBanner')).toContainText('Residential Lead Generator is coming soon');
+  await expect(page.locator('#leadAccessBanner')).toContainText('Residential Lead Generator is a paid add-on preview');
   await expectPageFitsViewport(page);
 
   await openMobile(page, '/recruiting.html?role=member');
   await expect(page.locator('#recruitingAccessBanner')).toBeVisible();
-  await expect(page.locator('#recruitingAccessBanner')).toContainText('Kira Recruit is coming soon');
+  await expect(page.locator('#recruitingAccessBanner')).toContainText('Kira Recruit is a paid recruiting add-on.');
+  await expect(page.getByRole('button', { name: 'Ask admin to enable' })).toBeVisible();
   await expectPageFitsViewport(page);
 });

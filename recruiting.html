@@ -7,22 +7,23 @@
     <meta name="theme-color" content="#050505" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Kira Recruit" />
-    <link rel="manifest" href="manifest.webmanifest" />
-    <link rel="icon" href="assets/kira-app-icon.svg" type="image/svg+xml" />
-    <link rel="apple-touch-icon" href="assets/kira-app-icon-180.png" />
-    <link rel="stylesheet" href="recruiting.css" />
-    <script src="app-store.js" defer></script>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/assets/kira-app-icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/assets/kira-app-icon-180.png" />
+    <link rel="stylesheet" href="/recruiting.css" />
+    <script src="/config.js"></script>
+    <script src="/app-store.js" defer></script>
   </head>
   <body>
     <div class="recruit-shell">
       <main class="recruit-main">
         <header class="topbar">
           <div>
-            <p class="eyebrow">Coming soon preview · recruiting operating system</p>
-            <h1>Auto recruiting</h1>
+            <p class="eyebrow" id="recruitingPageEyebrow">Coming soon preview · recruiting operating system</p>
+            <h1 id="recruitingPageTitle">Auto recruiting</h1>
           </div>
           <div class="topbar-actions">
-            <span class="mode-pill" id="syncMode">Demo connectors</span>
+            <span class="mode-pill" id="syncMode">Paid add-on demo</span>
             <a class="secondary-button" href="/" aria-label="Back to ClosePilot CRM">Back to CRM</a>
             <button class="secondary-button" id="resetRecruiting" type="button">Reset demo</button>
             <button class="primary-button" id="syncToCrm" type="button">Sync CRM feed</button>
@@ -33,69 +34,144 @@
 
         <section class="locked-addon-banner" id="recruitingAccessBanner" hidden>
           <div>
-            <p class="eyebrow">Coming soon</p>
-            <h2>Kira Recruit is coming soon</h2>
-            <p>CRM customers can view the demo preview. Live recruiting sync, onboarding delivery, and payroll handoff will open after early-access setup.</p>
+            <p class="eyebrow">Paid add-on locked</p>
+            <h2>Kira Recruit is a paid recruiting add-on.</h2>
+            <p id="recruitingAccessMessage">Sign in through the CRM to check workspace access. Live recruiting sync, onboarding delivery, payroll handoff, and CRM candidate sync require add-on early access.</p>
           </div>
           <div class="locked-addon-actions">
-            <a class="secondary-button" href="/recruiting.html?demo=1">View Demo</a>
+            <a class="secondary-button" href="/recruiting?demo=1">View Demo</a>
+            <button class="secondary-button" id="requestRecruitingAddon" type="button" hidden>Ask admin to enable</button>
+            <button class="secondary-button" id="enableRecruitingAddon" type="button" hidden>Add Kira Recruit</button>
             <a class="primary-button" href="/#admin">Back to CRM</a>
           </div>
         </section>
 
-        <section class="recruit-hero" data-recruit-subpage="dashboard" aria-labelledby="recruitHeroHeading">
-          <div>
-            <p class="eyebrow">Hiring command center · View Demo</p>
-            <h2 id="recruitHeroHeading">Next best candidate action</h2>
-            <p>
-              Kira Recruit is the coming soon recruiting preview for applicant pipelines, interview tracking, onboarding packets,
-              payroll-ready worker setup, AI candidate summaries, and clean CRM handoff.
-            </p>
-            <div class="module-positioning">
-              <span>Requires active ClosePilot CRM subscription</span>
-              <span>Syncs candidates into Recruiting Inbox</span>
-              <span>Preview what teams will use to hire dialers, setters, and closers</span>
+        <div class="recruit-page-area" id="recruitPageArea" data-active-subpage="dashboard" aria-live="polite">
+        <section class="recruit-dashboard" id="dashboard" data-recruit-subpage="dashboard" data-mobile-tab="overview" aria-labelledby="recruitHeroHeading">
+          <section class="recruit-hero command-hero" data-mobile-panel="overview" aria-label="Kira Recruit command center">
+            <div>
+              <p class="eyebrow">Paid recruiting add-on · ClosePilot CRM</p>
+              <h2 id="recruitHeroHeading">Kira Recruit Command Center</h2>
+              <p>
+                Source, screen, interview, and onboard sales talent from one hiring pipeline.
+              </p>
+              <p>
+                Kira Recruit helps teams decide who to hire next and what to do with dialers, setters, closers,
+                sales reps, recruiters, and managers.
+              </p>
+              <div class="hero-actions">
+                <button class="primary-button large-button" id="addCandidateCta" type="button">Add Candidate</button>
+                <button class="secondary-button large-button" id="postJobCta" type="button">Post Job</button>
+                <a class="secondary-button large-button" href="/recruiting?demo=1">View Demo</a>
+              </div>
+              <div class="module-positioning">
+                <span id="heroModeBadge">Demo recruiting workspace</span>
+                <span>Belongs to ClosePilot CRM workspaces</span>
+                <span>Fallback/demo AI when provider APIs are not connected</span>
+              </div>
             </div>
-          </div>
-          <div class="recruit-hero-grid" aria-label="Recruiting priorities">
+            <div class="recruit-hero-grid" aria-label="Recruiting priorities">
+              <article>
+                <span>Next best hire</span>
+                <strong id="heroBestCandidate">Sync applicants</strong>
+                <small id="heroBestAction">Candidate recommendations appear here.</small>
+              </article>
+              <article>
+                <span>Hiring velocity</span>
+                <strong id="hiringVelocity">0 calls</strong>
+                <small>Interviews booked this week</small>
+              </article>
+              <article>
+                <span>AI recruiter</span>
+                <strong id="aiModeLabel">Fallback AI</strong>
+                <small id="aiModeDetail">Screening notes prepared for beta.</small>
+              </article>
+            </div>
+          </section>
+
+          <nav class="mobile-recruit-tabs" id="mobileRecruitTabs" aria-label="Recruiting dashboard views">
+            <button class="active" type="button" data-mobile-recruit-tab="overview" aria-current="page">Overview</button>
+            <button type="button" data-mobile-recruit-tab="pipeline">Pipeline</button>
+            <button type="button" data-mobile-recruit-tab="interviews">Interviews</button>
+            <button type="button" data-mobile-recruit-tab="tasks">Tasks</button>
+            <button type="button" data-mobile-recruit-tab="ai">AI</button>
+          </nav>
+
+          <section class="metrics command-kpis" data-mobile-panel="overview" aria-label="Recruiting summary">
             <article>
-              <span>Best candidate</span>
-              <strong>92</strong>
-              <small>Call first</small>
+              <i class="kpi-marker roles" aria-hidden="true"></i>
+              <span>Open roles</span>
+              <strong id="livePostings">0</strong>
+              <small>Active board coverage</small>
             </article>
             <article>
-              <span>Interview cadence</span>
-              <strong>Mon/Wed/Fri</strong>
-              <small>3 booking windows</small>
+              <i class="kpi-marker applicants" aria-hidden="true"></i>
+              <span>New applicants</span>
+              <strong id="applicantCount">0</strong>
+              <small>Candidate inbox</small>
             </article>
             <article>
-              <span>AI recruiter</span>
-              <strong>Ready</strong>
-              <small>Screening notes prepared</small>
+              <i class="kpi-marker interviews" aria-hidden="true"></i>
+              <span>Interviews this week</span>
+              <strong id="bookedCount">0</strong>
+              <small>Booked calls</small>
             </article>
-          </div>
+            <article>
+              <i class="kpi-marker top" aria-hidden="true"></i>
+              <span>Top candidates</span>
+              <strong id="qualifiedCount">0</strong>
+              <small>Score 85+</small>
+            </article>
+            <article>
+              <i class="kpi-marker hires" aria-hidden="true"></i>
+              <span>Hires in progress</span>
+              <strong id="hiresInProgress">0</strong>
+              <small>Offer to onboarding</small>
+            </article>
+          </section>
+
+          <section class="next-hire-spotlight" id="nextBestHire" data-mobile-panel="overview" aria-label="Next best hire"></section>
+
+          <section class="command-center-grid" aria-label="Recruiting command center">
+            <div class="pipeline-zone" data-mobile-panel="pipeline">
+              <div class="section-heading-row">
+                <div>
+                  <p class="eyebrow">Candidate pipeline</p>
+                  <h2>Hiring Pipeline</h2>
+                </div>
+                <span class="schedule-pill">Use stage buttons today</span>
+              </div>
+              <nav class="mobile-stage-tabs" id="mobilePipelineStages" aria-label="Mobile pipeline stage filter"></nav>
+              <div class="pipeline-board" id="pipelineBoard" aria-label="Candidate hiring pipeline"></div>
+            </div>
+            <aside class="ai-recruiter-panel" id="aiRecruiterPanel" data-mobile-panel="ai" aria-label="AI recruiter panel"></aside>
+          </section>
+
+          <section class="recruit-bottom-split" aria-label="Recruiting worklist">
+            <section class="mini-panel" data-mobile-panel="interviews" aria-labelledby="upcomingInterviewsHeading">
+              <div class="section-heading-row">
+                <div>
+                  <p class="eyebrow">Scheduler</p>
+                  <h2 id="upcomingInterviewsHeading">Upcoming interviews</h2>
+                </div>
+                <button class="secondary-button" id="dashboardBookInterviews" type="button">Book calls</button>
+              </div>
+              <div class="mini-list" id="upcomingInterviews"></div>
+            </section>
+            <section class="mini-panel" data-mobile-panel="tasks" aria-labelledby="recruitingTasksHeading">
+              <div class="section-heading-row">
+                <div>
+                  <p class="eyebrow">Next actions</p>
+                  <h2 id="recruitingTasksHeading">Recruiting tasks</h2>
+                </div>
+                <button class="secondary-button" id="dashboardSyncCrm" type="button">Send to CRM</button>
+              </div>
+              <div class="mini-list" id="recruitingTasks"></div>
+            </section>
+          </section>
         </section>
 
-        <section class="metrics" id="dashboard" data-recruit-subpage="dashboard" aria-label="Recruiting summary">
-          <article>
-            <span>Live postings</span>
-            <strong id="livePostings">0</strong>
-          </article>
-          <article>
-            <span>Applicants</span>
-            <strong id="applicantCount">0</strong>
-          </article>
-          <article>
-            <span>Qualified</span>
-            <strong id="qualifiedCount">0</strong>
-          </article>
-          <article>
-            <span>Booked calls</span>
-            <strong id="bookedCount">0</strong>
-          </article>
-        </section>
-
-        <section class="workspace-grid">
+        <div class="recruit-tab-panels" aria-label="Recruiting tab page">
           <section class="panel job-panel" id="job" data-recruit-subpage="job" aria-labelledby="jobHeading">
             <div class="panel-heading">
               <div>
@@ -193,6 +269,7 @@
               </label>
             </div>
             <div class="candidate-list" id="candidateList"></div>
+            <p class="status-message" id="candidateMessage" role="status"></p>
           </section>
 
           <section class="panel interview-panel" id="interviews" data-recruit-subpage="interviews" aria-labelledby="interviewHeading">
@@ -440,10 +517,25 @@
             <div class="payroll-list" id="payrollList"></div>
             <p class="status-message" id="payrollMessage" role="status"></p>
           </section>
-        </section>
+        </div>
+        </div>
       </main>
     </div>
 
-    <script src="recruiting.js" type="module"></script>
+    <section class="candidate-detail-sheet" id="candidateDetailSheet" role="dialog" aria-modal="true" aria-labelledby="candidateDetailTitle" hidden>
+      <div class="candidate-detail-backdrop" data-detail-close></div>
+      <article class="candidate-detail-panel">
+        <div class="candidate-detail-header">
+          <div>
+            <p class="eyebrow">Candidate profile</p>
+            <h2 id="candidateDetailTitle">Candidate detail</h2>
+          </div>
+          <button class="secondary-button" id="closeCandidateDetail" type="button">Close</button>
+        </div>
+        <div class="candidate-detail-body" id="candidateDetailBody"></div>
+      </article>
+    </section>
+
+    <script src="/recruiting.js" type="module"></script>
   </body>
 </html>
