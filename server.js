@@ -9,6 +9,8 @@ import { handleBusinessEnrichmentRequest } from "./business-enrichment-service.j
 const root = fileURLToPath(new URL(".", import.meta.url));
 const host = process.env.HOST || "127.0.0.1";
 const port = Number(process.env.PORT || 4173);
+const appMode = process.env.APP_MODE || "development";
+const isBetaMode = appMode === "beta" || appMode === "production";
 
 const types = {
   ".css": "text/css; charset=utf-8",
@@ -21,9 +23,24 @@ const types = {
 };
 
 const startupWarnings = [
-  ["SUPABASE_URL", "Supabase live database is not configured; demo/localStorage fallback remains active."],
-  ["SUPABASE_ANON_KEY", "Supabase anon/publishable key is missing; browser auth cannot start cloud mode."],
-  ["SUPABASE_SERVICE_ROLE_KEY", "Supabase service role is missing; backend sync/invite acceptance cannot persist."],
+  [
+    "SUPABASE_URL",
+    isBetaMode
+      ? "Supabase live database is required for beta sign-in."
+      : "Supabase live database is not configured; demo/localStorage fallback remains active.",
+  ],
+  [
+    "SUPABASE_ANON_KEY",
+    isBetaMode
+      ? "Supabase anon/publishable key is required for beta browser auth."
+      : "Supabase anon/publishable key is missing; browser auth cannot start cloud mode.",
+  ],
+  [
+    "SUPABASE_SERVICE_ROLE_KEY",
+    isBetaMode
+      ? "Supabase service role is required for beta backend sync and invites."
+      : "Supabase service role is missing; backend sync/invite acceptance cannot persist.",
+  ],
   ["STRIPE_SECRET_KEY", "Stripe billing is in setup mode."],
   ["RESEND_API_KEY", "Email delivery is in setup mode."],
   ["OPENAI_API_KEY", "AI endpoints will use deterministic fallback responses."],

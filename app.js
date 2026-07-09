@@ -1036,9 +1036,15 @@ const leadModal = document.querySelector("#leadModal");
 const leadForm = document.querySelector("#leadForm");
 const taskForm = document.querySelector("#taskForm");
 const authPanel = document.querySelector("#authPanel");
+const homePanel = document.querySelector("#homePanel");
 const authForm = document.querySelector("#authForm");
 const authMessage = document.querySelector("#authMessage");
 const viewDemoWorkspaceButton = document.querySelector("#viewDemoWorkspaceButton");
+const homeSignInButton = document.querySelector("#homeSignInButton");
+const homePrimarySignInButton = document.querySelector("#homePrimarySignInButton");
+const homeDemoButton = document.querySelector("#homeDemoButton");
+const homeSecondaryDemoButton = document.querySelector("#homeSecondaryDemoButton");
+const backToHomeButton = document.querySelector("#backToHomeButton");
 const modePill = document.querySelector("#modePill");
 const appShell = document.querySelector(".app-shell");
 const signOutButton = document.querySelector("#signOutButton");
@@ -1097,6 +1103,7 @@ const inviteEmailPreview = document.querySelector("#inviteEmailPreview");
 const inviteLinkFallback = document.querySelector("#inviteLinkFallback");
 const teamList = document.querySelector("#teamList");
 const customizationForm = document.querySelector("#customizationForm");
+const customizationAccessNotice = document.querySelector("#customizationAccessNotice");
 const customThemeMode = document.querySelector("#customThemeMode");
 const customAccentColor = document.querySelector("#customAccentColor");
 const customDensity = document.querySelector("#customDensity");
@@ -1123,6 +1130,9 @@ const closeLeadDetailModalButton = document.querySelector("#closeLeadDetailModal
 
 const config = window.KiraHomeConfig || window.ClosePilotConfig || {};
 const hasSupabaseConfig = Boolean(config.supabaseUrl && config.supabaseAnonKey);
+const appMode = config.appMode || "development";
+const publicDemoEnabled = config.publicDemoEnabled !== false;
+const isBetaMode = appMode === "beta" || appMode === "production";
 const backendTimeoutMs = 12000;
 const pageTitles = {
   pipeline: "Dashboard",
@@ -1211,7 +1221,18 @@ const roleAccessCatalog = {
   },
   manager: {
     pages: ["pipeline", "manager", "contacts", "automation", "tasks", "activity", "communications", "dial", "calendar", "settings"],
-    restrictedActions: ["billing", "team", "workspace-settings", "launch", "data-export", "backup", "lead-import", "delete-leads", "addon-purchase"],
+    restrictedActions: [
+      "billing",
+      "team",
+      "workspace-settings",
+      "branding-customization",
+      "launch",
+      "data-export",
+      "backup",
+      "lead-import",
+      "delete-leads",
+      "addon-purchase",
+    ],
   },
   member: {
     pages: ["pipeline", "contacts", "tasks", "communications", "dial", "calendar", "settings"],
@@ -1219,6 +1240,7 @@ const roleAccessCatalog = {
       "billing",
       "team",
       "workspace-settings",
+      "branding-customization",
       "launch",
       "automation-admin",
       "data-export",
@@ -1384,6 +1406,11 @@ authForm.addEventListener("submit", async (event) => {
 
 document.querySelector("#signUpButton").addEventListener("click", signUp);
 viewDemoWorkspaceButton?.addEventListener("click", startPublicDemoWorkspace);
+homeSignInButton?.addEventListener("click", () => showAuth("Sign in to your workspace when you are ready."));
+homePrimarySignInButton?.addEventListener("click", () => showAuth("Sign in to your workspace when you are ready."));
+homeDemoButton?.addEventListener("click", startPublicDemoWorkspace);
+homeSecondaryDemoButton?.addEventListener("click", startPublicDemoWorkspace);
+backToHomeButton?.addEventListener("click", showHome);
 signOutButton.addEventListener("click", signOut);
 seedWorkspaceButton.addEventListener("click", seedStarterWorkspace);
 dismissOnboardingButton.addEventListener("click", dismissOnboarding);
@@ -1526,16 +1553,31 @@ window.addEventListener("unhandledrejection", (event) => {
 
 async function boot() {
   const params = new URLSearchParams(window.location.search);
-  if (params.get("demo") === "1" || localStorage.getItem(publicDemoSessionKey()) === "true") {
+  syncBetaAccessUi();
+  if ((params.get("demo") === "1" || localStorage.getItem(publicDemoSessionKey()) === "true") && publicDemoEnabled) {
     await startPublicDemoWorkspace({ fromBoot: true });
+    return;
+  }
+  if (params.get("demo") === "1" && !publicDemoEnabled) {
+    localStorage.removeItem(publicDemoSessionKey());
+    showAuth("Public demo access is disabled for beta. Sign in with the company workspace account.");
     return;
   }
 
   if (!hasSupabaseConfig) {
+    if (!params.has("setup-workspace")) {
+      if (isBetaMode) {
+        showAuth("Beta sign-in needs Supabase configured first. Add the production Supabase URL and anon key, then rebuild.");
+      } else {
+        showHome();
+      }
+      return;
+    }
     store = createLocalStore();
     state = await store.load();
     normalizeLoadedState();
     routeFromHash();
+    hideAuth();
     setCloudMode(false);
     render();
     return;
@@ -1552,28 +1594,35 @@ async function boot() {
       if (currentUser) {
         await startCloudWorkspace();
       } else if (!publicDemoMode) {
-        showAuth();
+        showHome();
       }
     });
 
     if (!currentUser) {
-      const wantsCloudLogin = params.get("login") === "1";
-      const dismissedDemo = localStorage.getItem(publicDemoDismissedKey()) === "true";
-      if (!wantsCloudLogin && !dismissedDemo) {
-        await startPublicDemoWorkspace({ fromBoot: true, auto: true });
+      if (params.get("login") === "1" || params.has("invite")) {
+        showAuth(params.has("invite") ? "Sign in or create your account to accept the invite." : "");
         return;
       }
-      showAuth();
+      showHome();
       return;
     }
 
     await startCloudWorkspace();
   } catch (error) {
     console.error(error);
+    if (!params.has("setup-workspace")) {
+      showAuth(
+        isBetaMode
+          ? "Cloud sign-in could not start. Check the Supabase beta environment and reload."
+          : "Cloud sign-in could not start. You can still open a local setup workspace.",
+      );
+      return;
+    }
     store = createLocalStore();
     state = await store.load();
     normalizeLoadedState();
     routeFromHash();
+    hideAuth();
     setCloudMode(false, "Demo mode - cloud unavailable");
     render();
   }
@@ -1597,6 +1646,11 @@ async function startCloudWorkspace() {
 }
 
 async function startPublicDemoWorkspace(options = {}) {
+  if (!publicDemoEnabled) {
+    localStorage.removeItem(publicDemoSessionKey());
+    showAuth("Public demo access is disabled for beta. Sign in with the company workspace account.");
+    return;
+  }
   publicDemoMode = true;
   syncDemoFocusMode();
   currentUser = null;
@@ -1643,17 +1697,53 @@ function exitPublicDemoWorkspace() {
   setAuthMessage("Demo closed. Sign in or reopen the demo workspace anytime.");
 }
 
-function showAuth() {
+function syncBetaAccessUi() {
+  [homeDemoButton, homeSecondaryDemoButton, viewDemoWorkspaceButton].forEach((button) => {
+    if (!button) return;
+    button.hidden = !publicDemoEnabled;
+    button.disabled = !publicDemoEnabled;
+  });
+  if (homePrimarySignInButton) {
+    homePrimarySignInButton.textContent = isBetaMode ? "Sign in to beta" : "Open my workspace";
+  }
+  if (homeSignInButton) {
+    homeSignInButton.textContent = isBetaMode ? "Beta sign in" : "Sign in";
+  }
+}
+
+function showHome() {
   publicDemoMode = false;
   syncDemoFocusMode();
+  syncBetaAccessUi();
+  if (homePanel) homePanel.hidden = false;
+  authPanel.hidden = true;
+  appShell.hidden = true;
+  signOutButton.hidden = true;
+  signOutButton.textContent = "Sign out";
+  modePill.textContent = "Cloud mode";
+  setAuthMessage("");
+}
+
+function showAuth(message = "") {
+  publicDemoMode = false;
+  syncDemoFocusMode();
+  syncBetaAccessUi();
+  if (homePanel) homePanel.hidden = true;
   authPanel.hidden = false;
   appShell.hidden = true;
   signOutButton.hidden = true;
   signOutButton.textContent = "Sign out";
   modePill.textContent = "Cloud mode";
+  setAuthMessage(
+    message ||
+      (!hasSupabaseConfig
+        ? "Cloud sign-in is not configured in this environment yet. Add Supabase env vars to start beta testing."
+        : ""),
+  );
 }
 
 function hideAuth() {
+  if (homePanel) homePanel.hidden = true;
   authPanel.hidden = true;
   appShell.hidden = false;
 }
@@ -1664,6 +1754,10 @@ function setCloudMode(enabled, label) {
 }
 
 async function signIn() {
+  if (!supabaseClient) {
+    setAuthMessage("Cloud sign-in is not configured here yet. Add Supabase env vars and rebuild before beta testing.");
+    return;
+  }
   setAuthMessage("Signing in...");
   const email = document.querySelector("#authEmail").value.trim();
   const password = document.querySelector("#authPassword").value;
@@ -1672,6 +1766,10 @@ async function signIn() {
 }
 
 async function signUp() {
+  if (!supabaseClient) {
+    setAuthMessage("Account creation needs Supabase configured first. Add beta Supabase env vars and rebuild.");
+    return;
+  }
   setAuthMessage("Creating account...");
   const email = document.querySelector("#authEmail").value.trim();
   const password = document.querySelector("#authPassword").value;
@@ -2200,6 +2298,15 @@ function canUseAdminAction(action) {
   return !access.restrictedActions.includes(action);
 }
 
+function canEditBrandingCustomization() {
+  return canUseAdminAction("branding-customization");
+}
+
+function customizationAccessMessage() {
+  const role = teamRoleCatalog[currentAccessRole()] || teamRoleCatalog.member;
+  return `${role.label} access can view these workspace settings, but only the business Owner or an Admin can edit branding, dashboard layout, and default workspace preferences.`;
+}
+
 function guardRestrictedAction(action, messageElement = adminMessage, detail = "") {
   if (canUseAdminAction(action)) return true;
   const role = teamRoleCatalog[currentAccessRole()] || teamRoleCatalog.member;
@@ -2302,6 +2409,7 @@ function renderSettingsSubpage(activeSubpage) {
       (activeSubpage === "dashboard" && sectionId !== "dashboard") ||
       (activeSubpage === "workflow" && sectionId !== "workflow");
   });
+  syncCustomizationAccessControls();
 }
 
 function setAdminPanelMode(mode) {
@@ -4460,7 +4568,7 @@ async function cancelTeamInvite(inviteId) {
 
 function userCustomizationPreferences() {
   const fallback = structuredClone(defaultCustomizationPreferences);
-  const saved = localStorage.getItem(customizationPreferenceKey());
+  const saved = localStorage.getItem(customizationPreferenceKey()) || localStorage.getItem(legacyCustomizationPreferenceKey());
   if (!saved) return fallback;
   try {
     const parsed = JSON.parse(saved);
@@ -4481,7 +4589,23 @@ function userCustomizationPreferences() {
 }
 
 function customizationPreferenceKey() {
+  const workspaceId = store?.workspaceId?.();
+  if (workspaceId) return `closepilot-ui-preferences-workspace-${workspaceId}`;
+  const settings = workspaceSetupSettings();
+  const localScope = `${settings.name || "demo"}-${settings.ownerEmail || "local"}`;
+  return `closepilot-ui-preferences-demo-${localStorageKeyPart(localScope)}`;
+}
+
+function legacyCustomizationPreferenceKey() {
   return currentUser ? `closepilot-ui-preferences-${currentUser.id}` : "closepilot-ui-preferences-demo";
+}
+
+function localStorageKeyPart(value) {
+  return String(value || "local")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80) || "local";
 }
 
 function applyCustomizationPreferences(preferences = userCustomizationPreferences()) {
@@ -4572,6 +4696,25 @@ function renderCustomizationSettings() {
   renderDashboardWidgetBuilder(dashboardWidgets);
   renderThemeToggleButtons(preferences.themeMode);
   renderBrandPreview(preferences);
+  syncCustomizationAccessControls();
+}
+
+function syncCustomizationAccessControls() {
+  if (!customizationForm) return;
+  const canEdit = canEditBrandingCustomization();
+  customizationForm.dataset.locked = canEdit ? "false" : "true";
+  customizationForm.querySelectorAll("input, select, button").forEach((control) => {
+    control.disabled = !canEdit;
+  });
+  if (customizationAccessNotice) {
+    customizationAccessNotice.hidden = canEdit;
+    customizationAccessNotice.textContent = canEdit
+      ? ""
+      : customizationAccessMessage();
+  }
+  if (!canEdit && customizationMessage) {
+    customizationMessage.textContent = customizationAccessMessage();
+  }
 }
 
 function renderDashboardTemplateButtons(activeTemplate = "command") {
@@ -4658,6 +4801,10 @@ function renderBrandPreview(preferences) {
 
 async function saveCustomizationPreferences(event) {
   event.preventDefault();
+  if (!guardRestrictedAction("branding-customization", customizationMessage, customizationAccessMessage())) {
+    syncCustomizationAccessControls();
+    return;
+  }
   const dashboardWidgets = dashboardWidgetsFromCustomizationForm();
   const preferences = {
     ...userCustomizationPreferences(),
@@ -4703,6 +4850,10 @@ function dashboardWidgetsFromCustomizationForm() {
 }
 
 async function applyDashboardTemplate(templateId = "command") {
+  if (!guardRestrictedAction("branding-customization", customizationMessage, customizationAccessMessage())) {
+    syncCustomizationAccessControls();
+    return;
+  }
   const template = dashboardTemplateCatalog[templateId] || dashboardTemplateCatalog.command;
   const preferences = {
     ...currentCustomizationFormPreferences(),
@@ -4739,6 +4890,10 @@ function currentCustomizationFormPreferences() {
 
 async function saveThemeModePreference(themeMode) {
   if (!["light", "dark", "system"].includes(themeMode)) return;
+  if (!guardRestrictedAction("branding-customization", customizationMessage, customizationAccessMessage())) {
+    syncCustomizationAccessControls();
+    return;
+  }
   const preferences = {
     ...userCustomizationPreferences(),
     themeMode,
@@ -4751,7 +4906,12 @@ async function saveThemeModePreference(themeMode) {
 }
 
 async function resetCustomizationPreferences() {
+  if (!guardRestrictedAction("branding-customization", customizationMessage, customizationAccessMessage())) {
+    syncCustomizationAccessControls();
+    return;
+  }
   localStorage.removeItem(customizationPreferenceKey());
+  localStorage.removeItem(legacyCustomizationPreferenceKey());
   applyCustomizationPreferences(defaultCustomizationPreferences);
   renderCustomizationSettings();
   customizationMessage.textContent = "Preferences reset to the ClosePilot default experience.";

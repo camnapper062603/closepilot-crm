@@ -15,18 +15,195 @@
     <script src="app-store.js" defer></script>
   </head>
   <body>
+    <section class="home-panel" id="homePanel">
+      <div class="home-hero" role="img" aria-label="Kira Home app workspace preview">
+        <div class="home-nav">
+          <div class="brand home-brand">
+            <span class="brand-mark" aria-hidden="true">KH</span>
+            <div>
+              <strong>Kira Home</strong>
+              <span>AI home-service workspace</span>
+            </div>
+          </div>
+          <div class="home-nav-actions">
+            <button class="secondary-button" id="homeSignInButton" type="button">Sign in</button>
+            <button class="primary-button" id="homeDemoButton" type="button">Try demo</button>
+          </div>
+        </div>
+        <div class="home-hero-copy">
+          <p class="eyebrow">AI operating system for home-service teams</p>
+          <h1>Run the day before the day runs you.</h1>
+          <p>
+            Kira Home brings leads, follow-ups, recruiting, residential lead generation, scheduling,
+            communications, automations, and billing-ready team controls into one app suite.
+          </p>
+          <div class="home-hero-actions">
+            <button class="primary-button" id="homePrimarySignInButton" type="button">Open my workspace</button>
+            <button class="secondary-button" id="homeSecondaryDemoButton" type="button">Tour the demo</button>
+          </div>
+        </div>
+      </div>
+      <div class="home-proof-strip" aria-label="Product highlights">
+        <article>
+          <span>AI overview</span>
+          <strong>Daily priorities, scripts, and risk alerts in one view</strong>
+        </article>
+        <article>
+          <span>Mock website preview</span>
+          <strong>Show prospects the polished customer-facing experience</strong>
+        </article>
+        <article>
+          <span>Suite pricing</span>
+          <strong>Base plans, add-ons, and bundle positioning before login</strong>
+        </article>
+      </div>
+
+      <section class="home-overview" aria-labelledby="homeOverviewHeading">
+        <div class="home-section-heading">
+          <p class="eyebrow">AI overview</p>
+          <h2 id="homeOverviewHeading">Everything the app can do before you sign in</h2>
+          <p>
+            Use this page as the pre-login product tour: it explains the workspace, previews the add-ons,
+            and gives a buyer enough context before they click into the app.
+          </p>
+        </div>
+        <div class="home-overview-grid">
+          <article>
+            <span>01</span>
+            <strong>Daily Command Center</strong>
+            <p>Start My Day ranks hot leads, follow-ups, appointments, tasks, deals at risk, and the best next action.</p>
+          </article>
+          <article>
+            <span>02</span>
+            <strong>AI Sales Manager</strong>
+            <p>Pipeline health, rep performance, objection patterns, revenue targets, and coaching insights stay visible.</p>
+          </article>
+          <article>
+            <span>03</span>
+            <strong>Flow Mode</strong>
+            <p>Guided calls, texts, follow-ups, skipped actions, and time-saved tracking keep reps moving.</p>
+          </article>
+          <article>
+            <span>04</span>
+            <strong>Communications</strong>
+            <p>Call, text, email, missed follow-up recovery, conversation timelines, drafts, and provider fallbacks are built in.</p>
+          </article>
+          <article>
+            <span>05</span>
+            <strong>Automations</strong>
+            <p>No-response scans, workflow templates, task sequences, execution logs, and builder previews support repeatable follow-up.</p>
+          </article>
+          <article>
+            <span>06</span>
+            <strong>Admin Controls</strong>
+            <p>Plans, seats, invites, role access, launch readiness, branding, imports, exports, backups, and audit activity live together.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="home-mock-site" aria-labelledby="mockWebsiteHeading">
+        <div class="home-section-heading">
+          <p class="eyebrow">Mock website</p>
+          <h2 id="mockWebsiteHeading">A buyer-facing site preview is included in the tour</h2>
+          <p>
+            The mock site shows how a home-service company can present offers, capture project interest,
+            route contacts, and move qualified opportunities into the workspace.
+          </p>
+        </div>
+        <div class="mock-browser" aria-label="Mock home-service website preview">
+          <div class="mock-browser-bar">
+            <span></span>
+            <span></span>
+            <span></span>
+            <strong>brightroof.example</strong>
+          </div>
+          <div class="mock-browser-body">
+            <div>
+              <p class="eyebrow">Storm-ready roof replacement</p>
+              <h3>Book a same-week inspection with financing options ready.</h3>
+              <p>AI intake captures project type, urgency, address, preferred time, and source campaign before the team follows up.</p>
+              <button class="primary-button" type="button">Request estimate</button>
+            </div>
+            <form class="mock-lead-form">
+              <label>Project type <input value="Roof replacement" readonly /></label>
+              <label>Timeline <input value="This month" readonly /></label>
+              <label>AI next step <input value="Call within 15 minutes" readonly /></label>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <section class="home-walkthrough" aria-labelledby="walkthroughHeading">
+        <div>
+          <p class="eyebrow">AI video walkthrough</p>
+          <h2 id="walkthroughHeading">Three-minute app walkthrough</h2>
+          <p>
+            A scripted walkthrough covers the homepage, dashboard, Flow Mode, communications, automations,
+            add-on previews, pricing, and admin launch readiness.
+          </p>
+        </div>
+        <div class="walkthrough-player" role="img" aria-label="AI video walkthrough placeholder">
+          <div class="play-button" aria-hidden="true"></div>
+          <strong>AI walkthrough preview</strong>
+          <span>Homepage -> Demo workspace -> Add-ons -> Pricing -> Login</span>
+        </div>
+      </section>
+
+      <section class="home-pricing" aria-labelledby="homePricingHeading">
+        <div class="home-section-heading">
+          <p class="eyebrow">Pricing and add-ons</p>
+          <h2 id="homePricingHeading">Clear plans before login</h2>
+          <p>Base plans are available for the core workspace. Add-ons stay positioned as previews until live checkout opens.</p>
+        </div>
+        <div class="home-pricing-grid">
+          <article>
+            <span>Starter</span>
+            <strong>$29/mo</strong>
+            <p>3 seats, solo workflow, core workspace, exports, and backups.</p>
+          </article>
+          <article>
+            <span>Growth</span>
+            <strong>$79/mo</strong>
+            <p>10 seats, team reporting, source tracking, automations, and forecasting.</p>
+          </article>
+          <article>
+            <span>Scale</span>
+            <strong>$199/mo</strong>
+            <p>25 seats, admin controls, launch support, higher limits, and priority rollout help.</p>
+          </article>
+        </div>
+        <div class="home-addon-grid">
+          <article>
+            <span>Add-on preview</span>
+            <strong>Kira Recruit</strong>
+            <p>$99/mo estimate for applicant pipelines, AI summaries, interviews, onboarding, payroll staging, and candidate sync.</p>
+          </article>
+          <article>
+            <span>Add-on preview</span>
+            <strong>Residential Lead Gen</strong>
+            <p>$149/mo estimate for territory lists, property imports, skip-trace planning, DNC-aware exports, and handoff workflows.</p>
+          </article>
+          <article>
+            <span>Bundle preview</span>
+            <strong>Recruit + Lead Gen</strong>
+            <p>$199/mo estimate for teams that want staffing and lead-flow previews connected to the same workspace.</p>
+          </article>
+        </div>
+      </section>
+    </section>
+
     <section class="auth-panel" id="authPanel" hidden>
       <div class="auth-card">
         <div class="brand auth-brand">
-          <span class="brand-mark" aria-hidden="true">CP</span>
+          <span class="brand-mark" aria-hidden="true">KH</span>
           <div>
             <strong>Kira Home</strong>
-            <span>Sales CRM</span>
+            <span>AI workspace</span>
           </div>
         </div>
         <p class="eyebrow">Secure workspace</p>
-        <h1>Sign in to your CRM</h1>
-        <p class="auth-copy">Use your account to keep leads, tasks, and pipeline data synced in the cloud.</p>
+        <h1>Sign in to your app</h1>
+        <p class="auth-copy">Use your account to keep leads, tasks, appointments, messages, and team data synced in the cloud.</p>
         <form id="authForm" class="auth-form">
           <label>
             Email
@@ -47,12 +224,13 @@
             </div>
             <button class="secondary-button" id="viewDemoWorkspaceButton" type="button">View Demo Workspace</button>
           </div>
+          <button class="secondary-button auth-back-home" id="backToHomeButton" type="button">Back to home</button>
           <p id="authMessage" class="auth-message" role="status"></p>
         </form>
       </div>
     </section>
 
-    <div class="app-shell">
+    <div class="app-shell" hidden>
       <aside class="sidebar" aria-label="Workspace navigation">
         <div class="brand">
           <span class="brand-mark" aria-hidden="true">CP</span>
@@ -1332,6 +1510,7 @@
                 <h3 id="customizationHeading">Look, feel, and defaults</h3>
               </summary>
               <form class="customization-form" id="customizationForm">
+                <p class="customization-access-notice" id="customizationAccessNotice" role="note"></p>
                 <fieldset data-settings-section="appearance">
                   <legend>Workspace appearance</legend>
                   <div class="theme-toggle" id="themeModeToggle" role="group" aria-label="Theme mode quick switch">

@@ -36,6 +36,23 @@ Local `npm start` and `npm run build` load `.env.local` first and `.env` second.
 npm test
 ```
 
+## Company Beta Mode
+
+For a real company beta, deploy with live Supabase auth/data and disable public demo access:
+
+```text
+APP_MODE=beta
+PUBLIC_DEMO_ENABLED=false
+SUPABASE_URL=...
+SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...
+APP_BASE_URL=https://your-beta-domain.com
+PRODUCT_URL=https://your-beta-domain.com
+SUPPORT_EMAIL=support@yourdomain.com
+```
+
+Then run `supabase-schema.sql` in Supabase, rebuild with `npm run build`, deploy `dist`, and create the first beta owner account from the sign-in screen. Keep Stripe, Resend, Twilio, OpenAI, and Google Calendar configured as they become part of the beta scope; missing optional providers show setup guidance instead of pretending to be live.
+
 ## Production Docs
 
 - `DEPLOYMENT.md`

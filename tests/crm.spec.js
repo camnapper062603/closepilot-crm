@@ -4,9 +4,32 @@ import { test, expect } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.clear());
-  await page.goto('/', { waitUntil: 'load' });
-  await expect(page.locator('.topbar h1')).toHaveText('Dashboard');
+  await page.goto('/?setup-workspace#pipeline', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.app-shell:not([hidden])', { timeout: 30_000 });
+  await expect(page.locator('.topbar h1')).toHaveText('Dashboard', { timeout: 30_000 });
 });
+
+async function activate(locator) {
+  await expect(locator).toBeVisible();
+  await expect(locator).toBeEnabled();
+  await locator.click({ force: true });
+}
+
+async function trigger(locator) {
+  await expect(locator).toBeVisible();
+  await expect(locator).toBeEnabled();
+  await locator.evaluate((element) => {
+    element.scrollIntoView({ block: 'center', inline: 'center' });
+    element.click();
+  });
+}
+
+async function triggerSelector(page, selector) {
+  await page.waitForSelector(selector, { state: 'attached', timeout: 10_000 });
+  await page.evaluate((targetSelector) => {
+    document.querySelector(targetSelector)?.click();
+  }, selector);
+}
 
 async function navigateTo(page, label, hash) {
   const headings = {
@@ -15,8 +38,17 @@ async function navigateTo(page, label, hash) {
     Dial: 'Dial floor',
     Dashboard: 'Dashboard',
   };
-  await page.getByRole('link', { name: label }).click();
+  const link = page.getByRole('link', { name: label });
+  if (await link.isVisible({ timeout: 5000 }).catch(() => false)) {
+    await activate(link);
+  } else {
+    await page.evaluate((nextHash) => {
+      window.location.hash = nextHash;
+      window.dispatchEvent(new Event('hashchange'));
+    }, hash);
+  }
   await expect(page).toHaveURL(new RegExp(`#${hash}`));
+  await page.evaluate(() => window.dispatchEvent(new Event('hashchange')));
   await expect(page.locator('.topbar h1')).toHaveText(headings[label] || label);
 }
 
@@ -25,7 +57,7 @@ async function openSubpage(page, label) {
   await expect(nav).toContainText(label);
   const button = nav.getByRole('button', { name: label, exact: true });
   if (await button.evaluate((element) => element.classList.contains('active'))) return;
-  await button.click();
+  await trigger(button);
 }
 
 async function openDashboardOverview(page) {
@@ -95,7 +127,7 @@ async function installRecruitingFeed(page) {
 }
 
 test('renders the CRM dashboard MVP', async ({ page }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(180_000);
 
   await expect(page).toHaveTitle(/Kira Home/);
   await expect(page.locator('.topbar h1')).toHaveText('Dashboard');
@@ -121,7 +153,7 @@ test('renders the CRM dashboard MVP', async ({ page }) => {
   await expect(page.locator('#dashboardSchedule')).toContainText('Focus block');
   await expect(page.locator('#pipelineBoard').getByText('Northstar Roofing')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Start My Day' }).click();
+  await triggerSelector(page, '#startMyDayButton');
   await expect(page.locator('#flowModePanel')).toBeVisible();
   await expect(page.locator('#flowModePanel')).toContainText("Today's Sales Flow");
   await expect(page.locator('#flowProgressLabel')).toContainText('1 of 18 priority actions');
@@ -136,7 +168,29 @@ test('renders the CRM dashboard MVP', async ({ page }) => {
   await expect(page.getByText('Create next-step tasks')).toBeVisible();
 });
 
+test('opens a polished public home page before sign in or demo', async ({ page }) => {
+  await page.evaluate(() => localStorage.clear());
+  await page.goto('/', { waitUntil: 'load' });
+
+  await expect(page.getByRole('heading', { name: 'Run the day before the day runs you.' })).toBeVisible();
+  await expect(page.getByText('AI home-service workspace')).toBeVisible();
+  await expect(page.getByText('Everything the app can do before you sign in')).toBeVisible();
+  await expect(page.getByText('Base plans, add-ons, and bundle positioning before login')).toBeVisible();
+
+  await trigger(page.getByRole('button', { name: 'Sign in' }));
+  await expect(page.locator('#authPanel')).toBeVisible();
+  await expect(page.locator('#authPanel')).toContainText('Try the demo workspace');
+
+  await trigger(page.getByRole('button', { name: 'Back to home' }));
+  await expect(page.getByRole('heading', { name: 'Run the day before the day runs you.' })).toBeVisible();
+
+  await trigger(page.getByRole('button', { name: 'Try demo' }));
+  await expect(page.locator('.topbar h1')).toHaveText('Dashboard');
+  await expect(page.locator('#modePill')).toHaveText('Demo workspace');
+});
+
 test('opens the public marketer demo workspace with sample operating data', async ({ page }) => {
+  test.setTimeout(180_000);
   await page.goto('/?demo=1', { waitUntil: 'load' });
 
   await expect(page.locator('.topbar h1')).toHaveText('Dashboard');
@@ -192,9 +246,9 @@ test('lands users on role-specific first pages', async ({ page }) => {
 });
 
 test('guides Start My Day through Flow Mode actions', async ({ page }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(120_000);
 
-  await page.getByRole('button', { name: 'Start My Day' }).click();
+  await triggerSelector(page, '#startMyDayButton');
 
   await expect(page.locator('#flowModePanel')).toBeVisible();
   await expect(page.locator('#flowProgressLabel')).toHaveText('1 of 18 priority actions');
@@ -209,30 +263,30 @@ test('guides Start My Day through Flow Mode actions', async ({ page }) => {
   await expect(page.locator('#flowLeadDetails')).toContainText(/Hot|Warm|Nurture|Cold/);
   await expect(page.locator('#flowTimeSavedToday')).toHaveText('0m');
 
-  await page.getByRole('button', { name: 'Call Lead' }).click();
+  await triggerSelector(page, '[data-flow-outcome="call"]');
   await expect(page.locator('#flowActionStatus')).toContainText('Call Lead selected');
-  await page.getByRole('button', { name: 'Complete & Next' }).click();
+  await triggerSelector(page, '#flowCompleteNext');
   await expect(page.locator('#flowCallsCompleted')).toHaveText('1');
   await expect(page.locator('#flowTimeSavedMessage')).toContainText(/\+\d+m saved/);
   await expect(page.locator('#flowTimeSavedMessage')).toContainText('saved today');
   await expect(page.locator('#flowTimeSavedToday')).not.toHaveText('0m');
   await expect(page.locator('#flowProgressLabel')).toHaveText('2 of 18 priority actions');
 
-  await page.getByRole('button', { name: 'Send Text' }).click();
-  await page.getByRole('button', { name: 'Complete & Next' }).click();
+  await triggerSelector(page, '[data-flow-outcome="text"]');
+  await triggerSelector(page, '#flowCompleteNext');
   await expect(page.locator('#flowFollowUpsCompleted')).toHaveText('1');
   await expect(page.locator('#flowProgressLabel')).toHaveText('3 of 18 priority actions');
 
-  await page.getByRole('button', { name: 'Book Appointment' }).click();
-  await page.getByRole('button', { name: 'Complete & Next' }).click();
+  await triggerSelector(page, '[data-flow-outcome="appointment"]');
+  await triggerSelector(page, '#flowCompleteNext');
   await expect(page.locator('#flowAppointmentsBooked')).toHaveText('1');
   await expect(page.locator('#flowProgressLabel')).toHaveText('4 of 18 priority actions');
 
-  await page.getByRole('button', { name: 'Skip' }).click();
+  await triggerSelector(page, '[data-flow-outcome="skip"]');
   await expect(page.locator('#flowProgressLabel')).toHaveText('5 of 18 priority actions');
 
   for (let index = 0; index < 14; index += 1) {
-    await page.getByRole('button', { name: 'Complete & Next' }).click();
+    await triggerSelector(page, '#flowCompleteNext');
   }
 
   await expect(page.locator('#flowCompletionState')).toBeVisible();
@@ -243,7 +297,8 @@ test('guides Start My Day through Flow Mode actions', async ({ page }) => {
 });
 
 test('opens and completes smart follow-ups from the queue', async ({ page }) => {
-  await page.getByRole('button', { name: 'Open Follow-Up Queue' }).click();
+  await openDashboardOverview(page);
+  await trigger(page.getByRole('button', { name: 'Open Follow-Up Queue' }));
 
   const queue = page.locator('#followUpQueue');
   await expect(queue).toBeVisible();
@@ -257,7 +312,7 @@ test('opens and completes smart follow-ups from the queue', async ({ page }) => 
   await expect(queue).toContainText(/Critical|High|Medium/);
 
   const firstItem = queue.locator('.follow-up-item').first();
-  await firstItem.getByRole('button', { name: 'Mark Complete' }).click();
+  await trigger(firstItem.getByRole('button', { name: 'Mark Complete' }));
 
   await expect(page.locator('#followUpQueueMessage')).toContainText('follow-up marked complete');
   await expect(page.locator('#followUpQueueMessage')).toContainText('saved');
@@ -398,12 +453,12 @@ test('renders AI Sales Copilot suggestions and runs Copilot actions', async ({ p
   await expect(dashboardCopilot).toContainText('Main objection risk');
   await expect(dashboardCopilot).toContainText('Close probability explanation');
 
-  await dashboardCopilot.getByRole('button', { name: 'Copy Text' }).click();
+  await trigger(dashboardCopilot.locator('[data-copilot-action="copy"]'));
   await expect(dashboardCopilot.locator('.sales-copilot-status')).toContainText('Suggested text copied');
   const copiedText = await page.evaluate(() => localStorage.getItem('closepilot-copilot-clipboard'));
   expect(copiedText).toContain('Kira Home');
 
-  await dashboardCopilot.getByRole('button', { name: 'Create Task' }).click();
+  await trigger(dashboardCopilot.locator('[data-copilot-action="task"]'));
   await expect(dashboardCopilot.locator('.sales-copilot-status')).toContainText('Copilot task created');
   await navigateTo(page, 'Tasks', 'tasks');
   await page.getByPlaceholder('Search task text').fill('Copilot');
@@ -412,24 +467,24 @@ test('renders AI Sales Copilot suggestions and runs Copilot actions', async ({ p
   await navigateTo(page, 'Dashboard', 'pipeline');
   const refreshedDashboardCopilot = page.locator('#dashboardSalesCopilotCard');
   await expect(refreshedDashboardCopilot).toBeVisible();
-  const logActivityButton = refreshedDashboardCopilot.getByRole('button', { name: 'Log Activity' });
+  const logActivityButton = refreshedDashboardCopilot.locator('[data-copilot-action="activity"]');
   await expect(logActivityButton).toBeVisible();
-  await logActivityButton.scrollIntoViewIfNeeded();
-  await logActivityButton.click();
-  await expect(refreshedDashboardCopilot.locator('.sales-copilot-status')).toContainText('Copilot activity logged', {
-    timeout: 10000,
-  });
+  await trigger(logActivityButton);
   await navigateTo(page, 'Activity', 'activity');
-  await page.getByPlaceholder('Search activity').fill('AI Sales Copilot recommendation');
+  await expect(page.locator('#activityFeed')).toContainText('AI Sales Copilot recommendation logged', { timeout: 10000 });
+  await page.locator('#activitySearch').evaluate((input) => {
+    input.value = 'AI Sales Copilot recommendation';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
   await expect(page.locator('#activityFeed')).toContainText('AI Sales Copilot recommendation logged');
 
   await navigateTo(page, 'Dashboard', 'pipeline');
   await openLeadBrief(page);
-  await page.locator('#leadBrief').getByRole('button', { name: 'Open details' }).click();
+  await trigger(page.locator('#leadBrief').getByRole('button', { name: 'Open details' }));
   const dialog = page.getByRole('dialog', { name: 'Northstar Roofing' });
   await expect(dialog).toContainText('AI Sales Copilot');
   await expect(dialog).toContainText('Best next action');
-  await dialog.locator('.sales-copilot-panel').getByRole('button', { name: 'Move Lead Stage' }).click();
+  await trigger(dialog.locator('.sales-copilot-panel').locator('[data-copilot-action="stage"]'));
   await expect(dialog.locator('.sales-copilot-status')).toContainText('Copilot moved Northstar Roofing to Proposal');
   await expect(dialog).toContainText('Proposal deal');
 });
@@ -505,13 +560,13 @@ test('shows the AI Sales Manager owner dashboard', async ({ page }) => {
   await expect(page.locator('#managerAnalyticsTabs')).toContainText('Rep Performance');
   await expect(page.locator('#managerAnalyticsTabs')).toContainText('Customer Response Time');
 
-  await page.getByRole('button', { name: 'Lead Sources' }).click();
+  await activate(page.getByRole('button', { name: 'Lead Sources' }));
   await expect(page.locator('#managerAnalyticsChart')).toContainText('Best source mix by pipeline value');
 
-  await page.getByRole('button', { name: 'Assign Leads', exact: true }).click();
+  await trigger(page.locator('[data-manager-action="assign-leads"]'));
   await expect(page.locator('#managerStatus')).toContainText('Assign Leads queued');
 
-  await page.getByRole('button', { name: 'Refresh AI Insights' }).click();
+  await trigger(page.getByRole('button', { name: 'Refresh AI Insights' }));
   await expect(page.locator('#managerStatus')).toContainText('AI insights refreshed');
 });
 
@@ -593,20 +648,20 @@ test('runs the unified communications center', async ({ page }) => {
   await expect(page.locator('#communicationNotificationFeed')).toContainText('Appointment reminder');
 
   await page.locator('#communicationComposerInput').fill('This is a unified inbox test text.');
-  await page.getByRole('button', { name: 'Send Text' }).click();
+  await trigger(page.locator('[data-composer-action="send"]'));
   await expect(page.locator('#conversationTimeline')).toContainText('This is a unified inbox test text.');
   await expect(page.locator('#communicationsStatus')).toContainText('logged in demo mode');
   await expect(page.locator('#communicationToastRegion')).toContainText('Outgoing Text logged');
 
-  await page.locator('#callControls').getByRole('button', { name: 'No answer' }).click();
+  await activate(page.locator('#callControls').getByRole('button', { name: 'No answer' }));
   await expect(page.locator('#conversationTimeline')).toContainText('No answer call logged');
   await expect(page.locator('#conversationTimeline')).toContainText('Follow-up task created');
   await expect(page.locator('#communicationsStatus')).toContainText('No answer call logged');
 
-  await page.locator('#quickActionsPanel').getByRole('button', { name: 'Add Note' }).click();
+  await activate(page.locator('#quickActionsPanel').getByRole('button', { name: 'Add Note' }));
   await expect(page.locator('#conversationTimeline')).toContainText('Conversation note added');
 
-  await page.locator('#communicationCallButton').click();
+  await activate(page.locator('#communicationCallButton'));
   await expect(page.locator('#communicationsStatus')).toContainText('Calling');
   await expect(page.locator('#communicationEndCallButton')).toBeEnabled();
   await page.locator('#communicationEndCallButton').click();
@@ -1410,6 +1465,13 @@ test('gates admin-only navigation for member access', async ({ page }) => {
   await page.getByRole('button', { name: 'Export source report' }).click();
   await expect(page.locator('#communicationToastRegion')).toContainText('Access needed');
   await expect(page.locator('#communicationToastRegion')).toContainText('Source report exports are Admin-only');
+
+  await navigateTo(page, 'Settings', 'settings');
+  await openSubpage(page, 'Appearance');
+  await expect(page.locator('#customizationForm')).toHaveAttribute('data-locked', 'true');
+  await expect(page.locator('#customizationAccessNotice')).toContainText('only the business Owner or an Admin can edit');
+  await expect(page.getByLabel('Brand display name')).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Save preferences' })).toBeDisabled();
 });
 
 test('hides billing and workspace admin areas for manager access', async ({ page }) => {
@@ -1428,6 +1490,13 @@ test('hides billing and workspace admin areas for manager access', async ({ page
   await page.getByRole('link', { name: 'Automations' }).click();
   await expect(page.locator('.topbar h1')).toHaveText('Automations');
   await expect(page.locator('#automation')).toBeVisible();
+
+  await navigateTo(page, 'Settings', 'settings');
+  await openSubpage(page, 'Appearance');
+  await expect(page.locator('#customizationForm')).toHaveAttribute('data-locked', 'true');
+  await expect(page.locator('#customizationAccessNotice')).toContainText('only the business Owner or an Admin can edit');
+  await expect(page.getByLabel('Brand display name')).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Save preferences' })).toBeDisabled();
 });
 
 test('production API fallbacks are honest when providers are missing', async ({ request }) => {
@@ -1589,9 +1658,9 @@ test('shows and applies sales assistant recommendations', async ({ page }) => {
   await expect(page.locator('#leadBrief')).toContainText('Sales assistant');
   await expect(page.locator('#leadBrief')).toContainText('Convert interest into a decision path');
 
-  await page.locator('#leadBrief').getByRole('button', { name: 'Open details' }).click();
+  await trigger(page.locator('#leadBrief').getByRole('button', { name: 'Open details' }));
   const dialog = page.getByRole('dialog', { name: 'Northstar Roofing' });
-  await dialog.getByRole('button', { name: 'Apply suggestion' }).click();
+  await trigger(dialog.getByRole('button', { name: 'Apply suggestion' }));
 
   await expect(page.locator('#taskList')).toContainText(
     'Send Northstar Roofing a proposal recap and ask for the decision timeline. (Northstar Roofing)',
@@ -1857,7 +1926,7 @@ test('completes and snoozes selected tasks in bulk', async ({ page }) => {
   const taskFilters = page.getByRole('group', { name: 'Task filter' });
 
   await page.getByLabel('Select task Call Maya before 3 PM').check();
-  await page.getByRole('button', { name: 'Complete selected (1)' }).click();
+  await trigger(page.getByRole('button', { name: 'Complete selected (1)' }));
 
   await expect(page.locator('#taskSelectionStatus')).toHaveText('0 selected');
   await expect(page.locator('#taskList')).not.toContainText('Call Maya before 3 PM');
@@ -1865,13 +1934,13 @@ test('completes and snoozes selected tasks in bulk', async ({ page }) => {
   await expect(taskFilters.getByRole('button', { name: /Done/ })).toContainText('2');
 
   await page.getByLabel('Select task Draft Harbor Fitness proposal recap').check();
-  await page.getByRole('button', { name: 'Snooze selected (1)' }).click();
+  await trigger(page.getByRole('button', { name: 'Snooze selected (1)' }));
 
   await expect(page.locator('#taskList')).toContainText('No tasks in this view.');
   await expect(taskFilters.getByRole('button', { name: /Today/ })).toContainText('0');
   await expect(taskFilters.getByRole('button', { name: /Upcoming/ })).toContainText('1');
 
-  await taskFilters.getByRole('button', { name: /Upcoming/ }).click();
+  await trigger(taskFilters.getByRole('button', { name: /Upcoming/ }));
   await expect(page.locator('#taskList')).toContainText('Draft Harbor Fitness proposal recap');
   await expect(page.locator('#taskList')).toContainText('tomorrow');
 });

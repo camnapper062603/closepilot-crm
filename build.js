@@ -2,6 +2,8 @@ import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import "./local-env.js";
 
 const config = {
+  appMode: process.env.APP_MODE || "development",
+  publicDemoEnabled: process.env.PUBLIC_DEMO_ENABLED !== "false",
   supabaseUrl: process.env.SUPABASE_URL || "",
   supabaseAnonKey: normalizeJwt(process.env.SUPABASE_ANON_KEY || ""),
   stripeCheckoutUrl: process.env.STRIPE_CHECKOUT_URL || "",
@@ -40,8 +42,8 @@ if (existsSync("SafeLeadGenerator-Standalone.html")) {
 
 console.log(
   config.supabaseUrl && config.supabaseAnonKey
-    ? "Generated Supabase runtime config."
-    : "Generated demo runtime config. Add SUPABASE_URL and SUPABASE_ANON_KEY for cloud mode.",
+    ? `Generated ${config.appMode} Supabase runtime config.`
+    : `Generated ${config.appMode} setup runtime config. Add SUPABASE_URL and SUPABASE_ANON_KEY for cloud mode.`,
 );
 
 function normalizeJwt(value) {

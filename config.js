@@ -1,4 +1,6 @@
 window.ClosePilotConfig = {
+  "appMode": "development",
+  "publicDemoEnabled": true,
   "supabaseUrl": "",
   "supabaseAnonKey": "",
   "stripeCheckoutUrl": "",
