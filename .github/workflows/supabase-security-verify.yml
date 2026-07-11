@@ -1,0 +1,27 @@
+name: Supabase Security Verification
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "GitHub environment containing Supabase verification secrets"
+        required: true
+        default: production
+
+jobs:
+  verify:
+    name: Verify Supabase Security Migration
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run security:verify-migration -- --json
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
