@@ -72,7 +72,9 @@ createServer((request, response) => {
     "/recruiting": "/recruiting.html",
     "/lead-generator": "/SafeLeadGenerator-Standalone.html",
   };
-  const aliasedPath = routeAliases[url.pathname] || url.pathname;
+  const aliasedPath = url.pathname.startsWith("/recruiting/")
+    ? "/recruiting.html"
+    : routeAliases[url.pathname] || url.pathname;
   const requestedPath = normalize(decodeURIComponent(aliasedPath)).replace(/^(\.\.[/\\])+/, "");
   let filePath = join(root, requestedPath);
 

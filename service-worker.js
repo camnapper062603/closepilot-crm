@@ -1,4 +1,4 @@
-const CACHE_NAME = "kira-home-shell-v1";
+const CACHE_NAME = "kira-home-shell-v4";
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -18,6 +18,15 @@ const OFFLINE_PAGES = new Map([
   ["/", "/index.html"],
   ["/recruiting", "/recruiting.html"],
   ["/recruiting.html", "/recruiting.html"],
+  ["/recruiting/dashboard", "/recruiting.html"],
+  ["/recruiting/job", "/recruiting.html"],
+  ["/recruiting/boards", "/recruiting.html"],
+  ["/recruiting/integrations", "/recruiting.html"],
+  ["/recruiting/applicants", "/recruiting.html"],
+  ["/recruiting/interviews", "/recruiting.html"],
+  ["/recruiting/onboarding", "/recruiting.html"],
+  ["/recruiting/payroll", "/recruiting.html"],
+  ["/recruiting/crm", "/recruiting.html"],
   ["/lead-generator", "/SafeLeadGenerator-Standalone.html"],
   ["/SafeLeadGenerator-Standalone.html", "/SafeLeadGenerator-Standalone.html"],
 ]);
@@ -51,6 +60,11 @@ self.addEventListener("fetch", (event) => {
 
   if (request.mode === "navigate") {
     event.respondWith(fetch(request).catch(() => caches.match(OFFLINE_PAGES.get(url.pathname) || "/index.html")));
+    return;
+  }
+
+  if (["script", "style"].includes(request.destination) || url.pathname === "/config.js") {
+    event.respondWith(fetch(request).catch(() => caches.match(request)));
     return;
   }
 

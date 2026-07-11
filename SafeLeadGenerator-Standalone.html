@@ -1041,12 +1041,12 @@
           <div>
             <h1>Compliant Property Lead Builder</h1>
             <p class="muted">
-              Coming soon Residential Lead Generator preview for territory lists, property imports, enrichment planning,
+              Paid add-on Residential Lead Generator preview for territory lists, property imports, enrichment planning,
               DNC-aware exports, and CRM pipeline handoff.
             </p>
           </div>
           <div class="actions">
-            <span class="pill info">Coming soon</span>
+            <span class="pill info">Paid add-on preview</span>
             <span class="pill warn" id="leadSyncMode">Demo preview</span>
             <span class="pill warn">No live scraping</span>
             <a class="button secondary" href="/">Back to CRM</a>
@@ -1060,10 +1060,10 @@
 
         <section class="locked-addon-banner" id="leadAccessBanner" hidden>
           <div>
-            <span class="pill warn">Coming soon</span>
-            <h2>Residential Lead Generator is coming soon</h2>
+            <span class="pill warn">Paid add-on locked</span>
+            <h2>Residential Lead Generator is a paid add-on preview</h2>
             <p>
-              CRM customers can view the demo preview. Live enrichment, provider imports, CRM sync, and exports require compliance setup before early access opens.
+              CRM customers can view the demo preview. Live enrichment, provider imports, CRM sync, exports, and phone-ready outreach require compliance setup before add-on early access opens.
             </p>
           </div>
           <div class="actions">
@@ -1074,11 +1074,11 @@
 
         <section class="territory-command" data-lead-tab="generator" aria-labelledby="territoryCommandHeading">
           <div>
-            <span class="pill info">Territory command center · View Demo</span>
+            <span class="pill info">Paid add-on demo · View Demo</span>
             <h2 id="territoryCommandHeading">Best area to target today</h2>
             <p>
               Prioritize owner-occupied residential prospects, compare paid data/skip-trace/DNC options,
-              keep phone outreach behind compliance checks, and move safe records into the CRM when the file is clean.
+              keep phone outreach behind compliance checks, and hand off only clean demo records into the CRM.
             </p>
           </div>
           <div class="territory-command-grid" aria-label="Residential lead priorities">
@@ -1756,7 +1756,7 @@ Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,78731,78731,TX-1001,512-555-018
           demo,
           enabled,
           locked: !enabled,
-          label: demo ? "Demo preview" : enabled ? "Preview enabled" : "Preview locked",
+          label: demo ? "Paid add-on demo" : enabled ? "Add-on preview enabled" : "Paid add-on locked",
         };
       }
 
@@ -1769,7 +1769,7 @@ Maya Johnson,1840 Northstar Dr,1840 Northstar Dr,78731,78731,TX-1001,512-555-018
 
       function guardLeadGeneratorAccess(action) {
         if (!accessContext.locked) return true;
-        setStatus(`Residential Lead Generator is coming soon. Use demo preview or ask an admin for early access before you ${action}.`);
+        setStatus(`Residential Lead Generator is a paid add-on preview. Use the demo workspace or ask an admin for early access before you ${action}.`);
         return false;
       }
 

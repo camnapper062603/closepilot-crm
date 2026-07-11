@@ -14,7 +14,9 @@
     "mobile:open:android": "npx cap open android",
     "mobile:open:ios": "npx cap open ios",
     "mobile:sync": "npm run build && npx cap sync",
+    "security:encrypt-google-tokens": "node scripts/encrypt-google-calendar-tokens.mjs",
     "test": "playwright test",
+    "test:security": "node --test tests/security/*.test.mjs",
     "test:ui": "playwright test --ui"
   },
   "keywords": [

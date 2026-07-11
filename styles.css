@@ -8611,6 +8611,20 @@ body[data-dashboard-layout="focus"] .daily-command-center > [data-dashboard-size
     grid-template-columns: 1fr;
   }
 
+  .password-onboarding-panel {
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .password-onboarding-form {
+    align-items: stretch;
+  }
+
+  .password-onboarding-form button {
+    width: 100%;
+  }
+
   .dashboard-widget-control {
     grid-template-columns: 1fr;
   }
@@ -8956,6 +8970,23 @@ body[data-dashboard-layout="focus"] .daily-command-center > [data-dashboard-size
 
   .topbar-actions {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .topbar-actions .primary-button,
+  .topbar-actions .secondary-button,
+  .topbar-actions button {
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .password-onboarding-panel h2 {
+    font-size: 1.08rem;
+  }
+
+  .password-onboarding-panel p:not(.eyebrow),
+  .password-onboarding-message {
+    font-size: 0.78rem;
+    line-height: 1.35;
   }
 
   .panel,

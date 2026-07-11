@@ -51,7 +51,7 @@ PRODUCT_URL=https://your-beta-domain.com
 SUPPORT_EMAIL=support@yourdomain.com
 ```
 
-Then run `supabase-schema.sql` in Supabase, rebuild with `npm run build`, deploy `dist`, and create the first beta owner account from the sign-in screen. Keep Stripe, Resend, Twilio, OpenAI, and Google Calendar configured as they become part of the beta scope; missing optional providers show setup guidance instead of pretending to be live.
+Then run `supabase-schema.sql` in Supabase, rebuild with `npm run build`, deploy `dist`, and create the first beta owner account from the sign-in screen. Keep Stripe, Resend, Twilio, OpenAI, and Google Calendar configured as they become part of the beta scope; missing optional providers show setup guidance instead of pretending to be live. See `SECURITY.md` before beta launch for the protected API matrix and token-encryption migration.
 
 ## Production Docs
 
@@ -88,7 +88,7 @@ The included `vercel.json` already applies those settings and routes `/recruitin
 | Module | Status | Notes |
 | --- | --- | --- |
 | ClosePilot CRM | Live SaaS product | Daily Command Center, Flow Mode, Communications, Automations, AI Sales Manager, Admin, billing/invite backend endpoints, and demo fallback |
-| Kira Recruit | Coming soon preview | CRM customers can view demo mode; live recruiting sync, onboarding delivery, and payroll handoff stay in early-access preview |
+| Kira Recruit | Beta paid add-on | CRM-session gated live backend for candidates, job setup, interviews, onboarding packet staging, payroll workflow staging, and CRM handoff; provider APIs still require setup |
 | Residential Lead Generator | Coming soon preview | CRM customers can view demo mode; live enrichment, provider imports, CRM sync, and exports require compliance setup before early access |
 
 Open demos:
@@ -96,8 +96,11 @@ Open demos:
 ```text
 http://localhost:4173/
 http://localhost:4173/recruiting.html?demo=1
+http://localhost:4173/recruiting/applicants?demo=1
 http://localhost:4173/lead-generator?demo=1
 ```
+
+See `KIRA_RECRUIT_PRODUCTION_STATUS.md` for Kira Recruit live/demo boundaries, add-on gating, provider setup requirements, and beta-safe customer workflows.
 
 ## Mobile App Store Packaging
 
@@ -214,11 +217,17 @@ https://your-domain.com/api/google/calendar/callback
    - `GOOGLE_CALENDAR_CLIENT_ID`
    - `GOOGLE_CALENDAR_CLIENT_SECRET`
    - `GOOGLE_CALENDAR_REDIRECT_URI`
+   - `GOOGLE_TOKEN_ENCRYPTION_KEY`
+   - `GOOGLE_TOKEN_ENCRYPTION_KEY_VERSION`
    - `APP_BASE_URL`
 6. Rerun `supabase-schema.sql` so the `calendar_connections` table exists.
 7. Redeploy, then use the Calendar page to connect Google Calendar.
 
-OAuth tokens are stored server-side in Supabase and are not exposed to the browser. If Calendar credentials or the Supabase table are missing, appointments remain in the CRM calendar and show setup guidance.
+OAuth tokens are encrypted server-side with AES-256-GCM before storage and are not exposed to the browser. If you already have plaintext Calendar rows, run `npm run security:encrypt-google-tokens`, verify Calendar status/events, then run `npm run security:encrypt-google-tokens -- --clear-plaintext`. If Calendar credentials, Supabase service credentials, or the encryption key are missing, protected Calendar endpoints fail closed.
+
+## API Security
+
+Protected APIs require `Authorization: Bearer <Supabase access token>`. The backend verifies the token with Supabase Auth and loads workspace membership before allowing billing, invites, Google Calendar, communications, AI, or Kira Recruit actions. Client-supplied identity fields such as `actorRole`, `userId`, `ownerEmail`, or `stripeCustomerId` are not used for authorization. See `SECURITY.md` for the endpoint matrix and test commands.
 
 ## Local Demo Mode
 
@@ -315,4 +324,4 @@ This build includes:
 - Launch readiness checklist and admin audit trail
 - Supabase schema and RLS policies for CRM data, subscriptions, and invitations
 - CRM pipeline, contacts, tasks, automations, activity, CSV import/export, backups, revenue goals, and channel reporting
-- Standalone Kira Recruit background app for job setup, job-board connector feeds, applicant intake, interview booking, and future CRM recruits sync
+- Standalone Kira Recruit add-on for job setup, job-board connector metadata, applicant intake, interview booking, onboarding packet staging, payroll workflow staging, and live CRM candidate handoff

@@ -12,6 +12,8 @@ const stageProbabilities = {
   won: 1,
 };
 
+const freeTrialDays = 7;
+
 const planCatalog = {
   starter: {
     label: "Starter",
@@ -687,7 +689,7 @@ const seedState = {
       plan: "starter",
       status: "trialing",
       seatLimit: 3,
-      trialEndsAt: "2026-07-11T00:00:00.000Z",
+      trialEndsAt: freeTrialEndsAt(),
     },
     members: [
       {
@@ -803,6 +805,7 @@ let currentUser = null;
 let supabaseClient = null;
 let publicDemoMode = false;
 let editingLeadId = null;
+let isSavingLead = false;
 let pipelineView = "board";
 let pendingImport = null;
 let taskFilter = "today";
@@ -1040,6 +1043,7 @@ const homePanel = document.querySelector("#homePanel");
 const authForm = document.querySelector("#authForm");
 const authMessage = document.querySelector("#authMessage");
 const viewDemoWorkspaceButton = document.querySelector("#viewDemoWorkspaceButton");
+const authDemoCard = document.querySelector(".auth-demo-card");
 const homeSignInButton = document.querySelector("#homeSignInButton");
 const homePrimarySignInButton = document.querySelector("#homePrimarySignInButton");
 const homeDemoButton = document.querySelector("#homeDemoButton");
@@ -1132,6 +1136,7 @@ const config = window.KiraHomeConfig || window.ClosePilotConfig || {};
 const hasSupabaseConfig = Boolean(config.supabaseUrl && config.supabaseAnonKey);
 const appMode = config.appMode || "development";
 const publicDemoEnabled = config.publicDemoEnabled !== false;
+const publicDemoProductionWarning = publicDemoEnabled && ["beta", "production"].includes(appMode);
 const isBetaMode = appMode === "beta" || appMode === "production";
 const backendTimeoutMs = 12000;
 const pageTitles = {
@@ -1181,8 +1186,8 @@ const subpageCatalog = {
     { id: "backup", label: "Backup center" },
   ],
   settings: [
-    { id: "appearance", label: "Appearance" },
-    { id: "dashboard", label: "Dashboard" },
+    { id: "appearance", label: "Appearance", adminOnly: true },
+    { id: "dashboard", label: "Dashboard", adminOnly: true },
     { id: "workflow", label: "Workflow and AI" },
     { id: "workspace", label: "Workspace", adminOnly: true },
   ],
@@ -1410,7 +1415,12 @@ homeSignInButton?.addEventListener("click", () => showAuth("Sign in to your work
 homePrimarySignInButton?.addEventListener("click", () => showAuth("Sign in to your workspace when you are ready."));
 homeDemoButton?.addEventListener("click", startPublicDemoWorkspace);
 homeSecondaryDemoButton?.addEventListener("click", startPublicDemoWorkspace);
-backToHomeButton?.addEventListener("click", showHome);
+backToHomeButton?.addEventListener("click", () => {
+  const url = new URL(window.location.href);
+  url.searchParams.set("tour", "1");
+  history.replaceState(null, "", `${url.pathname}${url.search}`);
+  showHome();
+});
 signOutButton.addEventListener("click", signOut);
 seedWorkspaceButton.addEventListener("click", seedStarterWorkspace);
 dismissOnboardingButton.addEventListener("click", dismissOnboarding);
@@ -1534,12 +1544,12 @@ window.addEventListener("hashchange", () => {
 });
 
 window.addEventListener("online", () => {
-  setCloudMode(Boolean(hasSupabaseConfig), hasSupabaseConfig ? "Cloud synced" : "Demo mode");
+  setCloudMode(Boolean(hasSupabaseConfig), hasSupabaseConfig ? "Live workspace" : "Demo workspace");
   showAppToast("Back online", "ClosePilot can reach the network again.");
 });
 
 window.addEventListener("offline", () => {
-  setCloudMode(Boolean(hasSupabaseConfig), "Offline mode");
+  setCloudMode(Boolean(hasSupabaseConfig), hasSupabaseConfig ? "Live workspace - offline" : "Demo workspace - offline");
   showAppToast("Offline", "Changes stay local until the network returns.");
 });
 
@@ -1554,6 +1564,10 @@ window.addEventListener("unhandledrejection", (event) => {
 async function boot() {
   const params = new URLSearchParams(window.location.search);
   syncBetaAccessUi();
+  if (params.get("tour") === "1") {
+    showHome();
+    return;
+  }
   if ((params.get("demo") === "1" || localStorage.getItem(publicDemoSessionKey()) === "true") && publicDemoEnabled) {
     await startPublicDemoWorkspace({ fromBoot: true });
     return;
@@ -1569,7 +1583,7 @@ async function boot() {
       if (isBetaMode) {
         showAuth("Beta sign-in needs Supabase configured first. Add the production Supabase URL and anon key, then rebuild.");
       } else {
-        showHome();
+        showAuth();
       }
       return;
     }
@@ -1594,7 +1608,7 @@ async function boot() {
       if (currentUser) {
         await startCloudWorkspace();
       } else if (!publicDemoMode) {
-        showHome();
+        showAuth("Signed out.");
       }
     });
 
@@ -1603,7 +1617,7 @@ async function boot() {
         showAuth(params.has("invite") ? "Sign in or create your account to accept the invite." : "");
         return;
       }
-      showHome();
+      showAuth();
       return;
     }
 
@@ -1623,7 +1637,7 @@ async function boot() {
     normalizeLoadedState();
     routeFromHash();
     hideAuth();
-    setCloudMode(false, "Demo mode - cloud unavailable");
+    setCloudMode(false, "Demo workspace - cloud unavailable");
     render();
   }
 }
@@ -1638,7 +1652,11 @@ async function startCloudWorkspace() {
   await store.ensureWorkspace();
   await reloadState({ renderAfterLoad: false });
   routeFromHash();
+  if (!canAccessPage(activePage)) {
+    setActivePage(preferredLandingPage());
+  }
   render();
+  focusTemporaryPasswordPrompt();
   handleCalendarCallbackStatus();
   if (inviteAcceptanceStatus) {
     adminMessage.textContent = inviteAcceptanceStatus;
@@ -1703,6 +1721,9 @@ function syncBetaAccessUi() {
     button.hidden = !publicDemoEnabled;
     button.disabled = !publicDemoEnabled;
   });
+  if (authDemoCard) {
+    authDemoCard.hidden = !publicDemoEnabled;
+  }
   if (homePrimarySignInButton) {
     homePrimarySignInButton.textContent = isBetaMode ? "Sign in to beta" : "Open my workspace";
   }
@@ -1722,6 +1743,8 @@ function showHome() {
   signOutButton.textContent = "Sign out";
   modePill.textContent = "Cloud mode";
   setAuthMessage("");
+  document.body.dataset.shell = "tour";
+  hideAppOnlyPanelsForAuthShell();
 }
 
 function showAuth(message = "") {
@@ -1740,16 +1763,28 @@ function showAuth(message = "") {
         ? "Cloud sign-in is not configured in this environment yet. Add Supabase env vars to start beta testing."
         : ""),
   );
+  document.body.dataset.shell = "auth";
+  hideAppOnlyPanelsForAuthShell();
 }
 
 function hideAuth() {
   if (homePanel) homePanel.hidden = true;
   authPanel.hidden = true;
   appShell.hidden = false;
+  document.body.dataset.shell = publicDemoMode ? "demo" : "app";
+}
+
+function hideAppOnlyPanelsForAuthShell() {
+  document.querySelector("#accessDeniedPanel")?.setAttribute("hidden", "");
+  document.querySelector("#passwordOnboardingPanel")?.setAttribute("hidden", "");
+  document.querySelectorAll("[data-page], [data-page-group]").forEach((section) => {
+    section.hidden = true;
+  });
+  if (subpageNav) subpageNav.hidden = true;
 }
 
 function setCloudMode(enabled, label) {
-  modePill.textContent = label || (enabled ? "Cloud synced" : "Demo mode");
+  modePill.textContent = label || (enabled ? "Live workspace" : "Demo workspace");
   signOutButton.hidden = !enabled;
 }
 
@@ -1794,8 +1829,6 @@ async function acceptPendingInviteIfNeeded() {
   try {
     const result = await postBackendJson("/api/invites/accept", {
       token,
-      userId: currentUser.id,
-      email: currentUser.email,
     });
     inviteAcceptanceStatus = result.message || "Invite accepted. Workspace access is ready.";
     if (result.accepted) {
@@ -1804,7 +1837,9 @@ async function acceptPendingInviteIfNeeded() {
       }
       const url = new URL(window.location.href);
       url.searchParams.delete("invite");
-      history.replaceState(null, "", `${url.pathname}${url.search}${url.hash || "#admin"}`);
+      const acceptedRole = normalizeRoleId(result.role || currentUser.user_metadata?.invited_role || "member");
+      const fallbackHash = ["owner", "admin"].includes(acceptedRole) ? "#admin" : "#tasks";
+      history.replaceState(null, "", `${url.pathname}${url.search}${fallbackHash}`);
     }
   } catch (error) {
     inviteAcceptanceStatus = `Invite acceptance needs attention: ${error.message}`;
@@ -1848,9 +1883,16 @@ function setAuthMessage(message) {
 }
 
 async function createLeadFromForm() {
+  if (isSavingLead) return;
   const name = document.querySelector("#leadName").value.trim();
   const company = document.querySelector("#leadCompany").value.trim();
   if (!name || !company) return;
+
+  const createLeadButton = document.querySelector("#createLeadButton");
+  const originalButtonText = createLeadButton.textContent;
+  isSavingLead = true;
+  createLeadButton.disabled = true;
+  createLeadButton.textContent = editingLeadId ? "Saving..." : "Creating...";
 
   const lead = {
     name,
@@ -1870,35 +1912,44 @@ async function createLeadFromForm() {
     }),
   };
 
-  if (editingLeadId) {
-    const existingLead = state.leads.find((item) => item.id === editingLeadId);
-    const updated = await store.updateLead({
-      ...existingLead,
-      ...lead,
-      id: editingLeadId,
-    });
-    await store.createActivity({
-      leadId: updated.id,
-      type: "edited",
-      message: `Lead updated for ${updated.company}.`,
-    });
-    state.selectedLeadId = updated.id;
-  } else {
-    const created = await store.createLead(lead);
-    await store.createActivity({
-      leadId: created.id,
-      type: "created",
-      message: `Lead created from ${created.source}.`,
-    });
-    await addAutomatedTask(`Follow up with ${created.name} at ${created.company}`);
-    await runAutomationTrigger("new-lead", created);
-    state.selectedLeadId = created.id;
-  }
+  try {
+    if (editingLeadId) {
+      const existingLead = state.leads.find((item) => item.id === editingLeadId);
+      const updated = await store.updateLead({
+        ...existingLead,
+        ...lead,
+        id: editingLeadId,
+      });
+      await store.createActivity({
+        leadId: updated.id,
+        type: "edited",
+        message: `Lead updated for ${updated.company}.`,
+      });
+      state.selectedLeadId = updated.id;
+    } else {
+      const created = await store.createLead(lead);
+      await store.createActivity({
+        leadId: created.id,
+        type: "created",
+        message: `Lead created from ${created.source}.`,
+      });
+      await addAutomatedTask(`Follow up with ${created.name} at ${created.company}`);
+      await runAutomationTrigger("new-lead", created);
+      state.selectedLeadId = created.id;
+    }
 
-  leadForm.reset();
-  closeLeadModal();
-  setActivePage("pipeline");
-  await reloadState();
+    leadForm.reset();
+    closeLeadModal();
+    setActivePage("pipeline");
+    await reloadState();
+  } catch (error) {
+    console.error("Failed to save lead.", error);
+    showAppToast("Lead was not saved", error?.message || "Check your Supabase workspace access and try again.");
+  } finally {
+    isSavingLead = false;
+    createLeadButton.disabled = false;
+    createLeadButton.textContent = originalButtonText;
+  }
 }
 
 function openLeadModal(lead = null) {
@@ -2248,8 +2299,17 @@ function normalizeRoleId(role) {
 function currentWorkspaceMember() {
   const account = accountState();
   const email = (currentUser?.email || workspaceSetupSettings().ownerEmail || account.members[0]?.email || "").toLowerCase();
+  const matchedMember = account.members.find((member) => String(member.email || "").toLowerCase() === email);
+  if (matchedMember) return matchedMember;
+  if (currentUser) {
+    return {
+      role: normalizeRoleId(currentUser.user_metadata?.invited_role || "member"),
+      teamFunction: currentUser.user_metadata?.invited_team_function || "none",
+      email: currentUser.email || email || "member@kira.local",
+      status: "active",
+    };
+  }
   return (
-    account.members.find((member) => String(member.email || "").toLowerCase() === email) ||
     account.members.find((member) => normalizeRoleId(member.role) === "owner") ||
     account.members[0] ||
     { role: "owner", email: "owner@kira.local" }
@@ -2277,6 +2337,13 @@ function currentTeamFunction() {
   }
   const value = String(currentWorkspaceMember().teamFunction || "none").toLowerCase();
   return salesFunctionCatalog[value] ? value : "none";
+}
+
+function temporaryPasswordRequired() {
+  return (
+    localStorage.getItem(temporaryPasswordRequirementKey()) === "true" ||
+    currentUser?.user_metadata?.temporary_password_required === true
+  );
 }
 
 function canAccessPage(page) {
@@ -2458,11 +2525,19 @@ function renderOnboarding() {
 
 function renderPasswordOnboardingPrompt() {
   if (!passwordOnboardingPanel) return;
-  const required = localStorage.getItem(temporaryPasswordRequirementKey()) === "true";
+  const required = temporaryPasswordRequired();
   passwordOnboardingPanel.hidden = !required;
   if (required && passwordOnboardingMessage && !passwordOnboardingMessage.textContent) {
     passwordOnboardingMessage.textContent = "Your onboarding checklist will begin after this password is changed.";
   }
+}
+
+function focusTemporaryPasswordPrompt() {
+  if (!temporaryPasswordRequired() || !passwordOnboardingPanel || passwordOnboardingPanel.hidden) return;
+  requestAnimationFrame(() => {
+    passwordOnboardingPanel.scrollIntoView({ block: "start", behavior: "smooth" });
+    temporaryNewPassword?.focus({ preventScroll: true });
+  });
 }
 
 function renderWorkspaceIdentity() {
@@ -2650,7 +2725,7 @@ function renderSalesCopilotPanel(lead, variant = "dashboard") {
 
   const copilot = salesCopilotForLead(lead);
   const nextStage = nextPipelineStage(lead);
-  const aiModeLabel = serverReadiness?.groups?.ai ? "OpenAI ready" : "Deterministic fallback";
+  const aiModeLabel = serverReadiness?.groups?.ai ? "OpenAI ready" : "Fallback AI";
   const status =
     salesCopilotStatus.leadId === lead.id
       ? salesCopilotStatus.message
@@ -4208,7 +4283,7 @@ function renderSaasAdmin() {
     <article>
       <span>Trial ends</span>
       <strong>${formatShortDate(subscription.trialEndsAt)}</strong>
-      <small>${plan.detail}</small>
+      <small>${freeTrialDays}-day free trial, then ${plan.detail}</small>
     </article>
     <article class="plan-addon-summary">
       <span>Coming soon apps</span>
@@ -4230,7 +4305,7 @@ function renderSaasAdmin() {
     const planId = button.dataset.planChoice;
     const option = planCatalog[planId];
     button.classList.toggle("active", planId === subscription.plan);
-    button.textContent = `${option.label} ${formatter.format(option.price)}/mo`;
+    button.textContent = `${option.label} ${formatter.format(option.price)}/mo after trial`;
   });
 
   renderInviteRoleGuidance();
@@ -4484,15 +4559,28 @@ async function updateMemberRole(memberId, role) {
     renderSaasAdmin();
     return;
   }
-  const nextAccount = {
-    ...account,
-    members: account.members.map((item) => (item.id === memberId ? { ...item, role: nextRole } : item)),
-  };
-  await store.updateSaasAccount(nextAccount);
-  state.account = normalizedAccount(nextAccount);
-  await logAuditEvent("Member role changed", `${member.email} changed to ${teamRoleCatalog[nextRole].label}.`);
-  adminMessage.textContent = `${member.email} is now ${teamRoleCatalog[nextRole].label}.`;
-  render();
+  try {
+    const updatedMember = { ...member, role: nextRole };
+    if (store.updateWorkspaceMember) {
+      await store.updateWorkspaceMember(updatedMember);
+    } else {
+      const nextAccount = {
+        ...account,
+        members: account.members.map((item) => (item.id === memberId ? updatedMember : item)),
+      };
+      await store.updateSaasAccount(nextAccount);
+    }
+    state.account = normalizedAccount({
+      ...account,
+      members: account.members.map((item) => (item.id === memberId ? updatedMember : item)),
+    });
+    await logAuditEvent("Member role changed", `${member.email} changed to ${teamRoleCatalog[nextRole].label}.`);
+    adminMessage.textContent = `${member.email} is now ${teamRoleCatalog[nextRole].label}.`;
+    await reloadState();
+  } catch (error) {
+    adminMessage.textContent = `Could not update ${member.email}: ${error.message}`;
+    renderSaasAdmin();
+  }
 }
 
 async function updateMemberFunction(memberId, teamFunction) {
@@ -4509,15 +4597,28 @@ async function updateMemberFunction(memberId, teamFunction) {
     renderSaasAdmin();
     return;
   }
-  const nextAccount = {
-    ...account,
-    members: account.members.map((item) => (item.id === memberId ? { ...item, teamFunction: nextFunction } : item)),
-  };
-  await store.updateSaasAccount(nextAccount);
-  state.account = normalizedAccount(nextAccount);
-  await logAuditEvent("Member function changed", `${member.email} labeled as ${salesFunctionCatalog[nextFunction].label}.`);
-  adminMessage.textContent = `${member.email} function label updated.`;
-  render();
+  try {
+    const updatedMember = { ...member, teamFunction: nextFunction };
+    if (store.updateWorkspaceMember) {
+      await store.updateWorkspaceMember(updatedMember);
+    } else {
+      const nextAccount = {
+        ...account,
+        members: account.members.map((item) => (item.id === memberId ? updatedMember : item)),
+      };
+      await store.updateSaasAccount(nextAccount);
+    }
+    state.account = normalizedAccount({
+      ...account,
+      members: account.members.map((item) => (item.id === memberId ? updatedMember : item)),
+    });
+    await logAuditEvent("Member function changed", `${member.email} labeled as ${salesFunctionCatalog[nextFunction].label}.`);
+    adminMessage.textContent = `${member.email} function label updated.`;
+    await reloadState();
+  } catch (error) {
+    adminMessage.textContent = `Could not update ${member.email}: ${error.message}`;
+    renderSaasAdmin();
+  }
 }
 
 async function removeTeamMember(memberId) {
@@ -4530,15 +4631,27 @@ async function removeTeamMember(memberId) {
     return;
   }
   if (!window.confirm(`Remove ${member.email} from this workspace?`)) return;
-  const nextAccount = {
-    ...account,
-    members: account.members.filter((item) => item.id !== memberId),
-  };
-  await store.updateSaasAccount(nextAccount);
-  state.account = normalizedAccount(nextAccount);
-  await logAuditEvent("Member removed", `${member.email} removed from the workspace.`);
-  adminMessage.textContent = `${member.email} removed from the workspace.`;
-  render();
+  try {
+    if (store.removeWorkspaceMember) {
+      await store.removeWorkspaceMember(memberId);
+    } else {
+      const nextAccount = {
+        ...account,
+        members: account.members.filter((item) => item.id !== memberId),
+      };
+      await store.updateSaasAccount(nextAccount);
+    }
+    state.account = normalizedAccount({
+      ...account,
+      members: account.members.filter((item) => item.id !== memberId),
+    });
+    await logAuditEvent("Member removed", `${member.email} removed from the workspace.`);
+    adminMessage.textContent = `${member.email} removed from the workspace.`;
+    await reloadState();
+  } catch (error) {
+    adminMessage.textContent = `Could not remove ${member.email}: ${error.message}`;
+    renderSaasAdmin();
+  }
 }
 
 async function copyInviteLink(inviteId) {
@@ -4932,14 +5045,22 @@ function renderLaunchCheck(check) {
 }
 
 function renderLaunchReadinessSummary() {
-  const percentage = serverReadiness?.percentage ?? (hasSupabaseConfig ? 25 : 8);
+  const privateBetaScore = serverReadiness?.privateBetaScore ?? serverReadiness?.percentage ?? (hasSupabaseConfig ? 43 : 14);
+  const productionScore = serverReadiness?.productionScore ?? (hasSupabaseConfig ? 30 : 10);
   const mode = serverReadiness?.mode || (hasSupabaseConfig ? "Browser Supabase config detected" : "Demo mode");
   const warning = serverReadiness?.warnings?.[0] || "Add production environment variables in Vercel, then redeploy.";
   return `
-    <article class="launch-check readiness-score ${percentage >= 80 ? "ready" : ""}">
-      <span>${percentage}%</span>
+    <article class="launch-check readiness-score ${privateBetaScore >= 80 ? "ready" : ""}">
+      <span>${privateBetaScore}%</span>
       <div>
-        <strong>Overall launch readiness</strong>
+        <strong>Ready for private beta</strong>
+        <small>${escapeHtml(mode)} · ${escapeHtml(warning)}</small>
+      </div>
+    </article>
+    <article class="launch-check readiness-score ${productionScore >= 90 ? "ready" : ""}">
+      <span>${productionScore}%</span>
+      <div>
+        <strong>Ready for production</strong>
         <small>${escapeHtml(mode)} · ${escapeHtml(warning)}</small>
       </div>
     </article>
@@ -4948,11 +5069,15 @@ function renderLaunchReadinessSummary() {
 
 function launchChecks() {
   const groups = serverReadiness?.groups || {};
+  const publicDemoRisk =
+    publicDemoProductionWarning ||
+    serverReadiness?.warnings?.some((warning) => /PUBLIC_DEMO_ENABLED/i.test(warning)) ||
+    (groups.publicDemoEnabled && groups.publicDemoConfigured === false);
   return [
     {
       title: "Domain connected",
       detail: serverReadiness?.appBaseUrl || config.appBaseUrl || window.location.origin,
-      ready: Boolean(serverReadiness?.groups?.app || config.appBaseUrl || window.location.origin),
+      ready: Boolean(groups.domain || (config.appBaseUrl && !/\.vercel\.app/i.test(config.appBaseUrl)) || window.location.hostname === "kirahome.org"),
     },
     {
       title: "APP_BASE_URL configured",
@@ -5006,6 +5131,21 @@ function launchChecks() {
       ready: Boolean(groups.calendar),
     },
     {
+      title: "PUBLIC_DEMO_ENABLED",
+      detail: publicDemoEnabled
+        ? publicDemoRisk
+          ? "Public demo is enabled in beta/production. Keep the demo button clearly labeled and disable it for closed launches."
+          : "Public demo is enabled intentionally and shown as a Demo workspace."
+        : "Public demo is disabled. Unauthenticated visitors only see login/create-account.",
+      ready: !publicDemoRisk,
+      badge: publicDemoEnabled ? "Demo" : "Locked",
+    },
+    {
+      title: "Role gating",
+      detail: "Admin, Manager, Member routes are filtered, restricted actions are guarded, and add-on previews stay behind paid/early-access labels.",
+      ready: true,
+    },
+    {
       title: "Demo data loaded",
       detail: state.leads.length ? `${state.leads.length} demo leads are available for the walkthrough.` : "Load starter or scale test data before a marketer walkthrough.",
       ready: state.leads.length > 0,
@@ -5037,7 +5177,7 @@ function launchChecks() {
     },
     {
       title: "Demo mode",
-      detail: "Missing services show honest fallback messaging instead of fake live integrations.",
+      detail: publicDemoMode ? "Current session is a Demo workspace. Data is browser-local and does not pretend to cloud sync." : "Live workspaces use Supabase when configured; missing providers show fallback labels.",
       ready: true,
     },
   ];
@@ -8270,15 +8410,27 @@ function renderCommunicationsPage() {
   renderAIAssistantPanel(selected);
   renderQuickActionsPanel(selected);
   renderCommunicationNotifications(selected);
+  renderCommunicationProviderNotice();
 
   document.querySelectorAll("[data-communication-filter]").forEach((button) => {
     button.classList.toggle("active", button.dataset.communicationFilter === communicationFilter);
   });
 }
 
+function renderCommunicationProviderNotice() {
+  if (!communicationsStatus || communicationsStatus.textContent.trim()) return;
+  if (publicDemoMode) {
+    communicationsStatus.textContent = "Demo SMS/email: messages are logged to the browser demo timeline only.";
+    return;
+  }
+  if (serverReadinessLoaded && !serverReadiness?.groups?.sms && !serverReadiness?.groups?.email) {
+    communicationsStatus.textContent = "Provider not configured: SMS/email actions will log fallback communication records.";
+  }
+}
+
 function communicationConversations() {
   const savedMessages = communicationMessageState();
-  return state.leads
+  return visibleLeadsForCurrentUser()
     .map((lead, index) => {
       const profile = communicationCustomerProfile(lead, index);
       const messages = [
@@ -10487,8 +10639,15 @@ async function changeTemporaryPasswordAndStartOnboarding(event) {
   passwordOnboardingMessage.textContent = "Changing password and starting onboarding...";
   try {
     if (supabaseClient && currentUser) {
-      const { error } = await supabaseClient.auth.updateUser({ password });
+      const { data, error } = await supabaseClient.auth.updateUser({
+        password,
+        data: {
+          ...currentUser.user_metadata,
+          temporary_password_required: false,
+        },
+      });
       if (error) throw error;
+      currentUser = data.user || currentUser;
     }
 
     await startAutomatedTeamOnboarding();
@@ -11401,7 +11560,6 @@ async function openCheckout() {
     const result = await postBackendJson("/api/stripe/create-checkout-session", {
       ...context,
       plan: account.subscription.plan,
-      stripeCustomerId: account.subscription.stripeCustomerId,
     });
 
     if (result.url) {
@@ -11433,7 +11591,6 @@ async function openBillingPortal() {
   try {
     const result = await postBackendJson("/api/stripe/create-portal-session", {
       ...workspaceApiContext(),
-      stripeCustomerId: account.subscription.stripeCustomerId,
     });
 
     if (result.url) {
@@ -11548,10 +11705,15 @@ async function sendInviteThroughBackend(invite) {
       adminMessage.textContent = `${result.message || "Invite link generated."} ${result.inviteLink || ""}${passwordMessage}`.trim();
     }
   } catch (error) {
-    const fallbackLink = `${window.location.origin}${window.location.pathname}?invite=demo-${invite.id}`;
-    await copyTextToClipboard(fallbackLink);
-    await logAuditEvent("Invite fallback", `${invite.email} invite link copied because backend email is unavailable.`);
-    adminMessage.textContent = `Invite staged for ${invite.email}. Backend email unavailable, fallback invite link copied: ${fallbackLink}`;
+    if (isBetaMode && !publicDemoMode) {
+      await logAuditEvent("Invite send failed", `${invite.email} invite could not be sent: ${error.message}`);
+      adminMessage.textContent = `Invite staged for ${invite.email}, but live email/link generation failed: ${error.message}`;
+    } else {
+      const fallbackLink = `${window.location.origin}${window.location.pathname}?invite=demo-${invite.id}`;
+      await copyTextToClipboard(fallbackLink);
+      await logAuditEvent("Invite fallback", `${invite.email} invite link copied because backend email is unavailable.`);
+      adminMessage.textContent = `Invite staged for ${invite.email}. Backend email unavailable, fallback invite link copied: ${fallbackLink}`;
+    }
   }
   await reloadState();
 }
@@ -11568,21 +11730,18 @@ function workspaceApiContext() {
   return {
     workspaceId: store?.workspaceId?.() || "",
     workspaceName: settings.name,
-    ownerEmail: settings.ownerEmail,
-    inviterEmail: settings.ownerEmail,
     productUrl,
-    actorRole: currentAccessRole(),
-    actorTeamFunction: currentTeamFunction(),
   };
 }
 
 async function postBackendJson(path, payload) {
   const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), backendTimeoutMs);
+  const timeout = window.setTimeout(() => controller.abort(), backendTimeoutForPath(path));
   try {
+    const headers = await backendAuthHeaders();
     const response = await fetch(path, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers,
       body: JSON.stringify(payload || {}),
       signal: controller.signal,
     });
@@ -11591,17 +11750,50 @@ async function postBackendJson(path, payload) {
     try {
       data = text ? JSON.parse(text) : {};
     } catch {
+      if (shouldRequireLiveBackend(path)) {
+        throw new Error("Backend returned an unreadable response. Try again from the live app domain.");
+      }
       return backendDemoFallback(path, payload);
     }
     if (!response.ok) {
-      throw new Error(data.error || `Request failed with ${response.status}.`);
+      const message =
+        typeof data.error === "object" && data.error?.message
+          ? data.error.message
+          : data.error || data.message || `Request failed with ${response.status}.`;
+      const error = new Error(message);
+      error.status = response.status;
+      error.code = typeof data.error === "object" ? data.error.code : "";
+      throw error;
     }
     return data;
-  } catch {
+  } catch (error) {
+    if ([401, 403].includes(error?.status) && !publicDemoMode && hasSupabaseConfig) throw error;
+    if (shouldRequireLiveBackend(path)) throw error;
     return backendDemoFallback(path, payload);
   } finally {
     window.clearTimeout(timeout);
   }
+}
+
+async function backendAuthHeaders() {
+  const headers = { "content-type": "application/json" };
+  if (!supabaseClient) return headers;
+  try {
+    const { data } = await supabaseClient.auth.getSession();
+    const token = data.session?.access_token;
+    if (token) headers.authorization = `Bearer ${token}`;
+  } catch {
+    return headers;
+  }
+  return headers;
+}
+
+function backendTimeoutForPath(path) {
+  return path.includes("/invites/send") ? 30000 : backendTimeoutMs;
+}
+
+function shouldRequireLiveBackend(path) {
+  return isBetaMode && !publicDemoMode && path.includes("/invites/");
 }
 
 function backendDemoFallback(path, payload = {}) {
@@ -11640,7 +11832,9 @@ function backendDemoFallback(path, payload = {}) {
   if (path.includes("/system/readiness")) {
     return {
       demo: true,
-      percentage: hasSupabaseConfig ? 25 : 8,
+      percentage: hasSupabaseConfig ? 43 : 14,
+      privateBetaScore: hasSupabaseConfig ? 43 : 14,
+      productionScore: hasSupabaseConfig ? 30 : 10,
       mode: hasSupabaseConfig ? "browser-configured" : "demo",
       groups: {
         database: hasSupabaseConfig,
@@ -11650,6 +11844,10 @@ function backendDemoFallback(path, payload = {}) {
         ai: false,
         calendar: false,
         app: Boolean(config.appBaseUrl || window.location.origin),
+        domain: Boolean(config.appBaseUrl && !/\.vercel\.app/i.test(config.appBaseUrl)) || window.location.hostname === "kirahome.org",
+        publicDemoConfigured: typeof config.publicDemoEnabled === "boolean",
+        publicDemoEnabled,
+        roleGating: true,
       },
       checks: [],
       warnings: ["Production backend readiness endpoint is unavailable. Showing browser-side setup guidance."],
@@ -12693,6 +12891,17 @@ function createLocalStore() {
       this.save(state);
       return state.account;
     },
+    async updateWorkspaceMember(member) {
+      state.account = accountState();
+      state.account.members = state.account.members.map((item) => (item.id === member.id ? { ...item, ...member } : item));
+      this.save(state);
+      return member;
+    },
+    async removeWorkspaceMember(memberId) {
+      state.account = accountState();
+      state.account.members = state.account.members.filter((item) => item.id !== memberId);
+      this.save(state);
+    },
     async updateSchedule(schedule) {
       state.schedule = normalizedSchedule(schedule);
       this.save(state);
@@ -12936,20 +13145,24 @@ function createSupabaseStore(client, user) {
       return fromRecruitingCandidateRow(data);
     },
     async loadSaasAccount() {
+      const fallbackRole = normalizeRoleId(user.user_metadata?.invited_role || (workspaceName === "Personal workspace" ? "owner" : "member"));
+      const fallbackTeamFunction = user.user_metadata?.invited_team_function || "none";
       const fallback = normalizedAccount({
         members: [
           {
             id: user.id,
             email: user.email || "owner@kira.local",
-            role: "owner",
+            role: fallbackRole,
+            teamFunction: fallbackTeamFunction,
             status: "active",
           },
         ],
       });
+      let savedFallbackAccount = null;
       const savedFallback = localStorage.getItem(cloudSaasAccountKey(workspaceId));
       if (savedFallback) {
         try {
-          return normalizedAccount(JSON.parse(savedFallback));
+          savedFallbackAccount = normalizedAccount(JSON.parse(savedFallback));
         } catch {
           localStorage.removeItem(cloudSaasAccountKey(workspaceId));
         }
@@ -12967,7 +13180,9 @@ function createSupabaseStore(client, user) {
           client.from("workspace_audit_events").select("*").eq("workspace_id", workspaceId).order("created_at", { ascending: false }).limit(25),
         ]);
 
-      if (isMissingSaasTable(subscriptionError) || isMissingSaasTable(inviteError) || isMissingSaasTable(auditError)) return fallback;
+      if (isMissingSaasTable(subscriptionError) || isMissingSaasTable(inviteError) || isMissingSaasTable(auditError)) {
+        return savedFallbackAccount || fallback;
+      }
       throwIf(subscriptionError);
       throwIf(memberError);
       throwIf(inviteError);
@@ -13229,6 +13444,38 @@ function createSupabaseStore(client, user) {
       }
       throwIf(error);
       return normalized;
+    },
+    async updateWorkspaceMember(member) {
+      const normalized = {
+        ...member,
+        role: normalizeRoleId(member.role),
+        teamFunction: salesFunctionCatalog[member.teamFunction] ? member.teamFunction : "none",
+      };
+      const { data, error } = await client
+        .from("workspace_members")
+        .update({
+          role: normalized.role,
+          team_function: normalized.teamFunction === "none" ? null : normalized.teamFunction,
+        })
+        .eq("workspace_id", workspaceId)
+        .eq("user_id", normalized.id)
+        .select("user_id, role, team_function")
+        .single();
+      throwIf(error);
+      return {
+        ...normalized,
+        id: data.user_id,
+        role: data.role,
+        teamFunction: data.team_function || "none",
+      };
+    },
+    async removeWorkspaceMember(memberId) {
+      const { error } = await client
+        .from("workspace_members")
+        .delete()
+        .eq("workspace_id", workspaceId)
+        .eq("user_id", memberId);
+      throwIf(error);
     },
     async updateSchedule(schedule) {
       const normalized = normalizedSchedule(schedule);
@@ -13627,7 +13874,7 @@ function normalizedAccount(account = {}) {
       plan,
       status: account.subscription?.status || "trialing",
       seatLimit: Number(account.subscription?.seatLimit) || planCatalog[plan].seatLimit,
-      trialEndsAt: account.subscription?.trialEndsAt || "2026-07-11T00:00:00.000Z",
+      trialEndsAt: account.subscription?.trialEndsAt || freeTrialEndsAt(),
       currentPeriodEnd: account.subscription?.currentPeriodEnd || "",
       stripeCustomerId: account.subscription?.stripeCustomerId || "",
       stripeSubscriptionId: account.subscription?.stripeSubscriptionId || "",
@@ -13771,6 +14018,12 @@ function withoutId(record) {
 
 function weightedLeadValue(lead) {
   return lead.value * (stageProbabilities[lead.stage] || 0);
+}
+
+function freeTrialEndsAt(startDate = new Date()) {
+  const date = new Date(startDate);
+  date.setDate(date.getDate() + freeTrialDays);
+  return date.toISOString();
 }
 
 function formatActivityDate(value) {

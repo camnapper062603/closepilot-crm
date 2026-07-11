@@ -622,16 +622,22 @@ async function postRecruitingBackend(path, payload = {}) {
   if (!currentSession?.access_token) throw new Error("CRM session is required.");
   const response = await fetch(path, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${currentSession.access_token}`,
+    },
     body: JSON.stringify({
       ...payload,
-      accessToken: currentSession.access_token,
       workspaceId: payload.workspaceId || liveAccess?.workspaceId || "",
     }),
   });
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(body.error || body.message || `Request failed with ${response.status}`);
+    const message =
+      typeof body.error === "object" && body.error?.message
+        ? body.error.message
+        : body.error || body.message || `Request failed with ${response.status}`;
+    throw new Error(message);
   }
   return body;
 }

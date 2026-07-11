@@ -168,21 +168,19 @@ test('renders the CRM dashboard MVP', async ({ page }) => {
   await expect(page.getByText('Create next-step tasks')).toBeVisible();
 });
 
-test('opens a polished public home page before sign in or demo', async ({ page }) => {
+test('opens a clean auth screen before product tour or demo', async ({ page }) => {
   await page.evaluate(() => localStorage.clear());
   await page.goto('/', { waitUntil: 'load' });
 
-  await expect(page.getByRole('heading', { name: 'Run the day before the day runs you.' })).toBeVisible();
-  await expect(page.getByText('AI home-service workspace')).toBeVisible();
-  await expect(page.getByText('Everything the app can do before you sign in')).toBeVisible();
-  await expect(page.getByText('Base plans, add-ons, and bundle positioning before login')).toBeVisible();
-
-  await trigger(page.getByRole('button', { name: 'Sign in' }));
   await expect(page.locator('#authPanel')).toBeVisible();
+  await expect(page.locator('.app-shell')).toBeHidden();
+  await expect(page.locator('#accessDeniedPanel')).toBeHidden();
+  await expect(page.getByRole('heading', { name: 'Sign in to your app' })).toBeVisible();
   await expect(page.locator('#authPanel')).toContainText('Try the demo workspace');
 
-  await trigger(page.getByRole('button', { name: 'Back to home' }));
+  await trigger(page.getByRole('button', { name: 'Product tour' }));
   await expect(page.getByRole('heading', { name: 'Run the day before the day runs you.' })).toBeVisible();
+  await expect(page.getByText('Everything the app can do before you sign in')).toBeVisible();
 
   await trigger(page.getByRole('button', { name: 'Try demo' }));
   await expect(page.locator('.topbar h1')).toHaveText('Dashboard');
@@ -434,7 +432,7 @@ test('renders Opportunity Health scores and dashboard recommendations', async ({
   await expect(page.locator('#leadBrief')).toContainText('Why this score?');
   await expect(page.locator('#leadBrief')).toContainText(/Hot|Warm|At Risk|Cold/);
 
-  await page.locator('#leadBrief').getByRole('button', { name: 'Open details' }).click();
+  await trigger(page.locator('#leadBrief').getByRole('button', { name: 'Open details' }));
   await expect(page.locator('#leadDetailContent')).toContainText('Opportunity Health');
   await expect(page.locator('#leadDetailContent')).toContainText('Recommended Next Action');
   await expect(page.locator('#leadDetailContent')).toContainText('Last contact');
@@ -443,7 +441,7 @@ test('renders Opportunity Health scores and dashboard recommendations', async ({
 test('renders AI Sales Copilot suggestions and runs Copilot actions', async ({ page }) => {
   const dashboardCopilot = page.locator('#dashboardSalesCopilotCard');
   await expect(dashboardCopilot).toContainText('AI Sales Copilot');
-  await expect(dashboardCopilot).toContainText('Deterministic fallback');
+  await expect(dashboardCopilot).toContainText('Fallback AI');
   await expect(dashboardCopilot).toContainText('Roofing');
   await expect(dashboardCopilot).toContainText('Urgent');
   await expect(dashboardCopilot).toContainText('Best next action');
@@ -1016,7 +1014,7 @@ test('shows a global activity feed and opens related leads', async ({ page }) =>
 
   await navigateTo(page, 'Dashboard', 'pipeline');
   await openLeadBrief(page);
-  await page.locator('#leadBrief').getByRole('button', { name: 'Open details' }).click();
+  await trigger(page.locator('#leadBrief').getByRole('button', { name: 'Open details' }));
   const dialog = page.getByRole('dialog', { name: 'Northstar Roofing' });
   await dialog.getByPlaceholder('Log a call, objection, or update').fill('Customer asked for Tuesday scheduling.');
   await dialog.getByRole('button', { name: 'Add note' }).click();
@@ -1236,7 +1234,7 @@ test('marks the selected lead won and queues onboarding', async ({ page }) => {
 test('reopens a won lead from the detail workspace', async ({ page }) => {
   await page.locator('#pipelineBoard').getByText('Stone & Finch Realty').click();
   await openLeadBrief(page);
-  await page.locator('#leadBrief').getByRole('button', { name: 'Open details' }).click();
+  await trigger(page.locator('#leadBrief').getByRole('button', { name: 'Open details' }));
 
   const dialog = page.getByRole('dialog', { name: 'Stone & Finch Realty' });
   await dialog.getByRole('button', { name: 'Reopen deal' }).click();
@@ -1334,8 +1332,11 @@ test('manages SaaS workspace plan, seats, and invites', async ({ page }) => {
   await expect(admin.locator('#inviteEmailPreview')).toContainText('temporary password');
 
   await page.getByRole('button', { name: 'Production readiness' }).click();
-  await expect(admin.locator('#launchChecklist')).toContainText('Overall launch readiness');
+  await expect(admin.locator('#launchChecklist')).toContainText('Ready for private beta');
+  await expect(admin.locator('#launchChecklist')).toContainText('Ready for production');
   await expect(admin.locator('#launchChecklist')).toContainText('Cloud database');
+  await expect(admin.locator('#launchChecklist')).toContainText('PUBLIC_DEMO_ENABLED');
+  await expect(admin.locator('#launchChecklist')).toContainText('Role gating');
   await expect(admin.locator('#launchChecklist')).toContainText('Add SUPABASE_URL, SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY');
   await expect(admin.locator('#launchChecklist')).toContainText('Add STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, and plan price IDs');
   await expect(admin.locator('#launchChecklist')).toContainText('Add INVITE_FROM_EMAIL and RESEND_API_KEY');
@@ -1467,10 +1468,10 @@ test('gates admin-only navigation for member access', async ({ page }) => {
   await expect(page.locator('#communicationToastRegion')).toContainText('Source report exports are Admin-only');
 
   await navigateTo(page, 'Settings', 'settings');
-  await openSubpage(page, 'Appearance');
+  await expect(page.locator('#subpageNav')).not.toContainText('Appearance');
+  await expect(page.locator('#subpageNav')).not.toContainText('Dashboard');
   await expect(page.locator('#customizationForm')).toHaveAttribute('data-locked', 'true');
   await expect(page.locator('#customizationAccessNotice')).toContainText('only the business Owner or an Admin can edit');
-  await expect(page.getByLabel('Brand display name')).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Save preferences' })).toBeDisabled();
 });
 
@@ -1492,19 +1493,21 @@ test('hides billing and workspace admin areas for manager access', async ({ page
   await expect(page.locator('#automation')).toBeVisible();
 
   await navigateTo(page, 'Settings', 'settings');
-  await openSubpage(page, 'Appearance');
+  await expect(page.locator('#subpageNav')).not.toContainText('Appearance');
+  await expect(page.locator('#subpageNav')).not.toContainText('Dashboard');
   await expect(page.locator('#customizationForm')).toHaveAttribute('data-locked', 'true');
   await expect(page.locator('#customizationAccessNotice')).toContainText('only the business Owner or an Admin can edit');
-  await expect(page.getByLabel('Brand display name')).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Save preferences' })).toBeDisabled();
 });
 
-test('production API fallbacks are honest when providers are missing', async ({ request }) => {
+test('production API readiness is public and protected APIs fail closed without auth', async ({ request }) => {
   const readiness = await request.post('/api/system/readiness', { data: { workspaceId: 'demo-workspace' } });
   expect(readiness.ok()).toBeTruthy();
   const readinessBody = await readiness.json();
   expect(readinessBody.percentage).toBeGreaterThanOrEqual(0);
   expect(readinessBody.groups).toHaveProperty('database');
+  expect(readinessBody.detail).toContain('Public readiness');
+  expect(readinessBody.checks.some((check) => check.env === 'SUPABASE_SERVICE_ROLE_KEY')).toBeFalsy();
 
   const ai = await request.post('/api/ai/lead-copilot', {
     data: {
@@ -1512,11 +1515,9 @@ test('production API fallbacks are honest when providers are missing', async ({ 
       lead: { name: 'Jordan Lee', company: 'Roof replacement', stage: 'proposal', value: 18000 },
     },
   });
-  expect(ai.ok()).toBeTruthy();
+  expect(ai.status()).toBe(401);
   const aiBody = await ai.json();
-  expect(aiBody.demo).toBeTruthy();
-  expect(aiBody.provider).toContain('fallback');
-  expect(aiBody.bestNextAction).toBeTruthy();
+  expect(aiBody.error.code).toBe('AUTH_REQUIRED');
 
   const sms = await request.post('/api/communications/send-sms', {
     data: {
@@ -1526,20 +1527,19 @@ test('production API fallbacks are honest when providers are missing', async ({ 
       body: 'Quick follow-up from Kira Home.',
     },
   });
-  expect(sms.ok()).toBeTruthy();
+  expect(sms.status()).toBe(401);
   const smsBody = await sms.json();
-  expect(smsBody.demo).toBeTruthy();
-  expect(smsBody.message).toContain('SMS provider is not configured');
+  expect(smsBody.error.code).toBe('AUTH_REQUIRED');
 
   const calendarStatus = await request.post('/api/google/calendar/status', { data: { workspaceId: 'demo-workspace' } });
-  expect(calendarStatus.ok()).toBeTruthy();
+  expect(calendarStatus.status()).toBe(401);
   const calendarStatusBody = await calendarStatus.json();
-  expect(calendarStatusBody.connected).toBeFalsy();
+  expect(calendarStatusBody.error.code).toBe('AUTH_REQUIRED');
 
   const calendarConnect = await request.post('/api/google/calendar/connect', { data: { workspaceId: 'demo-workspace' } });
-  expect(calendarConnect.ok()).toBeTruthy();
+  expect(calendarConnect.status()).toBe(401);
   const calendarConnectBody = await calendarConnect.json();
-  expect(calendarConnectBody.connected).toBeFalsy();
+  expect(calendarConnectBody.error.code).toBe('AUTH_REQUIRED');
 
   const calendarEvent = await request.post('/api/google/calendar/create-event', {
     data: {
@@ -1552,9 +1552,27 @@ test('production API fallbacks are honest when providers are missing', async ({ 
       },
     },
   });
-  expect(calendarEvent.ok()).toBeTruthy();
+  expect(calendarEvent.status()).toBe(401);
   const calendarEventBody = await calendarEvent.json();
-  expect(calendarEventBody.synced).toBeFalsy();
+  expect(calendarEventBody.error.code).toBe('AUTH_REQUIRED');
+});
+
+test('protected APIs ignore client supplied admin identity claims', async ({ request }) => {
+  const workspaceId = '00000000-0000-4000-8000-000000000001';
+  const endpoints = [
+    ['/api/stripe/create-checkout-session', { workspaceId, actorRole: 'owner', stripeCustomerId: 'cus_attacker', ownerEmail: 'owner@example.com', plan: 'scale' }],
+    ['/api/stripe/create-portal-session', { workspaceId, actorRole: 'owner', stripeCustomerId: 'cus_attacker' }],
+    ['/api/invites/send', { workspaceId, actorRole: 'owner', inviterEmail: 'owner@example.com', email: 'new.admin@example.com', role: 'admin' }],
+    ['/api/invites/accept', { token: 'fake-token', userId: workspaceId, email: 'new.admin@example.com' }],
+    ['/api/recruiting/access', { workspaceId, accessToken: 'fake-token', role: 'owner' }],
+  ];
+
+  for (const [endpoint, data] of endpoints) {
+    const response = await request.post(endpoint, { data });
+    expect(response.status(), endpoint).toBe(401);
+    const body = await response.json();
+    expect(body.error.code, endpoint).toBe('AUTH_REQUIRED');
+  }
 });
 
 test('saves an expanded workspace profile from Settings', async ({ page }) => {
@@ -1636,7 +1654,8 @@ test('edits the selected lead', async ({ page }) => {
 
 test('deletes the selected lead', async ({ page }) => {
   await openLeadBrief(page);
-  await page.locator('#leadBrief').getByRole('button', { name: 'Delete lead' }).click();
+  await trigger(page.locator('#leadBrief').getByRole('button', { name: 'Delete lead' }));
+  await expect(page.locator('#leadBrief')).not.toContainText('Northstar Roofing');
 
   await openDashboardOverview(page);
   await expect(page.locator('#pipelineBoard').getByText('Northstar Roofing')).toHaveCount(0);
@@ -1671,7 +1690,7 @@ test('shows and applies sales assistant recommendations', async ({ page }) => {
 
 test('opens a full lead detail workspace', async ({ page }) => {
   await openLeadBrief(page);
-  await page.locator('#leadBrief').getByRole('button', { name: 'Open details' }).click();
+  await trigger(page.locator('#leadBrief').getByRole('button', { name: 'Open details' }));
 
   const dialog = page.getByRole('dialog', { name: 'Northstar Roofing' });
   await expect(dialog).toBeVisible();
@@ -1688,7 +1707,7 @@ test('opens a full lead detail workspace', async ({ page }) => {
 
 test('runs lead detail quick actions', async ({ page }) => {
   await openLeadBrief(page);
-  await page.locator('#leadBrief').getByRole('button', { name: 'Open details' }).click();
+  await trigger(page.locator('#leadBrief').getByRole('button', { name: 'Open details' }));
   const dialog = page.getByRole('dialog', { name: 'Northstar Roofing' });
 
   await dialog.getByRole('button', { name: 'Add follow-up' }).click();
@@ -1701,7 +1720,7 @@ test('runs lead detail quick actions', async ({ page }) => {
 
 test('logs manual notes in the lead detail workspace', async ({ page }) => {
   await openLeadBrief(page);
-  await page.locator('#leadBrief').getByRole('button', { name: 'Open details' }).click();
+  await trigger(page.locator('#leadBrief').getByRole('button', { name: 'Open details' }));
   const dialog = page.getByRole('dialog', { name: 'Northstar Roofing' });
 
   await dialog.getByPlaceholder('Log a call, objection, or update').fill('Customer asked for a Friday install window.');
@@ -1724,7 +1743,7 @@ test('filters tasks by today, upcoming, done, and all', async ({ page }) => {
 
   await navigateTo(page, 'Dashboard', 'pipeline');
   await openLeadBrief(page);
-  await page.locator('#leadBrief').getByRole('button', { name: 'Start sequence' }).click();
+  await trigger(page.locator('#leadBrief').getByRole('button', { name: 'Start sequence' }));
   await navigateTo(page, 'Tasks', 'tasks');
   await taskFilters.getByRole('button', { name: /Upcoming/ }).click();
   await expect(page.locator('#taskList')).toContainText('Send Northstar Roofing a short proposal recap.');
@@ -1970,7 +1989,7 @@ test('duplicates and deletes selected tasks in bulk', async ({ page }) => {
 test('starts an automated follow-up sequence for the selected lead', async ({ page }) => {
   await openLeadBrief(page);
   await expect(page.locator('#leadBrief')).toContainText('Suggested sequence');
-  await page.locator('#leadBrief').getByRole('button', { name: 'Start sequence' }).click();
+  await trigger(page.locator('#leadBrief').getByRole('button', { name: 'Start sequence' }));
 
   await expect(page.locator('#leadBrief')).toContainText('3-step follow-up sequence started.');
   await navigateTo(page, 'Tasks', 'tasks');

@@ -9,7 +9,7 @@ test.beforeEach(async ({ page }) => {
 test('opens the lead generator cost planner and estimates paid stack costs', async ({ page }) => {
   await expect(page).toHaveTitle(/Safe Property Lead Generator/);
   await expect(page.getByRole('heading', { name: 'Compliant Property Lead Builder' })).toBeVisible();
-  await expect(page.locator('.topbar')).toContainText('Coming soon Residential Lead Generator preview');
+  await expect(page.locator('.topbar')).toContainText('Paid add-on Residential Lead Generator preview');
   await expect(page.getByRole('heading', { name: 'Best area to target today' })).toBeVisible();
   await expect(page.locator('.territory-command')).toContainText('View Demo');
   await expect(page.locator('.territory-command')).toContainText('DNC first');
@@ -42,16 +42,16 @@ test('opens the lead generator cost planner and estimates paid stack costs', asy
 test('shows a coming soon locked state for non-enabled members', async ({ page }) => {
   await page.goto('/lead-generator?role=member', { waitUntil: 'domcontentloaded' });
 
-  await expect(page.locator('#leadSyncMode')).toHaveText('Preview locked');
+  await expect(page.locator('#leadSyncMode')).toHaveText('Paid add-on locked');
   await expect(page.locator('#leadAccessBanner')).toBeVisible();
-  await expect(page.locator('#leadAccessBanner')).toContainText('Residential Lead Generator is coming soon');
+  await expect(page.locator('#leadAccessBanner')).toContainText('Residential Lead Generator is a paid add-on preview');
   await expect(page.locator('#leadAccessBanner').getByRole('link', { name: 'View Demo' })).toHaveAttribute('href', '/lead-generator?demo=1');
 
   await page.getByRole('button', { name: 'Generate safe leads' }).click();
-  await expect(page.locator('#statusMessage')).toContainText('Residential Lead Generator is coming soon');
+  await expect(page.locator('#statusMessage')).toContainText('Residential Lead Generator is a paid add-on preview');
 
   await page.getByRole('button', { name: 'Export leads' }).click();
-  await expect(page.locator('#statusMessage')).toContainText('Residential Lead Generator is coming soon');
+  await expect(page.locator('#statusMessage')).toContainText('Residential Lead Generator is a paid add-on preview');
 });
 
 test('imports Redfin or Zillow style property exports without scraping', async ({ page }) => {

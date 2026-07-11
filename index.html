@@ -15,7 +15,7 @@
     <script src="app-store.js" defer></script>
   </head>
   <body>
-    <section class="home-panel" id="homePanel">
+    <section class="home-panel" id="homePanel" hidden>
       <div class="home-hero" role="img" aria-label="Kira Home app workspace preview">
         <div class="home-nav">
           <div class="brand home-brand">
@@ -192,7 +192,7 @@
       </section>
     </section>
 
-    <section class="auth-panel" id="authPanel" hidden>
+    <section class="auth-panel" id="authPanel">
       <div class="auth-card">
         <div class="brand auth-brand">
           <span class="brand-mark" aria-hidden="true">KH</span>
@@ -224,7 +224,7 @@
             </div>
             <button class="secondary-button" id="viewDemoWorkspaceButton" type="button">View Demo Workspace</button>
           </div>
-          <button class="secondary-button auth-back-home" id="backToHomeButton" type="button">Back to home</button>
+          <button class="secondary-button auth-back-home" id="backToHomeButton" type="button">Product tour</button>
           <p id="authMessage" class="auth-message" role="status"></p>
         </form>
       </div>
@@ -271,7 +271,7 @@
             <h1>Dashboard</h1>
           </div>
           <div class="topbar-actions">
-            <span class="mode-pill" id="modePill">Demo mode</span>
+            <span class="mode-pill" id="modePill">Demo workspace</span>
             <label class="search" for="searchInput">
               <span aria-hidden="true">⌕</span>
               <input id="searchInput" type="search" placeholder="Search leads, companies, notes" />

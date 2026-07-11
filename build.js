@@ -2,7 +2,7 @@ import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import "./local-env.js";
 
 const config = {
-  appMode: process.env.APP_MODE || "development",
+  appMode: process.env.APP_MODE || process.env.VERCEL_ENV || "development",
   publicDemoEnabled: process.env.PUBLIC_DEMO_ENABLED !== "false",
   supabaseUrl: process.env.SUPABASE_URL || "",
   supabaseAnonKey: normalizeJwt(process.env.SUPABASE_ANON_KEY || ""),
@@ -36,6 +36,13 @@ mkdirSync("dist", { recursive: true });
 
 if (existsSync("SafeLeadGenerator-Standalone.html")) {
   cpSync("SafeLeadGenerator-Standalone.html", "dist/lead-generator.html");
+}
+
+if (existsSync("recruiting.html")) {
+  mkdirSync("dist/recruiting", { recursive: true });
+  ["dashboard", "job", "boards", "integrations", "applicants", "interviews", "onboarding", "payroll", "crm"].forEach((route) => {
+    cpSync("recruiting.html", `dist/recruiting/${route}.html`);
+  });
 }
 
 ["assets", "lead-generator-outputs"].forEach(copyToDist);

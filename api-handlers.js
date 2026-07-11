@@ -1,4 +1,4 @@
-import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import Stripe from "stripe";
 import { sendInviteEmailWithResend } from "./email-service.js";
 
@@ -7,6 +7,8 @@ const planCatalog = {
   growth: { label: "Growth", seatLimit: 10, priceEnv: "STRIPE_PRICE_GROWTH", productEnv: "STRIPE_PRODUCT_GROWTH" },
   scale: { label: "Scale", seatLimit: 25, priceEnv: "STRIPE_PRICE_SCALE", productEnv: "STRIPE_PRODUCT_SCALE" },
 };
+
+const freeTrialDays = 7;
 
 const aiEndpoints = new Set([
   "/api/ai/lead-copilot",
@@ -28,6 +30,17 @@ const communicationEndpoints = new Set([
   "/api/communications/conversation-summary",
 ]);
 
+const recruitingEndpoints = new Set([
+  "/api/recruiting/access",
+  "/api/recruiting/load",
+  "/api/recruiting/save",
+  "/api/recruiting/applicants",
+  "/api/recruiting/onboarding-email",
+  "/api/recruiting/integration-status",
+  "/api/recruiting/addon-settings",
+  "/api/recruiting/crm-handoff",
+]);
+
 const readinessChecks = [
   { key: "supabaseUrl", label: "Supabase project URL", env: "SUPABASE_URL", public: true },
   { key: "supabaseAnonKey", label: "Supabase anon or publishable key", env: "SUPABASE_ANON_KEY", public: true },
@@ -43,6 +56,7 @@ const readinessChecks = [
   { key: "stripeScaleProduct", label: "Stripe Scale product", env: "STRIPE_PRODUCT_SCALE", optional: true },
   { key: "stripeMeterKey", label: "Stripe meter key", env: "STRIPE_METER_KEY", optional: true },
   { key: "appBaseUrl", label: "Application base URL", env: "APP_BASE_URL", public: true },
+  { key: "publicDemoEnabled", label: "Public demo flag", env: "PUBLIC_DEMO_ENABLED", public: true, optional: true },
   { key: "resend", label: "Resend API key", env: "RESEND_API_KEY" },
   { key: "inviteFrom", label: "Invite sender email", env: "INVITE_FROM_EMAIL" },
   { key: "supportEmail", label: "Support email", env: "SUPPORT_EMAIL", public: true },
@@ -69,6 +83,7 @@ export function isClosePilotApiPath(pathname) {
     pathname === "/api/google/calendar/status" ||
     pathname === "/api/google/calendar/create-event" ||
     pathname === "/api/system/readiness" ||
+    recruitingEndpoints.has(pathname) ||
     aiEndpoints.has(pathname) ||
     communicationEndpoints.has(pathname)
   );
@@ -115,11 +130,15 @@ export async function handleClosePilotApiRequest(request, response) {
       return;
     }
     if (url.pathname === "/api/invites/accept") {
-      await handleAcceptInvite(response, payload);
+      await handleAcceptInvite(request, response, payload);
       return;
     }
     if (url.pathname === "/api/system/readiness") {
       await handleSystemReadiness(request, response, payload);
+      return;
+    }
+    if (recruitingEndpoints.has(url.pathname)) {
+      await handleRecruitingRequest(url.pathname, request, response, payload);
       return;
     }
     if (url.pathname === "/api/google/calendar/connect") {
@@ -127,11 +146,11 @@ export async function handleClosePilotApiRequest(request, response) {
       return;
     }
     if (url.pathname === "/api/google/calendar/status") {
-      await handleGoogleCalendarStatus(response, payload);
+      await handleGoogleCalendarStatus(request, response, payload);
       return;
     }
     if (url.pathname === "/api/google/calendar/create-event") {
-      await handleGoogleCalendarCreateEvent(response, payload);
+      await handleGoogleCalendarCreateEvent(request, response, payload);
       return;
     }
     if (aiEndpoints.has(url.pathname)) {
@@ -145,11 +164,11 @@ export async function handleClosePilotApiRequest(request, response) {
 
     sendJson(response, 404, { error: "API route not found" });
   } catch (error) {
-    sendJson(response, error.statusCode || 500, { error: error.message || String(error) });
+    sendError(response, error);
   }
 }
 
-async function handleSystemReadiness(request, response) {
+async function handleSystemReadiness(request, response, payload = {}) {
   const checks = readinessChecks.map((check) => ({
     key: check.key,
     label: check.label,
@@ -168,6 +187,10 @@ async function handleSystemReadiness(request, response) {
     ai: ["OPENAI_API_KEY"],
     calendar: ["GOOGLE_CALENDAR_CLIENT_ID", "GOOGLE_CALENDAR_CLIENT_SECRET"],
     app: ["APP_BASE_URL"],
+    domain: Boolean(process.env.APP_BASE_URL) && !looksLikePreviewUrl(process.env.APP_BASE_URL),
+    publicDemoConfigured: Object.prototype.hasOwnProperty.call(process.env, "PUBLIC_DEMO_ENABLED"),
+    publicDemoEnabled: publicDemoIsEnabled(),
+    roleGating: true,
   };
   const groupStatus = Object.fromEntries(
     Object.entries(groups).map(([key, envs]) => [
@@ -177,21 +200,69 @@ async function handleSystemReadiness(request, response) {
   );
   const required = checks.filter((check) => !check.optional && !["SUPPORT_EMAIL"].includes(check.env));
   const configured = required.filter((check) => check.configured).length;
-  const percentage = Math.round((configured / required.length) * 100);
+  const privateBetaScore = readinessScore([
+    groupStatus.app,
+    groupStatus.domain,
+    groupStatus.database,
+    groupStatus.email,
+    groupStatus.billing,
+    groupStatus.ai,
+    groupStatus.roleGating,
+  ]);
+  const productionScore = readinessScore([
+    groupStatus.app,
+    groupStatus.domain,
+    groupStatus.database,
+    groupStatus.email,
+    groupStatus.billing,
+    groupStatus.sms,
+    groupStatus.ai,
+    groupStatus.calendar,
+    groupStatus.roleGating,
+    !productionPublicDemoWarning(),
+  ]);
+  const percentage = privateBetaScore;
 
-  sendJson(response, 200, {
-    ready: percentage >= 80 && groupStatus.database,
+  const publicPayload = {
+    ready: privateBetaScore >= 80 && groupStatus.database,
     percentage,
+    privateBetaScore,
+    productionScore,
     mode: groupStatus.database ? "live-ready" : "demo",
     checkedAt: new Date().toISOString(),
     appBaseUrl: appBaseUrl(request),
     groups: groupStatus,
-    checks,
     warnings: launchWarnings(groupStatus),
+  };
+
+  const detailAccess = await optionalReadinessAdminAccess(request, payload);
+  if (!detailAccess) {
+    sendJson(response, 200, {
+      ...publicPayload,
+      checks: checks.filter((check) => check.public).map(({ key, label, configured, public: isPublic }) => ({
+        key,
+        label,
+        configured,
+        public: isPublic,
+      })),
+      detail: "Public readiness omits server secret names and protected setup diagnostics.",
+    });
+    return;
+  }
+
+  sendJson(response, 200, {
+    ...publicPayload,
+    checkedBy: detailAccess.email,
+    workspaceId: detailAccess.workspaceId,
+    checks,
   });
 }
 
 async function handleAiRequest(pathname, request, response, payload) {
+  const auth = await requireAuthenticatedRequest(request);
+  const access = await requireWorkspaceAccess(auth, payload.workspaceId);
+  payload.workspaceId = access.workspaceId;
+  await assertLeadBelongsToWorkspace(access.workspaceId, payload.leadId || payload.lead?.id);
   validateWorkspacePayload(payload);
   const intent = pathname.split("/").pop();
   const fallback = buildRuleBasedAiResponse(intent, payload);
@@ -218,6 +289,10 @@ async function handleAiRequest(pathname, request, response, payload) {
 }
 
 async function handleCommunicationRequest(pathname, request, response, payload) {
+  const auth = await requireAuthenticatedRequest(request);
+  const access = await requireWorkspaceAccess(auth, payload.workspaceId);
+  payload.workspaceId = access.workspaceId;
+  await assertLeadBelongsToWorkspace(access.workspaceId, payload.leadId || payload.lead?.id);
   validateWorkspacePayload(payload, { requireLead: false });
   const action = pathname.split("/").pop();
 
@@ -274,12 +349,15 @@ async function handleCommunicationRequest(pathname, request, response, payload) 
 }
 
 async function handleCreateCheckoutSession(request, response, payload) {
-  assertAdminPayload(payload, "Only Admin or Owner access can create Stripe checkout sessions.");
+  const auth = await requireAuthenticatedRequest(request);
+  const access = await requireWorkspaceAccess(auth, payload.workspaceId, { allowedRoles: ["owner", "admin"] });
   const stripe = getStripeClient();
   const planId = normalizePlanId(payload.plan);
   const priceId = stripe ? await resolveStripePlanPriceId(stripe, planId) : "";
-  const workspaceId = cleanText(payload.workspaceId);
+  const workspaceId = access.workspaceId;
   const baseUrl = appBaseUrl(request);
+  const subscription = await loadSubscriptionFromSupabase(workspaceId);
+  const customerId = cleanText(subscription?.stripe_customer_id);
 
   if (!stripe || !priceId) {
     sendJson(response, 200, {
@@ -291,8 +369,8 @@ async function handleCreateCheckoutSession(request, response, payload) {
 
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
-    customer: cleanText(payload.stripeCustomerId) || undefined,
-    customer_email: cleanEmail(payload.ownerEmail) || undefined,
+    customer: customerId || undefined,
+    customer_email: customerId ? undefined : auth.email || undefined,
     client_reference_id: workspaceId || undefined,
     line_items: [{ price: priceId, quantity: 1 }],
     success_url: `${baseUrl}/?billing=success#admin`,
@@ -302,38 +380,26 @@ async function handleCreateCheckoutSession(request, response, payload) {
       plan: planId,
     },
     subscription_data: {
+      trial_period_days: freeTrialDays,
       metadata: {
         workspaceId,
         plan: planId,
+        trialDays: String(freeTrialDays),
       },
     },
   });
-
-  if (workspaceId) {
-    await syncSubscriptionToSupabase({
-      workspaceId,
-      plan: planId,
-      status: "trialing",
-      seatLimit: planCatalog[planId].seatLimit,
-      stripeCustomerId: typeof session.customer === "string" ? session.customer : "",
-      stripeSubscriptionId: "",
-    });
-  }
 
   sendJson(response, 200, { url: session.url, sessionId: session.id });
 }
 
 async function handleCreatePortalSession(request, response, payload) {
-  assertAdminPayload(payload, "Only Admin or Owner access can open the billing portal.");
+  const auth = await requireAuthenticatedRequest(request);
+  const access = await requireWorkspaceAccess(auth, payload.workspaceId, { allowedRoles: ["owner", "admin"] });
   const stripe = getStripeClient();
-  const workspaceId = cleanText(payload.workspaceId);
+  const workspaceId = access.workspaceId;
   const baseUrl = appBaseUrl(request);
-  let customerId = cleanText(payload.stripeCustomerId);
-
-  if (!customerId && workspaceId) {
-    const subscription = await loadSubscriptionFromSupabase(workspaceId);
-    customerId = cleanText(subscription?.stripe_customer_id);
-  }
+  const subscription = await loadSubscriptionFromSupabase(workspaceId);
+  const customerId = cleanText(subscription?.stripe_customer_id);
 
   if (!stripe || !customerId) {
     sendJson(response, 200, {
@@ -357,6 +423,9 @@ async function handleStripeWebhook(request, response) {
   const rawBody = await readRawBody(request);
 
   if (!stripe || !webhookSecret) {
+    if (isLiveLikeMode()) {
+      throwHttpError(503, "STRIPE_WEBHOOK_CONFIG_REQUIRED", "Stripe webhook verification is not configured.");
+    }
     sendJson(response, 200, {
       received: true,
       demo: true,
@@ -394,14 +463,15 @@ async function handleStripeWebhook(request, response) {
 }
 
 async function handleSendInvite(request, response, payload) {
-  assertAdminPayload(payload, "Only Admin or Owner access can send workspace invites.");
-  const workspaceId = cleanText(payload.workspaceId);
+  const auth = await requireAuthenticatedRequest(request);
+  const access = await requireWorkspaceAccess(auth, payload.workspaceId, { allowedRoles: ["owner", "admin"] });
+  const workspaceId = access.workspaceId;
   const inviteId = cleanText(payload.inviteId);
   const email = cleanEmail(payload.email);
   const role = ["admin", "manager", "member"].includes(payload.role) ? payload.role : "member";
   const teamFunction = ["dialer", "setter", "closer"].includes(payload.teamFunction) ? payload.teamFunction : "";
   const workspaceName = cleanText(payload.workspaceName) || "Kira Home";
-  const inviterEmail = cleanEmail(payload.inviterEmail) || process.env.SUPPORT_EMAIL || "support@kira.local";
+  const inviterEmail = auth.email || process.env.SUPPORT_EMAIL || "support@kira.local";
   const productUrl = cleanUrl(payload.productUrl, appBaseUrl(request));
   const inviteFromEmail = cleanEmail(process.env.INVITE_FROM_EMAIL || "");
 
@@ -485,13 +555,14 @@ async function handleSendInvite(request, response, payload) {
   });
 }
 
-async function handleAcceptInvite(response, payload) {
+async function handleAcceptInvite(request, response, payload) {
+  const auth = await requireAuthenticatedRequest(request);
   const token = cleanText(payload.token);
-  const userId = cleanText(payload.userId);
-  const userEmail = cleanEmail(payload.email);
+  const userId = auth.userId;
+  const userEmail = auth.email;
 
   if (!token || !userId || !userEmail) {
-    sendJson(response, 400, { error: "Invite token, user ID, and email are required." });
+    sendJson(response, 400, { error: "Invite token and signed-in email are required." });
     return;
   }
 
@@ -527,14 +598,17 @@ async function handleAcceptInvite(response, payload) {
   sendJson(response, 200, {
     accepted: true,
     workspaceId: invitation.workspace_id,
+    role: invitation.role,
+    teamFunction: invitation.team_function || "",
     requiresPasswordChange: true,
     message: "Invite accepted. Workspace access is ready.",
   });
 }
 
 async function handleGoogleCalendarConnect(request, response, payload) {
-  const workspaceId = cleanText(payload.workspaceId);
-  const ownerEmail = cleanEmail(payload.ownerEmail);
+  const auth = await requireAuthenticatedRequest(request);
+  const access = await requireWorkspaceAccess(auth, payload.workspaceId, { allowedRoles: ["owner", "admin"] });
+  const workspaceId = access.workspaceId;
   const baseUrl = appBaseUrl(request);
 
   if (!hasGoogleCalendarConfig()) {
@@ -546,16 +620,14 @@ async function handleGoogleCalendarConnect(request, response, payload) {
     return;
   }
 
-  if (!workspaceId) {
-    sendJson(response, 200, {
-      demo: true,
-      connected: false,
-      message: "Google Calendar connect needs cloud mode so a workspace ID can safely store OAuth tokens.",
-    });
-    return;
-  }
-
-  const state = signCalendarState({ workspaceId, ownerEmail, createdAt: Date.now(), nonce: randomBytes(12).toString("hex") });
+  assertGoogleTokenEncryptionConfigured();
+  const state = signCalendarState({
+    workspaceId,
+    userId: auth.userId,
+    email: auth.email,
+    createdAt: Date.now(),
+    nonce: randomBytes(12).toString("hex"),
+  });
   const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   authUrl.searchParams.set("client_id", process.env.GOOGLE_CALENDAR_CLIENT_ID);
   authUrl.searchParams.set("redirect_uri", googleCalendarRedirectUri(baseUrl));
@@ -581,14 +653,16 @@ async function handleGoogleCalendarCallback(request, response, url) {
   try {
     if (!code || !state) throwInputError("Google Calendar callback is missing code or state.");
     const stateValue = verifyCalendarState(state);
-    if (!stateValue?.workspaceId) throwInputError("Google Calendar state is invalid.");
+    if (!stateValue?.workspaceId || !stateValue?.userId) throwInputError("Google Calendar state is invalid.");
     if (!hasSupabaseServiceConfig()) throwInputError("Supabase service role is required to store Google Calendar tokens.");
+    await requireWorkspaceAccessForUser(stateValue.userId, stateValue.workspaceId, { allowedRoles: ["owner", "admin"] });
+    assertGoogleTokenEncryptionConfigured();
 
     const token = await exchangeGoogleCalendarCode(code, baseUrl);
     const profile = await fetchGoogleProfile(token.access_token);
     await saveGoogleCalendarConnection({
       workspaceId: stateValue.workspaceId,
-      googleAccountEmail: profile.email || stateValue.ownerEmail || "",
+      googleAccountEmail: profile.email || stateValue.email || "",
       accessToken: token.access_token,
       refreshToken: token.refresh_token,
       expiresIn: token.expires_in,
@@ -602,8 +676,10 @@ async function handleGoogleCalendarCallback(request, response, url) {
   }
 }
 
-async function handleGoogleCalendarStatus(response, payload) {
-  const workspaceId = cleanText(payload.workspaceId);
+async function handleGoogleCalendarStatus(request, response, payload) {
+  const auth = await requireAuthenticatedRequest(request);
+  const access = await requireWorkspaceAccess(auth, payload.workspaceId);
+  const workspaceId = access.workspaceId;
   if (!hasGoogleCalendarConfig()) {
     sendJson(response, 200, {
       configured: false,
@@ -612,19 +688,10 @@ async function handleGoogleCalendarStatus(response, payload) {
     });
     return;
   }
-  if (!workspaceId) {
-    sendJson(response, 200, {
-      configured: true,
-      connected: false,
-      message: "Sign in with cloud mode to connect a workspace calendar.",
-    });
-    return;
-  }
-
   const connection = await loadGoogleCalendarConnection(workspaceId);
   sendJson(response, 200, {
     configured: true,
-    connected: Boolean(connection?.refresh_token || connection?.access_token),
+    connected: hasStoredGoogleTokens(connection),
     status: connection?.status || "not_connected",
     googleAccountEmail: connection?.google_account_email || "",
     calendarId: connection?.calendar_id || "primary",
@@ -633,8 +700,10 @@ async function handleGoogleCalendarStatus(response, payload) {
   });
 }
 
-async function handleGoogleCalendarCreateEvent(response, payload) {
-  const workspaceId = cleanText(payload.workspaceId);
+async function handleGoogleCalendarCreateEvent(request, response, payload) {
+  const auth = await requireAuthenticatedRequest(request);
+  const access = await requireWorkspaceAccess(auth, payload.workspaceId);
+  const workspaceId = access.workspaceId;
   const appointment = payload.appointment || {};
 
   if (!hasGoogleCalendarConfig()) {
@@ -645,15 +714,6 @@ async function handleGoogleCalendarCreateEvent(response, payload) {
     });
     return;
   }
-  if (!workspaceId) {
-    sendJson(response, 200, {
-      demo: true,
-      synced: false,
-      message: "Calendar event saved in CRM only. Cloud mode is required for Google Calendar sync.",
-    });
-    return;
-  }
-
   const connection = await loadGoogleCalendarConnection(workspaceId);
   if (!connection) {
     sendJson(response, 200, {
@@ -720,13 +780,105 @@ function validateWorkspacePayload(payload, options = {}) {
   if (cleanText(payload.prompt).length > 4000) throwInputError("AI prompt is too long.");
 }
 
-function assertAdminPayload(payload, message = "Admin access is required.") {
-  const role = cleanText(payload.actorRole || "");
-  if (role && !["owner", "admin"].includes(role)) {
-    const error = new Error(message);
-    error.statusCode = 403;
-    throw error;
+async function optionalReadinessAdminAccess(request, payload = {}) {
+  try {
+    if (!bearerTokenFromRequest(request) || !payload.workspaceId) return null;
+    const auth = await requireAuthenticatedRequest(request);
+    return requireWorkspaceAccess(auth, payload.workspaceId, { allowedRoles: ["owner", "admin"] });
+  } catch {
+    return null;
   }
+}
+
+async function requireAuthenticatedRequest(request) {
+  const accessToken = bearerTokenFromRequest(request);
+  if (!accessToken) {
+    throwHttpError(401, "AUTH_REQUIRED", "Sign in to the CRM before using this endpoint.");
+  }
+  assertSupabaseAuthConfig();
+  const user = await loadSupabaseUser(accessToken);
+  return {
+    accessToken,
+    user,
+    userId: cleanUuid(user.id),
+    email: cleanEmail(user.email),
+  };
+}
+
+function bearerTokenFromRequest(request) {
+  const header = request.headers.authorization || request.headers.Authorization || "";
+  const match = String(header).match(/^Bearer\s+(.+)$/i);
+  return cleanText(match?.[1]);
+}
+
+function assertSupabaseAuthConfig() {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throwHttpError(503, "AUTH_CONFIG_REQUIRED", "Live authentication is not configured on this backend.");
+  }
+}
+
+async function requireWorkspaceAccess(auth, workspaceId, options = {}) {
+  return requireWorkspaceAccessForUser(auth.userId, workspaceId, {
+    ...options,
+    email: auth.email,
+  });
+}
+
+async function requireWorkspaceAccessForUser(userId, workspaceId, options = {}) {
+  const cleanedWorkspaceId = cleanUuid(workspaceId);
+  const cleanedUserId = cleanUuid(userId);
+  if (!cleanedWorkspaceId) throwInputError("A valid workspace ID is required.");
+  if (!cleanedUserId) throwHttpError(401, "AUTH_INVALID", "Supabase user identity is invalid.");
+
+  const [workspaceRows, memberRows] = await Promise.all([
+    supabaseRequest(`workspaces?id=eq.${encodeURIComponent(cleanedWorkspaceId)}&select=id,owner_id,name`, { method: "GET" }),
+    supabaseRequest(
+      `workspace_members?workspace_id=eq.${encodeURIComponent(cleanedWorkspaceId)}&user_id=eq.${encodeURIComponent(cleanedUserId)}&select=workspace_id,user_id,role,team_function`,
+      { method: "GET" },
+    ),
+  ]);
+
+  const workspace = Array.isArray(workspaceRows) ? workspaceRows[0] : null;
+  const member = Array.isArray(memberRows) ? memberRows[0] : null;
+  const role = workspace?.owner_id === cleanedUserId ? "owner" : normalizeRoleId(member?.role || "");
+  if (!workspace || (!member && role !== "owner")) {
+    throwHttpError(403, "WORKSPACE_FORBIDDEN", "You do not have access to this workspace.");
+  }
+
+  const allowedRoles = options.allowedRoles || ["owner", "admin", "manager", "member"];
+  if (!allowedRoles.includes(role)) {
+    throwHttpError(403, "ROLE_FORBIDDEN", "Your workspace role does not allow this action.");
+  }
+
+  return {
+    workspaceId: cleanedWorkspaceId,
+    workspaceName: workspace.name || "",
+    userId: cleanedUserId,
+    email: options.email || "",
+    role,
+    teamFunction: member?.team_function || "",
+  };
+}
+
+async function assertLeadBelongsToWorkspace(workspaceId, leadId) {
+  const rawLeadId = cleanText(leadId);
+  if (!rawLeadId) return;
+  const cleanedLeadId = cleanUuid(rawLeadId);
+  if (!cleanedLeadId) throwInputError("A valid lead ID is required.");
+  const rows = await supabaseRequest(
+    `leads?id=eq.${encodeURIComponent(cleanedLeadId)}&workspace_id=eq.${encodeURIComponent(workspaceId)}&select=id`,
+    { method: "GET" },
+  );
+  if (!Array.isArray(rows) || !rows.length) {
+    throwHttpError(403, "RESOURCE_FORBIDDEN", "This lead does not belong to the authenticated workspace.");
+  }
+}
+
+function throwHttpError(statusCode, code, message) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  error.code = code;
+  throw error;
 }
 
 function buildRuleBasedAiResponse(intent, payload = {}) {
@@ -948,6 +1100,671 @@ async function saveAiOutput(payload, type, output, options = {}) {
   }
 }
 
+async function handleRecruitingRequest(pathname, request, response, payload) {
+  const auth = await requireAuthenticatedRequest(request);
+
+  if (pathname === "/api/recruiting/access") {
+    const access = await recruitingAccessForPayload(auth, payload, { allowLocked: true });
+    sendJson(response, 200, access);
+    return;
+  }
+
+  if (pathname === "/api/recruiting/addon-settings") {
+    const access = await recruitingAccessForPayload(auth, payload, { allowLocked: true, requireAdmin: true });
+    const status = ["locked", "requested", "trialing", "active", "early_access", "canceled"].includes(cleanText(payload.status))
+      ? cleanText(payload.status)
+      : "early_access";
+    const allowedRoles = sanitizeRoleList(payload.allowedRoles || ["owner", "admin", "manager"]);
+    const now = new Date().toISOString();
+    const metadata = sanitizeJson({
+      ...(payload.metadata || {}),
+      crmApp: "ClosePilot CRM",
+      module: "Kira Recruit",
+      allowedRoles,
+      enabledBy: access.email,
+      enabledAt: now,
+    });
+    await supabaseRequest("workspace_addons?on_conflict=workspace_id,addon_key", {
+      method: "POST",
+      body: [
+        {
+          workspace_id: access.workspaceId,
+          addon_key: "recruiting",
+          status,
+          trial_ends_at: payload.trialEndsAt || null,
+          metadata,
+          updated_at: now,
+        },
+      ],
+      prefer: "resolution=merge-duplicates,return=minimal",
+    });
+    await logWorkspaceAudit(access.workspaceId, "Kira Recruit add-on updated", `${access.email} set Kira Recruit add-on to ${status}.`);
+    const refreshedAccess = await recruitingAccessForPayload(auth, payload, { allowLocked: true });
+    sendJson(response, 200, {
+      saved: true,
+      access: refreshedAccess,
+      message: "Kira Recruit early access is enabled for this CRM workspace.",
+    });
+    return;
+  }
+
+  if (pathname === "/api/recruiting/load") {
+    const access = await recruitingAccessForPayload(auth, payload);
+    const appState = await loadRecruitingAppState(access.workspaceId);
+    const candidates = await loadRecruitingCandidatesForWorkspace(access.workspaceId);
+    sendJson(response, 200, { access, state: appState, candidates });
+    return;
+  }
+
+  if (pathname === "/api/recruiting/save") {
+    const access = await recruitingAccessForPayload(auth, payload);
+    const state = sanitizeRecruitingState(payload.state || {});
+    await saveRecruitingAppState(access.workspaceId, state);
+    const candidates = await saveRecruitingCandidatesForWorkspace(access.workspaceId, payload.candidates || state.candidates || []);
+    await logWorkspaceAudit(access.workspaceId, "Recruiting state synced", `${access.email} synced Kira Recruit state.`);
+    sendJson(response, 200, {
+      saved: true,
+      access,
+      candidates,
+      message: "Kira Recruit state synced to the live workspace.",
+    });
+    return;
+  }
+
+  if (pathname === "/api/recruiting/applicants") {
+    const access = await recruitingAccessForPayload(auth, payload);
+    const incoming = Array.isArray(payload.candidates) ? payload.candidates : payload.candidate ? [payload.candidate] : [];
+    const candidates = await saveRecruitingCandidatesForWorkspace(access.workspaceId, incoming);
+    await logWorkspaceAudit(access.workspaceId, "Recruiting applicants synced", `${candidates.length} applicant record(s) synced.`);
+    sendJson(response, 200, { synced: true, count: candidates.length, candidates });
+    return;
+  }
+
+  if (pathname === "/api/recruiting/onboarding-email") {
+    const access = await recruitingAccessForPayload(auth, payload);
+    const workerRecipients = Array.isArray(payload.workers)
+      ? payload.workers.map((worker) => cleanEmail(worker.email)).filter(Boolean)
+      : [];
+    const recipients = Array.isArray(payload.recipients) ? payload.recipients.map(cleanEmail).filter(Boolean) : workerRecipients;
+    if (!recipients.length) throwInputError("At least one onboarding recipient is required.");
+    await logWorkspaceAudit(
+      access.workspaceId,
+      "Recruiting onboarding email staged",
+      `${access.email} staged ${recipients.length} onboarding email(s) with ${cleanText(payload.template || "welcome")} template.`,
+    );
+    sendJson(response, 200, {
+      staged: true,
+      provider: process.env.RESEND_API_KEY ? "resend-ready" : "provider-not-configured",
+      message: "Onboarding email staged. Use a secure payroll/onboarding provider for tax and bank forms.",
+    });
+    return;
+  }
+
+  if (pathname === "/api/recruiting/crm-handoff") {
+    const access = await recruitingAccessForPayload(auth, payload);
+    const result = await handleRecruitingCrmHandoff(access, payload);
+    sendJson(response, 200, result);
+    return;
+  }
+
+  if (pathname === "/api/recruiting/integration-status") {
+    const access = await recruitingAccessForPayload(auth, payload, { requireAdmin: true });
+    const provider = cleanText(payload.provider || "indeed").toLowerCase();
+    const publicPayload = sanitizeJson(payload.publicConfig || {});
+    const publicConfig = {
+      accountId: cleanText(publicPayload.accountId || payload.accountId),
+      email: cleanEmail(publicPayload.email || payload.email),
+      webhookUrl: cleanUrl(publicPayload.webhookUrl || payload.webhookUrl, ""),
+      budget: cleanText(publicPayload.budget || payload.budget),
+      companyId: cleanText(publicPayload.companyId || payload.companyId),
+      tokenConfigured: Boolean(publicPayload.tokenConfigured || cleanText(publicPayload.tokenLast4 || payload.tokenConfigured || payload.tokenLast4)),
+      tokenLast4: cleanText(publicPayload.tokenLast4 || payload.tokenLast4).slice(-4),
+      status: cleanText(publicPayload.status || payload.status || "saved"),
+      checkedAt: new Date().toISOString(),
+    };
+    await supabaseRequest("integration_settings?on_conflict=workspace_id,provider", {
+      method: "POST",
+      body: [
+        {
+          workspace_id: access.workspaceId,
+          provider: `recruiting:${provider}`,
+          status: publicConfig.status,
+          public_config: publicConfig,
+          last_checked_at: publicConfig.checkedAt,
+          updated_at: publicConfig.checkedAt,
+        },
+      ],
+      prefer: "resolution=merge-duplicates,return=minimal",
+    });
+    sendJson(response, 200, {
+      saved: true,
+      provider,
+      publicConfig,
+      message: `${provider} integration metadata saved. Secrets are not stored from the browser.`,
+    });
+    return;
+  }
+
+  sendJson(response, 404, { error: "Recruiting route not found" });
+}
+
+async function recruitingAccessForPayload(auth, payload, options = {}) {
+  const requestedWorkspaceId = cleanUuid(payload.workspaceId);
+  if (payload.workspaceId && !requestedWorkspaceId) throwInputError("A valid workspace ID is required.");
+  const memberships = await supabaseRequest(
+    `workspace_members?user_id=eq.${encodeURIComponent(auth.userId)}&select=workspace_id,role,team_function`,
+    { method: "GET" },
+  );
+  const membership = (memberships || []).find((item) => !requestedWorkspaceId || item.workspace_id === requestedWorkspaceId) || memberships?.[0];
+  if (!membership) {
+    const error = new Error("No CRM workspace membership found for this user.");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  const workspaceId = membership.workspace_id;
+  const role = normalizeRoleId(membership.role);
+  const addon = await loadWorkspaceAddon(workspaceId, "recruiting");
+  const subscription = await loadSubscriptionFromSupabase(workspaceId);
+  const addonStatus = cleanText(addon?.status || "locked");
+  const addonEnabled = ["active", "trialing", "early_access"].includes(addonStatus);
+  const addonMetadata = sanitizeJson(addon?.metadata || {});
+  const allowedRoles = sanitizeRoleList(addonMetadata.allowedRoles || ["owner", "admin", "manager"]);
+  const roleCanOpen = ["owner", "admin", "manager"].includes(role) || allowedRoles.includes(role);
+  const setupAllowed = ["owner", "admin"].includes(role);
+  const locked = !roleCanOpen || !addonEnabled;
+  if (options.requireAdmin && !setupAllowed) {
+    const error = new Error("Only Owners and Admins can manage Kira Recruit setup.");
+    error.statusCode = 403;
+    throw error;
+  }
+  if (!options.allowLocked && locked) {
+    const error = new Error(
+      !roleCanOpen
+        ? "Kira Recruit is restricted to Owners, Admins, and Managers."
+        : "Kira Recruit is a locked paid add-on for this workspace.",
+    );
+    error.statusCode = 403;
+    throw error;
+  }
+
+  return {
+    mode: locked ? "locked" : "live",
+    locked,
+    workspaceId,
+    email: auth.email,
+    userId: auth.userId,
+    role,
+    teamFunction: membership.team_function || "",
+    setupAllowed,
+    addonStatus,
+    allowedRoles,
+    subscriptionStatus: subscription?.status || "",
+    plan: subscription?.plan || "starter",
+    crmApp: "ClosePilot CRM",
+    module: "Kira Recruit",
+    label: locked ? "Locked paid add-on" : "Live recruiting add-on",
+    message: locked
+      ? setupAllowed
+        ? "Kira Recruit is locked until an Owner/Admin enables early access for this CRM workspace."
+        : "Kira Recruit is a paid add-on. Ask an Owner/Admin to enable early access."
+      : "Kira Recruit live add-on access confirmed.",
+  };
+}
+
+async function loadSupabaseUser(accessToken) {
+  const response = await fetch(`${process.env.SUPABASE_URL.replace(/\/$/, "")}/auth/v1/user`, {
+    headers: {
+      apikey: process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY,
+      authorization: `Bearer ${accessToken}`,
+    },
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.id) {
+    const error = new Error(data.message || "Supabase session is expired. Sign in again from the CRM.");
+    error.statusCode = 401;
+    error.code = "AUTH_INVALID";
+    throw error;
+  }
+  return data;
+}
+
+async function loadWorkspaceAddon(workspaceId, addonKey) {
+  try {
+    const rows = await supabaseRequest(
+      `workspace_addons?workspace_id=eq.${encodeURIComponent(workspaceId)}&addon_key=eq.${encodeURIComponent(addonKey)}&select=*`,
+      { method: "GET" },
+    );
+    return Array.isArray(rows) ? rows[0] || null : null;
+  } catch (error) {
+    if (isMissingTableError(error, "workspace_addons")) return null;
+    throw error;
+  }
+}
+
+async function loadRecruitingAppState(workspaceId) {
+  try {
+    const rows = await supabaseRequest(`recruiting_app_state?workspace_id=eq.${encodeURIComponent(workspaceId)}&select=*`, {
+      method: "GET",
+    });
+    const row = Array.isArray(rows) ? rows[0] : null;
+    return row
+      ? {
+          job: row.job || {},
+          postings: row.postings || [],
+          integrations: row.integrations_public || {},
+          connectorSettings: row.connector_settings || {},
+          interviews: row.interviews || [],
+          onboardingWorkers: row.onboarding_workers || [],
+          payrollProvider: row.payroll_provider_public || {},
+          payrollRuns: row.payroll_runs || [],
+          recruiterNotes: row.recruiter_notes || [],
+          hiringOutcomes: row.hiring_outcomes || [],
+          crmHandoffs: row.crm_handoffs || [],
+          feedSyncedAt: row.feed_synced_at || "",
+        }
+      : {};
+  } catch (error) {
+    if (isMissingTableError(error, "recruiting_app_state")) return {};
+    throw error;
+  }
+}
+
+async function saveRecruitingAppState(workspaceId, state) {
+  await supabaseRequest("recruiting_app_state?on_conflict=workspace_id", {
+    method: "POST",
+    body: [
+      {
+        workspace_id: workspaceId,
+        job: state.job || {},
+        postings: state.postings || [],
+        integrations_public: state.integrations || {},
+        connector_settings: state.connectorSettings || {},
+        interviews: state.interviews || [],
+        onboarding_workers: state.onboardingWorkers || [],
+        payroll_provider_public: state.payrollProvider || {},
+        payroll_runs: state.payrollRuns || [],
+        recruiter_notes: state.recruiterNotes || [],
+        hiring_outcomes: state.hiringOutcomes || [],
+        crm_handoffs: state.crmHandoffs || [],
+        feed_synced_at: state.feedSyncedAt || null,
+        updated_at: new Date().toISOString(),
+      },
+    ],
+    prefer: "resolution=merge-duplicates,return=minimal",
+  });
+}
+
+async function loadRecruitingCandidatesForWorkspace(workspaceId) {
+  try {
+    const rows = await supabaseRequest(
+      `recruiting_candidates?workspace_id=eq.${encodeURIComponent(workspaceId)}&select=*&order=synced_at.desc`,
+      { method: "GET" },
+    );
+    return (rows || []).map(recruitingCandidateFromRow);
+  } catch (error) {
+    if (isMissingTableError(error, "recruiting_candidates")) return [];
+    throw error;
+  }
+}
+
+async function saveRecruitingCandidatesForWorkspace(workspaceId, candidates) {
+  const normalized = (Array.isArray(candidates) ? candidates : []).map(normalizeRecruitingCandidatePayload).filter((candidate) => candidate.name);
+  if (!normalized.length) return [];
+  await supabaseRequest("recruiting_candidates?on_conflict=workspace_id,external_id", {
+    method: "POST",
+    body: normalized.map((candidate) => recruitingCandidateToRow(candidate, workspaceId)),
+    prefer: "resolution=merge-duplicates,return=representation",
+  });
+  return loadRecruitingCandidatesForWorkspace(workspaceId);
+}
+
+function sanitizeRecruitingState(state) {
+  return {
+    job: sanitizeJson(state.job || {}),
+    postings: sanitizeJsonArray(state.postings),
+    integrations: sanitizeIntegrationPublicConfig(state.integrations || {}),
+    connectorSettings: sanitizeConnectorSettings(state.connectorSettings || {}),
+    interviews: sanitizeJsonArray(state.interviews),
+    onboardingWorkers: sanitizeOnboardingWorkers(state.onboardingWorkers),
+    payrollProvider: sanitizePayrollProvider(state.payrollProvider || {}),
+    payrollRuns: sanitizeJsonArray(state.payrollRuns),
+    recruiterNotes: sanitizeJsonArray(state.recruiterNotes),
+    hiringOutcomes: sanitizeJsonArray(state.hiringOutcomes),
+    crmHandoffs: sanitizeJsonArray(state.crmHandoffs),
+    feedSyncedAt: cleanText(state.feedSyncedAt),
+  };
+}
+
+function sanitizeIntegrationPublicConfig(integrations) {
+  return Object.fromEntries(
+    Object.entries(integrations || {}).map(([key, value]) => [
+      cleanText(key),
+      sanitizeJson({
+        ...value,
+        tokenConfigured: Boolean(value?.tokenConfigured),
+        tokenLast4: cleanText(value?.tokenLast4).slice(-4),
+        apiToken: undefined,
+        token: undefined,
+      }),
+    ]),
+  );
+}
+
+function sanitizeConnectorSettings(settings) {
+  return sanitizeJson({
+    ...settings,
+    apiToken: undefined,
+    accessToken: undefined,
+    refreshToken: undefined,
+    clientSecret: undefined,
+    token: undefined,
+    secret: undefined,
+  });
+}
+
+function sanitizePayrollProvider(provider) {
+  return sanitizeJson({
+    ...provider,
+    tokenConfigured: Boolean(provider?.tokenConfigured),
+    tokenLast4: cleanText(provider?.tokenLast4).slice(-4),
+    apiToken: undefined,
+    token: undefined,
+  });
+}
+
+function sanitizeOnboardingWorkers(workers) {
+  return sanitizeJsonArray(workers).map((worker) => ({
+    ...worker,
+    notes: cleanText(worker.notes).replace(/\b\d{3}-?\d{2}-?\d{4}\b/g, "[redacted tax id]").replace(/\b\d{9,17}\b/g, "[redacted sensitive number]"),
+  }));
+}
+
+function sanitizeJsonArray(value) {
+  return Array.isArray(value) ? value.map(sanitizeJson) : [];
+}
+
+function sanitizeJson(value) {
+  return JSON.parse(JSON.stringify(value || {}));
+}
+
+function normalizeRecruitingCandidatePayload(candidate = {}) {
+  const externalId = cleanText(candidate.externalId || candidate.id || candidate.email || candidate.name);
+  return {
+    id: externalId,
+    externalId,
+    name: cleanText(candidate.name).slice(0, 160),
+    role: cleanText(candidate.role || candidate.jobTitle || "Sales candidate").slice(0, 160),
+    source: cleanText(candidate.source || "Kira Recruit").slice(0, 120),
+    interviewStatus: cleanText(candidate.interviewStatus || candidate.status || "New").slice(0, 80),
+    interviewAt: cleanText(candidate.interviewAt || ""),
+    score: Math.min(100, Math.max(0, Number(candidate.score || 65))),
+    nextAction: cleanText(candidate.nextAction || "Review candidate fit.").slice(0, 500),
+    email: cleanEmail(candidate.email),
+    phone: cleanText(candidate.phone).slice(0, 80),
+    assignedRecruiter: cleanText(candidate.assignedRecruiter).slice(0, 160),
+    assignedManager: cleanText(candidate.assignedManager).slice(0, 160),
+    hiringOutcome: normalizeHiringOutcome(candidate.hiringOutcome),
+    recruiterNotes: cleanText(candidate.recruiterNotes).slice(0, 2000),
+    convertedLeadId: cleanUuid(candidate.convertedLeadId),
+    convertedMemberInvitationId: cleanUuid(candidate.convertedMemberInvitationId),
+    followUpTaskId: cleanUuid(candidate.followUpTaskId),
+    activityNoteId: cleanUuid(candidate.activityNoteId),
+    reviewedAt: cleanText(candidate.reviewedAt || ""),
+    lastHandoffAt: cleanText(candidate.lastHandoffAt || ""),
+    syncedAt: cleanText(candidate.syncedAt || new Date().toISOString()),
+    experience: cleanText(candidate.experience).slice(0, 1000),
+    skills: Array.isArray(candidate.skills) ? candidate.skills.map((skill) => cleanText(skill)).filter(Boolean).slice(0, 12) : [],
+    taskCreatedAt: cleanText(candidate.taskCreatedAt || ""),
+  };
+}
+
+function recruitingCandidateToRow(candidate, workspaceId) {
+  return {
+    workspace_id: workspaceId,
+    external_id: candidate.externalId,
+    name: candidate.name,
+    role: candidate.role,
+    source: candidate.source,
+    interview_status: candidate.interviewStatus,
+    interview_at: candidate.interviewAt || null,
+    score: Math.round(candidate.score),
+    next_action: candidate.nextAction,
+    email: candidate.email,
+    phone: candidate.phone,
+    assigned_recruiter: candidate.assignedRecruiter,
+    assigned_manager: candidate.assignedManager,
+    hiring_outcome: candidate.hiringOutcome,
+    recruiter_notes: candidate.recruiterNotes,
+    status: candidate.convertedLeadId || candidate.convertedMemberInvitationId || candidate.hiringOutcome === "hired" ? "converted" : candidate.reviewedAt ? "reviewed" : "new",
+    converted_lead_id: candidate.convertedLeadId || null,
+    converted_member_invitation_id: candidate.convertedMemberInvitationId || null,
+    follow_up_task_id: candidate.followUpTaskId || null,
+    activity_note_id: candidate.activityNoteId || null,
+    reviewed_at: candidate.reviewedAt || null,
+    last_handoff_at: candidate.lastHandoffAt || null,
+    synced_at: candidate.syncedAt || new Date().toISOString(),
+    payload: {
+      experience: candidate.experience,
+      skills: candidate.skills,
+      taskCreatedAt: candidate.taskCreatedAt,
+      assignedRecruiter: candidate.assignedRecruiter,
+      assignedManager: candidate.assignedManager,
+      hiringOutcome: candidate.hiringOutcome,
+      recruiterNotes: candidate.recruiterNotes,
+      convertedMemberInvitationId: candidate.convertedMemberInvitationId,
+      followUpTaskId: candidate.followUpTaskId,
+      activityNoteId: candidate.activityNoteId,
+      lastHandoffAt: candidate.lastHandoffAt,
+    },
+    updated_at: new Date().toISOString(),
+  };
+}
+
+function recruitingCandidateFromRow(row) {
+  return normalizeRecruitingCandidatePayload({
+    id: row.external_id || row.id,
+    externalId: row.external_id || row.id,
+    name: row.name,
+    role: row.role,
+    source: row.source,
+    interviewStatus: row.interview_status,
+    interviewAt: row.interview_at || "",
+    score: row.score,
+    nextAction: row.next_action,
+    email: row.email,
+    phone: row.phone,
+    assignedRecruiter: row.assigned_recruiter || row.payload?.assignedRecruiter || "",
+    assignedManager: row.assigned_manager || row.payload?.assignedManager || "",
+    hiringOutcome: row.hiring_outcome || row.payload?.hiringOutcome || "",
+    recruiterNotes: row.recruiter_notes || row.payload?.recruiterNotes || "",
+    convertedLeadId: row.converted_lead_id || "",
+    convertedMemberInvitationId: row.converted_member_invitation_id || row.payload?.convertedMemberInvitationId || "",
+    followUpTaskId: row.follow_up_task_id || row.payload?.followUpTaskId || "",
+    activityNoteId: row.activity_note_id || row.payload?.activityNoteId || "",
+    reviewedAt: row.reviewed_at || "",
+    lastHandoffAt: row.last_handoff_at || row.payload?.lastHandoffAt || "",
+    syncedAt: row.synced_at || "",
+    experience: row.payload?.experience || "",
+    skills: row.payload?.skills || [],
+    taskCreatedAt: row.payload?.taskCreatedAt || "",
+  });
+}
+
+async function handleRecruitingCrmHandoff(access, payload) {
+  const action = cleanText(payload.action || "update-hiring");
+  const now = new Date().toISOString();
+  const candidate = normalizeRecruitingCandidatePayload({
+    ...(payload.candidate || {}),
+    assignedRecruiter: payload.assignedRecruiter || payload.candidate?.assignedRecruiter,
+    assignedManager: payload.assignedManager || payload.candidate?.assignedManager,
+    hiringOutcome: payload.hiringOutcome || payload.candidate?.hiringOutcome,
+    recruiterNotes: payload.recruiterNotes || payload.candidate?.recruiterNotes,
+  });
+  if (!candidate.name) throwInputError("Candidate is required for CRM handoff.");
+
+  let message = "Candidate handoff saved to the CRM workspace.";
+  const handoff = {
+    action,
+    candidateExternalId: candidate.externalId,
+    candidateName: candidate.name,
+    candidateEmail: candidate.email,
+    performedBy: access.email,
+    performedAt: now,
+  };
+
+  if (action === "convert-team-member") {
+    if (!access.setupAllowed) {
+      const error = new Error("Only Owners and Admins can convert candidates to team members.");
+      error.statusCode = 403;
+      throw error;
+    }
+    const invitation = await upsertRecruitingMemberInvitation(access, candidate, payload, now);
+    candidate.convertedMemberInvitationId = invitation.id || candidate.convertedMemberInvitationId;
+    candidate.hiringOutcome = normalizeHiringOutcome(payload.hiringOutcome || candidate.hiringOutcome || "hired");
+    candidate.reviewedAt = candidate.reviewedAt || now;
+    candidate.lastHandoffAt = now;
+    handoff.invitationId = invitation.id || "";
+    handoff.hiringOutcome = candidate.hiringOutcome;
+    message = `${candidate.name} was staged as a CRM team member invitation.`;
+  } else if (action === "create-follow-up-task") {
+    const taskText =
+      cleanText(payload.taskText).slice(0, 500) ||
+      `Follow up with ${candidate.name} about ${candidate.role || "the open role"}.`;
+    const rows = await supabaseRequest("tasks", {
+      method: "POST",
+      body: [
+        {
+          workspace_id: access.workspaceId,
+          text: taskText,
+          due: cleanText(payload.due || "today").slice(0, 80) || "today",
+        },
+      ],
+      prefer: "return=representation",
+    });
+    candidate.followUpTaskId = rows?.[0]?.id || candidate.followUpTaskId;
+    candidate.lastHandoffAt = now;
+    handoff.taskId = candidate.followUpTaskId;
+    message = `Follow-up task created for ${candidate.name}.`;
+  } else if (action === "add-activity-note") {
+    const note =
+      cleanText(payload.note || candidate.recruiterNotes).slice(0, 1000) ||
+      `${candidate.name} reviewed in Kira Recruit.`;
+    const rows = await supabaseRequest("activities", {
+      method: "POST",
+      body: [
+        {
+          workspace_id: access.workspaceId,
+          type: "recruiting",
+          message: note,
+        },
+      ],
+      prefer: "return=representation",
+    });
+    candidate.activityNoteId = rows?.[0]?.id || candidate.activityNoteId;
+    candidate.recruiterNotes = note;
+    candidate.lastHandoffAt = now;
+    handoff.activityId = candidate.activityNoteId;
+    message = `Activity note added for ${candidate.name}.`;
+  } else if (["update-hiring", "assign-candidate", "save-handoff"].includes(action)) {
+    candidate.assignedRecruiter = cleanText(payload.assignedRecruiter || candidate.assignedRecruiter).slice(0, 160);
+    candidate.assignedManager = cleanText(payload.assignedManager || candidate.assignedManager).slice(0, 160);
+    candidate.hiringOutcome = normalizeHiringOutcome(payload.hiringOutcome || candidate.hiringOutcome);
+    candidate.recruiterNotes = cleanText(payload.recruiterNotes || candidate.recruiterNotes).slice(0, 2000);
+    candidate.reviewedAt = candidate.reviewedAt || now;
+    candidate.lastHandoffAt = now;
+    handoff.assignedRecruiter = candidate.assignedRecruiter;
+    handoff.assignedManager = candidate.assignedManager;
+    handoff.hiringOutcome = candidate.hiringOutcome;
+    message = `${candidate.name} assignment and hiring outcome saved.`;
+  } else {
+    throwInputError("Unsupported recruiting CRM handoff action.");
+  }
+
+  const candidates = await saveRecruitingCandidatesForWorkspace(access.workspaceId, [candidate]);
+  const updatedCandidate =
+    candidates.find((item) => item.externalId === candidate.externalId || item.id === candidate.externalId) || candidate;
+  await recordRecruitingHandoff(access.workspaceId, handoff, updatedCandidate);
+  await logWorkspaceAudit(access.workspaceId, "Kira Recruit CRM handoff", `${access.email} ran ${action} for ${candidate.name}.`);
+
+  return {
+    saved: true,
+    action,
+    candidate: updatedCandidate,
+    handoff,
+    message,
+  };
+}
+
+async function upsertRecruitingMemberInvitation(access, candidate, payload, now) {
+  const email = cleanEmail(candidate.email);
+  if (!email) throwInputError("Candidate email is required before converting to a team member.");
+  const role = ["admin", "manager", "member"].includes(cleanText(payload.memberRole)) ? cleanText(payload.memberRole) : "member";
+  const rows = await supabaseRequest("workspace_invitations?on_conflict=workspace_id,email", {
+    method: "POST",
+    body: [
+      {
+        workspace_id: access.workspaceId,
+        email,
+        role,
+        team_function: inferTeamFunction(candidate.role || candidate.nextAction),
+        status: "pending",
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        onboarding_started_at: now,
+      },
+    ],
+    prefer: "resolution=merge-duplicates,return=representation",
+  });
+  return rows?.[0] || {};
+}
+
+async function recordRecruitingHandoff(workspaceId, handoff, candidate) {
+  const current = await loadRecruitingAppState(workspaceId);
+  const nextHandoff = sanitizeJson({ ...handoff, candidateId: candidate.id || candidate.externalId });
+  const hiringOutcome = sanitizeJson({
+    candidateExternalId: candidate.externalId || candidate.id,
+    candidateName: candidate.name,
+    outcome: candidate.hiringOutcome,
+    updatedAt: handoff.performedAt,
+  });
+  const recruiterNote = candidate.recruiterNotes
+    ? sanitizeJson({
+        candidateExternalId: candidate.externalId || candidate.id,
+        candidateName: candidate.name,
+        note: candidate.recruiterNotes,
+        updatedAt: handoff.performedAt,
+      })
+    : null;
+
+  await saveRecruitingAppState(workspaceId, {
+    ...current,
+    crmHandoffs: [nextHandoff, ...(current.crmHandoffs || [])].slice(0, 100),
+    hiringOutcomes: [hiringOutcome, ...(current.hiringOutcomes || [])].slice(0, 100),
+    recruiterNotes: recruiterNote ? [recruiterNote, ...(current.recruiterNotes || [])].slice(0, 100) : current.recruiterNotes || [],
+  });
+}
+
+function inferTeamFunction(value) {
+  const text = cleanText(value).toLowerCase();
+  if (text.includes("closer")) return "closer";
+  if (text.includes("setter")) return "setter";
+  if (text.includes("dial") || text.includes("sdr") || text.includes("caller")) return "dialer";
+  return null;
+}
+
+async function logWorkspaceAudit(workspaceId, action, detail) {
+  if (!workspaceId) return;
+  try {
+    await supabaseRequest("workspace_audit_events", {
+      method: "POST",
+      body: [{ workspace_id: workspaceId, action, detail }],
+      prefer: "return=minimal",
+    });
+  } catch (error) {
+    if (!isMissingTableError(error, "workspace_audit_events")) throw error;
+  }
+}
+
 function launchWarnings(groups) {
   const warnings = [];
   if (!groups.database) warnings.push("Supabase is not fully configured; the app will use demo/localStorage fallback.");
@@ -955,6 +1772,8 @@ function launchWarnings(groups) {
   if (looksLikePreviewUrl(process.env.APP_BASE_URL)) {
     warnings.push("APP_BASE_URL looks like a Vercel preview URL. Use the production domain so invites do not send users to protected preview deployments.");
   }
+  if (!groups.publicDemoConfigured) warnings.push("PUBLIC_DEMO_ENABLED is not explicitly set. Set it to false for production unless the public demo is intentional.");
+  if (productionPublicDemoWarning()) warnings.push("PUBLIC_DEMO_ENABLED is true in a production-like environment. Keep it intentional, labeled, and monitored.");
   if (!groups.billing) warnings.push("Stripe checkout and billing portal remain in setup mode.");
   if (!groups.email) warnings.push("Team invites and outbound email use fallback links/logging until Resend is configured.");
   if (!groups.sms) warnings.push("SMS is logged only until Twilio credentials and a sending number are configured.");
@@ -966,6 +1785,25 @@ function launchWarnings(groups) {
 function looksLikePreviewUrl(value) {
   const text = cleanText(value);
   return Boolean(text && /\.vercel\.app/i.test(text) && !/kirahome\.org/i.test(text));
+}
+
+function publicDemoIsEnabled() {
+  return process.env.PUBLIC_DEMO_ENABLED !== "false";
+}
+
+function productionPublicDemoWarning() {
+  const mode = cleanText(process.env.APP_MODE || process.env.VERCEL_ENV || "");
+  return publicDemoIsEnabled() && ["beta", "production"].includes(mode);
+}
+
+function isLiveLikeMode() {
+  const mode = cleanText(process.env.APP_MODE || process.env.VERCEL_ENV || "");
+  return ["beta", "production"].includes(mode);
+}
+
+function readinessScore(items) {
+  const checks = items.map(Boolean);
+  return Math.round((checks.filter(Boolean).length / checks.length) * 100);
 }
 
 async function syncStripeSubscription(subscription, override = {}) {
@@ -1209,12 +2047,16 @@ async function fetchGoogleProfile(accessToken) {
 
 async function saveGoogleCalendarConnection(connection) {
   if (!hasSupabaseServiceConfig()) throwInputError("Supabase service role is required for calendar token storage.");
+  assertGoogleTokenEncryptionConfigured();
   const expiresAt = connection.expiresIn
     ? new Date(Date.now() + Math.max(0, Number(connection.expiresIn) - 60) * 1000).toISOString()
     : null;
 
   const existing = await loadGoogleCalendarConnection(connection.workspaceId);
-  const refreshToken = cleanText(connection.refreshToken || existing?.refresh_token);
+  const existingRefreshToken = decryptGoogleToken(existing, "refresh") || cleanText(existing?.refresh_token);
+  const refreshToken = cleanText(connection.refreshToken || existingRefreshToken);
+  const accessTokenFields = encryptedGoogleTokenFields("access_token", connection.accessToken);
+  const refreshTokenFields = encryptedGoogleTokenFields("refresh_token", refreshToken);
   await supabaseRequest("calendar_connections?on_conflict=workspace_id", {
     method: "POST",
     body: [
@@ -1223,8 +2065,11 @@ async function saveGoogleCalendarConnection(connection) {
         provider: "google",
         google_account_email: cleanEmail(connection.googleAccountEmail),
         calendar_id: "primary",
-        access_token: cleanText(connection.accessToken),
-        refresh_token: refreshToken,
+        access_token: "",
+        refresh_token: "",
+        ...accessTokenFields,
+        ...refreshTokenFields,
+        token_key_version: googleTokenKeyVersion(),
         scope: cleanText(connection.scope),
         expires_at: expiresAt,
         status: "connected",
@@ -1251,8 +2096,10 @@ async function loadGoogleCalendarConnection(workspaceId) {
 
 async function validGoogleAccessToken(connection) {
   const expiresAt = new Date(connection.expires_at || 0).getTime();
-  if (connection.access_token && expiresAt - Date.now() > 2 * 60 * 1000) return connection.access_token;
-  if (!connection.refresh_token) throwInputError("Google Calendar refresh token is missing. Reconnect Calendar.");
+  const accessToken = decryptGoogleToken(connection, "access") || cleanText(connection.access_token);
+  const refreshToken = decryptGoogleToken(connection, "refresh") || cleanText(connection.refresh_token);
+  if (accessToken && expiresAt - Date.now() > 2 * 60 * 1000) return accessToken;
+  if (!refreshToken) throwInputError("Google Calendar refresh token is missing. Reconnect Calendar.");
 
   const response = await fetchWithTimeout("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -1260,7 +2107,7 @@ async function validGoogleAccessToken(connection) {
     body: new URLSearchParams({
       client_id: process.env.GOOGLE_CALENDAR_CLIENT_ID,
       client_secret: process.env.GOOGLE_CALENDAR_CLIENT_SECRET,
-      refresh_token: connection.refresh_token,
+      refresh_token: refreshToken,
       grant_type: "refresh_token",
     }),
   });
@@ -1274,11 +2121,84 @@ async function validGoogleAccessToken(connection) {
     workspaceId: connection.workspace_id,
     googleAccountEmail: connection.google_account_email,
     accessToken: data.access_token,
-    refreshToken: connection.refresh_token,
+    refreshToken,
     expiresIn: data.expires_in,
     scope: data.scope || connection.scope,
   });
   return data.access_token;
+}
+
+function hasStoredGoogleTokens(connection) {
+  return Boolean(
+    connection &&
+      (connection.refresh_token_ciphertext ||
+        connection.access_token_ciphertext ||
+        connection.refresh_token ||
+        connection.access_token),
+  );
+}
+
+function assertGoogleTokenEncryptionConfigured() {
+  if (!googleTokenKey()) {
+    throwHttpError(
+      503,
+      "GOOGLE_TOKEN_ENCRYPTION_REQUIRED",
+      "Google Calendar token encryption is not configured. Set GOOGLE_TOKEN_ENCRYPTION_KEY before connecting calendars.",
+    );
+  }
+}
+
+function encryptedGoogleTokenFields(prefix, value) {
+  const text = cleanText(value);
+  if (!text) {
+    return {
+      [`${prefix}_ciphertext`]: "",
+      [`${prefix}_iv`]: "",
+      [`${prefix}_tag`]: "",
+    };
+  }
+  const key = googleTokenKey();
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", key, iv);
+  const ciphertext = Buffer.concat([cipher.update(text, "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return {
+    [`${prefix}_ciphertext`]: ciphertext.toString("base64"),
+    [`${prefix}_iv`]: iv.toString("base64"),
+    [`${prefix}_tag`]: tag.toString("base64"),
+  };
+}
+
+function decryptGoogleToken(connection, type) {
+  if (!connection) return "";
+  const prefix = type === "refresh" ? "refresh_token" : "access_token";
+  const ciphertext = cleanText(connection[`${prefix}_ciphertext`]);
+  const iv = cleanText(connection[`${prefix}_iv`]);
+  const tag = cleanText(connection[`${prefix}_tag`]);
+  if (!ciphertext || !iv || !tag) return "";
+  const key = googleTokenKey();
+  if (!key) return "";
+  try {
+    const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(iv, "base64"));
+    decipher.setAuthTag(Buffer.from(tag, "base64"));
+    return Buffer.concat([decipher.update(Buffer.from(ciphertext, "base64")), decipher.final()]).toString("utf8");
+  } catch {
+    throwHttpError(500, "GOOGLE_TOKEN_DECRYPT_FAILED", "Stored Google Calendar tokens could not be decrypted.");
+  }
+}
+
+function googleTokenKey() {
+  const raw = cleanText(process.env.GOOGLE_TOKEN_ENCRYPTION_KEY);
+  if (!raw) return null;
+  const candidates = [];
+  if (/^[0-9a-f]{64}$/i.test(raw)) candidates.push(Buffer.from(raw, "hex"));
+  candidates.push(Buffer.from(raw, "base64"));
+  candidates.push(Buffer.from(raw, "utf8"));
+  return candidates.find((candidate) => candidate.length === 32) || null;
+}
+
+function googleTokenKeyVersion() {
+  return cleanText(process.env.GOOGLE_TOKEN_ENCRYPTION_KEY_VERSION || "v1");
 }
 
 async function supabaseRequest(path, { method, body, prefer } = {}) {
@@ -1307,6 +2227,7 @@ async function supabaseRequest(path, { method, body, prefer } = {}) {
     const message = data?.message || data?.hint || text || `Supabase request failed with ${response.status}.`;
     const error = new Error(message);
     error.statusCode = response.status;
+    error.code = data?.code || "SUPABASE_REQUEST_FAILED";
     throw error;
   }
 
@@ -1404,6 +2325,22 @@ function cleanUuid(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(text) ? text : "";
 }
 
+function normalizeRoleId(role) {
+  const value = cleanText(role).toLowerCase();
+  return ["owner", "admin", "manager", "member"].includes(value) ? value : "member";
+}
+
+function sanitizeRoleList(value) {
+  const roles = Array.isArray(value) ? value : [];
+  const cleaned = roles.map(normalizeRoleId).filter(Boolean);
+  return [...new Set(cleaned.length ? cleaned : ["owner", "admin", "manager"])];
+}
+
+function normalizeHiringOutcome(value) {
+  const outcome = cleanText(value).toLowerCase();
+  return ["screening", "interviewing", "offer", "hired", "not_selected", "nurture"].includes(outcome) ? outcome : "screening";
+}
+
 function cleanUrl(value, fallback) {
   const fallbackUrl = cleanText(fallback);
   const text = cleanText(value) || fallbackUrl;
@@ -1487,7 +2424,10 @@ function readRawBody(request) {
     request.on("data", (chunk) => {
       size += chunk.length;
       if (size > 1000000) {
-        reject(new Error("Request body is too large."));
+        const error = new Error("Request body is too large.");
+        error.statusCode = 413;
+        error.code = "PAYLOAD_TOO_LARGE";
+        reject(error);
         request.destroy();
         return;
       }
@@ -1500,16 +2440,31 @@ function readRawBody(request) {
 
 function sendJson(response, statusCode, payload) {
   response.writeHead(statusCode, {
-    "access-control-allow-origin": process.env.APP_BASE_URL || "*",
+    "access-control-allow-origin": process.env.APP_BASE_URL || "http://localhost:4173",
     "access-control-allow-methods": "POST, OPTIONS",
-    "access-control-allow-headers": "content-type, stripe-signature",
+    "access-control-allow-headers": "authorization, content-type, stripe-signature",
     "content-security-policy": "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
+    "cache-control": "no-store",
     "referrer-policy": "strict-origin-when-cross-origin",
     "x-content-type-options": "nosniff",
     "x-frame-options": "DENY",
     "content-type": "application/json; charset=utf-8",
   });
   response.end(statusCode === 204 ? "" : JSON.stringify(payload));
+}
+
+function sendError(response, error) {
+  const statusCode = Number(error.statusCode || error.status || 500);
+  const safeStatus = statusCode >= 400 && statusCode < 600 ? statusCode : 500;
+  const code = cleanText(error.code || (safeStatus === 500 ? "INTERNAL_ERROR" : "REQUEST_FAILED"));
+  const message =
+    safeStatus === 500 && process.env.APP_MODE === "production"
+      ? "The request could not be completed."
+      : error.message || "The request could not be completed.";
+  sendJson(response, safeStatus, {
+    error: { code, message },
+    message,
+  });
 }
 
 function sendRedirectHtml(response, targetUrl, message) {
