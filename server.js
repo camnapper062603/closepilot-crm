@@ -68,6 +68,18 @@ createServer((request, response) => {
     return;
   }
 
+  if (url.pathname.startsWith("/api/")) {
+    response.writeHead(404, {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
+      "content-security-policy": "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
+      "x-content-type-options": "nosniff",
+      "x-frame-options": "DENY",
+    });
+    response.end(JSON.stringify({ error: { code: "API_ROUTE_NOT_FOUND", message: "API route not found." } }));
+    return;
+  }
+
   const routeAliases = {
     "/recruiting": "/recruiting.html",
     "/lead-generator": "/SafeLeadGenerator-Standalone.html",

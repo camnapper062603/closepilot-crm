@@ -41,6 +41,22 @@ const recruitingEndpoints = new Set([
   "/api/recruiting/crm-handoff",
 ]);
 
+export const closePilotApiRoutes = [
+  { method: "POST", route: "/api/stripe/create-checkout-session" },
+  { method: "POST", route: "/api/stripe/create-portal-session" },
+  { method: "POST", route: "/api/stripe/webhook" },
+  { method: "POST", route: "/api/invites/send" },
+  { method: "POST", route: "/api/invites/accept" },
+  { method: "POST", route: "/api/google/calendar/connect" },
+  { method: "GET", route: "/api/google/calendar/callback" },
+  { method: "POST", route: "/api/google/calendar/status" },
+  { method: "POST", route: "/api/google/calendar/create-event" },
+  { method: "POST", route: "/api/system/readiness" },
+  ...[...recruitingEndpoints].map((route) => ({ method: "POST", route })),
+  ...[...aiEndpoints].map((route) => ({ method: "POST", route })),
+  ...[...communicationEndpoints].map((route) => ({ method: "POST", route })),
+].sort((left, right) => `${left.method} ${left.route}`.localeCompare(`${right.method} ${right.route}`));
+
 const readinessChecks = [
   { key: "supabaseUrl", label: "Supabase project URL", env: "SUPABASE_URL", public: true },
   { key: "supabaseAnonKey", label: "Supabase anon or publishable key", env: "SUPABASE_ANON_KEY", public: true },
@@ -91,8 +107,14 @@ export function isClosePilotApiPath(pathname) {
 
 export async function handleClosePilotApiRequest(request, response) {
   const url = new URL(request.url || "/", `http://${request.headers.host || "localhost"}`);
+  response.__request = request;
+  response.__requestId = requestIdFor(request);
 
   if (request.method === "OPTIONS") {
+    if (!isCorsOriginAllowed(request)) {
+      sendJson(response, 403, { error: { code: "CORS_FORBIDDEN", message: "Origin is not allowed." }, message: "Origin is not allowed." });
+      return;
+    }
     sendJson(response, 204, {});
     return;
   }
@@ -352,7 +374,7 @@ async function handleCreateCheckoutSession(request, response, payload) {
   const auth = await requireAuthenticatedRequest(request);
   const access = await requireWorkspaceAccess(auth, payload.workspaceId, { allowedRoles: ["owner", "admin"] });
   const stripe = getStripeClient();
-  const planId = normalizePlanId(payload.plan);
+  const planId = assertRequestedPlanId(payload.plan);
   const priceId = stripe ? await resolveStripePlanPriceId(stripe, planId) : "";
   const workspaceId = access.workspaceId;
   const baseUrl = appBaseUrl(request);
@@ -468,8 +490,8 @@ async function handleSendInvite(request, response, payload) {
   const workspaceId = access.workspaceId;
   const inviteId = cleanText(payload.inviteId);
   const email = cleanEmail(payload.email);
-  const role = ["admin", "manager", "member"].includes(payload.role) ? payload.role : "member";
-  const teamFunction = ["dialer", "setter", "closer"].includes(payload.teamFunction) ? payload.teamFunction : "";
+  const role = cleanText(payload.role || "member").toLowerCase();
+  const teamFunction = cleanText(payload.teamFunction).toLowerCase();
   const workspaceName = cleanText(payload.workspaceName) || "Kira Home";
   const inviterEmail = auth.email || process.env.SUPPORT_EMAIL || "support@kira.local";
   const productUrl = cleanUrl(payload.productUrl, appBaseUrl(request));
@@ -479,6 +501,13 @@ async function handleSendInvite(request, response, payload) {
     sendJson(response, 400, { error: "Invite email is required." });
     return;
   }
+  if (!["admin", "manager", "member"].includes(role)) {
+    throwHttpError(400, "INVALID_INVITE_ROLE", "Invite role must be admin, manager, or member.");
+  }
+  if (teamFunction && !["dialer", "setter", "closer"].includes(teamFunction)) {
+    throwHttpError(400, "INVALID_TEAM_FUNCTION", "Team function must be dialer, setter, closer, or blank.");
+  }
+  await assertInviteCapacityAndUniqueness(workspaceId, email);
 
   const token = randomBytes(32).toString("hex");
   const inviteTokenHash = hashToken(token);
@@ -578,13 +607,11 @@ async function handleAcceptInvite(request, response, payload) {
   const tokenHash = hashToken(token);
   const invitation = await findInvitationByTokenHash(tokenHash);
   if (!invitation) {
-    sendJson(response, 404, { error: "Invite link is invalid or expired." });
-    return;
+    throwHttpError(404, "INVITE_NOT_FOUND", "Invite link is invalid or expired.");
   }
 
   if (invitation.email.toLowerCase() !== userEmail.toLowerCase()) {
-    sendJson(response, 403, { error: "This invite belongs to a different email address." });
-    return;
+    throwHttpError(403, "INVITE_EMAIL_MISMATCH", "This invite belongs to a different email address.");
   }
 
   await upsertWorkspaceMember({
@@ -807,8 +834,15 @@ async function requireAuthenticatedRequest(request) {
 
 function bearerTokenFromRequest(request) {
   const header = request.headers.authorization || request.headers.Authorization || "";
+  if (Array.isArray(header) || String(header).includes(",")) {
+    throwHttpError(401, "AUTH_AMBIGUOUS", "Authorization header is ambiguous.");
+  }
+  if (!header) return "";
   const match = String(header).match(/^Bearer\s+(.+)$/i);
-  return cleanText(match?.[1]);
+  if (!match || !cleanText(match[1])) {
+    throwHttpError(401, "AUTH_MALFORMED", "Authorization header must use Bearer authentication.");
+  }
+  return cleanText(match[1]);
 }
 
 function assertSupabaseAuthConfig() {
@@ -879,6 +913,44 @@ function throwHttpError(statusCode, code, message) {
   error.statusCode = statusCode;
   error.code = code;
   throw error;
+}
+
+export function redactSecurityLog(value) {
+  const secretKeys = [
+    "authorization",
+    "access_token",
+    "refresh_token",
+    "token",
+    "token_hash",
+    "invite_token",
+    "temporary_password",
+    "password",
+    "secret",
+    "api_key",
+    "apikey",
+    "auth_token",
+    "webhook_secret",
+    "encryption_key",
+    "tag",
+  ];
+  const redactText = (text) =>
+    String(text)
+      .replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, "Bearer [redacted]")
+      .replace(/\b(sk_live|sk_test|rk_live|SG|xox[baprs]|AIza|ya29|sb_secret|sb_publishable)_[A-Za-z0-9._-]+/g, "[redacted-secret]")
+      .replace(/\b[A-Za-z0-9+/]{32,}={0,2}\b/g, "[redacted-token]");
+
+  const walk = (entry, key = "") => {
+    if (entry === null || entry === undefined) return entry;
+    if (secretKeys.some((secretKey) => key.toLowerCase().includes(secretKey))) return "[redacted]";
+    if (typeof entry === "string") return redactText(entry);
+    if (Array.isArray(entry)) return entry.map((item) => walk(item, key));
+    if (typeof entry === "object") {
+      return Object.fromEntries(Object.entries(entry).map(([childKey, childValue]) => [childKey, walk(childValue, childKey)]));
+    }
+    return entry;
+  };
+
+  return walk(value);
 }
 
 function buildRuleBasedAiResponse(intent, payload = {}) {
@@ -1699,7 +1771,10 @@ async function handleRecruitingCrmHandoff(access, payload) {
 async function upsertRecruitingMemberInvitation(access, candidate, payload, now) {
   const email = cleanEmail(candidate.email);
   if (!email) throwInputError("Candidate email is required before converting to a team member.");
-  const role = ["admin", "manager", "member"].includes(cleanText(payload.memberRole)) ? cleanText(payload.memberRole) : "member";
+  const role = cleanText(payload.memberRole || "member").toLowerCase();
+  if (!["admin", "manager", "member"].includes(role)) {
+    throwHttpError(400, "INVALID_MEMBER_ROLE", "Converted team member role must be admin, manager, or member.");
+  }
   const rows = await supabaseRequest("workspace_invitations?on_conflict=workspace_id,email", {
     method: "POST",
     body: [
@@ -1858,6 +1933,34 @@ async function loadSubscriptionFromSupabase(workspaceId) {
     { method: "GET" },
   );
   return Array.isArray(rows) ? rows[0] || null : null;
+}
+
+async function assertInviteCapacityAndUniqueness(workspaceId, email) {
+  if (!hasSupabaseServiceConfig() || !workspaceId || !email) return;
+  const [subscription, members, pendingInvites] = await Promise.all([
+    loadSubscriptionFromSupabase(workspaceId),
+    supabaseRequest(`workspace_members?workspace_id=eq.${encodeURIComponent(workspaceId)}&select=user_id`, { method: "GET" }),
+    supabaseRequest(
+      `workspace_invitations?workspace_id=eq.${encodeURIComponent(workspaceId)}&email=eq.${encodeURIComponent(
+        email,
+      )}&status=in.(pending,accepted)&select=id,email,status`,
+      { method: "GET" },
+    ),
+  ]);
+  if (Array.isArray(pendingInvites) && pendingInvites.length) {
+    throwHttpError(409, "INVITE_ALREADY_EXISTS", "An active invite already exists for this email.");
+  }
+
+  const seatLimit = Number(subscription?.seat_limit || planCatalog.starter.seatLimit);
+  const activeMemberCount = Array.isArray(members) ? members.length : 0;
+  const pendingSeatRows = await supabaseRequest(
+    `workspace_invitations?workspace_id=eq.${encodeURIComponent(workspaceId)}&status=eq.pending&select=id`,
+    { method: "GET" },
+  );
+  const pendingSeatCount = Array.isArray(pendingSeatRows) ? pendingSeatRows.length : 0;
+  if (seatLimit > 0 && activeMemberCount + pendingSeatCount >= seatLimit) {
+    throwHttpError(409, "SEAT_LIMIT_REACHED", "This workspace has reached its current seat limit.");
+  }
 }
 
 async function updateInviteTokenInSupabase({
@@ -2269,6 +2372,14 @@ function normalizePlanId(plan) {
   return planCatalog[plan] ? plan : "starter";
 }
 
+function assertRequestedPlanId(plan) {
+  const planId = cleanText(plan || "starter").toLowerCase();
+  if (!planCatalog[planId]) {
+    throwHttpError(400, "INVALID_PLAN", "Billing plan must be starter, growth, or scale.");
+  }
+  return planId;
+}
+
 function normalizeSubscriptionStatus(status) {
   if (status === "trialing") return "trialing";
   if (status === "canceled" || status === "incomplete_expired") return "canceled";
@@ -2375,10 +2486,7 @@ function assertRateLimit(request, pathname) {
   const limited = pathname.startsWith("/api/ai/") || pathname.startsWith("/api/communications/");
   const max = limited ? 24 : 80;
   const windowMs = 60000;
-  const identity =
-    request.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
-    request.socket?.remoteAddress ||
-    "local";
+  const identity = requestRateLimitIdentity(request);
   const key = `${pathname}:${identity}`;
   const now = Date.now();
   const bucket = rateLimitBuckets.get(key) || { count: 0, resetAt: now + windowMs };
@@ -2391,8 +2499,18 @@ function assertRateLimit(request, pathname) {
   if (bucket.count > max) {
     const error = new Error("Too many requests. Try again in a minute.");
     error.statusCode = 429;
+    error.code = "RATE_LIMITED";
+    error.retryAfterSeconds = Math.max(1, Math.ceil((bucket.resetAt - now) / 1000));
     throw error;
   }
+}
+
+function requestRateLimitIdentity(request) {
+  if (process.env.TRUST_PROXY_HEADERS === "true") {
+    const forwardedFor = request.headers["x-forwarded-for"]?.split(",")[0]?.trim();
+    if (forwardedFor) return forwardedFor;
+  }
+  return request.socket?.remoteAddress || "local";
 }
 
 async function fetchWithTimeout(url, options = {}, timeoutMs = 12000) {
@@ -2406,6 +2524,10 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 12000) {
 }
 
 function readJsonBody(request) {
+  const contentType = cleanText(request.headers["content-type"]).toLowerCase();
+  if (contentType && !contentType.includes("application/json")) {
+    throwHttpError(415, "UNSUPPORTED_MEDIA_TYPE", "JSON requests must use application/json.");
+  }
   return readRawBody(request).then((body) => {
     try {
       return body.length ? JSON.parse(body.toString("utf8")) : {};
@@ -2439,17 +2561,24 @@ function readRawBody(request) {
 }
 
 function sendJson(response, statusCode, payload) {
-  response.writeHead(statusCode, {
-    "access-control-allow-origin": process.env.APP_BASE_URL || "http://localhost:4173",
+  const request = response.__request || { headers: {} };
+  const headers = {
     "access-control-allow-methods": "POST, OPTIONS",
     "access-control-allow-headers": "authorization, content-type, stripe-signature",
     "content-security-policy": "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
     "cache-control": "no-store",
+    "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=()",
     "referrer-policy": "strict-origin-when-cross-origin",
     "x-content-type-options": "nosniff",
     "x-frame-options": "DENY",
+    "x-request-id": response.__requestId || requestIdFor(request),
     "content-type": "application/json; charset=utf-8",
-  });
+    ...(response.__extraHeaders || {}),
+  };
+  const allowedOrigin = allowedCorsOrigin(request);
+  if (allowedOrigin) headers["access-control-allow-origin"] = allowedOrigin;
+  if (isLiveLikeMode()) headers["strict-transport-security"] = "max-age=31536000; includeSubDomains";
+  response.writeHead(statusCode, headers);
   response.end(statusCode === 204 ? "" : JSON.stringify(payload));
 }
 
@@ -2461,10 +2590,43 @@ function sendError(response, error) {
     safeStatus === 500 && process.env.APP_MODE === "production"
       ? "The request could not be completed."
       : error.message || "The request could not be completed.";
+  if (error.retryAfterSeconds) response.__extraHeaders = { ...(response.__extraHeaders || {}), "retry-after": String(error.retryAfterSeconds) };
   sendJson(response, safeStatus, {
     error: { code, message },
     message,
   });
+}
+
+function requestIdFor(request) {
+  const incoming = cleanText(request?.headers?.["x-request-id"]);
+  return incoming && incoming.length <= 120 ? incoming : randomBytes(12).toString("hex");
+}
+
+function allowedCorsOrigin(request) {
+  const origin = cleanText(request?.headers?.origin);
+  if (!origin) return "";
+  return isCorsOriginAllowed(request) ? origin : "";
+}
+
+function isCorsOriginAllowed(request) {
+  const origin = cleanText(request?.headers?.origin);
+  if (!origin) return true;
+  const allowed = new Set(
+    [
+      process.env.APP_BASE_URL,
+      process.env.PRODUCT_URL,
+      "https://kirahome.org",
+      "https://www.kirahome.org",
+      ...cleanText(process.env.ALLOWED_API_ORIGINS).split(","),
+    ]
+      .map((value) => cleanText(value).replace(/\/$/, ""))
+      .filter(Boolean),
+  );
+  if (!isLiveLikeMode()) {
+    allowed.add("http://localhost:4173");
+    allowed.add("http://127.0.0.1:4173");
+  }
+  return allowed.has(origin.replace(/\/$/, ""));
 }
 
 function sendRedirectHtml(response, targetUrl, message) {

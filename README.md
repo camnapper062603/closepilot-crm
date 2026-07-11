@@ -34,6 +34,8 @@ Local `npm start` and `npm run build` load `.env.local` first and `.env` second.
 
 ```bash
 npm test
+npm run test:security
+npm run release:check
 ```
 
 ## Company Beta Mode
@@ -101,6 +103,29 @@ http://localhost:4173/lead-generator?demo=1
 ```
 
 See `KIRA_RECRUIT_PRODUCTION_STATUS.md` for Kira Recruit live/demo boundaries, add-on gating, provider setup requirements, and beta-safe customer workflows.
+
+## Security And Release Gates
+
+Before beta deploys, run:
+
+```bash
+npm run release:check
+```
+
+After deploy, run:
+
+```bash
+PRODUCTION_SMOKE_URL=https://your-production-domain npm run test:production-smoke
+```
+
+Live Supabase verification is read-only:
+
+```bash
+npm run security:verify-migration -- --json
+npm run security:check-plaintext-tokens -- --json
+```
+
+See `docs/SECURITY_TESTING.md`, `docs/DEPLOYMENT_CHECKLIST.md`, and `docs/ROUTE_PERMISSION_MATRIX.md`.
 
 ## Mobile App Store Packaging
 

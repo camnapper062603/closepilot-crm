@@ -53,8 +53,33 @@ Run without `--clear-plaintext` first, verify calendar status/events, then rerun
 
 ```bash
 npm run build
+npm run test:route-inventory
 npm run test:security
+npm run test:browser-smoke
+npm run security:scan-secrets
 npm test
 ```
 
-Protected endpoints should return `401 AUTH_REQUIRED` without a bearer token. Role and tenant checks are covered by `tests/security/api-authz.test.mjs`.
+Protected endpoints should return `401 AUTH_REQUIRED` without a bearer token. Role and tenant checks are covered by the grouped suites under `tests/security/`.
+
+## Release Gates
+
+```bash
+npm run release:check
+PRODUCTION_SMOKE_URL=https://your-domain npm run test:production-smoke
+npm run security:verify-migration -- --json
+```
+
+`docs/route-permissions.json` is the machine-readable endpoint inventory. `npm run test:route-inventory` fails if `api-handlers.js` and the documented matrix drift.
+
+## Logging And Redaction
+
+Use `redactSecurityLog()` before logging request context, provider errors, or backend diagnostics that might include headers, tokens, passwords, API keys, webhook secrets, Google tokens, or invite tokens. Security tests assert recursive redaction for common provider secret shapes.
+
+## More Detail
+
+- `docs/SECURITY_TESTING.md`
+- `docs/DEPLOYMENT_CHECKLIST.md`
+- `docs/SUPABASE_SECURITY_VERIFICATION.md`
+- `docs/GOOGLE_TOKEN_MIGRATION.md`
+- `docs/ROUTE_PERMISSION_MATRIX.md`
