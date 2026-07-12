@@ -272,6 +272,12 @@ Local demo mode is still fully supported:
 - Demo/fallback: AI when `OPENAI_API_KEY` is missing, SMS/email when Twilio/provider env vars are missing, billing when Stripe env vars are missing, calendar when OAuth is missing.
 - Manual/beta: job board posting, payroll provider payout, lead enrichment/skip trace vendors, DNC vendor contracts, add-on checkout purchase flows, compliance/legal review.
 
+## Command Centers
+
+- Customer Daily Command Center: visit `#daily-command` or `/daily-command-center`. It uses authenticated, tenant-scoped Supabase data when live and falls back to clearly labeled local/demo calculations when the backend is unavailable.
+- Founder Launch Command Center: visit `/launch-command-center`. It requires a signed-in Supabase user plus server-side internal access through `INTERNAL_ADMIN_EMAILS`; the allowlist is never exposed to the browser.
+- See `docs/DAILY_COMMAND_CENTER.md`, `docs/LAUNCH_COMMAND_CENTER.md`, `docs/LAUNCH_SCORING.md`, and `docs/BETA_CERTIFICATION.md`.
+
 ## Production Deployment Checklist
 
 For Vercel:
@@ -313,6 +319,7 @@ Before launch:
    - `RESEND_API_KEY`
    - `INVITE_FROM_EMAIL`
    - `SUPPORT_EMAIL`
+   - `INTERNAL_ADMIN_EMAILS`
 7. Create Stripe products/prices and connect the webhook endpoint at `/api/stripe/webhook`.
 8. Verify the Resend sender domain and confirm `INVITE_FROM_EMAIL` can send invites.
 9. Enable Google Calendar API, add OAuth credentials, rerun `supabase-schema.sql`, and connect Calendar from the Calendar page.
@@ -346,7 +353,8 @@ This build includes:
 - Stripe checkout, customer portal, and webhook backend endpoints with demo fallback
 - Resend-ready team invite delivery with secure invite token fallback
 - Google Calendar OAuth connection and appointment event sync
-- Launch readiness checklist and admin audit trail
+- Founder Launch Command Center, launch scoring, beta checklist, blocker tracking, provider status, and admin audit trail
+- Customer Daily Command Center with live tenant-scoped priorities, goals, pipeline health, schedule, and role-aware team performance
 - Supabase schema and RLS policies for CRM data, subscriptions, and invitations
 - CRM pipeline, contacts, tasks, automations, activity, CSV import/export, backups, revenue goals, and channel reporting
 - Standalone Kira Recruit add-on for job setup, job-board connector metadata, applicant intake, interview booking, onboarding packet staging, payroll workflow staging, and live CRM candidate handoff

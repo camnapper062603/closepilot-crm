@@ -8,5 +8,9 @@ window.ClosePilotConfig = {
   "supportEmail": "support@kira.local",
   "inviteFromEmail": "",
   "productUrl": "",
-  "appBaseUrl": ""
+  "appBaseUrl": "",
+  "featureFlags": {
+    "launchCommandCenter": true,
+    "dailyCommandCenter": true
+  }
 };

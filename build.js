@@ -12,6 +12,10 @@ const config = {
   inviteFromEmail: process.env.INVITE_FROM_EMAIL || "",
   productUrl: process.env.PRODUCT_URL || "",
   appBaseUrl: process.env.APP_BASE_URL || "",
+  featureFlags: {
+    launchCommandCenter: process.env.FEATURE_LAUNCH_COMMAND_CENTER !== "false",
+    dailyCommandCenter: process.env.FEATURE_DAILY_COMMAND_CENTER !== "false",
+  },
 };
 
 const configText = `window.ClosePilotConfig = ${JSON.stringify(config, null, 2)};\n`;

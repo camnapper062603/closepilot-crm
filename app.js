@@ -816,6 +816,8 @@ let contactSort = "recent";
 let selectedContactIds = new Set();
 let selectedTaskIds = new Set();
 let activePage = "pipeline";
+let customerDailyCommandState = { status: "idle", data: null, error: "" };
+let launchCommandState = { status: "idle", data: null, error: "" };
 let editingAutomationTemplateId = null;
 let selectedWorkflowId = null;
 let selectedWorkflowNodeId = null;
@@ -1141,6 +1143,8 @@ const isBetaMode = appMode === "beta" || appMode === "production";
 const backendTimeoutMs = 12000;
 const pageTitles = {
   pipeline: "Dashboard",
+  "daily-command": "Daily Command",
+  "launch-command-center": "Launch Command Center",
   manager: "AI Sales Manager",
   contacts: "Contacts",
   recruiting: "Recruiting Inbox",
@@ -1217,15 +1221,45 @@ const demoFocusPanels = [
 
 const roleAccessCatalog = {
   owner: {
-    pages: ["pipeline", "manager", "contacts", "recruiting", "automation", "tasks", "activity", "communications", "dial", "calendar", "admin", "settings"],
+    pages: [
+      "pipeline",
+      "daily-command",
+      "launch-command-center",
+      "manager",
+      "contacts",
+      "recruiting",
+      "automation",
+      "tasks",
+      "activity",
+      "communications",
+      "dial",
+      "calendar",
+      "admin",
+      "settings",
+    ],
     restrictedActions: [],
   },
   admin: {
-    pages: ["pipeline", "manager", "contacts", "recruiting", "automation", "tasks", "activity", "communications", "dial", "calendar", "admin", "settings"],
+    pages: [
+      "pipeline",
+      "daily-command",
+      "launch-command-center",
+      "manager",
+      "contacts",
+      "recruiting",
+      "automation",
+      "tasks",
+      "activity",
+      "communications",
+      "dial",
+      "calendar",
+      "admin",
+      "settings",
+    ],
     restrictedActions: [],
   },
   manager: {
-    pages: ["pipeline", "manager", "contacts", "automation", "tasks", "activity", "communications", "dial", "calendar", "settings"],
+    pages: ["pipeline", "daily-command", "manager", "contacts", "automation", "tasks", "activity", "communications", "dial", "calendar", "settings"],
     restrictedActions: [
       "billing",
       "team",
@@ -1240,7 +1274,7 @@ const roleAccessCatalog = {
     ],
   },
   member: {
-    pages: ["pipeline", "contacts", "tasks", "communications", "dial", "calendar", "settings"],
+    pages: ["pipeline", "daily-command", "contacts", "tasks", "communications", "dial", "calendar", "settings"],
     restrictedActions: [
       "billing",
       "team",
@@ -1289,6 +1323,51 @@ leadForm.addEventListener("submit", (event) => {
 });
 
 document.querySelector("#createLeadButton").addEventListener("click", createLeadFromForm);
+
+document.querySelector("#refreshDailyCommandButton")?.addEventListener("click", () => {
+  loadCustomerDailyCommand({ force: true });
+});
+
+document.querySelector("#refreshLaunchCommandButton")?.addEventListener("click", () => {
+  loadLaunchCommandCenter({ force: true });
+});
+
+document.querySelector("#launchBlockerForm")?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const titleInput = document.querySelector("#launchBlockerTitle");
+  const severityInput = document.querySelector("#launchBlockerSeverity");
+  const title = titleInput?.value.trim();
+  if (!title) return;
+  await postLaunchCommandMutation("/api/launch-command-center/blockers", {
+    mutation: "create",
+    title,
+    severity: severityInput?.value || "medium",
+    status: "open",
+  });
+  if (titleInput) titleInput.value = "";
+});
+
+document.querySelector("#launchBetaCompanyForm")?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const nameInput = document.querySelector("#launchBetaCompanyName");
+  const statusInput = document.querySelector("#launchBetaCompanyStatus");
+  const companyName = nameInput?.value.trim();
+  if (!companyName) return;
+  await postLaunchCommandMutation("/api/launch-command-center/beta-companies", {
+    companyName,
+    status: statusInput?.value || "candidate",
+  });
+  if (nameInput) nameInput.value = "";
+});
+
+document.querySelector("#launchChecklistCommand")?.addEventListener("change", async (event) => {
+  const checkbox = event.target.closest("[data-launch-checklist-key]");
+  if (!checkbox) return;
+  await postLaunchCommandMutation("/api/launch-command-center/checklist", {
+    itemKey: checkbox.dataset.launchChecklistKey,
+    completed: checkbox.checked,
+  });
+});
 
 taskForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -1689,7 +1768,7 @@ async function startPublicDemoWorkspace(options = {}) {
     url.searchParams.set("demo", "1");
     history.replaceState(null, "", `${url.pathname}${url.search}#pipeline`);
   }
-  if (options.fromBoot && url.searchParams.get("demo") === "1" && !window.location.hash) {
+  if (options.fromBoot && url.searchParams.get("demo") === "1" && !window.location.hash && !routeNameFromPathname()) {
     history.replaceState(null, "", `${url.pathname}${url.search}#pipeline`);
   }
   routeFromHash();
@@ -2064,9 +2143,17 @@ function render() {
 }
 
 function routeFromHash() {
-  const requested = window.location.hash.replace("#", "");
+  const requested = window.location.hash.replace("#", "") || routeNameFromPathname();
   const preferred = preferredLandingPage();
   activePage = pageTitles[requested] ? requested : pageTitles[preferred] ? preferred : "pipeline";
+}
+
+function routeNameFromPathname() {
+  const pathRoutes = {
+    "/daily-command-center": "daily-command",
+    "/launch-command-center": "launch-command-center",
+  };
+  return pathRoutes[window.location.pathname] || "";
 }
 
 function preferredLandingPage() {
@@ -2146,6 +2233,8 @@ function renderRoute() {
   document.body.dataset.activePage = activePage;
   pageTitle.textContent = pageTitles[activePage] || pageTitles.pipeline;
   applyContactPageMode();
+  if (activePage === "daily-command") renderCustomerDailyCommandPage();
+  if (activePage === "launch-command-center") renderLaunchCommandCenterPage();
   if (activePage === "recruiting") renderRecruitingInbox();
   if (window.location.hash !== `#${activePage}`) {
     history.replaceState(null, "", `#${activePage}`);
@@ -2638,6 +2727,566 @@ function dailyCommandStats() {
     closeRate,
     winRate,
   };
+}
+
+function renderCustomerDailyCommandPage() {
+  if (customerDailyCommandState.status === "idle") {
+    loadCustomerDailyCommand();
+  }
+
+  const mode = document.querySelector("#customerDailyCommandMode");
+  const subtitle = document.querySelector("#customerDailyCommandSubtitle");
+  if (!mode || !subtitle) return;
+
+  if (customerDailyCommandState.status === "loading") {
+    mode.textContent = "Loading";
+    subtitle.textContent = "Checking the live workspace command feed.";
+    setCommandEmpty("#customerDailyPriorities", "Loading daily priorities.");
+    return;
+  }
+
+  if (customerDailyCommandState.status === "error") {
+    mode.textContent = "Needs setup";
+    subtitle.textContent = customerDailyCommandState.error || "Daily Command Center is unavailable.";
+    renderCustomerDailyCommandData(buildBrowserDailyCommandData("local-fallback"));
+    return;
+  }
+
+  renderCustomerDailyCommandData(customerDailyCommandState.data || buildBrowserDailyCommandData(publicDemoMode ? "demo" : "local"));
+}
+
+async function loadCustomerDailyCommand(options = {}) {
+  if (customerDailyCommandState.status === "loading") return;
+  if (!options.force && customerDailyCommandState.status === "ready") {
+    renderCustomerDailyCommandPage();
+    return;
+  }
+
+  customerDailyCommandState = { status: "loading", data: null, error: "" };
+  renderCustomerDailyCommandPage();
+  try {
+    if (publicDemoMode || !hasSupabaseConfig || !store?.workspaceId?.()) {
+      customerDailyCommandState = {
+        status: "ready",
+        data: buildBrowserDailyCommandData(publicDemoMode ? "demo" : "local"),
+        error: "",
+      };
+    } else {
+      const data = await postBackendJson("/api/dashboard/daily-command-center", workspaceApiContext());
+      customerDailyCommandState = { status: "ready", data, error: "" };
+    }
+  } catch (error) {
+    customerDailyCommandState = {
+      status: "error",
+      data: buildBrowserDailyCommandData("local-fallback"),
+      error: error.message || "Daily Command Center could not load.",
+    };
+  }
+  if (activePage === "daily-command") renderCustomerDailyCommandPage();
+}
+
+function renderCustomerDailyCommandData(data) {
+  const mode = document.querySelector("#customerDailyCommandMode");
+  const subtitle = document.querySelector("#customerDailyCommandSubtitle");
+  const modeLabel = data.demo || data.mode === "demo" ? "Demo/local" : data.mode === "local-fallback" ? "Local fallback" : "Live Supabase";
+  mode.textContent = modeLabel;
+  subtitle.textContent =
+    data.mode === "local-fallback"
+      ? "Live command feed is unavailable, so this page is showing local workspace calculations."
+      : "Live workspace data, prioritized for the next best action.";
+
+  renderCommandPriorities("#customerDailyPriorities", data.priorities || []);
+  renderDailyGoals(data.goals || {});
+  renderCommandKpis("#customerDailyKpis", data.kpis || []);
+  renderDailyToday(data.today || {});
+  renderDailyPipelineHealth(data.pipelineHealth || {});
+  renderDailyTeamPerformance(data.teamPerformance || {});
+  renderDailyActivity(data.activity || {});
+}
+
+function buildBrowserDailyCommandData(mode = "local") {
+  const stats = dailyCommandStats();
+  const role = currentAccessRole();
+  const goals = dailyGoalPreferences();
+  const priorities = [];
+  if (stats.tasksDueToday.length) {
+    priorities.push({
+      key: "tasks",
+      label: "Finish due follow-ups",
+      urgency: "high",
+      count: stats.tasksDueToday.length,
+      reason: "Due tasks are already in today’s CRM queue.",
+      action: "Open tasks",
+    });
+  }
+  if (stats.hotLeads.length) {
+    priorities.push({
+      key: "hot-leads",
+      label: "Call highest-intent leads",
+      urgency: "high",
+      count: stats.hotLeads.length,
+      reason: `${stats.hotLeads[0].name} has the highest open lead score.`,
+      action: "Open pipeline",
+    });
+  }
+  if (stats.appointmentsToday.length) {
+    priorities.push({
+      key: "appointments",
+      label: "Prepare appointments",
+      urgency: "medium",
+      count: stats.appointmentsToday.length,
+      reason: "Booked appointments need notes and next steps before the meeting.",
+      action: "Open calendar",
+    });
+  }
+  if (stats.dealsAtRisk.length) {
+    priorities.push({
+      key: "risk",
+      label: "Review at-risk deals",
+      urgency: "medium",
+      count: stats.dealsAtRisk.length,
+      reason: "Low-score or stale deals need a decision.",
+      action: "Open pipeline health",
+    });
+  }
+  if (!priorities.length) {
+    priorities.push({
+      key: "steady",
+      label: "Create new momentum",
+      urgency: "normal",
+      count: 0,
+      reason: "No urgent work is open. Add new leads or schedule proactive follow-ups.",
+      action: "Add lead",
+    });
+  }
+
+  return {
+    mode,
+    role,
+    goals,
+    priorities,
+    kpis: [
+      { key: "pipeline_value", label: "Open pipeline", value: stats.pipelineValue, format: "currency" },
+      { key: "weighted_pipeline", label: "Weighted forecast", value: stats.projectedRevenue, format: "currency" },
+      { key: "won_month", label: "Won this month", value: stats.closedThisMonth, format: "currency", goal: goals.revenue },
+      { key: "hot_leads", label: "Hot leads", value: stats.hotLeads.length, format: "number" },
+      { key: "due_today", label: "Due today", value: stats.tasksDueToday.length, format: "number", goal: goals.followUps },
+      { key: "appointments_today", label: "Appointments today", value: stats.appointmentsToday.length, format: "number", goal: goals.appointments },
+    ],
+    today: {
+      tasksDue: stats.tasksDueToday,
+      tasksOverdue: [],
+      appointments: stats.appointmentsToday,
+      hotLeads: stats.hotLeads.slice(0, 6),
+      atRiskLeads: stats.dealsAtRisk.slice(0, 6),
+      alerts: [],
+    },
+    pipelineHealth: browserPipelineHealth(stats),
+    teamPerformance: ["owner", "admin", "manager"].includes(role)
+      ? browserTeamPerformance()
+      : { locked: true, message: "Team performance is visible to Owners, Admins, and Managers.", members: [] },
+    activity: {
+      activitiesToday: (state.activities || []).filter((activity) => isToday(activity.createdAt)).length,
+      communicationsToday: 0,
+      recent: (state.activities || []).slice(0, 8),
+    },
+  };
+}
+
+function dailyGoalPreferences() {
+  return {
+    calls: 30,
+    followUps: 20,
+    appointments: 3,
+    newLeads: 5,
+    revenue: revenueTarget(),
+  };
+}
+
+function browserPipelineHealth(stats) {
+  const stages = ["new", "qualified", "proposal", "won"].map((stage) => {
+    const leads = state.leads.filter((lead) => lead.stage === stage);
+    return {
+      stage,
+      count: leads.length,
+      value: leads.reduce((sum, lead) => sum + lead.value, 0),
+      averageScore: leads.length ? Math.round(leads.reduce((sum, lead) => sum + lead.score, 0) / leads.length) : 0,
+    };
+  });
+  const openCount = state.leads.filter((lead) => lead.stage !== "won").length;
+  return {
+    stages,
+    atRiskCount: stats.dealsAtRisk.length,
+    conversionRate: state.leads.length ? Math.round((state.leads.filter((lead) => lead.stage === "won").length / state.leads.length) * 100) : 0,
+    riskRatio: openCount ? Math.round((stats.dealsAtRisk.length / openCount) * 100) : 0,
+  };
+}
+
+function browserTeamPerformance() {
+  const members = accountState().members || [];
+  return {
+    locked: false,
+    members: members.map((member) => {
+      const email = String(member.email || "").toLowerCase();
+      const assigned = state.leads.filter((lead) => String(lead.assignedTo || "").toLowerCase() === email);
+      return {
+        email: member.email || "Unassigned",
+        openLeads: assigned.filter((lead) => lead.stage !== "won").length,
+        wonValue: assigned.filter((lead) => lead.stage === "won").reduce((sum, lead) => sum + lead.value, 0),
+        openTasks: state.tasks.filter((task) => !task.done).length,
+        activityToday: (state.activities || []).filter((activity) => isToday(activity.createdAt)).length,
+      };
+    }),
+  };
+}
+
+function renderCommandPriorities(selector, priorities) {
+  const container = document.querySelector(selector);
+  if (!container) return;
+  container.innerHTML = priorities.length
+    ? priorities
+        .map(
+          (priority) => `
+            <article class="command-list-row">
+              <span class="status-pill ${escapeHtml(priority.urgency || "normal")}">${escapeHtml(priority.urgency || "normal")}</span>
+              <div>
+                <strong>${escapeHtml(priority.label)}</strong>
+                <p>${escapeHtml(priority.reason || "")}</p>
+              </div>
+              <span>${Number(priority.count || 0)}</span>
+            </article>
+          `,
+        )
+        .join("")
+    : `<p class="muted">No priorities are available.</p>`;
+}
+
+function renderDailyGoals(goals) {
+  const container = document.querySelector("#customerDailyGoals");
+  if (!container) return;
+  const items = [
+    ["Calls", goals.calls],
+    ["Follow-ups", goals.followUps],
+    ["Appointments", goals.appointments],
+    ["New leads", goals.newLeads],
+    ["Revenue", formatter.format(Number(goals.revenue || 0))],
+  ];
+  container.innerHTML = items
+    .map(
+      ([label, value]) => `
+        <article>
+          <span>${escapeHtml(label)}</span>
+          <strong>${escapeHtml(value)}</strong>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function renderCommandKpis(selector, kpis) {
+  const container = document.querySelector(selector);
+  if (!container) return;
+  container.innerHTML = kpis
+    .map(
+      (kpi) => `
+        <article>
+          <span>${escapeHtml(kpi.label)}</span>
+          <strong>${escapeHtml(formatCommandValue(kpi.value, kpi.format))}</strong>
+          ${kpi.goal ? `<small>Goal ${escapeHtml(formatCommandValue(kpi.goal, kpi.format))}</small>` : ""}
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function renderDailyToday(today) {
+  const container = document.querySelector("#customerDailyToday");
+  if (!container) return;
+  const rows = [
+    ["Tasks due", today.tasksDue?.length || 0],
+    ["Overdue", today.tasksOverdue?.length || 0],
+    ["Appointments", today.appointments?.length || 0],
+    ["Hot leads", today.hotLeads?.length || 0],
+    ["At risk", today.atRiskLeads?.length || 0],
+  ];
+  container.innerHTML = rows
+    .map(
+      ([label, value]) => `
+        <article class="command-list-row">
+          <strong>${escapeHtml(label)}</strong>
+          <span>${value}</span>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function renderDailyPipelineHealth(health) {
+  const container = document.querySelector("#customerDailyPipelineHealth");
+  if (!container) return;
+  const stages = health.stages || [];
+  container.innerHTML = `
+    <div class="command-health-summary">
+      <article><span>At risk</span><strong>${Number(health.atRiskCount || 0)}</strong></article>
+      <article><span>Conversion</span><strong>${Number(health.conversionRate || 0)}%</strong></article>
+      <article><span>Risk ratio</span><strong>${Number(health.riskRatio || 0)}%</strong></article>
+    </div>
+    <div class="command-stage-grid">
+      ${stages
+        .map(
+          (stage) => `
+            <article>
+              <span>${escapeHtml(stage.stage)}</span>
+              <strong>${Number(stage.count || 0)}</strong>
+              <small>${formatter.format(Number(stage.value || 0))} · ${Number(stage.averageScore || 0)} avg score</small>
+            </article>
+          `,
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function renderDailyTeamPerformance(performance) {
+  const container = document.querySelector("#customerDailyTeamPerformance");
+  if (!container) return;
+  if (performance.locked) {
+    container.innerHTML = `<p class="muted">${escapeHtml(performance.message || "Team performance is locked for this role.")}</p>`;
+    return;
+  }
+  const members = performance.members || [];
+  container.innerHTML = members.length
+    ? members
+        .map(
+          (member) => `
+            <article class="command-list-row">
+              <div>
+                <strong>${escapeHtml(member.email || "Unassigned")}</strong>
+                <p>${Number(member.openLeads || 0)} open leads · ${Number(member.openTasks || 0)} open tasks</p>
+              </div>
+              <span>${formatter.format(Number(member.wonValue || 0))}</span>
+            </article>
+          `,
+        )
+        .join("")
+    : `<p class="muted">No team performance rows yet.</p>`;
+}
+
+function renderDailyActivity(activity) {
+  const container = document.querySelector("#customerDailyActivity");
+  if (!container) return;
+  const rows = [
+    ["Activities today", activity.activitiesToday || 0],
+    ["Communications today", activity.communicationsToday || 0],
+  ];
+  const recent = (activity.recent || []).slice(0, 4);
+  container.innerHTML = `
+    ${rows
+      .map(
+        ([label, value]) => `
+          <article class="command-list-row">
+            <strong>${escapeHtml(label)}</strong>
+            <span>${Number(value || 0)}</span>
+          </article>
+        `,
+      )
+      .join("")}
+    ${recent
+      .map(
+        (item) => `
+          <article class="command-list-row">
+            <div>
+              <strong>${escapeHtml(item.type || item.channel || "Activity")}</strong>
+              <p>${escapeHtml(item.message || item.subject || item.body || "Workspace event")}</p>
+            </div>
+          </article>
+        `,
+      )
+      .join("")}
+  `;
+}
+
+function renderLaunchCommandCenterPage() {
+  if (launchCommandState.status === "idle") {
+    loadLaunchCommandCenter();
+  }
+
+  if (launchCommandState.status === "loading") {
+    document.querySelector("#launchRecommendation").textContent = "Checking";
+    document.querySelector("#launchRecommendationReason").textContent = "Verifying founder access and launch tables.";
+    setCommandEmpty("#launchBlockers", "Loading launch blockers.");
+    return;
+  }
+
+  if (launchCommandState.status === "error") {
+    document.querySelector("#launchRecommendation").textContent = "Locked";
+    document.querySelector("#launchRecommendationReason").textContent = launchCommandState.error || "Founder access is required.";
+    setCommandEmpty("#launchReadinessCategories", "Launch Command Center is protected by backend founder access.");
+    setCommandEmpty("#launchProviders", "Sign in with an allowed internal account.");
+    setCommandEmpty("#launchBlockers", "No launch data is shown without founder access.");
+    setCommandEmpty("#launchChecklistCommand", "Checklist is locked.");
+    setCommandEmpty("#launchBetaCompanies", "Beta accounts are locked.");
+    return;
+  }
+
+  renderLaunchCommandData(launchCommandState.data || {});
+}
+
+async function loadLaunchCommandCenter(options = {}) {
+  if (launchCommandState.status === "loading") return;
+  if (!options.force && launchCommandState.status === "ready") {
+    renderLaunchCommandCenterPage();
+    return;
+  }
+  launchCommandState = { status: "loading", data: null, error: "" };
+  renderLaunchCommandCenterPage();
+  try {
+    if (!currentUser && !publicDemoMode) throw new Error("Sign in before opening the Launch Command Center.");
+    if (publicDemoMode) throw new Error("Launch Command Center is not available in public demo mode.");
+    const data = await postBackendJson("/api/launch-command-center/overview", workspaceApiContext());
+    launchCommandState = { status: "ready", data, error: "" };
+  } catch (error) {
+    launchCommandState = {
+      status: "error",
+      data: null,
+      error: error.message || "Launch Command Center could not load.",
+    };
+  }
+  if (activePage === "launch-command-center") renderLaunchCommandCenterPage();
+}
+
+async function postLaunchCommandMutation(path, payload) {
+  try {
+    launchCommandState = { status: "loading", data: launchCommandState.data, error: "" };
+    renderLaunchCommandCenterPage();
+    await postBackendJson(path, { ...workspaceApiContext(), ...payload });
+    launchCommandState = { status: "idle", data: null, error: "" };
+    await loadLaunchCommandCenter({ force: true });
+  } catch (error) {
+    launchCommandState = {
+      status: "error",
+      data: launchCommandState.data,
+      error: error.message || "Launch update failed.",
+    };
+    renderLaunchCommandCenterPage();
+  }
+}
+
+function renderLaunchCommandData(data) {
+  const recommendation = data.recommendation || {};
+  document.querySelector("#launchRecommendation").textContent = recommendation.label || "NO-GO";
+  document.querySelector("#launchRecommendationReason").textContent = recommendation.reason || "Launch recommendation is unavailable.";
+  document.querySelector("#launchReadinessScore").textContent = `${Number(data.readiness?.score || 0)}%`;
+  document.querySelector("#launchNextMilestone").textContent = data.nextMilestone || "Review launch readiness.";
+
+  const releaseHealth = data.releaseHealth || {};
+  document.querySelector("#launchReleaseHealth").innerHTML = [
+    ["CI", releaseHealth.ciStatus || "Not connected"],
+    ["Required providers", `${releaseHealth.requiredProvidersConfigured || 0}/${releaseHealth.requiredProvidersTotal || 0}`],
+    ["Critical blockers", releaseHealth.openCriticalBlockers || 0],
+    ["High blockers", releaseHealth.openHighBlockers || 0],
+    ["Checklist", `${releaseHealth.checklistProgress || 0}%`],
+  ]
+    .map(
+      ([label, value]) => `
+        <article class="command-list-row">
+          <strong>${escapeHtml(label)}</strong>
+          <span>${escapeHtml(value)}</span>
+        </article>
+      `,
+    )
+    .join("");
+
+  renderCommandKpis(
+    "#launchReadinessCategories",
+    (data.readiness?.categories || []).map((category) => ({
+      label: category.label,
+      value: category.score,
+      format: "percent",
+      goal: category.weight,
+    })),
+  );
+  renderCommandKpis(
+    "#launchProviders",
+    (data.providers || []).map((provider) => ({
+      label: provider.label,
+      value: provider.displayStatus || provider.status,
+      format: "text",
+    })),
+  );
+  renderLaunchBlockers(data.blockers || []);
+  renderLaunchChecklist(data.checklist || []);
+  renderLaunchBetaCompanies(data.betaCompanies || []);
+}
+
+function renderLaunchBlockers(blockers) {
+  const container = document.querySelector("#launchBlockers");
+  if (!container) return;
+  container.innerHTML = blockers.length
+    ? blockers
+        .map(
+          (blocker) => `
+            <article class="command-list-row">
+              <span class="status-pill ${escapeHtml(blocker.severity)}">${escapeHtml(blocker.severity)}</span>
+              <div>
+                <strong>${escapeHtml(blocker.title)}</strong>
+                <p>${escapeHtml(blocker.detail || blocker.status || "Open")}</p>
+              </div>
+              <span>${escapeHtml(blocker.status)}</span>
+            </article>
+          `,
+        )
+        .join("")
+    : `<p class="muted">No launch blockers are tracked yet.</p>`;
+}
+
+function renderLaunchChecklist(checklist) {
+  const container = document.querySelector("#launchChecklistCommand");
+  if (!container) return;
+  container.innerHTML = checklist
+    .map(
+      (item) => `
+        <label class="command-check-row">
+          <input type="checkbox" data-launch-checklist-key="${escapeHtml(item.key)}" ${item.completed ? "checked" : ""} />
+          <span>
+            <strong>${escapeHtml(item.label)}</strong>
+            <small>${escapeHtml(item.category || "")}</small>
+          </span>
+        </label>
+      `,
+    )
+    .join("");
+}
+
+function renderLaunchBetaCompanies(companies) {
+  const container = document.querySelector("#launchBetaCompanies");
+  if (!container) return;
+  container.innerHTML = companies.length
+    ? companies
+        .map(
+          (company) => `
+            <article class="command-list-row">
+              <div>
+                <strong>${escapeHtml(company.name)}</strong>
+                <p>${escapeHtml(company.owner || "Unassigned")}</p>
+              </div>
+              <span>${escapeHtml(company.status)}</span>
+            </article>
+          `,
+        )
+        .join("")
+    : `<p class="muted">No beta companies are tracked yet.</p>`;
+}
+
+function setCommandEmpty(selector, message) {
+  const container = document.querySelector(selector);
+  if (container) container.innerHTML = `<p class="muted">${escapeHtml(message)}</p>`;
+}
+
+function formatCommandValue(value, format) {
+  if (format === "currency") return formatter.format(Number(value || 0));
+  if (format === "percent") return `${Number(value || 0)}%`;
+  return String(value ?? "");
 }
 
 function renderDashboardFollowUpCard(queue = buildSmartFollowUpQueue()) {
@@ -11793,7 +12442,7 @@ function backendTimeoutForPath(path) {
 }
 
 function shouldRequireLiveBackend(path) {
-  return isBetaMode && !publicDemoMode && path.includes("/invites/");
+  return path.includes("/api/launch-command-center/") || (isBetaMode && !publicDemoMode && path.includes("/invites/"));
 }
 
 function backendDemoFallback(path, payload = {}) {

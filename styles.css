@@ -946,6 +946,195 @@ h2 {
   padding-inline: 26px;
 }
 
+.command-page {
+  display: grid;
+  gap: 18px;
+}
+
+.command-hero {
+  align-items: stretch;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.32fr);
+  padding: 22px;
+}
+
+.command-hero h2 {
+  font-size: clamp(1.55rem, 2vw, 2.15rem);
+  letter-spacing: 0;
+  line-height: 1.05;
+  margin: 0;
+}
+
+.command-hero p:last-child,
+.command-list-row p,
+.command-panel small,
+.launch-score span,
+.muted {
+  color: var(--muted);
+}
+
+.command-status-card {
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+}
+
+.command-status-card span,
+.command-panel > .eyebrow,
+.command-list-row > span,
+.command-goals span,
+.command-metrics span,
+.command-health-summary span,
+.command-stage-grid span {
+  overflow-wrap: anywhere;
+}
+
+.command-status-card strong {
+  font-size: 1.45rem;
+  line-height: 1.05;
+}
+
+.command-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+
+.command-panel {
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow-soft);
+  grid-column: span 4;
+  min-width: 0;
+  padding: 18px;
+}
+
+.command-panel-wide {
+  grid-column: span 8;
+}
+
+.command-list,
+.command-goals,
+.command-metrics,
+.command-pipeline {
+  display: grid;
+  gap: 10px;
+}
+
+.command-list.compact {
+  gap: 8px;
+}
+
+.command-list-row,
+.command-check-row {
+  align-items: center;
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  min-height: 54px;
+  padding: 12px;
+}
+
+.command-list-row p {
+  line-height: 1.35;
+  margin: 4px 0 0;
+}
+
+.command-check-row {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.command-check-row input {
+  inline-size: 18px;
+  block-size: 18px;
+}
+
+.status-pill {
+  background: rgba(11, 47, 99, 0.1);
+  border-radius: 999px;
+  color: var(--navy);
+  font-size: 0.72rem;
+  font-weight: 900;
+  padding: 6px 8px;
+  text-transform: uppercase;
+}
+
+.status-pill.critical {
+  background: rgba(181, 38, 38, 0.12);
+  color: #9a1f1f;
+}
+
+.status-pill.high {
+  background: rgba(176, 111, 31, 0.14);
+  color: #8a530f;
+}
+
+.status-pill.medium {
+  background: rgba(35, 113, 96, 0.13);
+  color: #17614f;
+}
+
+.command-goals,
+.command-metrics,
+.command-health-summary,
+.command-stage-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.command-metrics {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.command-goals article,
+.command-metrics article,
+.command-health-summary article,
+.command-stage-grid article {
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.command-goals strong,
+.command-metrics strong,
+.command-health-summary strong,
+.command-stage-grid strong,
+.launch-score strong {
+  display: block;
+  font-size: 1.35rem;
+  line-height: 1.1;
+  margin-top: 6px;
+}
+
+.launch-score strong {
+  font-size: clamp(2.1rem, 4vw, 3.2rem);
+}
+
+.inline-command-form {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) minmax(130px, 0.28fr) auto;
+  margin-bottom: 12px;
+}
+
+.inline-command-form input,
+.inline-command-form select {
+  min-width: 0;
+}
+
 .dashboard-follow-up-card {
   align-items: center;
   display: grid;
@@ -9023,6 +9212,36 @@ body[data-dashboard-layout="focus"] .daily-command-center > [data-dashboard-size
     font-size: 0.76rem;
     min-height: 34px;
     padding: 5px 9px;
+  }
+}
+
+@media (max-width: 820px) {
+  .command-hero,
+  .command-grid,
+  .command-goals,
+  .command-metrics,
+  .command-health-summary,
+  .command-stage-grid,
+  .inline-command-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .command-panel,
+  .command-panel-wide {
+    grid-column: 1 / -1;
+  }
+
+  .command-list-row {
+    align-items: start;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .command-status-card strong,
+  .command-goals strong,
+  .command-metrics strong,
+  .command-health-summary strong,
+  .command-stage-grid strong {
+    font-size: 1.12rem;
   }
 }
 

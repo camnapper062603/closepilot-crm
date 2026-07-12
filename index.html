@@ -308,6 +308,132 @@
         </section>
         <button class="mobile-quick-action" id="mobileQuickAction" type="button" aria-label="Add lead">+ Lead</button>
 
+        <section class="command-page daily-command-page" id="customerDailyCommandPage" data-page="daily-command" aria-labelledby="customerDailyCommandHeading" hidden>
+          <div class="command-hero">
+            <div>
+              <p class="eyebrow">Daily command center</p>
+              <h2 id="customerDailyCommandHeading">Today’s operating plan</h2>
+              <p id="customerDailyCommandSubtitle">Live workspace data, prioritized for the next best action.</p>
+            </div>
+            <div class="command-status-card">
+              <span>Mode</span>
+              <strong id="customerDailyCommandMode">Checking</strong>
+            </div>
+          </div>
+
+          <section class="command-grid" aria-label="Daily command center metrics">
+            <article class="command-panel command-panel-wide">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Priorities</p>
+                  <h3>What needs attention first</h3>
+                </div>
+                <button class="secondary-button" id="refreshDailyCommandButton" type="button">Refresh</button>
+              </div>
+              <div class="command-list" id="customerDailyPriorities"></div>
+            </article>
+            <article class="command-panel">
+              <p class="eyebrow">Daily goals</p>
+              <div class="command-goals" id="customerDailyGoals"></div>
+            </article>
+            <article class="command-panel command-panel-wide">
+              <p class="eyebrow">Scorecard</p>
+              <div class="command-metrics" id="customerDailyKpis"></div>
+            </article>
+            <article class="command-panel">
+              <p class="eyebrow">Today</p>
+              <div class="command-list compact" id="customerDailyToday"></div>
+            </article>
+            <article class="command-panel command-panel-wide">
+              <p class="eyebrow">Pipeline health</p>
+              <div class="command-pipeline" id="customerDailyPipelineHealth"></div>
+            </article>
+            <article class="command-panel" id="customerDailyTeamPanel">
+              <p class="eyebrow">Team performance</p>
+              <div class="command-list compact" id="customerDailyTeamPerformance"></div>
+            </article>
+            <article class="command-panel command-panel-wide">
+              <p class="eyebrow">Activity and alerts</p>
+              <div class="command-list compact" id="customerDailyActivity"></div>
+            </article>
+          </section>
+        </section>
+
+        <section class="command-page launch-command-page" id="launchCommandCenterPage" data-page="launch-command-center" aria-labelledby="launchCommandHeading" hidden>
+          <div class="command-hero">
+            <div>
+              <p class="eyebrow">Founder launch command center</p>
+              <h2 id="launchCommandHeading">Beta launch readiness</h2>
+              <p id="launchCommandSubtitle">Server-gated internal launch controls for ClosePilot and Kira Recruit.</p>
+            </div>
+            <div class="command-status-card launch-recommendation-card">
+              <span>Recommendation</span>
+              <strong id="launchRecommendation">Checking</strong>
+              <small id="launchRecommendationReason">Founder access is verified on the backend.</small>
+            </div>
+          </div>
+
+          <section class="command-grid" aria-label="Launch readiness">
+            <article class="command-panel">
+              <p class="eyebrow">Weighted readiness</p>
+              <div class="launch-score">
+                <strong id="launchReadinessScore">0%</strong>
+                <span id="launchNextMilestone">Checking launch gates.</span>
+              </div>
+            </article>
+            <article class="command-panel">
+              <p class="eyebrow">Release health</p>
+              <div class="command-list compact" id="launchReleaseHealth"></div>
+            </article>
+            <article class="command-panel command-panel-wide">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Readiness categories</p>
+                  <h3>Weighted beta gates</h3>
+                </div>
+                <button class="secondary-button" id="refreshLaunchCommandButton" type="button">Refresh</button>
+              </div>
+              <div class="command-metrics" id="launchReadinessCategories"></div>
+            </article>
+            <article class="command-panel command-panel-wide">
+              <p class="eyebrow">Provider status</p>
+              <div class="command-metrics" id="launchProviders"></div>
+            </article>
+            <article class="command-panel command-panel-wide">
+              <p class="eyebrow">Blockers</p>
+              <form class="inline-command-form" id="launchBlockerForm">
+                <input id="launchBlockerTitle" type="text" placeholder="Add blocker" aria-label="Blocker title" />
+                <select id="launchBlockerSeverity" aria-label="Blocker severity">
+                  <option value="critical">Critical</option>
+                  <option value="high">High</option>
+                  <option value="medium" selected>Medium</option>
+                  <option value="low">Low</option>
+                </select>
+                <button class="secondary-button" type="submit">Add</button>
+              </form>
+              <div class="command-list" id="launchBlockers"></div>
+            </article>
+            <article class="command-panel command-panel-wide">
+              <p class="eyebrow">Beta certification checklist</p>
+              <div class="command-list checklist" id="launchChecklistCommand"></div>
+            </article>
+            <article class="command-panel command-panel-wide">
+              <p class="eyebrow">Beta companies</p>
+              <form class="inline-command-form" id="launchBetaCompanyForm">
+                <input id="launchBetaCompanyName" type="text" placeholder="Beta account" aria-label="Beta account name" />
+                <select id="launchBetaCompanyStatus" aria-label="Beta account status">
+                  <option value="candidate">Candidate</option>
+                  <option value="invited">Invited</option>
+                  <option value="active">Active</option>
+                  <option value="graduated">Graduated</option>
+                </select>
+                <button class="secondary-button" type="submit">Track</button>
+              </form>
+              <div class="command-list compact" id="launchBetaCompanies"></div>
+            </article>
+          </section>
+        </section>
+
         <section class="daily-command-center" id="dailyCommandCenter" data-page="pipeline" aria-labelledby="dailyCommandHeading">
           <section class="dashboard-greeting" id="dashboardGreetingWidget" aria-labelledby="dailyCommandHeading">
             <div>

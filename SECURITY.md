@@ -23,6 +23,9 @@ Client fields such as `actorRole`, `actorUserId`, `ownerEmail`, `inviterEmail`, 
 | `/api/ai/*` | Yes | Workspace member | Validates optional lead ownership before saving AI output. |
 | `/api/communications/*` | Yes | Workspace member | Validates optional lead ownership before logging/sending. |
 | `/api/recruiting/*` | Yes | Owner/Admin/Manager when add-on enabled | Setup endpoints require Owner/Admin; token must be in Authorization header. |
+| `/api/dashboard/*` | Yes | Member for daily/today/pipeline, Manager for team performance | Every request validates `workspaceId` against server-side membership before aggregating tenant data. |
+| `/api/workspace/daily-goals` | Yes | Member read, Owner/Admin write | Goal updates ignore client role claims and require server-side Owner/Admin membership. |
+| `/api/launch-command-center/*` | Yes plus internal allowlist | Internal founder/admin only | Requires Supabase bearer auth and `INTERNAL_ADMIN_EMAILS` or existing internal metadata. Allowlist is never returned to the browser. |
 
 ## Google Token Encryption
 
@@ -62,6 +65,8 @@ npm test
 
 Protected endpoints should return `401 AUTH_REQUIRED` without a bearer token. Role and tenant checks are covered by the grouped suites under `tests/security/`.
 
+The Launch Command Center should return `403 INTERNAL_ACCESS_FORBIDDEN` for authenticated users outside `INTERNAL_ADMIN_EMAILS` and `503 INTERNAL_ACCESS_NOT_CONFIGURED` when no internal access method is configured.
+
 ## Release Gates
 
 ```bash
@@ -83,3 +88,7 @@ Use `redactSecurityLog()` before logging request context, provider errors, or ba
 - `docs/SUPABASE_SECURITY_VERIFICATION.md`
 - `docs/GOOGLE_TOKEN_MIGRATION.md`
 - `docs/ROUTE_PERMISSION_MATRIX.md`
+- `docs/LAUNCH_COMMAND_CENTER.md`
+- `docs/DAILY_COMMAND_CENTER.md`
+- `docs/LAUNCH_SCORING.md`
+- `docs/BETA_CERTIFICATION.md`

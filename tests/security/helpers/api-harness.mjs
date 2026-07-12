@@ -200,7 +200,24 @@ export function createMockFetch(options = {}) {
     }
 
     if (href.includes("/rest/v1/leads")) {
-      return jsonResponse(options.denyLead ? [] : [{ id: leadId, workspace_id: options.workspaceId || workspaceA }]);
+      return jsonResponse(
+        options.denyLead
+          ? []
+          : options.leadRows || [
+              {
+                id: leadId,
+                workspace_id: options.workspaceId || workspaceA,
+                name: "Unit Lead",
+                company: "Unit Co",
+                stage: "qualified",
+                value: 12000,
+                score: 82,
+                next_action: "Call today",
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              },
+            ],
+      );
     }
 
     if (href.includes("/rest/v1/calendar_connections")) {
@@ -224,9 +241,41 @@ export function createMockFetch(options = {}) {
       return jsonResponse(store.recruitingState);
     }
 
-    if (href.includes("/rest/v1/tasks")) return jsonResponse([{ id: "55555555-5555-4555-8555-555555555555" }]);
-    if (href.includes("/rest/v1/activities")) return jsonResponse([{ id: "66666666-6666-4666-8666-666666666666" }]);
-    if (href.includes("/rest/v1/communications")) return jsonResponse([]);
+    if (href.includes("/rest/v1/workspace_daily_goals")) {
+      if (init.method === "POST") return jsonResponse(body || []);
+      return jsonResponse(options.dailyGoals ? [{ goals: options.dailyGoals, updated_at: new Date().toISOString() }] : []);
+    }
+
+    if (href.includes("/rest/v1/launch_blockers")) {
+      if (init.method === "POST") return jsonResponse(body || []);
+      return jsonResponse(options.launchBlockers || []);
+    }
+    if (href.includes("/rest/v1/launch_checklist_items")) {
+      if (init.method === "POST") return jsonResponse(body || []);
+      return jsonResponse(options.launchChecklist || []);
+    }
+    if (href.includes("/rest/v1/launch_provider_status")) return jsonResponse(options.launchProviders || []);
+    if (href.includes("/rest/v1/launch_readiness_categories")) return jsonResponse(options.launchCategories || []);
+    if (href.includes("/rest/v1/launch_beta_accounts")) {
+      if (init.method === "POST") return jsonResponse(body || []);
+      return jsonResponse(options.launchBetaAccounts || []);
+    }
+    if (href.includes("/rest/v1/launch_status_snapshots")) {
+      if (init.method === "POST") return jsonResponse(body || []);
+      return jsonResponse(options.launchStatusSnapshots || []);
+    }
+
+    if (href.includes("/rest/v1/tasks")) {
+      if (init.method === "POST") return jsonResponse([{ id: "55555555-5555-4555-8555-555555555555" }]);
+      return jsonResponse(options.taskRows || [{ id: "55555555-5555-4555-8555-555555555555", text: "Unit task", due: "today", done: false }]);
+    }
+    if (href.includes("/rest/v1/appointments")) return jsonResponse(options.appointmentRows || []);
+    if (href.includes("/rest/v1/activities")) {
+      if (init.method === "POST") return jsonResponse([{ id: "66666666-6666-4666-8666-666666666666" }]);
+      return jsonResponse(options.activityRows || [{ id: "66666666-6666-4666-8666-666666666666", type: "call", message: "Called lead", created_at: new Date().toISOString() }]);
+    }
+    if (href.includes("/rest/v1/communications")) return jsonResponse(options.communicationRows || []);
+    if (href.includes("/rest/v1/notifications")) return jsonResponse(options.notificationRows || []);
     if (href.includes("/rest/v1/ai_outputs")) return jsonResponse([]);
     if (href.includes("/rest/v1/integration_settings")) return jsonResponse([]);
     if (href.includes("/rest/v1/workspace_audit_events")) return jsonResponse([]);

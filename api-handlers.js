@@ -1,5 +1,17 @@
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import Stripe from "stripe";
+import {
+  buildDailyCommandCenterSnapshot,
+  buildLaunchReadiness,
+  checklistProgressPercent,
+  defaultDailyGoals,
+  launchRecommendation,
+  mergeLaunchChecklist,
+  mergeProviderRows,
+  normalizeDailyGoals,
+  normalizeLaunchBlocker,
+  providerStatusesFromEnv,
+} from "./command-center-config.js";
 import { sendInviteEmailWithResend } from "./email-service.js";
 
 const planCatalog = {
@@ -41,6 +53,24 @@ const recruitingEndpoints = new Set([
   "/api/recruiting/crm-handoff",
 ]);
 
+const launchCommandCenterEndpoints = new Set([
+  "/api/launch-command-center/overview",
+  "/api/launch-command-center/readiness",
+  "/api/launch-command-center/blockers",
+  "/api/launch-command-center/providers",
+  "/api/launch-command-center/checklist",
+  "/api/launch-command-center/beta-companies",
+  "/api/launch-command-center/status-snapshot",
+]);
+
+const dailyCommandCenterEndpoints = new Set([
+  "/api/dashboard/daily-command-center",
+  "/api/dashboard/team-performance",
+  "/api/dashboard/pipeline-health",
+  "/api/dashboard/today",
+  "/api/workspace/daily-goals",
+]);
+
 export const closePilotApiRoutes = [
   { method: "POST", route: "/api/stripe/create-checkout-session" },
   { method: "POST", route: "/api/stripe/create-portal-session" },
@@ -52,6 +82,8 @@ export const closePilotApiRoutes = [
   { method: "POST", route: "/api/google/calendar/status" },
   { method: "POST", route: "/api/google/calendar/create-event" },
   { method: "POST", route: "/api/system/readiness" },
+  ...[...launchCommandCenterEndpoints].map((route) => ({ method: "POST", route })),
+  ...[...dailyCommandCenterEndpoints].map((route) => ({ method: "POST", route })),
   ...[...recruitingEndpoints].map((route) => ({ method: "POST", route })),
   ...[...aiEndpoints].map((route) => ({ method: "POST", route })),
   ...[...communicationEndpoints].map((route) => ({ method: "POST", route })),
@@ -99,6 +131,8 @@ export function isClosePilotApiPath(pathname) {
     pathname === "/api/google/calendar/status" ||
     pathname === "/api/google/calendar/create-event" ||
     pathname === "/api/system/readiness" ||
+    launchCommandCenterEndpoints.has(pathname) ||
+    dailyCommandCenterEndpoints.has(pathname) ||
     recruitingEndpoints.has(pathname) ||
     aiEndpoints.has(pathname) ||
     communicationEndpoints.has(pathname)
@@ -157,6 +191,14 @@ export async function handleClosePilotApiRequest(request, response) {
     }
     if (url.pathname === "/api/system/readiness") {
       await handleSystemReadiness(request, response, payload);
+      return;
+    }
+    if (launchCommandCenterEndpoints.has(url.pathname)) {
+      await handleLaunchCommandCenterRequest(url.pathname, request, response, payload);
+      return;
+    }
+    if (dailyCommandCenterEndpoints.has(url.pathname)) {
+      await handleDailyCommandCenterRequest(url.pathname, request, response, payload);
       return;
     }
     if (recruitingEndpoints.has(url.pathname)) {
@@ -278,6 +320,429 @@ async function handleSystemReadiness(request, response, payload = {}) {
     workspaceId: detailAccess.workspaceId,
     checks,
   });
+}
+
+async function handleLaunchCommandCenterRequest(pathname, request, response, payload = {}) {
+  assertFeatureEnabled("FEATURE_LAUNCH_COMMAND_CENTER", "Launch Command Center");
+  const founder = await requireFounderAccess(request);
+  const [blockerRows, checklistRows, providerRows, categoryRows, betaCompanies, statusSnapshots] = await Promise.all([
+    loadLaunchRows("launch_blockers?select=*&order=created_at.desc"),
+    loadLaunchRows("launch_checklist_items?select=*&order=updated_at.desc"),
+    loadLaunchRows("launch_provider_status?select=*&order=updated_at.desc"),
+    loadLaunchRows("launch_readiness_categories?select=*&order=updated_at.desc"),
+    loadLaunchRows("launch_beta_accounts?select=*&order=created_at.desc"),
+    loadLaunchRows("launch_status_snapshots?select=*&order=created_at.desc&limit=5"),
+  ]);
+
+  if (pathname === "/api/launch-command-center/blockers" && payload.mutation) {
+    await mutateLaunchBlocker(payload, founder);
+  }
+  if (pathname === "/api/launch-command-center/checklist" && (payload.itemKey || payload.key)) {
+    await mutateLaunchChecklist(payload, founder);
+  }
+  if (pathname === "/api/launch-command-center/beta-companies" && (payload.companyName || payload.name || payload.companyId)) {
+    await mutateLaunchBetaCompany(payload, founder);
+  }
+  if (pathname === "/api/launch-command-center/status-snapshot" && payload.snapshot) {
+    await insertLaunchStatusSnapshot(payload.snapshot, founder);
+  }
+
+  const refreshedChecklistRows =
+    pathname === "/api/launch-command-center/checklist" && (payload.itemKey || payload.key)
+      ? await loadLaunchRows("launch_checklist_items?select=*&order=updated_at.desc")
+      : checklistRows;
+  const refreshedBlockerRows =
+    pathname === "/api/launch-command-center/blockers" && payload.mutation
+      ? await loadLaunchRows("launch_blockers?select=*&order=created_at.desc")
+      : blockerRows;
+  const refreshedBetaCompanies =
+    pathname === "/api/launch-command-center/beta-companies" && (payload.companyName || payload.name || payload.companyId)
+      ? await loadLaunchRows("launch_beta_accounts?select=*&order=created_at.desc")
+      : betaCompanies;
+  const snapshot = buildLaunchCommandCenterPayload({
+    founder,
+    blockerRows: refreshedBlockerRows,
+    checklistRows: refreshedChecklistRows,
+    providerRows,
+    categoryRows,
+    betaCompanies: refreshedBetaCompanies,
+    statusSnapshots,
+  });
+
+  if (pathname.endsWith("/readiness")) {
+    sendJson(response, 200, {
+      checkedBy: founder.email,
+      readiness: snapshot.readiness,
+      recommendation: snapshot.recommendation,
+    });
+    return;
+  }
+  if (pathname.endsWith("/providers")) {
+    sendJson(response, 200, {
+      checkedBy: founder.email,
+      providers: snapshot.providers,
+      releaseHealth: snapshot.releaseHealth,
+    });
+    return;
+  }
+  if (pathname.endsWith("/blockers")) {
+    sendJson(response, 200, {
+      checkedBy: founder.email,
+      blockers: snapshot.blockers,
+      recommendation: snapshot.recommendation,
+    });
+    return;
+  }
+  if (pathname.endsWith("/checklist")) {
+    sendJson(response, 200, {
+      checkedBy: founder.email,
+      checklist: snapshot.checklist,
+      checklistProgress: snapshot.checklistProgress,
+    });
+    return;
+  }
+  if (pathname.endsWith("/beta-companies")) {
+    sendJson(response, 200, {
+      checkedBy: founder.email,
+      betaCompanies: snapshot.betaCompanies,
+    });
+    return;
+  }
+  if (pathname.endsWith("/status-snapshot")) {
+    sendJson(response, 200, {
+      checkedBy: founder.email,
+      statusSnapshots: snapshot.statusSnapshots,
+      releaseHealth: snapshot.releaseHealth,
+    });
+    return;
+  }
+
+  sendJson(response, 200, snapshot);
+}
+
+async function handleDailyCommandCenterRequest(pathname, request, response, payload = {}) {
+  assertFeatureEnabled("FEATURE_DAILY_COMMAND_CENTER", "Daily Command Center");
+  const auth = await requireAuthenticatedRequest(request);
+
+  if (pathname === "/api/workspace/daily-goals" && (payload.goals || payload.action === "update")) {
+    const access = await requireWorkspaceAccess(auth, payload.workspaceId, { allowedRoles: ["owner", "admin"] });
+    const goals = normalizeDailyGoals(payload.goals || {});
+    await upsertWorkspaceDailyGoals(access.workspaceId, goals, auth.email);
+    await logWorkspaceAudit(access.workspaceId, "Daily goals updated", `${auth.email} updated Daily Command Center goals.`);
+    sendJson(response, 200, {
+      saved: true,
+      workspaceId: access.workspaceId,
+      goals,
+      updatedBy: auth.email,
+    });
+    return;
+  }
+
+  const access = await requireWorkspaceAccess(auth, payload.workspaceId, {
+    allowedRoles: pathname === "/api/dashboard/team-performance" ? ["owner", "admin", "manager"] : ["owner", "admin", "manager", "member"],
+  });
+  const goals = await loadWorkspaceDailyGoals(access.workspaceId);
+
+  if (pathname === "/api/workspace/daily-goals") {
+    sendJson(response, 200, {
+      workspaceId: access.workspaceId,
+      goals,
+      canManage: ["owner", "admin"].includes(access.role),
+    });
+    return;
+  }
+
+  const rows = await loadDailyCommandWorkspaceRows(access.workspaceId);
+  const snapshot = buildDailyCommandCenterSnapshot({
+    ...rows,
+    goals,
+    role: access.role,
+    mode: "live",
+  });
+
+  if (pathname === "/api/dashboard/team-performance") {
+    sendJson(response, 200, {
+      workspaceId: access.workspaceId,
+      role: access.role,
+      teamPerformance: snapshot.teamPerformance,
+      generatedAt: snapshot.generatedAt,
+    });
+    return;
+  }
+  if (pathname === "/api/dashboard/pipeline-health") {
+    sendJson(response, 200, {
+      workspaceId: access.workspaceId,
+      pipelineHealth: snapshot.pipelineHealth,
+      kpis: snapshot.kpis,
+      generatedAt: snapshot.generatedAt,
+    });
+    return;
+  }
+  if (pathname === "/api/dashboard/today") {
+    sendJson(response, 200, {
+      workspaceId: access.workspaceId,
+      priorities: snapshot.priorities,
+      today: snapshot.today,
+      generatedAt: snapshot.generatedAt,
+    });
+    return;
+  }
+
+  sendJson(response, 200, {
+    workspaceId: access.workspaceId,
+    workspaceName: access.workspaceName,
+    role: access.role,
+    ...snapshot,
+  });
+}
+
+function buildLaunchCommandCenterPayload({ founder, blockerRows, checklistRows, providerRows, categoryRows, betaCompanies, statusSnapshots }) {
+  const providers = mergeProviderRows(providerStatusesFromEnv(process.env), providerRows);
+  const readiness = buildLaunchReadiness(categoryRows, providers);
+  const blockers = (blockerRows || []).map(normalizeLaunchBlocker);
+  const checklist = mergeLaunchChecklist(checklistRows || []);
+  const checklistProgress = checklistProgressPercent(checklist);
+  const recommendation = launchRecommendation({
+    readinessScore: readiness.score,
+    blockers,
+    checklist,
+    providers,
+  });
+  const openBlockers = blockers.filter((blocker) => !["resolved", "accepted"].includes(blocker.status));
+  const releaseHealth = {
+    ciStatus: providers.find((provider) => provider.key === "ci_status")?.displayStatus || "Not connected",
+    requiredProvidersConfigured: providers.filter((provider) => provider.required && provider.configured).length,
+    requiredProvidersTotal: providers.filter((provider) => provider.required).length,
+    openCriticalBlockers: openBlockers.filter((blocker) => blocker.severity === "critical").length,
+    openHighBlockers: openBlockers.filter((blocker) => blocker.severity === "high").length,
+    checklistProgress,
+  };
+
+  return {
+    checkedAt: new Date().toISOString(),
+    checkedBy: founder.email,
+    source: hasSupabaseServiceConfig() ? "supabase-live" : "configuration-only",
+    readiness,
+    providers,
+    blockers,
+    checklist,
+    checklistProgress,
+    betaCompanies: (betaCompanies || []).map((company) => ({
+      id: company.id || "",
+      name: company.company_name || company.name || "Unnamed beta company",
+      status: company.status || "candidate",
+      owner: company.owner || "",
+      workspaceId: company.workspace_id || "",
+      notes: company.notes || "",
+      createdAt: company.created_at || "",
+      updatedAt: company.updated_at || "",
+    })),
+    statusSnapshots: statusSnapshots || [],
+    releaseHealth,
+    recommendation,
+    nextMilestone: nextLaunchMilestone({ recommendation, openBlockers, checklistProgress, providers }),
+  };
+}
+
+function nextLaunchMilestone({ recommendation, openBlockers, checklistProgress, providers }) {
+  const missingProvider = providers.find((provider) => provider.required && !provider.configured);
+  if (openBlockers.some((blocker) => blocker.severity === "critical")) return "Resolve all critical blockers before beta launch.";
+  if (missingProvider) return `Connect ${missingProvider.label}.`;
+  if (checklistProgress < 80) return "Complete the remaining beta certification checklist items.";
+  if (recommendation.status === "GO") return "Schedule founder sign-off and invite the next beta company.";
+  return "Review high blockers and confirm the conditional beta scope.";
+}
+
+async function requireFounderAccess(request) {
+  const auth = await requireAuthenticatedRequest(request);
+  const allowlist = internalAdminEmails();
+  const metadataAccess =
+    auth.user?.app_metadata?.internal_admin === true ||
+    auth.user?.app_metadata?.founder === true ||
+    auth.user?.user_metadata?.internal_admin === true;
+  if (!allowlist.length && !metadataAccess) {
+    throwHttpError(503, "INTERNAL_ACCESS_NOT_CONFIGURED", "Founder access is not configured for this deployment.");
+  }
+  if (!metadataAccess && !allowlist.includes(auth.email)) {
+    throwHttpError(403, "INTERNAL_ACCESS_FORBIDDEN", "This account is not allowed to open the Launch Command Center.");
+  }
+  return auth;
+}
+
+function internalAdminEmails() {
+  return cleanText(process.env.INTERNAL_ADMIN_EMAILS || process.env.FOUNDER_EMAILS || "")
+    .split(/[,\s]+/)
+    .map(cleanEmail)
+    .filter(Boolean);
+}
+
+function assertFeatureEnabled(envName, label) {
+  if (process.env[envName] === "false") {
+    throwHttpError(404, "FEATURE_DISABLED", `${label} is disabled for this deployment.`);
+  }
+}
+
+async function loadLaunchRows(path) {
+  if (!hasSupabaseServiceConfig()) return [];
+  try {
+    return await supabaseRequest(path, { method: "GET" });
+  } catch (error) {
+    if (isMissingTableError(error, path.split("?")[0])) return [];
+    throw error;
+  }
+}
+
+async function mutateLaunchBlocker(payload, founder) {
+  const mutation = cleanText(payload.mutation).toLowerCase();
+  const now = new Date().toISOString();
+  if (mutation === "delete") throwInputError("Launch blockers should be resolved or accepted, not deleted.");
+  const id = cleanUuid(payload.id);
+  const blocker = normalizeLaunchBlocker({
+    ...payload.blocker,
+    ...payload,
+    updated_at: now,
+  });
+  if (!blocker.title) throwInputError("Blocker title is required.");
+
+  const row = {
+    title: blocker.title,
+    detail: blocker.detail,
+    severity: blocker.severity,
+    status: blocker.status,
+    owner: blocker.owner,
+    due_at: blocker.dueAt,
+    updated_at: now,
+    updated_by: founder.email,
+  };
+  if (id) row.id = id;
+
+  await supabaseRequest(id ? "launch_blockers?on_conflict=id" : "launch_blockers", {
+    method: "POST",
+    body: [row],
+    prefer: "resolution=merge-duplicates,return=minimal",
+  });
+}
+
+async function mutateLaunchChecklist(payload, founder) {
+  const key = cleanText(payload.itemKey || payload.key);
+  if (!key) throwInputError("Checklist item key is required.");
+  const completed = Boolean(payload.completed);
+  const now = new Date().toISOString();
+  await supabaseRequest("launch_checklist_items?on_conflict=item_key", {
+    method: "POST",
+    body: [
+      {
+        item_key: key,
+        label: cleanText(payload.label),
+        category: cleanText(payload.category),
+        completed,
+        note: cleanText(payload.note).slice(0, 1000),
+        completed_at: completed ? now : null,
+        updated_at: now,
+        updated_by: founder.email,
+      },
+    ],
+    prefer: "resolution=merge-duplicates,return=minimal",
+  });
+}
+
+async function mutateLaunchBetaCompany(payload, founder) {
+  const companyName = cleanText(payload.companyName || payload.name);
+  if (!companyName) throwInputError("Beta company name is required.");
+  const now = new Date().toISOString();
+  const row = {
+    company_name: companyName,
+    status: normalizeBetaCompanyStatus(payload.status),
+    owner: cleanText(payload.owner || founder.email),
+    workspace_id: cleanUuid(payload.workspaceId) || null,
+    notes: cleanText(payload.notes).slice(0, 2000),
+    updated_at: now,
+    updated_by: founder.email,
+  };
+  const id = cleanUuid(payload.companyId || payload.id);
+  if (id) row.id = id;
+  await supabaseRequest(id ? "launch_beta_accounts?on_conflict=id" : "launch_beta_accounts", {
+    method: "POST",
+    body: [row],
+    prefer: "resolution=merge-duplicates,return=minimal",
+  });
+}
+
+async function insertLaunchStatusSnapshot(snapshot, founder) {
+  await supabaseRequest("launch_status_snapshots", {
+    method: "POST",
+    body: [
+      {
+        snapshot: sanitizeJson(snapshot),
+        created_by: founder.email,
+      },
+    ],
+    prefer: "return=minimal",
+  });
+}
+
+function normalizeBetaCompanyStatus(status) {
+  const value = cleanText(status).toLowerCase();
+  return ["candidate", "invited", "active", "paused", "graduated", "churned"].includes(value) ? value : "candidate";
+}
+
+async function loadDailyCommandWorkspaceRows(workspaceId) {
+  const encodedWorkspaceId = encodeURIComponent(workspaceId);
+  const [leads, tasks, appointments, activities, communications, notifications, members] = await Promise.all([
+    safeSupabaseRows(`leads?workspace_id=eq.${encodedWorkspaceId}&select=*&order=updated_at.desc`),
+    safeSupabaseRows(`tasks?workspace_id=eq.${encodedWorkspaceId}&select=*&order=created_at.desc`),
+    safeSupabaseRows(`appointments?workspace_id=eq.${encodedWorkspaceId}&select=*&order=starts_at.asc`),
+    safeSupabaseRows(`activities?workspace_id=eq.${encodedWorkspaceId}&select=*&order=created_at.desc&limit=100`),
+    safeSupabaseRows(`communications?workspace_id=eq.${encodedWorkspaceId}&select=*&order=created_at.desc&limit=100`),
+    safeSupabaseRows(`notifications?workspace_id=eq.${encodedWorkspaceId}&select=*&order=created_at.desc&limit=50`),
+    safeSupabaseRows(`workspace_members?workspace_id=eq.${encodedWorkspaceId}&select=user_id,role,team_function`),
+  ]);
+  return {
+    leads,
+    tasks,
+    appointments,
+    activities,
+    communications,
+    notifications,
+    members: members.map((member) => ({
+      email: member.user_id,
+      role: member.role,
+      teamFunction: member.team_function || "",
+    })),
+  };
+}
+
+async function loadWorkspaceDailyGoals(workspaceId) {
+  const rows = await safeSupabaseRows(
+    `workspace_daily_goals?workspace_id=eq.${encodeURIComponent(workspaceId)}&select=goals,updated_at`,
+  );
+  return normalizeDailyGoals(rows?.[0]?.goals || defaultDailyGoals);
+}
+
+async function upsertWorkspaceDailyGoals(workspaceId, goals, email) {
+  await supabaseRequest("workspace_daily_goals?on_conflict=workspace_id", {
+    method: "POST",
+    body: [
+      {
+        workspace_id: workspaceId,
+        goals,
+        updated_by: email || "",
+        updated_at: new Date().toISOString(),
+      },
+    ],
+    prefer: "resolution=merge-duplicates,return=minimal",
+  });
+}
+
+async function safeSupabaseRows(path) {
+  try {
+    const rows = await supabaseRequest(path, { method: "GET" });
+    return Array.isArray(rows) ? rows : [];
+  } catch (error) {
+    const table = path.split("?")[0];
+    if (isMissingTableError(error, table)) return [];
+    throw error;
+  }
 }
 
 async function handleAiRequest(pathname, request, response, payload) {

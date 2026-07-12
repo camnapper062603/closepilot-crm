@@ -1,5 +1,22 @@
 [
   {
+    "method": "GET",
+    "route": "/api/google/calendar/callback",
+    "category": "google-oauth",
+    "public": true,
+    "requiredAuthentication": "signed-oauth-state",
+    "workspaceRequired": true,
+    "minimumRole": "admin",
+    "resourceOwnershipChecks": [
+      "signed state user remains workspace admin"
+    ],
+    "provider": "google-calendar",
+    "rateLimit": "not applied",
+    "tests": [
+      "google-oauth"
+    ]
+  },
+  {
     "method": "POST",
     "route": "/api/ai/conversation-summary",
     "category": "ai",
@@ -7,10 +24,16 @@
     "requiredAuthentication": "supabase-bearer",
     "workspaceRequired": true,
     "minimumRole": "member",
-    "resourceOwnershipChecks": ["optional lead belongs to workspace"],
+    "resourceOwnershipChecks": [
+      "optional lead belongs to workspace"
+    ],
     "provider": "openai-or-rule-based-fallback",
     "rateLimit": "24/minute per request identity",
-    "tests": ["ai", "tenant-isolation", "rate-limits"]
+    "tests": [
+      "ai",
+      "tenant-isolation",
+      "rate-limits"
+    ]
   },
   {
     "method": "POST",
@@ -20,10 +43,16 @@
     "requiredAuthentication": "supabase-bearer",
     "workspaceRequired": true,
     "minimumRole": "member",
-    "resourceOwnershipChecks": ["optional lead belongs to workspace"],
+    "resourceOwnershipChecks": [
+      "optional lead belongs to workspace"
+    ],
     "provider": "openai-or-rule-based-fallback",
     "rateLimit": "24/minute per request identity",
-    "tests": ["ai", "tenant-isolation", "rate-limits"]
+    "tests": [
+      "ai",
+      "tenant-isolation",
+      "rate-limits"
+    ]
   },
   {
     "method": "POST",
@@ -33,10 +62,16 @@
     "requiredAuthentication": "supabase-bearer",
     "workspaceRequired": true,
     "minimumRole": "member",
-    "resourceOwnershipChecks": ["optional lead belongs to workspace"],
+    "resourceOwnershipChecks": [
+      "optional lead belongs to workspace"
+    ],
     "provider": "openai-or-rule-based-fallback",
     "rateLimit": "24/minute per request identity",
-    "tests": ["ai", "tenant-isolation", "rate-limits"]
+    "tests": [
+      "ai",
+      "tenant-isolation",
+      "rate-limits"
+    ]
   },
   {
     "method": "POST",
@@ -46,10 +81,16 @@
     "requiredAuthentication": "supabase-bearer",
     "workspaceRequired": true,
     "minimumRole": "member",
-    "resourceOwnershipChecks": ["optional lead belongs to workspace"],
+    "resourceOwnershipChecks": [
+      "optional lead belongs to workspace"
+    ],
     "provider": "openai-or-rule-based-fallback",
     "rateLimit": "24/minute per request identity",
-    "tests": ["ai", "tenant-isolation", "rate-limits"]
+    "tests": [
+      "ai",
+      "tenant-isolation",
+      "rate-limits"
+    ]
   },
   {
     "method": "POST",
@@ -59,10 +100,16 @@
     "requiredAuthentication": "supabase-bearer",
     "workspaceRequired": true,
     "minimumRole": "member",
-    "resourceOwnershipChecks": ["optional lead belongs to workspace"],
+    "resourceOwnershipChecks": [
+      "optional lead belongs to workspace"
+    ],
     "provider": "openai-or-rule-based-fallback",
     "rateLimit": "24/minute per request identity",
-    "tests": ["ai", "tenant-isolation", "rate-limits"]
+    "tests": [
+      "ai",
+      "tenant-isolation",
+      "rate-limits"
+    ]
   },
   {
     "method": "POST",
@@ -72,10 +119,16 @@
     "requiredAuthentication": "supabase-bearer",
     "workspaceRequired": true,
     "minimumRole": "member",
-    "resourceOwnershipChecks": ["optional lead belongs to workspace"],
+    "resourceOwnershipChecks": [
+      "optional lead belongs to workspace"
+    ],
     "provider": "openai-or-rule-based-fallback",
     "rateLimit": "24/minute per request identity",
-    "tests": ["ai", "tenant-isolation", "rate-limits"]
+    "tests": [
+      "ai",
+      "tenant-isolation",
+      "rate-limits"
+    ]
   },
   {
     "method": "POST",
@@ -85,10 +138,16 @@
     "requiredAuthentication": "supabase-bearer",
     "workspaceRequired": true,
     "minimumRole": "member",
-    "resourceOwnershipChecks": ["optional lead belongs to workspace"],
+    "resourceOwnershipChecks": [
+      "optional lead belongs to workspace"
+    ],
     "provider": "openai-or-rule-based-fallback",
     "rateLimit": "24/minute per request identity",
-    "tests": ["ai", "tenant-isolation", "rate-limits"]
+    "tests": [
+      "ai",
+      "tenant-isolation",
+      "rate-limits"
+    ]
   },
   {
     "method": "POST",
@@ -98,10 +157,16 @@
     "requiredAuthentication": "supabase-bearer",
     "workspaceRequired": true,
     "minimumRole": "member",
-    "resourceOwnershipChecks": ["optional lead belongs to workspace"],
+    "resourceOwnershipChecks": [
+      "optional lead belongs to workspace"
+    ],
     "provider": "openai-or-rule-based-fallback",
     "rateLimit": "24/minute per request identity",
-    "tests": ["ai", "tenant-isolation", "rate-limits"]
+    "tests": [
+      "ai",
+      "tenant-isolation",
+      "rate-limits"
+    ]
   },
   {
     "method": "POST",
@@ -111,10 +176,16 @@
     "requiredAuthentication": "supabase-bearer",
     "workspaceRequired": true,
     "minimumRole": "member",
-    "resourceOwnershipChecks": ["optional lead belongs to workspace"],
+    "resourceOwnershipChecks": [
+      "optional lead belongs to workspace"
+    ],
     "provider": "openai-or-rule-based-fallback",
     "rateLimit": "24/minute per request identity",
-    "tests": ["communications", "tenant-isolation", "rate-limits"]
+    "tests": [
+      "communications",
+      "tenant-isolation",
+      "rate-limits"
+    ]
   },
   {
     "method": "POST",
@@ -124,10 +195,16 @@
     "requiredAuthentication": "supabase-bearer",
     "workspaceRequired": true,
     "minimumRole": "member",
-    "resourceOwnershipChecks": ["optional lead belongs to workspace"],
+    "resourceOwnershipChecks": [
+      "optional lead belongs to workspace"
+    ],
     "provider": "demo-or-call-log",
     "rateLimit": "24/minute per request identity",
-    "tests": ["communications", "tenant-isolation", "rate-limits"]
+    "tests": [
+      "communications",
+      "tenant-isolation",
+      "rate-limits"
+    ]
   },
   {
     "method": "POST",
@@ -137,10 +214,16 @@
     "requiredAuthentication": "supabase-bearer",
     "workspaceRequired": true,
     "minimumRole": "member",
-    "resourceOwnershipChecks": ["optional lead belongs to workspace"],
+    "resourceOwnershipChecks": [
+      "optional lead belongs to workspace"
+    ],
     "provider": "supabase",
     "rateLimit": "24/minute per request identity",
-    "tests": ["communications", "tenant-isolation", "rate-limits"]
+    "tests": [
+      "communications",
+      "tenant-isolation",
+      "rate-limits"
+    ]
   },
   {
     "method": "POST",
@@ -150,10 +233,16 @@
     "requiredAuthentication": "supabase-bearer",
     "workspaceRequired": true,
     "minimumRole": "member",
-    "resourceOwnershipChecks": ["optional lead belongs to workspace"],
+    "resourceOwnershipChecks": [
+      "optional lead belongs to workspace"
+    ],
     "provider": "supabase",
     "rateLimit": "24/minute per request identity",
-    "tests": ["communications", "tenant-isolation", "rate-limits"]
+    "tests": [
+      "communications",
+      "tenant-isolation",
+      "rate-limits"
+    ]
   },
   {
     "method": "POST",
@@ -163,10 +252,16 @@
     "requiredAuthentication": "supabase-bearer",
     "workspaceRequired": true,
     "minimumRole": "member",
-    "resourceOwnershipChecks": ["optional lead belongs to workspace"],
+    "resourceOwnershipChecks": [
+      "optional lead belongs to workspace"
+    ],
     "provider": "resend-or-demo",
     "rateLimit": "24/minute per request identity",
-    "tests": ["communications", "tenant-isolation", "rate-limits"]
+    "tests": [
+      "communications",
+      "tenant-isolation",
+      "rate-limits"
+    ]
   },
   {
     "method": "POST",
@@ -176,10 +271,92 @@
     "requiredAuthentication": "supabase-bearer",
     "workspaceRequired": true,
     "minimumRole": "member",
-    "resourceOwnershipChecks": ["optional lead belongs to workspace"],
+    "resourceOwnershipChecks": [
+      "optional lead belongs to workspace"
+    ],
     "provider": "twilio-or-demo",
     "rateLimit": "24/minute per request identity",
-    "tests": ["communications", "tenant-isolation", "rate-limits"]
+    "tests": [
+      "communications",
+      "tenant-isolation",
+      "rate-limits"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/dashboard/daily-command-center",
+    "category": "daily-command-center",
+    "public": false,
+    "requiredAuthentication": "supabase-bearer",
+    "workspaceRequired": true,
+    "minimumRole": "member",
+    "resourceOwnershipChecks": [
+      "workspace membership",
+      "tenant-scoped workspace data"
+    ],
+    "provider": "supabase",
+    "rateLimit": "80/minute per request identity",
+    "tests": [
+      "command-center",
+      "tenant-isolation"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/dashboard/pipeline-health",
+    "category": "daily-command-center",
+    "public": false,
+    "requiredAuthentication": "supabase-bearer",
+    "workspaceRequired": true,
+    "minimumRole": "member",
+    "resourceOwnershipChecks": [
+      "workspace membership",
+      "tenant-scoped lead metrics"
+    ],
+    "provider": "supabase",
+    "rateLimit": "80/minute per request identity",
+    "tests": [
+      "command-center",
+      "tenant-isolation"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/dashboard/team-performance",
+    "category": "daily-command-center",
+    "public": false,
+    "requiredAuthentication": "supabase-bearer",
+    "workspaceRequired": true,
+    "minimumRole": "manager",
+    "resourceOwnershipChecks": [
+      "workspace membership",
+      "role-gated team metrics"
+    ],
+    "provider": "supabase",
+    "rateLimit": "80/minute per request identity",
+    "tests": [
+      "command-center",
+      "roles"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/dashboard/today",
+    "category": "daily-command-center",
+    "public": false,
+    "requiredAuthentication": "supabase-bearer",
+    "workspaceRequired": true,
+    "minimumRole": "member",
+    "resourceOwnershipChecks": [
+      "workspace membership",
+      "tenant-scoped daily work items"
+    ],
+    "provider": "supabase",
+    "rateLimit": "80/minute per request identity",
+    "tests": [
+      "command-center",
+      "tenant-isolation"
+    ]
   },
   {
     "method": "POST",
@@ -189,23 +366,15 @@
     "requiredAuthentication": "supabase-bearer",
     "workspaceRequired": true,
     "minimumRole": "admin",
-    "resourceOwnershipChecks": ["workspace membership"],
+    "resourceOwnershipChecks": [
+      "workspace membership"
+    ],
     "provider": "google-calendar",
     "rateLimit": "80/minute per request identity",
-    "tests": ["google-oauth", "roles"]
-  },
-  {
-    "method": "GET",
-    "route": "/api/google/calendar/callback",
-    "category": "google-oauth",
-    "public": true,
-    "requiredAuthentication": "signed-oauth-state",
-    "workspaceRequired": true,
-    "minimumRole": "admin",
-    "resourceOwnershipChecks": ["signed state user remains workspace admin"],
-    "provider": "google-calendar",
-    "rateLimit": "not applied",
-    "tests": ["google-oauth"]
+    "tests": [
+      "google-oauth",
+      "roles"
+    ]
   },
   {
     "method": "POST",
@@ -215,10 +384,15 @@
     "requiredAuthentication": "supabase-bearer",
     "workspaceRequired": true,
     "minimumRole": "member",
-    "resourceOwnershipChecks": ["workspace membership"],
+    "resourceOwnershipChecks": [
+      "workspace membership"
+    ],
     "provider": "google-calendar",
     "rateLimit": "80/minute per request identity",
-    "tests": ["google-oauth", "tenant-isolation"]
+    "tests": [
+      "google-oauth",
+      "tenant-isolation"
+    ]
   },
   {
     "method": "POST",
@@ -228,10 +402,14 @@
     "requiredAuthentication": "supabase-bearer",
     "workspaceRequired": true,
     "minimumRole": "member",
-    "resourceOwnershipChecks": ["workspace membership"],
+    "resourceOwnershipChecks": [
+      "workspace membership"
+    ],
     "provider": "google-calendar",
     "rateLimit": "80/minute per request identity",
-    "tests": ["google-oauth"]
+    "tests": [
+      "google-oauth"
+    ]
   },
   {
     "method": "POST",
@@ -241,10 +419,15 @@
     "requiredAuthentication": "supabase-bearer",
     "workspaceRequired": false,
     "minimumRole": "invited-user",
-    "resourceOwnershipChecks": ["authenticated email matches invitation email"],
+    "resourceOwnershipChecks": [
+      "authenticated email matches invitation email"
+    ],
     "provider": "supabase-auth",
     "rateLimit": "80/minute per request identity",
-    "tests": ["invitations", "authentication"]
+    "tests": [
+      "invitations",
+      "authentication"
+    ]
   },
   {
     "method": "POST",
@@ -254,10 +437,144 @@
     "requiredAuthentication": "supabase-bearer",
     "workspaceRequired": true,
     "minimumRole": "admin",
-    "resourceOwnershipChecks": ["workspace membership", "seat limit", "duplicate invite"],
+    "resourceOwnershipChecks": [
+      "workspace membership",
+      "seat limit",
+      "duplicate invite"
+    ],
     "provider": "resend-and-supabase-auth",
     "rateLimit": "80/minute per request identity",
-    "tests": ["invitations", "roles", "tenant-isolation"]
+    "tests": [
+      "invitations",
+      "roles",
+      "tenant-isolation"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/launch-command-center/beta-companies",
+    "category": "launch-command-center",
+    "public": false,
+    "requiredAuthentication": "supabase-bearer-and-internal-allowlist",
+    "workspaceRequired": false,
+    "minimumRole": "internal-founder",
+    "resourceOwnershipChecks": [
+      "server-verified internal admin identity"
+    ],
+    "provider": "supabase",
+    "rateLimit": "80/minute per request identity",
+    "tests": [
+      "command-center",
+      "founder-auth"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/launch-command-center/blockers",
+    "category": "launch-command-center",
+    "public": false,
+    "requiredAuthentication": "supabase-bearer-and-internal-allowlist",
+    "workspaceRequired": false,
+    "minimumRole": "internal-founder",
+    "resourceOwnershipChecks": [
+      "server-verified internal admin identity"
+    ],
+    "provider": "supabase",
+    "rateLimit": "80/minute per request identity",
+    "tests": [
+      "command-center",
+      "founder-auth"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/launch-command-center/checklist",
+    "category": "launch-command-center",
+    "public": false,
+    "requiredAuthentication": "supabase-bearer-and-internal-allowlist",
+    "workspaceRequired": false,
+    "minimumRole": "internal-founder",
+    "resourceOwnershipChecks": [
+      "server-verified internal admin identity"
+    ],
+    "provider": "supabase",
+    "rateLimit": "80/minute per request identity",
+    "tests": [
+      "command-center",
+      "founder-auth"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/launch-command-center/overview",
+    "category": "launch-command-center",
+    "public": false,
+    "requiredAuthentication": "supabase-bearer-and-internal-allowlist",
+    "workspaceRequired": false,
+    "minimumRole": "internal-founder",
+    "resourceOwnershipChecks": [
+      "server-verified internal admin identity"
+    ],
+    "provider": "supabase",
+    "rateLimit": "80/minute per request identity",
+    "tests": [
+      "command-center",
+      "founder-auth"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/launch-command-center/providers",
+    "category": "launch-command-center",
+    "public": false,
+    "requiredAuthentication": "supabase-bearer-and-internal-allowlist",
+    "workspaceRequired": false,
+    "minimumRole": "internal-founder",
+    "resourceOwnershipChecks": [
+      "server-verified internal admin identity"
+    ],
+    "provider": "supabase-and-env-status",
+    "rateLimit": "80/minute per request identity",
+    "tests": [
+      "command-center",
+      "founder-auth"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/launch-command-center/readiness",
+    "category": "launch-command-center",
+    "public": false,
+    "requiredAuthentication": "supabase-bearer-and-internal-allowlist",
+    "workspaceRequired": false,
+    "minimumRole": "internal-founder",
+    "resourceOwnershipChecks": [
+      "server-verified internal admin identity"
+    ],
+    "provider": "supabase",
+    "rateLimit": "80/minute per request identity",
+    "tests": [
+      "command-center",
+      "founder-auth"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/launch-command-center/status-snapshot",
+    "category": "launch-command-center",
+    "public": false,
+    "requiredAuthentication": "supabase-bearer-and-internal-allowlist",
+    "workspaceRequired": false,
+    "minimumRole": "internal-founder",
+    "resourceOwnershipChecks": [
+      "server-verified internal admin identity"
+    ],
+    "provider": "supabase",
+    "rateLimit": "80/minute per request identity",
+    "tests": [
+      "command-center",
+      "founder-auth"
+    ]
   },
   {
     "method": "POST",
@@ -267,10 +584,16 @@
     "requiredAuthentication": "supabase-bearer",
     "workspaceRequired": true,
     "minimumRole": "member-or-locked-summary",
-    "resourceOwnershipChecks": ["workspace membership", "add-on access"],
+    "resourceOwnershipChecks": [
+      "workspace membership",
+      "add-on access"
+    ],
     "provider": "supabase",
     "rateLimit": "80/minute per request identity",
-    "tests": ["recruiting", "roles"]
+    "tests": [
+      "recruiting",
+      "roles"
+    ]
   },
   {
     "method": "POST",
@@ -280,10 +603,16 @@
     "requiredAuthentication": "supabase-bearer",
     "workspaceRequired": true,
     "minimumRole": "admin",
-    "resourceOwnershipChecks": ["workspace membership", "add-on setup authority"],
+    "resourceOwnershipChecks": [
+      "workspace membership",
+      "add-on setup authority"
+    ],
     "provider": "supabase",
     "rateLimit": "80/minute per request identity",
-    "tests": ["recruiting", "roles"]
+    "tests": [
+      "recruiting",
+      "roles"
+    ]
   },
   {
     "method": "POST",
@@ -293,10 +622,16 @@
     "requiredAuthentication": "supabase-bearer",
     "workspaceRequired": true,
     "minimumRole": "manager",
-    "resourceOwnershipChecks": ["workspace membership", "enabled add-on"],
+    "resourceOwnershipChecks": [
+      "workspace membership",
+      "enabled add-on"
+    ],
     "provider": "supabase",
     "rateLimit": "80/minute per request identity",
-    "tests": ["recruiting", "tenant-isolation"]
+    "tests": [
+      "recruiting",
+      "tenant-isolation"
+    ]
   },
   {
     "method": "POST",
@@ -306,10 +641,17 @@
     "requiredAuthentication": "supabase-bearer",
     "workspaceRequired": true,
     "minimumRole": "manager",
-    "resourceOwnershipChecks": ["workspace membership", "enabled add-on", "admin for team conversion"],
+    "resourceOwnershipChecks": [
+      "workspace membership",
+      "enabled add-on",
+      "admin for team conversion"
+    ],
     "provider": "supabase",
     "rateLimit": "80/minute per request identity",
-    "tests": ["recruiting", "roles"]
+    "tests": [
+      "recruiting",
+      "roles"
+    ]
   },
   {
     "method": "POST",
@@ -319,10 +661,16 @@
     "requiredAuthentication": "supabase-bearer",
     "workspaceRequired": true,
     "minimumRole": "admin",
-    "resourceOwnershipChecks": ["workspace membership", "setup authority"],
+    "resourceOwnershipChecks": [
+      "workspace membership",
+      "setup authority"
+    ],
     "provider": "supabase",
     "rateLimit": "80/minute per request identity",
-    "tests": ["recruiting", "roles"]
+    "tests": [
+      "recruiting",
+      "roles"
+    ]
   },
   {
     "method": "POST",
@@ -332,10 +680,16 @@
     "requiredAuthentication": "supabase-bearer",
     "workspaceRequired": true,
     "minimumRole": "manager",
-    "resourceOwnershipChecks": ["workspace membership", "enabled add-on"],
+    "resourceOwnershipChecks": [
+      "workspace membership",
+      "enabled add-on"
+    ],
     "provider": "supabase",
     "rateLimit": "80/minute per request identity",
-    "tests": ["recruiting", "tenant-isolation"]
+    "tests": [
+      "recruiting",
+      "tenant-isolation"
+    ]
   },
   {
     "method": "POST",
@@ -345,10 +699,16 @@
     "requiredAuthentication": "supabase-bearer",
     "workspaceRequired": true,
     "minimumRole": "manager",
-    "resourceOwnershipChecks": ["workspace membership", "enabled add-on"],
+    "resourceOwnershipChecks": [
+      "workspace membership",
+      "enabled add-on"
+    ],
     "provider": "resend-staging",
     "rateLimit": "80/minute per request identity",
-    "tests": ["recruiting", "communications"]
+    "tests": [
+      "recruiting",
+      "communications"
+    ]
   },
   {
     "method": "POST",
@@ -358,10 +718,16 @@
     "requiredAuthentication": "supabase-bearer",
     "workspaceRequired": true,
     "minimumRole": "manager",
-    "resourceOwnershipChecks": ["workspace membership", "enabled add-on"],
+    "resourceOwnershipChecks": [
+      "workspace membership",
+      "enabled add-on"
+    ],
     "provider": "supabase",
     "rateLimit": "80/minute per request identity",
-    "tests": ["recruiting", "tenant-isolation"]
+    "tests": [
+      "recruiting",
+      "tenant-isolation"
+    ]
   },
   {
     "method": "POST",
@@ -371,10 +737,16 @@
     "requiredAuthentication": "supabase-bearer",
     "workspaceRequired": true,
     "minimumRole": "admin",
-    "resourceOwnershipChecks": ["workspace membership", "server-side subscription/customer"],
+    "resourceOwnershipChecks": [
+      "workspace membership",
+      "server-side subscription/customer"
+    ],
     "provider": "stripe",
     "rateLimit": "80/minute per request identity",
-    "tests": ["billing", "roles"]
+    "tests": [
+      "billing",
+      "roles"
+    ]
   },
   {
     "method": "POST",
@@ -384,10 +756,16 @@
     "requiredAuthentication": "supabase-bearer",
     "workspaceRequired": true,
     "minimumRole": "admin",
-    "resourceOwnershipChecks": ["workspace membership", "server-side subscription/customer"],
+    "resourceOwnershipChecks": [
+      "workspace membership",
+      "server-side subscription/customer"
+    ],
     "provider": "stripe",
     "rateLimit": "80/minute per request identity",
-    "tests": ["billing", "roles"]
+    "tests": [
+      "billing",
+      "roles"
+    ]
   },
   {
     "method": "POST",
@@ -397,10 +775,14 @@
     "requiredAuthentication": "stripe-signature-in-live-mode",
     "workspaceRequired": false,
     "minimumRole": "none",
-    "resourceOwnershipChecks": ["signed webhook event metadata"],
+    "resourceOwnershipChecks": [
+      "signed webhook event metadata"
+    ],
     "provider": "stripe",
     "rateLimit": "not applied",
-    "tests": ["billing"]
+    "tests": [
+      "billing"
+    ]
   },
   {
     "method": "POST",
@@ -410,9 +792,33 @@
     "requiredAuthentication": "none-for-public-summary",
     "workspaceRequired": false,
     "minimumRole": "admin-for-details",
-    "resourceOwnershipChecks": ["workspace admin for protected diagnostics"],
+    "resourceOwnershipChecks": [
+      "workspace admin for protected diagnostics"
+    ],
     "provider": "internal",
     "rateLimit": "80/minute per request identity",
-    "tests": ["readiness", "http-security"]
+    "tests": [
+      "readiness",
+      "http-security"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/workspace/daily-goals",
+    "category": "daily-command-center",
+    "public": false,
+    "requiredAuthentication": "supabase-bearer",
+    "workspaceRequired": true,
+    "minimumRole": "member-read-admin-write",
+    "resourceOwnershipChecks": [
+      "workspace membership",
+      "admin role for updates"
+    ],
+    "provider": "supabase",
+    "rateLimit": "80/minute per request identity",
+    "tests": [
+      "command-center",
+      "roles"
+    ]
   }
 ]
