@@ -275,8 +275,10 @@ Local demo mode is still fully supported:
 ## Command Centers
 
 - Customer Daily Command Center: visit `#daily-command` or `/daily-command-center`. It uses authenticated, tenant-scoped Supabase data when live and falls back to clearly labeled local/demo calculations when the backend is unavailable.
-- Founder Launch Command Center: visit `/launch-command-center`. It requires a signed-in Supabase user plus server-side internal access through `INTERNAL_ADMIN_EMAILS`; the allowlist is never exposed to the browser.
+- Founder Launch Command Center: visit `/launch-command-center`. It requires a signed-in Supabase user plus server-side internal access through `INTERNAL_ADMIN_EMAILS`; the allowlist is never exposed to the browser. The launch recommendation now evaluates stage-specific `GO`, `CONDITIONAL_GO`, and `NO_GO` rules from `command-center-config.js`.
 - See `docs/DAILY_COMMAND_CENTER.md`, `docs/LAUNCH_COMMAND_CENTER.md`, `docs/LAUNCH_SCORING.md`, and `docs/BETA_CERTIFICATION.md`.
+
+Run `npm run release:check` before a beta/prod deployment. It includes build, route inventory, security tests, command-center policy tests, daily-goal tests, team-attribution tests, full Playwright tests, browser smoke, and secret scan.
 
 ## Production Deployment Checklist
 

@@ -12,6 +12,8 @@ Use this checklist before inviting a beta customer to ClosePilot CRM or Kira Rec
 - Resend invite delivery is configured or invite fallback links are clearly labeled.
 - `npm run release:check` passes.
 - `npm run security:scan-secrets` passes.
+- Launch Command Center recommendation is not `NO_GO` for the target stage.
+- Required migration verification passes or every warning is documented as an accepted risk.
 
 ## Safe For Beta Customers
 
@@ -33,8 +35,17 @@ Use this checklist before inviting a beta customer to ClosePilot CRM or Kira Rec
 Record the following in the Launch Command Center:
 
 - Open blockers and owner.
+- Blocker category, evidence, target stage, and resolution or accepted-risk reason.
 - Provider status.
-- Beta company status.
+- Beta company status, onboarding stage, assigned owner, next action, issue count, feedback count, and conversion likelihood.
 - Checklist completion.
 - Latest release gate result.
 - Founder launch recommendation.
+
+## Manual Verification Checklist
+
+- Confirm `INTERNAL_ADMIN_EMAILS` contains only internal founder/operator accounts.
+- Confirm ordinary workspace owners/admins cannot open `/launch-command-center`.
+- Confirm `workspace_daily_goals` reads are tenant-scoped and updates require owner/admin.
+- Confirm failed/demo communications do not appear in sent-contact metrics.
+- Confirm the latest Supabase migrations are applied before inviting beta customers.

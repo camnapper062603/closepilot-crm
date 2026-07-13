@@ -34,6 +34,31 @@ await verifySelect(
   { optional: true },
 );
 await verifySelect("workspace add-ons", "workspace_addons?select=workspace_id,addon_key,status,trial_ends_at,metadata&limit=1", { optional: true });
+await verifySelect(
+  "launch readiness policy columns",
+  "launch_readiness_categories?select=category_key,score,weight,status,source,evidence,checked_at&limit=1",
+  { optional: true },
+);
+await verifySelect(
+  "launch checklist policy columns",
+  "launch_checklist_items?select=item_key,status,required,required_stages,evidence&limit=1",
+  { optional: true },
+);
+await verifySelect(
+  "launch blocker operational columns",
+  "launch_blockers?select=id,category,evidence_url,evidence_text,resolution_notes,accepted_risk_reason,accepted_risk_by,accepted_risk_at,launch_blocking,target_stage,owner_user_id,resolved_by,resolved_at&limit=1",
+  { optional: true },
+);
+await verifySelect(
+  "launch beta operational columns",
+  "launch_beta_accounts?select=id,contact_name,contact_email,contact_phone,industry,onboarding_stage,beta_status,start_date,last_activity_at,open_issue_count,feedback_count,conversion_likelihood,pilot_price,expected_conversion_date,assigned_owner,next_action,next_action_due_at&limit=1",
+  { optional: true },
+);
+await verifySelect(
+  "team attribution columns",
+  "communications?select=workspace_id,created_by,sent_by,user_id,member_id&limit=1",
+  { optional: true },
+);
 
 await verifyPlaintextTokenState();
 

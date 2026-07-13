@@ -13,6 +13,11 @@ This runs:
 - `npm run build`
 - `npm run test:route-inventory`
 - `npm run test:security`
+- `npm run test:command-center`
+- `npm run test:launch-policy`
+- `npm run test:daily-goals`
+- `npm run test:team-performance`
+- `npm test`
 - `npm run test:browser-smoke`
 - `npm run security:scan-secrets`
 
@@ -29,6 +34,7 @@ SUPABASE_SERVICE_ROLE_KEY=...
 APP_BASE_URL=https://your-production-domain
 PRODUCT_URL=https://your-production-domain
 SUPPORT_EMAIL=support@your-domain
+LAUNCH_STAGE=private_beta
 ```
 
 Provider-specific features remain setup-gated until their keys are configured:
@@ -55,3 +61,11 @@ npm run security:check-plaintext-tokens -- --json
 ```
 
 These commands are read-only. They require `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
+
+Apply the command-center migrations in order before a live Launch Command Center review:
+
+```bash
+supabase/migrations/20260712_launch_command_center.sql
+supabase/migrations/20260713_launch_policy_categories.sql
+supabase/migrations/20260713_launch_blocker_beta_fields.sql
+```

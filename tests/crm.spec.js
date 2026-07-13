@@ -798,9 +798,9 @@ test('builds visual no-code automation workflows', async ({ page }) => {
   await expect(page.locator('#workflowTemplateList')).toContainText('Reactivation Campaign');
   await expect(page.locator('#workflowTemplateList')).toContainText('Deposit Reminder');
   await expect(page.locator('#workflowTemplateList')).toContainText('Job Completion');
-  await page.locator('#workflowTemplateList').getByRole('button', { name: 'Use Template' }).first().click();
-  await expect(page.locator('#workflowBuilderPanel')).toBeVisible();
+  await trigger(page.locator('#workflowTemplateList').getByRole('button', { name: 'Use Template' }).first());
   await expect(page.locator('#automationBuilderMessage')).toContainText('loaded into the workflow canvas');
+  await expect(page.locator('#workflowBuilderPanel')).toBeVisible();
 
   await page.locator('#aiWorkflowPrompt').fill("When someone hasn't replied in 3 days, send a text, wait 2 days, then notify my sales manager.");
   await page.getByRole('button', { name: 'Generate Workflow' }).click();
@@ -2162,6 +2162,8 @@ test('shows booked appointments in calendar and my appointments views', async ({
   await page.locator('#appointmentDate').fill('2026-07-03');
   await page.getByRole('button', { name: '10 AM' }).click();
   await page.getByRole('button', { name: 'Save outcome' }).click();
+  await expect(page.locator('#dialMessage')).toContainText('Appointment booked and assigned round robin.');
+  await expect(page.locator('#appointmentList')).toContainText('100 Cedar St');
 
   await navigateTo(page, 'Calendar', 'calendar');
   await expect(page.locator('#calendarConnectTitle')).toContainText('Google Calendar');

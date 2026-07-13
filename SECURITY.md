@@ -67,6 +67,8 @@ Protected endpoints should return `401 AUTH_REQUIRED` without a bearer token. Ro
 
 The Launch Command Center should return `403 INTERNAL_ACCESS_FORBIDDEN` for authenticated users outside `INTERNAL_ADMIN_EMAILS` and `503 INTERNAL_ACCESS_NOT_CONFIGURED` when no internal access method is configured.
 
+Founder launch records (`launch_readiness_categories`, `launch_provider_status`, `launch_blockers`, `launch_checklist_items`, `launch_beta_accounts`, and `launch_status_snapshots`) remain RLS-protected for service-role backend access only. Ordinary authenticated browser roles must not read founder blocker or beta-account rows directly. Customer Daily Command Center rows are scoped through verified workspace membership, and team-level metrics require owner/admin/manager role checks.
+
 ## Release Gates
 
 ```bash

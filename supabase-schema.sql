@@ -993,3 +993,117 @@ create policy "Admins can manage workspace daily goals"
   on public.workspace_daily_goals for all
   using (public.is_workspace_admin(workspace_id))
   with check (public.is_workspace_admin(workspace_id));
+
+alter table if exists public.launch_readiness_categories
+  add column if not exists weight numeric not null default 0,
+  add column if not exists status text not null default 'unknown',
+  add column if not exists source text not null default 'manual',
+  add column if not exists evidence jsonb not null default '{}'::jsonb,
+  add column if not exists checked_at timestamptz;
+
+alter table if exists public.launch_provider_status
+  add column if not exists source text not null default 'manual',
+  add column if not exists evidence jsonb not null default '{}'::jsonb;
+
+alter table if exists public.launch_provider_status
+  drop constraint if exists launch_provider_status_status_check,
+  add constraint launch_provider_status_status_check
+    check (status in ('connected', 'healthy', 'configured', 'passed', 'pass', 'ready', 'complete', 'setup_required', 'not_connected', 'not_configured', 'unknown', 'degraded', 'blocked', 'failed', 'failing', 'error'));
+
+alter table if exists public.launch_checklist_items
+  add column if not exists status text not null default 'unknown',
+  add column if not exists required boolean not null default false,
+  add column if not exists required_stages text[] not null default '{}'::text[],
+  add column if not exists evidence jsonb not null default '{}'::jsonb;
+
+alter table if exists public.launch_blockers
+  add column if not exists category text not null default '',
+  add column if not exists evidence_url text not null default '',
+  add column if not exists evidence_text text not null default '',
+  add column if not exists resolution_notes text not null default '',
+  add column if not exists accepted_risk_reason text not null default '',
+  add column if not exists accepted_risk_by text not null default '',
+  add column if not exists accepted_risk_at timestamptz,
+  add column if not exists launch_blocking boolean not null default true,
+  add column if not exists target_stage text not null default 'private_beta',
+  add column if not exists owner_user_id uuid references auth.users(id) on delete set null,
+  add column if not exists resolved_by text not null default '',
+  add column if not exists resolved_at timestamptz;
+
+alter table if exists public.launch_blockers
+  drop constraint if exists launch_blockers_status_check,
+  add constraint launch_blockers_status_check
+    check (status in ('open', 'in_progress', 'blocked', 'resolved', 'accepted_risk', 'accepted'));
+
+alter table if exists public.launch_beta_accounts
+  add column if not exists contact_name text not null default '',
+  add column if not exists contact_email text not null default '',
+  add column if not exists contact_phone text not null default '',
+  add column if not exists industry text not null default '',
+  add column if not exists onboarding_stage text not null default 'not_started',
+  add column if not exists beta_status text not null default 'prospect',
+  add column if not exists start_date date,
+  add column if not exists last_activity_at timestamptz,
+  add column if not exists open_issue_count integer not null default 0,
+  add column if not exists feedback_count integer not null default 0,
+  add column if not exists conversion_likelihood integer not null default 0,
+  add column if not exists pilot_price numeric not null default 0,
+  add column if not exists expected_conversion_date date,
+  add column if not exists assigned_owner text not null default '',
+  add column if not exists next_action text not null default '',
+  add column if not exists next_action_due_at timestamptz;
+
+alter table if exists public.launch_beta_accounts
+  drop constraint if exists launch_beta_accounts_status_check,
+  add constraint launch_beta_accounts_status_check
+    check (status in ('prospect', 'candidate', 'invited', 'onboarding', 'active', 'paused', 'completed', 'graduated', 'converted', 'churned'));
+
+alter table if exists public.tasks
+  add column if not exists assigned_to text,
+  add column if not exists created_by uuid references auth.users(id) on delete set null,
+  add column if not exists completed_by uuid references auth.users(id) on delete set null,
+  add column if not exists completed_at timestamptz,
+  add column if not exists updated_at timestamptz not null default now();
+
+alter table if exists public.activities
+  add column if not exists created_by uuid references auth.users(id) on delete set null,
+  add column if not exists actor_user_id uuid references auth.users(id) on delete set null,
+  add column if not exists member_id uuid references auth.users(id) on delete set null,
+  add column if not exists metadata jsonb not null default '{}'::jsonb;
+
+alter table if exists public.communications
+  add column if not exists created_by uuid references auth.users(id) on delete set null,
+  add column if not exists sent_by uuid references auth.users(id) on delete set null,
+  add column if not exists user_id uuid references auth.users(id) on delete set null,
+  add column if not exists member_id uuid references auth.users(id) on delete set null;
+
+alter table if exists public.calls
+  add column if not exists recorded_by uuid references auth.users(id) on delete set null,
+  add column if not exists created_by uuid references auth.users(id) on delete set null,
+  add column if not exists user_id uuid references auth.users(id) on delete set null;
+
+alter table if exists public.appointments
+  add column if not exists assigned_user_id uuid references auth.users(id) on delete set null,
+  add column if not exists booked_by uuid references auth.users(id) on delete set null,
+  add column if not exists created_by uuid references auth.users(id) on delete set null;
+
+create index if not exists launch_readiness_categories_status_idx
+  on public.launch_readiness_categories(status, category_key);
+
+create index if not exists launch_checklist_items_status_idx
+  on public.launch_checklist_items(status, required);
+
+create index if not exists launch_blockers_target_stage_idx
+  on public.launch_blockers(target_stage, status, severity);
+
+create index if not exists launch_beta_accounts_beta_status_idx
+  on public.launch_beta_accounts(beta_status, onboarding_stage);
+
+create index if not exists tasks_workspace_assigned_idx
+  on public.tasks(workspace_id, assigned_to, done);
+
+create index if not exists communications_workspace_sent_by_idx
+  on public.communications(workspace_id, sent_by, created_at desc);
+
+create index if not exists activities_workspace_actor_idx
+  on public.activities(workspace_id, actor_user_id, created_at desc);

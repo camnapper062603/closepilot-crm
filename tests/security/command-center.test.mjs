@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildDailyCommandCenterSnapshot, launchRecommendation } from "../../command-center-config.js";
+import {
+  buildDailyCommandCenterSnapshot,
+  buildLaunchReadiness,
+  launchChecklistTemplate,
+  launchProviderDefinitions,
+  launchReadinessCategories,
+  launchRecommendation,
+} from "../../command-center-config.js";
 import { createMockFetch, installMockEnvironment, postApi, workspaceA, workspaceB } from "./helpers/api-harness.mjs";
 
 const originalFetch = global.fetch;
@@ -110,12 +117,65 @@ test("daily command metrics are explainable and role-aware", () => {
 });
 
 test("launch recommendation allows GO only after score, checklist, blocker, and provider gates pass", () => {
+  const providers = launchProviderDefinitions.map((provider) => ({
+    key: provider.key,
+    label: provider.label,
+    category: provider.category,
+    configured: true,
+    status: "connected",
+    displayStatus: "Connected",
+  }));
   const recommendation = launchRecommendation({
-    readinessScore: 92,
+    launchStage: "private_beta",
+    readiness: buildLaunchReadiness(
+      launchReadinessCategories.map((category) => ({
+        category_key: category.key,
+        score: 95,
+        status: "passed",
+        source: "automatic",
+      })),
+      providers,
+    ),
     blockers: [],
-    checklist: Array.from({ length: 10 }, (_item, index) => ({ completed: index < 9 })),
-    providers: [{ key: "database", required: true, configured: true }],
+    checklist: launchChecklistTemplate.map((item) => ({ key: item.key, label: item.label, completed: true, status: "complete" })),
+    providers,
+    statusSnapshot: {
+      launchStage: "private_beta",
+      verifications: {
+        tenant_isolation: "passed",
+        production_smoke: "passed",
+        release_gates: "passed",
+        supabase_security: "passed",
+        required_migrations: "passed",
+        plaintext_provider_tokens: "passed",
+        auth_authorization: "passed",
+      },
+    },
   });
 
   assert.equal(recommendation.status, "GO");
+});
+
+test("launch blocker mutation validates accepted risk reason and evidence URL", async () => {
+  process.env.INTERNAL_ADMIN_EMAILS = "founder@example.com";
+  global.fetch = createMockFetch({ email: "founder@example.com", role: "owner", workspaceId: workspaceA });
+
+  const missingReason = await postApi("/api/launch-command-center/blockers", {
+    workspaceId: workspaceA,
+    mutation: "upsert",
+    title: "Accepting a known launch risk",
+    severity: "medium",
+    status: "accepted_risk",
+  });
+  assert.equal(missingReason.statusCode, 400);
+
+  const badUrl = await postApi("/api/launch-command-center/blockers", {
+    workspaceId: workspaceA,
+    mutation: "upsert",
+    title: "Evidence link",
+    severity: "medium",
+    status: "open",
+    evidenceUrl: "not-a-url",
+  });
+  assert.equal(badUrl.statusCode, 400);
 });

@@ -458,6 +458,9 @@ async function handleDailyCommandCenterRequest(pathname, request, response, payl
     goals,
     role: access.role,
     mode: "live",
+    currentUserId: access.userId,
+    currentUserEmail: access.email,
+    timezone: rows.timezone,
   });
 
   if (pathname === "/api/dashboard/team-performance") {
@@ -502,26 +505,35 @@ function buildLaunchCommandCenterPayload({ founder, blockerRows, checklistRows, 
   const blockers = (blockerRows || []).map(normalizeLaunchBlocker);
   const checklist = mergeLaunchChecklist(checklistRows || []);
   const checklistProgress = checklistProgressPercent(checklist);
+  const latestStatusSnapshot = Array.isArray(statusSnapshots) ? statusSnapshots[0]?.snapshot || {} : {};
+  const launchStage = cleanText(latestStatusSnapshot.launchStage || latestStatusSnapshot.stage || process.env.LAUNCH_STAGE || "private_beta");
   const recommendation = launchRecommendation({
-    readinessScore: readiness.score,
+    launchStage,
+    readiness,
     blockers,
     checklist,
     providers,
+    statusSnapshot: latestStatusSnapshot,
   });
-  const openBlockers = blockers.filter((blocker) => !["resolved", "accepted"].includes(blocker.status));
+  const openBlockers = blockers.filter((blocker) => blocker.status !== "resolved");
   const releaseHealth = {
     ciStatus: providers.find((provider) => provider.key === "ci_status")?.displayStatus || "Not connected",
-    requiredProvidersConfigured: providers.filter((provider) => provider.required && provider.configured).length,
-    requiredProvidersTotal: providers.filter((provider) => provider.required).length,
+    requiredProvidersConfigured: recommendation.passedRequirements.filter((item) => item.code === "REQUIRED_PROVIDER_CONNECTED").length,
+    requiredProvidersTotal: recommendation.passedRequirements.filter((item) => item.code === "REQUIRED_PROVIDER_CONNECTED").length +
+      recommendation.blockingReasons.filter((item) => item.code === "REQUIRED_PROVIDER_NOT_CONFIGURED" || item.code === "REQUIRED_PROVIDER_FAILED" || item.code === "REQUIRED_PROVIDER_UNKNOWN").length,
     openCriticalBlockers: openBlockers.filter((blocker) => blocker.severity === "critical").length,
     openHighBlockers: openBlockers.filter((blocker) => blocker.severity === "high").length,
     checklistProgress,
+    blockingReasonCount: recommendation.blockingReasons.length,
+    warningCount: recommendation.warnings.length,
+    unknownRequirementCount: recommendation.unknownRequirements.length,
   };
 
   return {
     checkedAt: new Date().toISOString(),
     checkedBy: founder.email,
     source: hasSupabaseServiceConfig() ? "supabase-live" : "configuration-only",
+    launchStage: recommendation.evaluatedStage,
     readiness,
     providers,
     blockers,
@@ -530,10 +542,25 @@ function buildLaunchCommandCenterPayload({ founder, blockerRows, checklistRows, 
     betaCompanies: (betaCompanies || []).map((company) => ({
       id: company.id || "",
       name: company.company_name || company.name || "Unnamed beta company",
-      status: company.status || "candidate",
-      owner: company.owner || "",
+      status: company.beta_status || company.status || "prospect",
+      betaStatus: company.beta_status || company.status || "prospect",
+      owner: company.assigned_owner || company.owner || "",
+      contactName: company.contact_name || "",
+      contactEmail: company.contact_email || "",
+      contactPhone: company.contact_phone || "",
+      industry: company.industry || "",
+      onboardingStage: company.onboarding_stage || "not_started",
+      startDate: company.start_date || "",
+      lastActivityAt: company.last_activity_at || "",
+      openIssueCount: Number(company.open_issue_count || 0),
+      feedbackCount: Number(company.feedback_count || 0),
+      conversionLikelihood: Number(company.conversion_likelihood || 0),
+      pilotPrice: Number(company.pilot_price || 0),
+      expectedConversionDate: company.expected_conversion_date || "",
       workspaceId: company.workspace_id || "",
       notes: company.notes || "",
+      nextAction: company.next_action || "",
+      nextActionDueAt: company.next_action_due_at || "",
       createdAt: company.created_at || "",
       updatedAt: company.updated_at || "",
     })),
@@ -545,8 +572,11 @@ function buildLaunchCommandCenterPayload({ founder, blockerRows, checklistRows, 
 }
 
 function nextLaunchMilestone({ recommendation, openBlockers, checklistProgress, providers }) {
-  const missingProvider = providers.find((provider) => provider.required && !provider.configured);
+  const missingProvider = providers.find((provider) =>
+    recommendation.blockingReasons.some((reason) => reason.providerKey === provider.key),
+  );
   if (openBlockers.some((blocker) => blocker.severity === "critical")) return "Resolve all critical blockers before beta launch.";
+  if (recommendation.blockingReasons[0]) return recommendation.blockingReasons[0].message;
   if (missingProvider) return `Connect ${missingProvider.label}.`;
   if (checklistProgress < 80) return "Complete the remaining beta certification checklist items.";
   if (recommendation.status === "GO") return "Schedule founder sign-off and invite the next beta company.";
@@ -607,6 +637,18 @@ async function mutateLaunchBlocker(payload, founder) {
   const row = {
     title: blocker.title,
     detail: blocker.detail,
+    category: blocker.category,
+    evidence_url: blocker.evidenceUrl,
+    evidence_text: blocker.evidenceText,
+    resolution_notes: blocker.resolutionNotes,
+    accepted_risk_reason: blocker.acceptedRiskReason,
+    accepted_risk_by: blocker.acceptedRiskBy,
+    accepted_risk_at: blocker.acceptedRiskAt,
+    launch_blocking: blocker.launchBlocking,
+    target_stage: blocker.targetStage,
+    owner_user_id: cleanUuid(blocker.ownerUserId) || null,
+    resolved_by: blocker.resolvedBy,
+    resolved_at: blocker.resolvedAt,
     severity: blocker.severity,
     status: blocker.status,
     owner: blocker.owner,
@@ -614,6 +656,12 @@ async function mutateLaunchBlocker(payload, founder) {
     updated_at: now,
     updated_by: founder.email,
   };
+  if (blocker.evidenceUrl && !/^https?:\/\/[^\s]+$/i.test(blocker.evidenceUrl)) throwInputError("Evidence URL must start with http:// or https://.");
+  if (blocker.status === "accepted_risk" && !blocker.acceptedRiskReason) throwInputError("Accepted risk requires a reason.");
+  if (blocker.status === "resolved" && !blocker.resolutionNotes) throwInputError("Resolved blockers require resolution notes.");
+  if (blocker.status === "resolved" && !row.resolved_at) row.resolved_at = now;
+  if (blocker.status === "accepted_risk" && !row.accepted_risk_at) row.accepted_risk_at = now;
+  if (blocker.status === "accepted_risk" && !row.accepted_risk_by) row.accepted_risk_by = founder.email;
   if (id) row.id = id;
 
   await supabaseRequest(id ? "launch_blockers?on_conflict=id" : "launch_blockers", {
@@ -636,6 +684,9 @@ async function mutateLaunchChecklist(payload, founder) {
         label: cleanText(payload.label),
         category: cleanText(payload.category),
         completed,
+        status: normalizeChecklistStatus(payload.status || (completed ? "complete" : "unknown")),
+        required: Boolean(payload.required),
+        evidence: sanitizeJson(payload.evidence || {}),
         note: cleanText(payload.note).slice(0, 1000),
         completed_at: completed ? now : null,
         updated_at: now,
@@ -649,13 +700,32 @@ async function mutateLaunchChecklist(payload, founder) {
 async function mutateLaunchBetaCompany(payload, founder) {
   const companyName = cleanText(payload.companyName || payload.name);
   if (!companyName) throwInputError("Beta company name is required.");
+  const contactEmail = cleanEmail(payload.contactEmail || payload.contact_email || "");
+  if ((payload.contactEmail || payload.contact_email) && !contactEmail) throwInputError("Beta account contact email is invalid.");
+  const conversionLikelihood = boundedNumber(payload.conversionLikelihood ?? payload.conversion_likelihood, 0, 100, 0);
   const now = new Date().toISOString();
   const row = {
     company_name: companyName,
-    status: normalizeBetaCompanyStatus(payload.status),
-    owner: cleanText(payload.owner || founder.email),
+    status: normalizeBetaCompanyStatus(payload.status || payload.betaStatus || payload.beta_status),
+    beta_status: normalizeBetaCompanyStatus(payload.betaStatus || payload.beta_status || payload.status),
+    contact_name: cleanText(payload.contactName || payload.contact_name),
+    contact_email: contactEmail,
+    contact_phone: cleanText(payload.contactPhone || payload.contact_phone),
+    industry: cleanText(payload.industry),
+    onboarding_stage: normalizeBetaOnboardingStage(payload.onboardingStage || payload.onboarding_stage),
+    start_date: cleanDate(payload.startDate || payload.start_date),
+    last_activity_at: cleanTimestamp(payload.lastActivityAt || payload.last_activity_at),
+    open_issue_count: boundedNumber(payload.openIssueCount ?? payload.open_issue_count, 0, 100000, 0),
+    feedback_count: boundedNumber(payload.feedbackCount ?? payload.feedback_count, 0, 100000, 0),
+    conversion_likelihood: conversionLikelihood,
+    pilot_price: boundedNumber(payload.pilotPrice ?? payload.pilot_price, 0, 100000000, 0),
+    expected_conversion_date: cleanDate(payload.expectedConversionDate || payload.expected_conversion_date),
+    assigned_owner: cleanText(payload.assignedOwner || payload.assigned_owner || payload.owner || founder.email),
+    owner: cleanText(payload.owner || payload.assignedOwner || payload.assigned_owner || founder.email),
     workspace_id: cleanUuid(payload.workspaceId) || null,
     notes: cleanText(payload.notes).slice(0, 2000),
+    next_action: cleanText(payload.nextAction || payload.next_action).slice(0, 1000),
+    next_action_due_at: cleanTimestamp(payload.nextActionDueAt || payload.next_action_due_at),
     updated_at: now,
     updated_by: founder.email,
   };
@@ -683,19 +753,44 @@ async function insertLaunchStatusSnapshot(snapshot, founder) {
 
 function normalizeBetaCompanyStatus(status) {
   const value = cleanText(status).toLowerCase();
-  return ["candidate", "invited", "active", "paused", "graduated", "churned"].includes(value) ? value : "candidate";
+  return ["prospect", "invited", "onboarding", "active", "paused", "completed", "converted", "churned", "candidate", "graduated"].includes(value)
+    ? value.replace("candidate", "prospect").replace("graduated", "completed")
+    : "prospect";
+}
+
+function normalizeBetaOnboardingStage(stage) {
+  const value = cleanText(stage).toLowerCase();
+  return [
+    "not_started",
+    "account_created",
+    "workspace_configured",
+    "data_imported",
+    "team_invited",
+    "provider_connected",
+    "training_completed",
+    "live_usage",
+  ].includes(value)
+    ? value
+    : "not_started";
+}
+
+function normalizeChecklistStatus(status) {
+  const value = cleanText(status).toLowerCase();
+  return ["unknown", "passed", "failed", "complete", "skipped"].includes(value) ? value : "unknown";
 }
 
 async function loadDailyCommandWorkspaceRows(workspaceId) {
   const encodedWorkspaceId = encodeURIComponent(workspaceId);
-  const [leads, tasks, appointments, activities, communications, notifications, members] = await Promise.all([
+  const [leads, tasks, appointments, activities, communications, calls, notifications, members, settings] = await Promise.all([
     safeSupabaseRows(`leads?workspace_id=eq.${encodedWorkspaceId}&select=*&order=updated_at.desc`),
     safeSupabaseRows(`tasks?workspace_id=eq.${encodedWorkspaceId}&select=*&order=created_at.desc`),
     safeSupabaseRows(`appointments?workspace_id=eq.${encodedWorkspaceId}&select=*&order=starts_at.asc`),
     safeSupabaseRows(`activities?workspace_id=eq.${encodedWorkspaceId}&select=*&order=created_at.desc&limit=100`),
     safeSupabaseRows(`communications?workspace_id=eq.${encodedWorkspaceId}&select=*&order=created_at.desc&limit=100`),
+    safeSupabaseRows(`calls?workspace_id=eq.${encodedWorkspaceId}&select=*&order=created_at.desc&limit=100`),
     safeSupabaseRows(`notifications?workspace_id=eq.${encodedWorkspaceId}&select=*&order=created_at.desc&limit=50`),
     safeSupabaseRows(`workspace_members?workspace_id=eq.${encodedWorkspaceId}&select=user_id,role,team_function`),
+    safeSupabaseRows(`workspace_settings?workspace_id=eq.${encodedWorkspaceId}&select=working_hours`),
   ]);
   return {
     leads,
@@ -703,9 +798,12 @@ async function loadDailyCommandWorkspaceRows(workspaceId) {
     appointments,
     activities,
     communications,
+    calls,
     notifications,
+    timezone: settings?.[0]?.working_hours?.timezone || "UTC",
     members: members.map((member) => ({
-      email: member.user_id,
+      userId: member.user_id,
+      email: member.email || "",
       role: member.role,
       teamFunction: member.team_function || "",
     })),
@@ -2899,6 +2997,25 @@ function cleanEmail(value) {
 function cleanUuid(value) {
   const text = cleanText(value);
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(text) ? text : "";
+}
+
+function boundedNumber(value, min, max, fallback) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.min(max, Math.max(min, number));
+}
+
+function cleanDate(value) {
+  const text = cleanText(value);
+  if (!text) return null;
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : null;
+}
+
+function cleanTimestamp(value) {
+  const text = cleanText(value);
+  if (!text) return null;
+  const parsed = new Date(text);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
 }
 
 function normalizeRoleId(role) {

@@ -2796,7 +2796,7 @@ function renderCustomerDailyCommandData(data) {
       : "Live workspace data, prioritized for the next best action.";
 
   renderCommandPriorities("#customerDailyPriorities", data.priorities || []);
-  renderDailyGoals(data.goals || {});
+  renderDailyGoals(data.goalProgress || data.goals || {});
   renderCommandKpis("#customerDailyKpis", data.kpis || []);
   renderDailyToday(data.today || {});
   renderDailyPipelineHealth(data.pipelineHealth || {});
@@ -2964,22 +2964,30 @@ function renderCommandPriorities(selector, priorities) {
 function renderDailyGoals(goals) {
   const container = document.querySelector("#customerDailyGoals");
   if (!container) return;
-  const items = [
-    ["Calls", goals.calls],
-    ["Follow-ups", goals.followUps],
-    ["Appointments", goals.appointments],
-    ["New leads", goals.newLeads],
-    ["Revenue", formatter.format(Number(goals.revenue || 0))],
-  ];
-  container.innerHTML = items
-    .map(
-      ([label, value]) => `
+  const progress = Array.isArray(goals)
+    ? goals
+    : [
+        { label: "Calls", target: goals.calls, actual: null, status: "target_only" },
+        { label: "Follow-ups", target: goals.followUps || goals.follow_ups_completed, actual: null, status: "target_only" },
+        { label: "Appointments", target: goals.appointments || goals.appointments_booked, actual: null, status: "target_only" },
+        { label: "New leads", target: goals.newLeads || goals.new_leads, actual: null, status: "target_only" },
+        { label: "Revenue", target: goals.revenue || goals.revenue_won, actual: null, status: "target_only", valueType: "currency" },
+      ];
+  container.innerHTML = progress
+    .slice(0, 11)
+    .map((item) => {
+      const format = item.valueType === "currency" ? "currency" : "number";
+      const actual = item.actual === null || item.actual === undefined ? "Target" : formatCommandValue(item.actual, format);
+      const target = formatCommandValue(item.target, format);
+      const percent = item.completionPercentage === null || item.completionPercentage === undefined ? "" : `${Number(item.completionPercentage)}%`;
+      return `
         <article>
-          <span>${escapeHtml(label)}</span>
-          <strong>${escapeHtml(value)}</strong>
+          <span>${escapeHtml(item.label)}</span>
+          <strong>${escapeHtml(actual)}</strong>
+          <small>${escapeHtml(target)} target${percent ? ` · ${escapeHtml(percent)}` : ""} · ${escapeHtml(item.status || "")}</small>
         </article>
-      `,
-    )
+      `;
+    })
     .join("");
 }
 
@@ -2993,6 +3001,7 @@ function renderCommandKpis(selector, kpis) {
           <span>${escapeHtml(kpi.label)}</span>
           <strong>${escapeHtml(formatCommandValue(kpi.value, kpi.format))}</strong>
           ${kpi.goal ? `<small>Goal ${escapeHtml(formatCommandValue(kpi.goal, kpi.format))}</small>` : ""}
+          ${kpi.detail ? `<small>${escapeHtml(kpi.detail)}</small>` : ""}
         </article>
       `,
     )
@@ -3062,7 +3071,7 @@ function renderDailyTeamPerformance(performance) {
             <article class="command-list-row">
               <div>
                 <strong>${escapeHtml(member.email || "Unassigned")}</strong>
-                <p>${Number(member.openLeads || 0)} open leads · ${Number(member.openTasks || 0)} open tasks</p>
+                <p>${Number(member.openLeads || 0)} open leads · ${Number(member.openTasks || 0)} open tasks · ${Number(member.callsLogged || 0)} calls · ${Number(member.emailsSent || 0)} emails · ${Number(member.smsSent || 0)} SMS</p>
               </div>
               <span>${formatter.format(Number(member.wonValue || 0))}</span>
             </article>
@@ -3114,6 +3123,7 @@ function renderLaunchCommandCenterPage() {
   if (launchCommandState.status === "loading") {
     document.querySelector("#launchRecommendation").textContent = "Checking";
     document.querySelector("#launchRecommendationReason").textContent = "Verifying founder access and launch tables.";
+    setCommandEmpty("#launchRecommendationDetails", "Loading launch recommendation evidence.");
     setCommandEmpty("#launchBlockers", "Loading launch blockers.");
     return;
   }
@@ -3121,6 +3131,7 @@ function renderLaunchCommandCenterPage() {
   if (launchCommandState.status === "error") {
     document.querySelector("#launchRecommendation").textContent = "Locked";
     document.querySelector("#launchRecommendationReason").textContent = launchCommandState.error || "Founder access is required.";
+    setCommandEmpty("#launchRecommendationDetails", "No launch recommendation is shown without founder access.");
     setCommandEmpty("#launchReadinessCategories", "Launch Command Center is protected by backend founder access.");
     setCommandEmpty("#launchProviders", "Sign in with an allowed internal account.");
     setCommandEmpty("#launchBlockers", "No launch data is shown without founder access.");
@@ -3176,8 +3187,9 @@ function renderLaunchCommandData(data) {
   const recommendation = data.recommendation || {};
   document.querySelector("#launchRecommendation").textContent = recommendation.label || "NO-GO";
   document.querySelector("#launchRecommendationReason").textContent = recommendation.reason || "Launch recommendation is unavailable.";
+  renderLaunchRecommendationDetails(recommendation);
   document.querySelector("#launchReadinessScore").textContent = `${Number(data.readiness?.score || 0)}%`;
-  document.querySelector("#launchNextMilestone").textContent = data.nextMilestone || "Review launch readiness.";
+  document.querySelector("#launchNextMilestone").textContent = data.nextMilestone || `Review ${recommendation.evaluatedStageLabel || "launch"} readiness.`;
 
   const releaseHealth = data.releaseHealth || {};
   document.querySelector("#launchReleaseHealth").innerHTML = [
@@ -3204,6 +3216,7 @@ function renderLaunchCommandData(data) {
       value: category.score,
       format: "percent",
       goal: category.weight,
+      detail: `${category.status || "unknown"} · ${category.source || "missing"}`,
     })),
   );
   renderCommandKpis(
@@ -3212,11 +3225,34 @@ function renderLaunchCommandData(data) {
       label: provider.label,
       value: provider.displayStatus || provider.status,
       format: "text",
+      detail: provider.detail || provider.source || "",
     })),
   );
   renderLaunchBlockers(data.blockers || []);
   renderLaunchChecklist(data.checklist || []);
   renderLaunchBetaCompanies(data.betaCompanies || []);
+}
+
+function renderLaunchRecommendationDetails(recommendation) {
+  const container = document.querySelector("#launchRecommendationDetails");
+  if (!container) return;
+  const rows = [
+    ...(recommendation.blockingReasons || []).slice(0, 4).map((reason) => ({ label: reason.code || "NO_GO", value: reason.message || "" })),
+    ...(recommendation.unknownRequirements || []).slice(0, 3).map((reason) => ({ label: reason.code || "UNKNOWN", value: reason.message || "" })),
+    ...(recommendation.warnings || []).slice(0, 3).map((warning) => ({ label: warning.code || "WARNING", value: warning.message || "" })),
+  ];
+  container.innerHTML = rows.length
+    ? rows
+        .map(
+          (row) => `
+            <article class="command-list-row">
+              <strong>${escapeHtml(row.label)}</strong>
+              <span>${escapeHtml(row.value)}</span>
+            </article>
+          `,
+        )
+        .join("")
+    : `<p class="muted">All required gates are currently passing for this stage.</p>`;
 }
 
 function renderLaunchBlockers(blockers) {
@@ -3230,7 +3266,8 @@ function renderLaunchBlockers(blockers) {
               <span class="status-pill ${escapeHtml(blocker.severity)}">${escapeHtml(blocker.severity)}</span>
               <div>
                 <strong>${escapeHtml(blocker.title)}</strong>
-                <p>${escapeHtml(blocker.detail || blocker.status || "Open")}</p>
+                <p>${escapeHtml(blocker.detail || blocker.resolutionNotes || blocker.acceptedRiskReason || blocker.status || "Open")}</p>
+                ${blocker.evidenceUrl ? `<small>${escapeHtml(blocker.evidenceUrl)}</small>` : ""}
               </div>
               <span>${escapeHtml(blocker.status)}</span>
             </article>
@@ -3268,9 +3305,10 @@ function renderLaunchBetaCompanies(companies) {
             <article class="command-list-row">
               <div>
                 <strong>${escapeHtml(company.name)}</strong>
-                <p>${escapeHtml(company.owner || "Unassigned")}</p>
+                <p>${escapeHtml(company.contactEmail || company.owner || "Unassigned")} · ${escapeHtml(company.onboardingStage || "not_started")}</p>
+                <small>${escapeHtml(company.nextAction || company.industry || "")}</small>
               </div>
-              <span>${escapeHtml(company.status)}</span>
+              <span>${escapeHtml(company.betaStatus || company.status)}</span>
             </article>
           `,
         )
