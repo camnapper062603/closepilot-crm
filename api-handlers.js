@@ -15,8 +15,8 @@ import {
 import { sendInviteEmailWithResend } from "./email-service.js";
 
 const planCatalog = {
-  starter: { label: "Starter", seatLimit: 75, priceEnv: "STRIPE_PRICE_STARTER", productEnv: "STRIPE_PRODUCT_STARTER" },
-  growth: { label: "Growth", seatLimit: 200, priceEnv: "STRIPE_PRICE_GROWTH", productEnv: "STRIPE_PRODUCT_GROWTH" },
+  starter: { label: "Starter", seatLimit: 100, priceEnv: "STRIPE_PRICE_STARTER", productEnv: "STRIPE_PRODUCT_STARTER" },
+  growth: { label: "Growth", seatLimit: 300, priceEnv: "STRIPE_PRICE_GROWTH", productEnv: "STRIPE_PRODUCT_GROWTH" },
   scale: { label: "Scale", seatLimit: 0, priceEnv: "STRIPE_PRICE_SCALE", productEnv: "STRIPE_PRODUCT_SCALE" },
 };
 
@@ -296,6 +296,7 @@ async function handleSystemReadiness(request, response, payload = {}) {
     checkedAt: new Date().toISOString(),
     appBaseUrl: appBaseUrl(request),
     groups: groupStatus,
+    pricing: await buildBillingPricingStatus({ resolveLive: false }),
     warnings: launchWarnings(groupStatus),
   };
 
@@ -316,6 +317,7 @@ async function handleSystemReadiness(request, response, payload = {}) {
 
   sendJson(response, 200, {
     ...publicPayload,
+    pricing: await buildBillingPricingStatus({ resolveLive: true }),
     checkedBy: detailAccess.email,
     workspaceId: detailAccess.workspaceId,
     checks,
@@ -2918,20 +2920,86 @@ function getStripeClient() {
 }
 
 async function resolveStripePlanPriceId(stripe, planId) {
+  const resolved = await resolveStripePlanPrice(stripe, planId);
+  return resolved.id || "";
+}
+
+async function resolveStripePlanPrice(stripe, planId) {
   const plan = planCatalog[planId];
   const explicitPriceId = cleanText(process.env[plan.priceEnv]);
-  if (explicitPriceId) return explicitPriceId;
+  if (explicitPriceId) {
+    return {
+      id: explicitPriceId,
+      source: plan.priceEnv,
+      price: await safelyRetrieveStripePrice(stripe, explicitPriceId),
+    };
+  }
 
   const productId = cleanText(process.env[plan.productEnv]);
-  if (!productId) return "";
+  if (!productId) return { id: "", source: "missing", price: null };
 
   try {
     const product = await stripe.products.retrieve(productId, { expand: ["default_price"] });
-    if (typeof product.default_price === "string") return product.default_price;
-    return product.default_price?.id || "";
+    if (typeof product.default_price === "string") {
+      return {
+        id: product.default_price,
+        source: plan.productEnv,
+        price: await safelyRetrieveStripePrice(stripe, product.default_price),
+      };
+    }
+    return {
+      id: product.default_price?.id || "",
+      source: plan.productEnv,
+      price: product.default_price || null,
+    };
   } catch {
-    return "";
+    return { id: "", source: plan.productEnv, price: null };
   }
+}
+
+async function safelyRetrieveStripePrice(stripe, priceId) {
+  try {
+    return await stripe.prices.retrieve(priceId);
+  } catch {
+    return null;
+  }
+}
+
+async function buildBillingPricingStatus(options = {}) {
+  const resolveLive = Boolean(options.resolveLive);
+  const stripe = resolveLive ? getStripeClient() : null;
+  const plans = {};
+
+  for (const [planId, plan] of Object.entries(planCatalog)) {
+    const priceIdConfigured = Boolean(cleanText(process.env[plan.priceEnv]));
+    const productConfigured = Boolean(cleanText(process.env[plan.productEnv]));
+    const resolved = stripe ? await resolveStripePlanPrice(stripe, planId) : null;
+    const price = resolved?.price || null;
+    const unitAmount = Number(price?.unit_amount);
+    const amount = Number.isFinite(unitAmount) ? unitAmount / 100 : null;
+
+    plans[planId] = {
+      label: plan.label,
+      seatLimit: plan.seatLimit,
+      unlimitedSeats: plan.seatLimit === 0,
+      configured: priceIdConfigured || productConfigured,
+      priceIdConfigured,
+      productConfigured,
+      resolved: Boolean(price?.id && amount !== null),
+      amount,
+      currency: cleanText(price?.currency || "usd").toLowerCase(),
+      interval: cleanText(price?.recurring?.interval || "month").toLowerCase(),
+      source: resolved?.source || (priceIdConfigured ? plan.priceEnv : productConfigured ? plan.productEnv : "missing"),
+    };
+  }
+
+  const planRows = Object.values(plans);
+  return {
+    stripeConfigured: Boolean(process.env.STRIPE_SECRET_KEY),
+    configured: planRows.every((plan) => plan.configured),
+    resolved: planRows.every((plan) => plan.resolved),
+    plans,
+  };
 }
 
 function hasSupabaseServiceConfig() {
@@ -2964,7 +3032,11 @@ function normalizeSubscriptionStatus(status) {
 function planFromStripeSubscription(subscription) {
   const priceId = subscription.items?.data?.[0]?.price?.id || "";
   const match = Object.entries(planCatalog).find(([, plan]) => process.env[plan.priceEnv] === priceId);
-  return match?.[0] || "starter";
+  if (match) return match[0];
+
+  const productId = subscription.items?.data?.[0]?.price?.product;
+  const productMatch = Object.entries(planCatalog).find(([, plan]) => process.env[plan.productEnv] === productId);
+  return productMatch?.[0] || "starter";
 }
 
 function unixToIso(value) {

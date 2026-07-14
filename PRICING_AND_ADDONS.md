@@ -6,9 +6,9 @@ ClosePilot base CRM plans and coming soon app previews should be shown separatel
 
 | Plan | Demo Price | Seats | Positioning |
 | --- | ---: | ---: | --- |
-| Starter | $29/mo | 75 | Solo workflow, core CRM, exports, backups |
-| Growth | $79/mo | 200 | Expanded team seats, source reporting, automations, forecasting |
-| Scale | $199/mo | Unlimited | Unlimited seats, admin controls, rollout support |
+| Starter | $100/mo | 100 | Solo workflow, core CRM, exports, backups |
+| Growth | $300/mo | 300 | Expanded team seats, source reporting, automations, forecasting |
+| Scale | $700/mo | Unlimited | Unlimited seats, admin controls, rollout support |
 
 ## Coming Soon App Previews
 
@@ -16,9 +16,17 @@ ClosePilot base CRM plans and coming soon app previews should be shown separatel
 | --- | ---: | --- |
 | Kira Recruit | $99/mo | Applicant pipeline, AI candidate summaries, interview tracking, onboarding, payroll staging, CRM candidate sync |
 | Residential Lead Gen | $149/mo | Territory lists, property data imports, skip trace planning, DNC-aware exports, CRM handoff |
-| Recruit + Lead Gen Bundle | $199/mo | Both background apps for teams scaling staffing and lead flow together |
+| Recruit + Lead Gen Bundle | $199/mo add-on | Both background apps for teams scaling staffing and lead flow together |
 
 These prices are positioning estimates for future checkout. The CRM is the live paid product today.
+
+## CRM + Bundle Monthly Totals
+
+| Base Plan | CRM + Recruit + Lead Gen Bundle |
+| --- | ---: |
+| Starter + Bundle | $299/mo |
+| Growth + Bundle | $499/mo |
+| Scale + Bundle | $899/mo |
 
 ## Preview Access States
 

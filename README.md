@@ -186,7 +186,8 @@ https://your-domain.com/api/stripe/webhook
 5. The Admin billing buttons call backend endpoints:
    - `POST /api/stripe/create-checkout-session`
    - `POST /api/stripe/create-portal-session`
-6. Subscription plan, status, seat limit, trial end, current period end, Stripe customer ID, and Stripe subscription ID sync into `workspace_subscriptions`.
+6. The Admin billing layout resolves recurring display prices from the configured Stripe Price IDs when `STRIPE_SECRET_KEY` is available; otherwise it uses setup-mode fallback prices.
+7. Subscription plan, status, seat limit, trial end, current period end, Stripe customer ID, and Stripe subscription ID sync into `workspace_subscriptions`.
 
 If Stripe variables are missing, the Admin page stays in demo mode and shows a useful setup message instead of breaking.
 

@@ -96,7 +96,7 @@ create table if not exists public.workspace_subscriptions (
   workspace_id uuid primary key references public.workspaces(id) on delete cascade,
   plan text not null default 'starter' check (plan in ('starter', 'growth', 'scale')),
   status text not null default 'trialing' check (status in ('trialing', 'active', 'past_due', 'canceled')),
-  seat_limit integer not null default 75 check (seat_limit >= 0),
+  seat_limit integer not null default 100 check (seat_limit >= 0),
   trial_ends_at timestamptz default (now() + interval '7 days'),
   current_period_end timestamptz,
   stripe_customer_id text,
@@ -350,7 +350,7 @@ alter table if exists public.workspace_subscriptions
   alter column trial_ends_at set default (now() + interval '7 days');
 
 alter table if exists public.workspace_subscriptions
-  alter column seat_limit set default 75;
+  alter column seat_limit set default 100;
 
 alter table if exists public.workspace_subscriptions
   drop constraint if exists workspace_subscriptions_seat_limit_check,
@@ -358,8 +358,8 @@ alter table if exists public.workspace_subscriptions
 
 update public.workspace_subscriptions
 set seat_limit = case plan
-  when 'starter' then 75
-  when 'growth' then 200
+  when 'starter' then 100
+  when 'growth' then 300
   when 'scale' then 0
   else seat_limit
 end

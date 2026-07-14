@@ -167,7 +167,7 @@ export function createMockFetch(options = {}) {
           workspace_id: requestedWorkspaceId(href) || options.workspaceId || workspaceA,
           plan: options.plan || "growth",
           status: options.subscriptionStatus || "active",
-          seat_limit: options.seatLimit ?? 200,
+          seat_limit: options.seatLimit ?? 300,
           stripe_customer_id: options.stripeCustomerId || "",
           stripe_subscription_id: "sub_unit",
         },

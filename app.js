@@ -17,19 +17,19 @@ const freeTrialDays = 7;
 const planCatalog = {
   starter: {
     label: "Starter",
-    price: 29,
-    seatLimit: 75,
+    price: 100,
+    seatLimit: 100,
     detail: "Solo workflow, core CRM, exports, and backups.",
   },
   growth: {
     label: "Growth",
-    price: 79,
-    seatLimit: 200,
+    price: 300,
+    seatLimit: 300,
     detail: "Expanded team seats, source reporting, automations, and forecasting.",
   },
   scale: {
     label: "Scale",
-    price: 199,
+    price: 700,
     seatLimit: 0,
     detail: "Unlimited seats, admin controls, and priority rollout support.",
   },
@@ -849,6 +849,7 @@ let calendarConnectionStatus = {
 let inviteAcceptanceStatus = "";
 let serverReadiness = null;
 let serverReadinessLoaded = false;
+let serverReadinessLoading = false;
 
 const formatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -4922,6 +4923,8 @@ function renderSaasAdmin() {
   const settings = workspaceSetupSettings();
   const subscription = account.subscription;
   const plan = planCatalog[subscription.plan] || planCatalog.starter;
+  const currentPlanPrice = planPriceAmount(subscription.plan);
+  const currentBundleTotal = planBundlePrice(subscription.plan);
   const activeMembers = account.members.filter((member) => member.status === "active");
   const visibleInvites = account.invites.filter((invite) => !["cancelled", "revoked"].includes(invite.status || ""));
   const pendingInvites = visibleInvites.filter((invite) => isPendingInvite(invite));
@@ -4964,7 +4967,7 @@ function renderSaasAdmin() {
     <article>
       <span>Plan</span>
       <strong>${plan.label}</strong>
-      <small>${formatter.format(plan.price)}/mo</small>
+      <small>${formatPlanPrice(subscription.plan)}</small>
     </article>
     <article>
       <span>Seats</span>
@@ -4977,9 +4980,9 @@ function renderSaasAdmin() {
       <small>${freeTrialDays}-day free trial, then ${plan.detail}</small>
     </article>
     <article class="plan-addon-summary">
-      <span>Coming soon apps</span>
-      <strong>${formatter.format(plan.price + extensionCatalog[2].price)}/mo</strong>
-      <small>CRM + future app estimate</small>
+      <span>CRM + bundle</span>
+      <strong>${formatter.format(currentBundleTotal)}/mo</strong>
+      <small>${plan.label} with Recruit + Lead Gen bundle</small>
     </article>
   `;
 
@@ -4996,7 +4999,7 @@ function renderSaasAdmin() {
     const planId = button.dataset.planChoice;
     const option = planCatalog[planId];
     button.classList.toggle("active", planId === subscription.plan);
-    button.textContent = `${option.label} ${formatter.format(option.price)}/mo after trial`;
+    button.textContent = `${option.label} ${formatPlanPrice(planId)} after trial`;
   });
 
   renderInviteRoleGuidance();
@@ -5071,6 +5074,9 @@ function renderSaasAdmin() {
 function renderAddOnPricingCard(extension, adminAccess) {
   const cta = adminAccess ? "Join early access" : "Ask an admin for preview";
   const setupCopy = `${extension.priceEnv} future Stripe price ID`;
+  const bundleSummary = extension.id === "bundle"
+    ? `<small class="addon-setup-copy">Full CRM + bundle totals: ${escapeHtml(bundlePriceSummary())}.</small>`
+    : "";
   return `
     <article class="addon-card" data-addon-card="${escapeHtml(extension.id)}">
       <div>
@@ -5084,6 +5090,7 @@ function renderAddOnPricingCard(extension, adminAccess) {
         <button class="primary-button ${adminAccess ? "" : "locked-action"}" type="button" data-addon-request="${escapeHtml(extension.id)}">${escapeHtml(cta)}</button>
       </div>
       <small class="addon-setup-copy">Coming soon. ${escapeHtml(setupCopy)} is optional until checkout opens.</small>
+      ${bundleSummary}
     </article>
   `;
 }
@@ -5875,11 +5882,63 @@ function launchChecks() {
 }
 
 async function loadServerReadiness() {
+  if (serverReadinessLoading) return;
   serverReadinessLoaded = true;
-  const result = await postBackendJson("/api/system/readiness", workspaceApiContext());
-  serverReadiness = result;
+  serverReadinessLoading = true;
+  try {
+    const result = await postBackendJson("/api/system/readiness", workspaceApiContext());
+    serverReadiness = result;
+  } finally {
+    serverReadinessLoading = false;
+  }
   if (activePage === "admin") {
-    launchChecklist.innerHTML = renderLaunchReadinessSummary() + launchChecks().map(renderLaunchCheck).join("");
+    renderSaasAdmin();
+  }
+}
+
+function planPricing(planId) {
+  return serverReadiness?.pricing?.plans?.[planId] || null;
+}
+
+function planPriceAmount(planId) {
+  const rawAmount = planPricing(planId)?.amount;
+  if (rawAmount !== null && rawAmount !== undefined) {
+    const stripeAmount = Number(rawAmount);
+    if (Number.isFinite(stripeAmount) && stripeAmount >= 0) return stripeAmount;
+  }
+  return planCatalog[planId]?.price || 0;
+}
+
+function bundlePriceAmount() {
+  return extensionCatalog.find((extension) => extension.id === "bundle")?.price || 0;
+}
+
+function planBundlePrice(planId) {
+  return planPriceAmount(planId) + bundlePriceAmount();
+}
+
+function bundlePriceSummary() {
+  return ["starter", "growth", "scale"]
+    .map((planId) => `${planCatalog[planId].label} ${formatter.format(planBundlePrice(planId))}/mo`)
+    .join(", ");
+}
+
+function formatPlanPrice(planId) {
+  const pricing = planPricing(planId);
+  const currency = String(pricing?.currency || "usd").toUpperCase();
+  const interval = pricing?.interval === "year" ? "yr" : "mo";
+  return `${currencyFormatter(currency).format(planPriceAmount(planId))}/${interval}`;
+}
+
+function currencyFormatter(currency) {
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 0,
+    });
+  } catch {
+    return formatter;
   }
 }
 

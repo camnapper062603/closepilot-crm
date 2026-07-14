@@ -1299,11 +1299,15 @@ test('manages SaaS workspace plan, seats, and invites', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Plan and seats' }).click();
   await expect(admin.locator('#planSummary')).toContainText('Starter');
-  await expect(admin.locator('#planSummary')).toContainText('$29/mo');
-  await expect(admin.locator('#planSummary')).toContainText('1/75');
+  await expect(admin.locator('#planSummary')).toContainText('$100/mo');
+  await expect(admin.locator('#planSummary')).toContainText('$299/mo');
+  await expect(admin.locator('#planSummary')).toContainText('1/100');
   await expect(admin.locator('#planAddonList')).toContainText('Kira Recruit $99/mo');
   await expect(admin.locator('#planAddonList')).toContainText('Residential Lead Gen $149/mo');
   await expect(admin.locator('#planAddonList')).toContainText('Recruit + Lead Gen bundle $199/mo');
+  await expect(admin.locator('#planAddonList')).toContainText('Starter $299/mo');
+  await expect(admin.locator('#planAddonList')).toContainText('Growth $499/mo');
+  await expect(admin.locator('#planAddonList')).toContainText('Scale $899/mo');
   await expect(admin.locator('#planAddonList')).toContainText('Coming soon');
   await admin.locator('[data-addon-card="recruiting"]').getByRole('button', { name: 'Join early access' }).click();
   await expect(admin.locator('#adminMessage')).toContainText('Kira Recruit early access interest logged');
@@ -1346,22 +1350,24 @@ test('manages SaaS workspace plan, seats, and invites', async ({ page }) => {
   await expect(admin.locator('#auditList')).toContainText('Workspace created');
 
   await page.getByRole('button', { name: 'Plan and seats' }).click();
-  await admin.getByRole('button', { name: 'Growth $79/mo' }).click();
+  await admin.getByRole('button', { name: 'Growth $300/mo' }).click();
 
   await expect(admin.locator('#subscriptionStatus')).toContainText('Growth plan');
   await expect(admin.locator('#planSummary')).toContainText('Growth');
-  await expect(admin.locator('#planSummary')).toContainText('1/200');
+  await expect(admin.locator('#planSummary')).toContainText('1/300');
+  await expect(admin.locator('#planSummary')).toContainText('$499/mo');
   await expect(admin.locator('#adminMessage')).toContainText('Growth plan selected');
   await expect(admin.locator('#auditList')).toContainText('Plan changed');
 
-  await admin.getByRole('button', { name: 'Scale $199/mo' }).click();
+  await admin.getByRole('button', { name: 'Scale $700/mo' }).click();
   await expect(admin.locator('#subscriptionStatus')).toContainText('Scale plan');
   await expect(admin.locator('#planSummary')).toContainText('Unlimited');
+  await expect(admin.locator('#planSummary')).toContainText('$899/mo');
   await expect(admin.locator('#teamSummary')).toContainText('No hard seat cap on Scale.');
 
-  await admin.getByRole('button', { name: 'Growth $79/mo' }).click();
+  await admin.getByRole('button', { name: 'Growth $300/mo' }).click();
   await expect(admin.locator('#subscriptionStatus')).toContainText('Growth plan');
-  await expect(admin.locator('#planSummary')).toContainText('1/200');
+  await expect(admin.locator('#planSummary')).toContainText('1/300');
 
   await admin.getByRole('button', { name: 'Open checkout' }).click();
   await expect(admin.locator('#adminMessage')).toContainText('Live checkout is not configured');
@@ -1382,7 +1388,7 @@ test('manages SaaS workspace plan, seats, and invites', async ({ page }) => {
   await expect(admin.locator('#teamSummary')).toContainText('1');
 
   await page.getByRole('button', { name: 'Plan and seats' }).click();
-  await expect(admin.locator('#planSummary')).toContainText('2/200');
+  await expect(admin.locator('#planSummary')).toContainText('2/300');
   await page.getByRole('button', { name: 'Members and invites' }).click();
   await expect(admin.locator('#adminMessage')).toContainText('Invite link generated');
   await expect(admin.locator('#adminMessage')).toContainText('RESEND_API_KEY');

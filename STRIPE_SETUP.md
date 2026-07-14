@@ -19,4 +19,6 @@ https://closepilot-crm.vercel.app/api/stripe/webhook
    - `customer.subscription.deleted`
 6. Add the webhook secret as `STRIPE_WEBHOOK_SECRET`.
 
+The Admin billing layout reads the configured CRM `STRIPE_PRICE_*` IDs through the backend readiness check. When `STRIPE_SECRET_KEY` is available, the backend resolves each Stripe Price and the app displays that recurring amount. Without the secret key, billing stays in setup mode and the layout uses the safe fallback display prices.
+
 Without Stripe vars, billing buttons show setup messages instead of fake checkout.
