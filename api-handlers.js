@@ -15,9 +15,9 @@ import {
 import { sendInviteEmailWithResend } from "./email-service.js";
 
 const planCatalog = {
-  starter: { label: "Starter", seatLimit: 3, priceEnv: "STRIPE_PRICE_STARTER", productEnv: "STRIPE_PRODUCT_STARTER" },
-  growth: { label: "Growth", seatLimit: 10, priceEnv: "STRIPE_PRICE_GROWTH", productEnv: "STRIPE_PRODUCT_GROWTH" },
-  scale: { label: "Scale", seatLimit: 25, priceEnv: "STRIPE_PRICE_SCALE", productEnv: "STRIPE_PRODUCT_SCALE" },
+  starter: { label: "Starter", seatLimit: 75, priceEnv: "STRIPE_PRICE_STARTER", productEnv: "STRIPE_PRODUCT_STARTER" },
+  growth: { label: "Growth", seatLimit: 200, priceEnv: "STRIPE_PRICE_GROWTH", productEnv: "STRIPE_PRODUCT_GROWTH" },
+  scale: { label: "Scale", seatLimit: 0, priceEnv: "STRIPE_PRICE_SCALE", productEnv: "STRIPE_PRODUCT_SCALE" },
 };
 
 const freeTrialDays = 7;
@@ -1070,7 +1070,7 @@ async function handleSendInvite(request, response, payload) {
   if (teamFunction && !["dialer", "setter", "closer"].includes(teamFunction)) {
     throwHttpError(400, "INVALID_TEAM_FUNCTION", "Team function must be dialer, setter, closer, or blank.");
   }
-  await assertInviteCapacityAndUniqueness(workspaceId, email);
+  await assertInviteCapacityAndUniqueness(workspaceId, email, { inviteId });
 
   const token = randomBytes(32).toString("hex");
   const inviteTokenHash = hashToken(token);
@@ -1094,6 +1094,7 @@ async function handleSendInvite(request, response, payload) {
       inviteId,
       inviteTokenHash,
       expiresAt,
+      role,
       teamFunction,
       temporaryPasswordHash,
       temporaryPasswordExpiresAt,
@@ -2472,7 +2473,7 @@ async function syncSubscriptionToSupabase(subscription) {
     workspace_id: subscription.workspaceId,
     plan: normalizePlanId(subscription.plan),
     status: normalizeSubscriptionStatus(subscription.status),
-    seat_limit: subscription.seatLimit || planCatalog[normalizePlanId(subscription.plan)].seatLimit,
+    seat_limit: subscription.seatLimit ?? planCatalog[normalizePlanId(subscription.plan)].seatLimit,
     stripe_customer_id: subscription.stripeCustomerId || null,
     stripe_subscription_id: subscription.stripeSubscriptionId || null,
     trial_ends_at: subscription.trialEndsAt || null,
@@ -2498,7 +2499,7 @@ async function loadSubscriptionFromSupabase(workspaceId) {
   return Array.isArray(rows) ? rows[0] || null : null;
 }
 
-async function assertInviteCapacityAndUniqueness(workspaceId, email) {
+async function assertInviteCapacityAndUniqueness(workspaceId, email, { inviteId = "" } = {}) {
   if (!hasSupabaseServiceConfig() || !workspaceId || !email) return;
   const [subscription, members, pendingInvites] = await Promise.all([
     loadSubscriptionFromSupabase(workspaceId),
@@ -2510,17 +2511,25 @@ async function assertInviteCapacityAndUniqueness(workspaceId, email) {
       { method: "GET" },
     ),
   ]);
-  if (Array.isArray(pendingInvites) && pendingInvites.length) {
+  const activeInvites = Array.isArray(pendingInvites) ? pendingInvites : [];
+  const sameInvite = inviteId ? activeInvites.find((invite) => invite.id === inviteId) : null;
+  if (sameInvite?.status === "accepted") {
+    throwHttpError(409, "INVITE_ALREADY_ACCEPTED", "This invite has already been accepted.");
+  }
+  const duplicateInvites = activeInvites.filter((invite) => !inviteId || invite.id !== inviteId);
+  if (duplicateInvites.length) {
     throwHttpError(409, "INVITE_ALREADY_EXISTS", "An active invite already exists for this email.");
   }
 
-  const seatLimit = Number(subscription?.seat_limit || planCatalog.starter.seatLimit);
+  const seatLimit = Number(subscription?.seat_limit ?? planCatalog.starter.seatLimit);
   const activeMemberCount = Array.isArray(members) ? members.length : 0;
   const pendingSeatRows = await supabaseRequest(
     `workspace_invitations?workspace_id=eq.${encodeURIComponent(workspaceId)}&status=eq.pending&select=id`,
     { method: "GET" },
   );
-  const pendingSeatCount = Array.isArray(pendingSeatRows) ? pendingSeatRows.length : 0;
+  const pendingSeatCount = Array.isArray(pendingSeatRows)
+    ? pendingSeatRows.filter((invite) => !inviteId || invite.id !== inviteId).length
+    : 0;
   if (seatLimit > 0 && activeMemberCount + pendingSeatCount >= seatLimit) {
     throwHttpError(409, "SEAT_LIMIT_REACHED", "This workspace has reached its current seat limit.");
   }
@@ -2531,6 +2540,7 @@ async function updateInviteTokenInSupabase({
   inviteId,
   inviteTokenHash,
   expiresAt,
+  role = "",
   teamFunction = "",
   temporaryPasswordHash = "",
   temporaryPasswordExpiresAt = "",
@@ -2543,6 +2553,7 @@ async function updateInviteTokenInSupabase({
       body: {
         invite_token_hash: inviteTokenHash,
         expires_at: expiresAt,
+        role: role || "member",
         temporary_password_hash: temporaryPasswordHash || null,
         temporary_password_expires_at: temporaryPasswordExpiresAt || null,
         temporary_password_changed_at: null,

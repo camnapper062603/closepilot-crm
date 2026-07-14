@@ -6,9 +6,9 @@ ClosePilot base CRM plans and coming soon app previews should be shown separatel
 
 | Plan | Demo Price | Seats | Positioning |
 | --- | ---: | ---: | --- |
-| Starter | $29/mo | 3 | Solo workflow, core CRM, exports, backups |
-| Growth | $79/mo | 10 | Team seats, source reporting, automations, forecasting |
-| Scale | $199/mo | 25 | Higher seat limits, admin controls, rollout support |
+| Starter | $29/mo | 75 | Solo workflow, core CRM, exports, backups |
+| Growth | $79/mo | 200 | Expanded team seats, source reporting, automations, forecasting |
+| Scale | $199/mo | Unlimited | Unlimited seats, admin controls, rollout support |
 
 ## Coming Soon App Previews
 

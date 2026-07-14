@@ -18,20 +18,20 @@ const planCatalog = {
   starter: {
     label: "Starter",
     price: 29,
-    seatLimit: 3,
+    seatLimit: 75,
     detail: "Solo workflow, core CRM, exports, and backups.",
   },
   growth: {
     label: "Growth",
     price: 79,
-    seatLimit: 10,
-    detail: "Team seats, source reporting, automations, and forecasting.",
+    seatLimit: 200,
+    detail: "Expanded team seats, source reporting, automations, and forecasting.",
   },
   scale: {
     label: "Scale",
     price: 199,
-    seatLimit: 25,
-    detail: "Higher seat limits, admin controls, and priority rollout support.",
+    seatLimit: 0,
+    detail: "Unlimited seats, admin controls, and priority rollout support.",
   },
 };
 
@@ -688,7 +688,7 @@ const seedState = {
     subscription: {
       plan: "starter",
       status: "trialing",
-      seatLimit: 3,
+      seatLimit: planCatalog.starter.seatLimit,
       trialEndsAt: freeTrialEndsAt(),
     },
     members: [
@@ -731,7 +731,7 @@ const scaleTestConfig = {
   leadCount: 100,
   dialerCount: 20,
   closerCount: 10,
-  seatLimit: 35,
+  seatLimit: planCatalog.scale.seatLimit,
 };
 
 const scaleTestFirstNames = [
@@ -4926,6 +4926,10 @@ function renderSaasAdmin() {
   const visibleInvites = account.invites.filter((invite) => !["cancelled", "revoked"].includes(invite.status || ""));
   const pendingInvites = visibleInvites.filter((invite) => isPendingInvite(invite));
   const usedSeats = activeMembers.length + pendingInvites.length;
+  const unlimitedSeats = Number(subscription.seatLimit) === 0;
+  const seatsLeft = unlimitedSeats ? "Unlimited" : Math.max(0, subscription.seatLimit - usedSeats);
+  const seatUsage = unlimitedSeats ? `${usedSeats}/Unlimited` : `${usedSeats}/${subscription.seatLimit}`;
+  const seatWarning = !unlimitedSeats && Math.max(0, subscription.seatLimit - usedSeats) <= 1;
   const adminAccess = canUseAdminAction("billing");
 
   adminBusinessName.value = settings.name;
@@ -4964,7 +4968,7 @@ function renderSaasAdmin() {
     </article>
     <article>
       <span>Seats</span>
-      <strong>${usedSeats}/${subscription.seatLimit}</strong>
+      <strong>${seatUsage}</strong>
       <small>${pendingInvites.length} pending</small>
     </article>
     <article>
@@ -5009,12 +5013,12 @@ function renderSaasAdmin() {
     </article>
     <article>
       <span>Seats left</span>
-      <strong>${Math.max(0, subscription.seatLimit - usedSeats)}</strong>
+      <strong>${seatsLeft}</strong>
     </article>
-    <article class="${Math.max(0, subscription.seatLimit - usedSeats) <= 1 ? "seat-warning" : ""}">
+    <article class="${seatWarning ? "seat-warning" : ""}">
       <span>Seat limit</span>
-      <strong>${usedSeats}/${subscription.seatLimit}</strong>
-      <small>${Math.max(0, subscription.seatLimit - usedSeats) <= 1 ? "Add seats before scaling invites." : "Ready for more teammates."}</small>
+      <strong>${unlimitedSeats ? "Unlimited" : seatUsage}</strong>
+      <small>${seatWarning ? "Add seats before scaling invites." : unlimitedSeats ? "No hard seat cap on Scale." : "Ready for more teammates."}</small>
     </article>
   `;
 
@@ -11919,7 +11923,7 @@ function createMarketerDemoAccount() {
     subscription: {
       plan: "scale",
       status: "active",
-      seatLimit: 25,
+      seatLimit: planCatalog.scale.seatLimit,
       trialEndsAt: "",
       currentPeriodEnd: demoDateIso(30, 0, 0),
       stripeCustomerId: "cus_demo_marketer",
@@ -12311,18 +12315,40 @@ async function inviteTeamMember(event) {
 
   const account = accountState();
   const duplicateMember = account.members.some((member) => member.email.toLowerCase() === email);
-  const duplicateInvite = account.invites.some(
+  const duplicateInvite = account.invites.find(
     (invite) => invite.email.toLowerCase() === email && ["pending", "sent"].includes(invite.status || "pending"),
   );
-  if (duplicateMember || duplicateInvite) {
-    adminMessage.textContent = `${email} already has access or a pending invite. Use Send email to resend the existing invite.`;
+  if (duplicateMember) {
+    adminMessage.textContent = `${email} already has workspace access.`;
+    return;
+  }
+  if (duplicateInvite) {
+    const refreshedInvite = {
+      ...duplicateInvite,
+      role: normalizeRoleId(duplicateInvite.role),
+      teamFunction: duplicateInvite.teamFunction || "none",
+      status: duplicateInvite.status || "pending",
+    };
+    const functionLabel = salesFunctionCatalog[refreshedInvite.teamFunction]?.label || "";
+    const functionCopy = functionLabel ? ` with ${functionLabel} label` : "";
+    adminMessage.textContent = `Existing invite found for ${email}. Resending invite...`;
+    await maybeUpdateTeamInvite(refreshedInvite);
+    await logAuditEvent(
+      "Invite resent",
+      `${email} invite resent from manual entry as ${teamRoleCatalog[refreshedInvite.role].label}${functionCopy}.`,
+    );
+    inviteEmail.value = "";
+    inviteRole.value = "member";
+    if (inviteFunction) inviteFunction.value = "none";
+    renderInviteRoleGuidance();
+    await sendInviteThroughBackend(refreshedInvite);
     return;
   }
 
   const usedSeats =
     account.members.filter((member) => member.status === "active").length +
     account.invites.filter((invite) => invite.status === "pending").length;
-  if (usedSeats >= account.subscription.seatLimit) {
+  if (account.subscription.seatLimit > 0 && usedSeats >= account.subscription.seatLimit) {
     adminMessage.textContent = "Seat limit reached. Upgrade the plan before inviting more people.";
     return;
   }
@@ -14199,6 +14225,7 @@ function createSupabaseStore(client, user) {
     },
     async updateTeamInvite(invite) {
       const patch = {
+        role: normalizeRoleId(invite.role),
         status: invite.status,
         team_function: invite.teamFunction || null,
         expires_at: invite.expiresAt || null,
@@ -14545,6 +14572,7 @@ function accountState() {
 
 function normalizedAccount(account = {}) {
   const plan = planCatalog[account.subscription?.plan] ? account.subscription.plan : "starter";
+  const rawSeatLimit = Number(account.subscription?.seatLimit);
   const ownerEmail = currentUser?.email || account.members?.[0]?.email || "owner@kira.local";
   const normalizeAccountMember = (member) => ({
     ...member,
@@ -14560,7 +14588,7 @@ function normalizedAccount(account = {}) {
     subscription: {
       plan,
       status: account.subscription?.status || "trialing",
-      seatLimit: Number(account.subscription?.seatLimit) || planCatalog[plan].seatLimit,
+      seatLimit: Number.isFinite(rawSeatLimit) ? rawSeatLimit : planCatalog[plan].seatLimit,
       trialEndsAt: account.subscription?.trialEndsAt || freeTrialEndsAt(),
       currentPeriodEnd: account.subscription?.currentPeriodEnd || "",
       stripeCustomerId: account.subscription?.stripeCustomerId || "",

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createMockFetch, installMockEnvironment, postApi, workspaceA } from "./helpers/api-harness.mjs";
+import { createMockFetch, installMockEnvironment, inviteId, postApi, workspaceA } from "./helpers/api-harness.mjs";
 
 const originalFetch = global.fetch;
 
@@ -43,6 +43,20 @@ test("duplicate active invites are blocked", async () => {
   });
   assert.equal(response.statusCode, 409);
   assert.equal(response.body.error.code, "INVITE_ALREADY_EXISTS");
+});
+
+test("matching pending invite can be resent", async () => {
+  const fetchMock = createMockFetch({ role: "admin", duplicateInvite: "new@example.com" });
+  global.fetch = fetchMock;
+  const response = await postApi("/api/invites/send", {
+    workspaceId: workspaceA,
+    inviteId,
+    email: "new@example.com",
+    role: "member",
+  });
+  assert.equal(response.statusCode, 200);
+  assert.match(response.body.inviteLink, /\\?invite=/);
+  assert.ok(fetchMock.calls.some((call) => call.init?.method === "PATCH" && call.url.includes("/rest/v1/workspace_invitations")));
 });
 
 test("seat limits are enforced before staging another invite", async () => {

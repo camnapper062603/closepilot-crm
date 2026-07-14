@@ -295,16 +295,19 @@ body[data-addon-access="locked"] .recruit-hero {
 
 .subpage-nav button,
 .subpage-nav a {
+  align-items: center;
   background: #ffffff;
   border: 1px solid transparent;
   border-radius: 6px;
   color: var(--navy);
   display: inline-flex;
-  align-items: center;
   font-size: 0.86rem;
   font-weight: 850;
+  justify-content: center;
+  line-height: 1.15;
   min-height: 34px;
   padding: 0 12px;
+  text-align: center;
   text-decoration: none;
 }
 
@@ -331,10 +334,18 @@ body[data-addon-access="locked"] .recruit-hero {
 
 .primary-button,
 .secondary-button {
+  align-items: center;
   border-radius: var(--radius-sm);
+  display: inline-flex;
   font-weight: 900;
+  justify-content: center;
+  line-height: 1.15;
+  max-width: 100%;
   min-height: 38px;
   padding: 0 14px;
+  text-align: center;
+  text-decoration: none;
+  vertical-align: middle;
 }
 
 .primary-button {
@@ -545,6 +556,7 @@ body[data-addon-access="locked"] .recruit-hero {
 .pipeline-zone,
 .ai-recruiter-panel,
 .mini-panel {
+  min-width: 0;
   padding: 16px;
 }
 
@@ -729,6 +741,27 @@ body[data-addon-access="locked"] .recruit-hero {
 
 .ai-panel-heading {
   align-items: start;
+  display: grid;
+  gap: 4px;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: start;
+  justify-content: stretch;
+  min-width: 0;
+}
+
+.ai-panel-heading .eyebrow,
+.ai-panel-heading h2 {
+  min-width: 0;
+}
+
+.ai-panel-heading h2 {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.ai-panel-heading .mode-pill {
+  justify-self: start;
+  max-width: 100%;
 }
 
 .ai-callout,
@@ -1701,8 +1734,10 @@ textarea {
     border: 1px solid var(--line);
     border-radius: 8px;
     display: grid;
-    gap: 3px;
+    gap: 2px;
+    grid-auto-rows: 38px;
     grid-template-columns: repeat(5, minmax(0, 1fr));
+    height: 46px;
     padding: 3px;
     position: sticky;
     top: 0;
@@ -1728,14 +1763,21 @@ textarea {
   }
 
   .mobile-recruit-tabs button {
+    align-items: center;
     background: #ffffff;
     border: 1px solid transparent;
     border-radius: 6px;
     color: var(--navy);
-    font-size: 0.72rem;
+    display: inline-flex;
+    font-size: 0.66rem;
     font-weight: 900;
+    justify-content: center;
+    line-height: 1.05;
     min-height: 38px;
-    padding: 0 4px;
+    min-width: 0;
+    padding: 0 2px;
+    text-align: center;
+    white-space: nowrap;
   }
 
   .mobile-stage-tabs button {
@@ -1749,8 +1791,11 @@ textarea {
     font-size: 0.74rem;
     font-weight: 900;
     gap: 6px;
+    justify-content: center;
+    line-height: 1.1;
     min-height: 36px;
     padding: 0 10px;
+    text-align: center;
   }
 
   .mobile-stage-tabs span {
@@ -1902,6 +1947,7 @@ textarea {
   .primary-button,
   .secondary-button {
     min-height: 42px;
+    padding-block: 9px;
     white-space: normal;
   }
 
@@ -1938,11 +1984,15 @@ textarea {
   }
 
   .bulk-actions {
+    display: grid;
+    gap: 8px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     justify-content: stretch;
   }
 
   .bulk-actions > * {
-    flex: 1 1 140px;
+    min-width: 0;
+    width: 100%;
   }
 
   .schedule-pill,

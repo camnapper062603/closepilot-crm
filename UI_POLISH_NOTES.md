@@ -47,7 +47,7 @@
 ## Invite And Member Behavior
 
 - Invite roles are now `admin`, `manager`, and `rep`, with `owner` shown as a protected role in the permissions reference.
-- The invite form validates email, prevents duplicate active/pending invites, respects seat limits, and keeps the existing Resend/live-email fallback behavior.
+- The invite form validates email, resends existing pending invites from manual entry, respects seat limits, and keeps the existing Resend/live-email fallback behavior.
 - Team rows show role descriptions, pending status, expiration dates when available, resend actions, and audit-friendly status text.
 - Invite links continue to use the configured app URL through the backend and fall back to a copyable local/demo link if email delivery is unavailable.
 
