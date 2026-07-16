@@ -1847,12 +1847,20 @@ async function handleRecruitingRequest(pathname, request, response, payload) {
 
   if (pathname === "/api/recruiting/integration-status") {
     const access = await recruitingAccessForPayload(auth, payload, { requireAdmin: true });
-    const provider = cleanText(payload.provider || "indeed").toLowerCase();
     const publicPayload = sanitizeJson(payload.publicConfig || {});
+    const provider = cleanRecruitingProviderKey(publicPayload.provider || payload.provider || "custom");
+    const method = cleanRecruitingPostingMethod(publicPayload.method || payload.method);
     const publicConfig = {
+      provider,
+      providerType: cleanRecruitingProviderKey(publicPayload.providerType || payload.providerType || provider),
+      providerLabel: cleanText(publicPayload.providerLabel || publicPayload.customName || payload.providerLabel || provider).slice(0, 160),
+      customName: cleanText(publicPayload.customName || payload.customName).slice(0, 160),
+      method,
       accountId: cleanText(publicPayload.accountId || payload.accountId),
       email: cleanEmail(publicPayload.email || payload.email),
       webhookUrl: cleanUrl(publicPayload.webhookUrl || payload.webhookUrl, ""),
+      postingUrl: cleanUrl(publicPayload.postingUrl || payload.postingUrl, ""),
+      feedUrl: cleanUrl(publicPayload.feedUrl || payload.feedUrl, ""),
       budget: cleanText(publicPayload.budget || payload.budget),
       companyId: cleanText(publicPayload.companyId || payload.companyId),
       tokenConfigured: Boolean(publicPayload.tokenConfigured || cleanText(publicPayload.tokenLast4 || payload.tokenConfigured || payload.tokenLast4)),
@@ -1878,7 +1886,7 @@ async function handleRecruitingRequest(pathname, request, response, payload) {
       saved: true,
       provider,
       publicConfig,
-      message: `${provider} integration metadata saved. Secrets are not stored from the browser.`,
+      message: `${publicConfig.providerLabel || provider} integration metadata saved. Secrets are not stored from the browser.`,
     });
     return;
   }
@@ -2083,6 +2091,10 @@ function sanitizeIntegrationPublicConfig(integrations) {
         tokenConfigured: Boolean(value?.tokenConfigured),
         tokenLast4: cleanText(value?.tokenLast4).slice(-4),
         apiToken: undefined,
+        accessToken: undefined,
+        refreshToken: undefined,
+        clientSecret: undefined,
+        secret: undefined,
         token: undefined,
       }),
     ]),
@@ -3115,6 +3127,21 @@ function sanitizeRoleList(value) {
 function normalizeHiringOutcome(value) {
   const outcome = cleanText(value).toLowerCase();
   return ["screening", "interviewing", "offer", "hired", "not_selected", "nurture"].includes(outcome) ? outcome : "screening";
+}
+
+function cleanRecruitingProviderKey(value) {
+  const provider = cleanText(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+  if (provider === "monsterzip" || provider === "monster-ziprecruiter") return "ziprecruiter";
+  return provider || "custom";
+}
+
+function cleanRecruitingPostingMethod(value) {
+  const method = cleanText(value).toLowerCase();
+  return ["api", "ats_feed", "webhook", "manual", "email"].includes(method) ? method : "manual";
 }
 
 function cleanUrl(value, fallback) {

@@ -299,21 +299,32 @@
             <div class="panel-heading">
               <div>
                 <p class="eyebrow">Job board setup</p>
-                <h2 id="integrationsHeading">Indeed and MonsterZip integrations</h2>
+                <h2 id="integrationsHeading">Job board and ATS integrations</h2>
               </div>
-              <span class="schedule-pill">Provider-ready</span>
+              <span class="schedule-pill">Any board-ready</span>
             </div>
             <form class="integration-form" id="integrationForm">
               <label>
-                Provider
-                <select id="integrationProvider">
-                  <option value="indeed">Indeed</option>
-                  <option value="monsterzip">Monster / ZipRecruiter</option>
+                Posting destination
+                <select id="integrationProvider"></select>
+              </label>
+              <label id="integrationCustomNameWrap" hidden>
+                Site or ATS name
+                <input id="integrationCustomName" type="text" placeholder="Local job board, niche board, or ATS name" />
+              </label>
+              <label>
+                Posting method
+                <select id="integrationMethod">
+                  <option value="api">Direct API</option>
+                  <option value="ats_feed">ATS or XML job feed</option>
+                  <option value="webhook">Apply webhook</option>
+                  <option value="manual">Manual posting checklist</option>
+                  <option value="email">Email applicant export</option>
                 </select>
               </label>
               <label>
                 Employer account ID
-                <input id="integrationAccountId" type="text" placeholder="Indeed advertiser ID or MonsterZip account ID" />
+                <input id="integrationAccountId" type="text" placeholder="Advertiser, employer, board, or ATS account ID" />
               </label>
               <label>
                 Employer email
@@ -326,6 +337,14 @@
               <label>
                 Apply webhook URL
                 <input id="integrationWebhookUrl" type="url" placeholder="https://kirahome.org/api/recruiting/applicants" />
+              </label>
+              <label>
+                Posting URL
+                <input id="integrationPostingUrl" type="url" placeholder="https://example-job-board.com/employers/post-job" />
+              </label>
+              <label>
+                Job feed URL
+                <input id="integrationFeedUrl" type="url" placeholder="https://kirahome.org/recruiting/job-feed.xml" />
               </label>
               <label>
                 Default campaign budget

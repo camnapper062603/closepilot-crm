@@ -231,7 +231,7 @@
     </section>
 
     <div class="app-shell" hidden>
-      <aside class="sidebar" aria-label="Workspace navigation">
+      <aside class="sidebar" id="appSidebar" aria-label="Workspace navigation">
         <div class="brand">
           <span class="brand-mark" aria-hidden="true">CP</span>
           <div>
@@ -241,18 +241,38 @@
         </div>
 
         <nav class="nav-links" aria-label="Primary">
-          <a class="active" data-nav-page="pipeline" href="#pipeline">Dashboard</a>
-          <a data-nav-page="manager" href="#manager">AI Sales Manager</a>
-          <a data-nav-page="contacts" href="#contacts">Contacts</a>
-          <a data-nav-page="recruiting" data-addon-badge="Preview" href="#recruiting">Recruiting Inbox</a>
-          <a data-nav-page="automation" href="#automation">Automations</a>
-          <a data-nav-page="tasks" href="#tasks">Tasks</a>
-          <a data-nav-page="activity" href="#activity">Activity</a>
-          <a data-nav-page="communications" href="#communications">Communications</a>
-          <a data-nav-page="dial" href="#dial">Dial</a>
-          <a data-nav-page="calendar" href="#calendar">Calendar</a>
-          <a data-nav-page="admin" href="#admin">Admin</a>
-          <a data-nav-page="settings" href="#settings">Settings</a>
+          <div class="nav-group" data-nav-group="home">
+            <span class="nav-group-label">Home</span>
+            <a data-nav-page="daily-command" href="#daily-command" aria-label="Daily Command">Daily Command</a>
+          </div>
+          <div class="nav-group" data-nav-group="crm">
+            <span class="nav-group-label">CRM</span>
+            <a class="active" data-nav-page="pipeline" href="#pipeline" aria-label="Dashboard">Dashboard</a>
+            <a data-nav-page="contacts" href="#contacts" aria-label="Contacts">Contacts</a>
+            <a data-nav-page="tasks" href="#tasks" aria-label="Tasks">Tasks</a>
+            <a data-nav-page="calendar" href="#calendar" aria-label="Calendar">Calendar</a>
+            <a data-nav-page="communications" href="#communications" aria-label="Communications">Communications</a>
+          </div>
+          <div class="nav-group" data-nav-group="sales-tools">
+            <span class="nav-group-label">Sales tools</span>
+            <a data-nav-page="dial" href="#dial" aria-label="Dial">Dial</a>
+            <a data-nav-page="automation" href="#automation" aria-label="Automations">Automations</a>
+            <a data-nav-page="manager" href="#manager" aria-label="AI Sales Manager">AI Sales Manager</a>
+            <a data-nav-page="activity" href="#activity" aria-label="Activity">Activity</a>
+          </div>
+          <div class="nav-group" data-nav-group="team">
+            <span class="nav-group-label">Team</span>
+            <a data-nav-page="recruiting" data-addon-badge="Preview" href="#recruiting" aria-label="Recruiting Inbox">Recruiting Inbox</a>
+          </div>
+          <div class="nav-group" data-nav-group="business">
+            <span class="nav-group-label">Business</span>
+            <a data-nav-page="admin" href="#admin" aria-label="Admin">Admin</a>
+            <a data-nav-page="settings" href="#settings" aria-label="Settings">Settings</a>
+          </div>
+          <div class="nav-group" data-nav-group="internal">
+            <span class="nav-group-label">Internal</span>
+            <a data-nav-page="launch-command-center" href="#launch-command-center" aria-label="Launch Command Center">Launch Command Center</a>
+          </div>
         </nav>
 
         <div class="workspace-card">
@@ -265,10 +285,12 @@
       </aside>
 
       <main class="main">
-        <header class="topbar">
+        <header class="topbar page-header">
+          <button class="secondary-button mobile-nav-toggle" id="mobileNavToggle" type="button" aria-expanded="false" aria-controls="appSidebar">Menu</button>
           <div>
-            <p class="eyebrow">Sales operating system</p>
+            <p class="eyebrow" id="pageBreadcrumb">Sales operating system</p>
             <h1>Dashboard</h1>
+            <p class="page-description" id="pageDescription">See the work that needs attention and start the next best action.</p>
           </div>
           <div class="topbar-actions">
             <span class="mode-pill" id="modePill">Demo workspace</span>

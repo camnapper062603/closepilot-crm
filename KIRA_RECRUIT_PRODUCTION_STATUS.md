@@ -14,7 +14,8 @@ Kira Recruit is a paid recruiting add-on that belongs to the ClosePilot CRM work
   - CRM `tasks`
   - CRM `activities`
   - staged `workspace_invitations`
-- Job setup, job board public connector metadata, applicant inbox, interview list, onboarding packet staging, payroll workflow staging, recruiter notes, hiring outcomes, and CRM handoff history persist through the live backend.
+- Job setup, job board/ATS public connector metadata, applicant inbox, interview list, onboarding packet staging, payroll workflow staging, recruiter notes, hiring outcomes, and CRM handoff history persist through the live backend.
+- Built-in connector profiles cover common boards and ATS systems, and the Custom job board / ATS profile supports any site that allows employer posting through a direct API, ATS/XML feed, apply webhook, email applicant export, or manual posting checklist.
 - Candidate CRM handoff supports:
   - save assigned recruiter/manager and hiring outcome
   - create follow-up task
@@ -30,7 +31,7 @@ Kira Recruit is a paid recruiting add-on that belongs to the ClosePilot CRM work
 
 ## Requires API Setup Before Full Production
 
-- Job board API posting/import: Indeed, ZipRecruiter/Monster, LinkedIn, Google Jobs, and other providers need server-side OAuth/API credentials.
+- Job board API posting/import: Indeed, LinkedIn Jobs, ZipRecruiter, Monster, Glassdoor, Google Jobs, CareerBuilder, Craigslist, Handshake, Wellfound, Greenhouse, Lever, Workable, BambooHR, JazzHR, and custom providers can store public setup metadata now. Direct API posting/import still needs each provider's server-side OAuth/API credentials, approved account access, feed/webhook routing, or manual posting process.
 - Payroll payouts: Gusto, ADP, QuickBooks Payroll, Stripe Connect, or manual export workflows need provider contracts and server-side secret storage.
 - Onboarding email delivery: Resend must be configured for live packet emails.
 - Compliance review: employment paperwork, tax forms, direct deposit, payroll, consent, and candidate data retention rules need customer-specific legal/process approval.
@@ -47,7 +48,7 @@ Beta customers can safely use live mode for:
 - creating CRM follow-up tasks
 - adding CRM activity notes
 - staging team-member invitations for hired candidates
-- storing public connector setup status
+- storing public connector setup status for built-in and custom job boards/ATS feeds
 - staging onboarding packet and payroll workflow records
 
 Beta customers should not enter or rely on:
@@ -55,7 +56,7 @@ Beta customers should not enter or rely on:
 - job-board API secrets in the browser
 - payroll API secrets in the browser
 - tax IDs, bank account numbers, or direct deposit data
-- automated production job-board spend or payroll execution until provider connectors are server-side configured
+- automated production job-board spend or payroll execution until provider connectors are server-side configured and approved by the customer
 
 ## Backend Endpoints
 

@@ -271,13 +271,19 @@ Local demo mode is still fully supported:
 
 - Live/back-end-ready: CRM workflows, role navigation, Supabase-ready persistence, Stripe base plan endpoints, Resend invite endpoint, Google Calendar endpoint, AI/SMS/email endpoint fallbacks.
 - Demo/fallback: AI when `OPENAI_API_KEY` is missing, SMS/email when Twilio/provider env vars are missing, billing when Stripe env vars are missing, calendar when OAuth is missing.
-- Manual/beta: job board posting, payroll provider payout, lead enrichment/skip trace vendors, DNC vendor contracts, add-on checkout purchase flows, compliance/legal review.
+- Manual/beta: Kira Recruit can save public setup metadata for built-in and custom job boards/ATS feeds, but live provider posting/import, payroll provider payout, lead enrichment/skip trace vendors, DNC vendor contracts, add-on checkout purchase flows, and compliance/legal review still require provider setup and approvals.
 
 ## Command Centers
 
 - Customer Daily Command Center: visit `#daily-command` or `/daily-command-center`. It uses authenticated, tenant-scoped Supabase data when live and falls back to clearly labeled local/demo calculations when the backend is unavailable.
 - Founder Launch Command Center: visit `/launch-command-center`. It requires a signed-in Supabase user plus server-side internal access through `INTERNAL_ADMIN_EMAILS`; the allowlist is never exposed to the browser. The launch recommendation now evaluates stage-specific `GO`, `CONDITIONAL_GO`, and `NO_GO` rules from `command-center-config.js`.
 - See `docs/DAILY_COMMAND_CENTER.md`, `docs/LAUNCH_COMMAND_CENTER.md`, `docs/LAUNCH_SCORING.md`, and `docs/BETA_CERTIFICATION.md`.
+
+## UI Architecture
+
+- The CRM shell uses grouped navigation, standard page-header descriptions, restrained status colors, and a mobile drawer for primary navigation.
+- Before changing layout patterns, review `docs/UI_CLUTTER_AUDIT.md`, `docs/DESIGN_SYSTEM.md`, `docs/NAVIGATION_ARCHITECTURE.md`, `docs/RESPONSIVE_LAYOUTS.md`, `docs/UI_FEATURE_PRESERVATION_CHECKLIST.md`, and `docs/ACCESSIBILITY.md`.
+- New pages should add a stable route label, breadcrumb, one-sentence page description, role-aware sidebar item, and interaction coverage before launch.
 
 Run `npm run release:check` before a beta/prod deployment. It includes build, route inventory, security tests, command-center policy tests, daily-goal tests, team-attribution tests, full Playwright tests, browser smoke, and secret scan.
 

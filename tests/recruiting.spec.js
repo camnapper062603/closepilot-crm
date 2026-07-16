@@ -163,13 +163,15 @@ test('keeps clicked Kira Recruit tabs in their own page area', async ({ page }) 
 test('configures job board integrations and stages onboarding payroll', async ({ page }) => {
   await page.goto('/recruiting.html', { waitUntil: 'domcontentloaded' });
   await openRecruitingPage(page, 'Integrations');
-  await expect(page.getByRole('heading', { name: 'Indeed and MonsterZip integrations' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Job board and ATS integrations' })).toBeVisible();
   await expect(page.locator('#syncMode')).toHaveText('Demo recruiting workspace');
   await page.locator('#integrationProvider').selectOption('indeed');
+  await page.locator('#integrationMethod').selectOption('api');
   await page.locator('#integrationAccountId').fill('indeed-account-123');
   await page.locator('#integrationEmail').fill('recruiting@kirahome.org');
   await expect(page.locator('#integrationApiToken')).toBeDisabled();
   await page.locator('#integrationWebhookUrl').fill('https://kirahome.org/api/recruiting/applicants');
+  await page.locator('#integrationPostingUrl').fill('https://indeed.example.com/post');
   await page.locator('#integrationBudget').fill('$35/day');
   await page.locator('#integrationNotes').fill('Texas inside sales campaign');
   await page.getByRole('button', { name: 'Save connector' }).click();
@@ -180,12 +182,28 @@ test('configures job board integrations and stages onboarding payroll', async ({
   await expect(page.locator('#integrationMessage')).toContainText('Indeed connection test passed');
   await expect(page.locator('#integrationGrid')).toContainText('Connected');
 
-  await page.locator('#integrationProvider').selectOption('monsterzip');
-  await page.locator('#integrationAccountId').fill('monsterzip-456');
+  await page.locator('#integrationProvider').selectOption('ziprecruiter');
+  await page.locator('#integrationAccountId').fill('ziprecruiter-456');
   await page.locator('#integrationEmail').fill('jobs@kirahome.org');
   await page.getByRole('button', { name: 'Save connector' }).click();
-  await expect(page.locator('#integrationGrid')).toContainText('Monster / ZipRecruiter');
+  await expect(page.locator('#integrationGrid')).toContainText('ZipRecruiter');
   await expect(page.locator('#integrationGrid')).toContainText('Token not configured');
+
+  await page.locator('#integrationProvider').selectOption('custom');
+  await expect(page.locator('#integrationCustomNameWrap')).toBeVisible();
+  await page.locator('#integrationCustomName').fill('Texas Sales Jobs');
+  await page.locator('#integrationMethod').selectOption('ats_feed');
+  await page.locator('#integrationAccountId').fill('texas-sales-board');
+  await page.locator('#integrationEmail').fill('jobs@kirahome.org');
+  await page.locator('#integrationFeedUrl').fill('https://kirahome.org/recruiting/job-feed.xml');
+  await page.locator('#integrationWebhookUrl').fill('https://kirahome.org/api/recruiting/applicants');
+  await page.locator('#integrationNotes').fill('Niche board that accepts XML feeds and webhook apply routing.');
+  await page.getByRole('button', { name: 'Save connector' }).click();
+  await expect(page.locator('#integrationMessage')).toContainText('Texas Sales Jobs connector metadata saved');
+  await expect(page.locator('#integrationGrid')).toContainText('Texas Sales Jobs');
+  await expect(page.locator('#integrationGrid')).toContainText('ATS or XML job feed');
+  await page.getByRole('button', { name: 'Test connection' }).click();
+  await expect(page.locator('#integrationMessage')).toContainText('Texas Sales Jobs connection test passed');
 
   await openRecruitingPage(page, 'W-2/W-9');
   await expect(page.getByRole('heading', { name: 'W-2 / W-9 onboarding packets' })).toBeVisible();

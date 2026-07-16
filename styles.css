@@ -30,6 +30,27 @@
   --shadow-lift: 0 28px 80px rgba(5, 5, 5, 0.14);
   --motion-fast: 150ms ease;
   --motion-med: 240ms ease;
+  --app-bg: #f7f8fb;
+  --surface-primary: #ffffff;
+  --surface-secondary: #f8fafc;
+  --surface-subtle: #f3f5f8;
+  --border-subtle: #e4e8ef;
+  --border-strong: #c9d0dc;
+  --text-primary: #101318;
+  --text-secondary: #4b5563;
+  --text-muted: #7b8491;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --radius-control: 8px;
+  --radius-panel: 10px;
+  --shadow-elevated: 0 18px 42px rgba(16, 24, 40, 0.1);
 }
 
 * {
@@ -9242,6 +9263,265 @@ body[data-dashboard-layout="focus"] .daily-command-center > [data-dashboard-size
   .command-health-summary strong,
   .command-stage-grid strong {
     font-size: 1.12rem;
+  }
+}
+
+/* Shared SaaS hierarchy pass. Keep this additive so existing flows and selectors remain stable. */
+.main {
+  background: var(--app-bg);
+}
+
+.sidebar {
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.nav-links {
+  align-content: start;
+  gap: var(--space-4);
+}
+
+.nav-group {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.nav-group-label {
+  color: rgba(223, 229, 239, 0.54);
+  font-size: 0.67rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  padding: 0 12px 2px;
+  text-transform: uppercase;
+}
+
+.nav-links a {
+  align-items: center;
+  border: 1px solid transparent;
+  display: flex;
+  gap: var(--space-2);
+  min-height: 38px;
+  position: relative;
+}
+
+.nav-links a::before {
+  background: rgba(255, 255, 255, 0.42);
+  border-radius: 999px;
+  content: "";
+  height: 6px;
+  opacity: 0;
+  width: 6px;
+}
+
+.nav-links a.active {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.nav-links a.active::before {
+  background: #ffffff;
+  opacity: 1;
+}
+
+.page-header {
+  align-items: start;
+  border-color: var(--border-subtle);
+  border-radius: var(--radius-panel);
+  box-shadow: none;
+  padding: var(--space-5);
+}
+
+.page-header > div:first-of-type {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.page-description {
+  color: var(--text-secondary);
+  font-size: 0.94rem;
+  line-height: 1.45;
+  margin: 0;
+  max-width: 74ch;
+}
+
+.mobile-nav-toggle {
+  display: none;
+}
+
+.panel,
+.command-panel,
+.dashboard-section,
+.today-focus-card,
+.dashboard-follow-up-card,
+.dashboard-greeting,
+.time-saved-widget {
+  border-color: var(--border-subtle);
+  box-shadow: none;
+}
+
+.section-heading,
+.panel-heading {
+  gap: var(--space-3);
+}
+
+.status-pill,
+.mode-pill,
+.schedule-pill {
+  border-radius: 999px;
+}
+
+.command-grid {
+  align-items: start;
+}
+
+.command-page .command-panel {
+  min-width: 0;
+}
+
+.command-list-row {
+  border-color: var(--border-subtle);
+  border-radius: var(--radius-control);
+}
+
+.command-metrics,
+.command-goals,
+.command-health-summary,
+.command-stage-grid {
+  gap: var(--space-2);
+}
+
+.command-metrics article,
+.command-goals article,
+.command-health-summary article,
+.command-stage-grid article {
+  border-color: var(--border-subtle);
+  border-radius: var(--radius-control);
+  box-shadow: none;
+}
+
+.focus-grid {
+  gap: var(--space-2);
+}
+
+.focus-grid article,
+.communication-stats-grid article,
+.opportunity-health-grid article,
+.time-saved-grid article {
+  border-color: var(--border-subtle);
+  box-shadow: none;
+}
+
+@media (min-width: 821px) {
+  body[data-sidebar="compact"] .nav-group-label {
+    height: 1px;
+    overflow: hidden;
+    padding: 0;
+    width: 1px;
+  }
+
+  body[data-sidebar="compact"] .nav-links {
+    gap: var(--space-2);
+  }
+
+  body[data-sidebar="compact"] .nav-group {
+    gap: var(--space-2);
+  }
+
+  body[data-sidebar="compact"] .nav-links a::after {
+    background: var(--black);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 8px;
+    color: #ffffff;
+    content: attr(aria-label);
+    font-size: 0.75rem;
+    left: calc(100% + 10px);
+    opacity: 0;
+    padding: 7px 9px;
+    pointer-events: none;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    transition: opacity var(--motion-fast);
+    white-space: nowrap;
+    z-index: 20;
+  }
+
+  body[data-sidebar="compact"] .nav-links a:hover::after,
+  body[data-sidebar="compact"] .nav-links a:focus-visible::after {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 820px) {
+  body[data-mobile-nav-open="true"] {
+    overflow: hidden;
+  }
+
+  .app-shell {
+    display: block;
+  }
+
+  .sidebar {
+    border-radius: 0 18px 18px 0;
+    box-shadow: var(--shadow-elevated);
+    height: 100dvh;
+    left: 0;
+    max-width: min(86vw, 340px);
+    overflow-y: auto;
+    padding: var(--space-5);
+    position: fixed;
+    top: 0;
+    transform: translateX(-105%);
+    transition: transform var(--motion-med);
+    width: min(86vw, 340px);
+    z-index: 80;
+  }
+
+  body[data-mobile-nav-open="true"] .sidebar {
+    transform: translateX(0);
+  }
+
+  body[data-mobile-nav-open="true"]::before {
+    background: rgba(15, 23, 42, 0.42);
+    content: "";
+    inset: 0;
+    position: fixed;
+    z-index: 70;
+  }
+
+  .mobile-nav-toggle {
+    align-self: start;
+    display: inline-flex;
+    min-height: 40px;
+  }
+
+  .nav-links {
+    align-items: stretch;
+    display: grid;
+    gap: var(--space-4);
+    overflow: visible;
+    padding-bottom: 0;
+  }
+
+  .nav-links a {
+    font-size: 0.93rem;
+    min-height: 44px;
+    padding: 10px 12px;
+    white-space: normal;
+  }
+
+  .workspace-card {
+    display: grid;
+  }
+
+  .page-header {
+    gap: var(--space-4);
+  }
+
+  .topbar-actions {
+    display: grid;
+    gap: var(--space-2);
   }
 }
 

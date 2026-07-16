@@ -866,6 +866,9 @@ const taskDueChoices = [
 
 const board = document.querySelector("#pipelineBoard");
 const pageTitle = document.querySelector(".topbar h1");
+const pageDescription = document.querySelector("#pageDescription");
+const pageBreadcrumb = document.querySelector("#pageBreadcrumb");
+const mobileNavToggle = document.querySelector("#mobileNavToggle");
 const subpageNav = document.querySelector("#subpageNav");
 const pipelineHealth = document.querySelector("#pipelineHealth");
 const insightList = document.querySelector("#insightList");
@@ -1157,6 +1160,38 @@ const pageTitles = {
   calendar: "Calendar",
   admin: "Workspace admin",
   settings: "Settings",
+};
+const pageDescriptions = {
+  pipeline: "Start with today’s priorities, then move pipeline and follow-ups forward.",
+  "daily-command": "See the highest-value work for today, ordered by urgency and owner.",
+  "launch-command-center": "Review launch readiness, blockers, providers, and beta-company progress.",
+  manager: "Coach the sales motion with pipeline risk, rep signals, and next best actions.",
+  contacts: "Manage prospects, assignments, communication history, and follow-up ownership.",
+  recruiting: "Review synced candidates and hand off qualified hires into the CRM workflow.",
+  automation: "Control workflow templates, automations, and recent automation runs.",
+  tasks: "Clear due work, assign ownership, and keep follow-ups from slipping.",
+  activity: "Audit the latest workspace events, imports, handoffs, and team activity.",
+  communications: "Read, draft, log, and schedule customer conversations from one place.",
+  dial: "Run focused calling, log outcomes, and schedule appointments.",
+  calendar: "Manage appointments, schedule work, and verify calendar connection status.",
+  admin: "Manage plans, seats, integrations, launch readiness, invites, and account controls.",
+  settings: "Tune workspace appearance, dashboard density, workflow defaults, and AI behavior.",
+};
+const pageBreadcrumbs = {
+  pipeline: "CRM / Dashboard",
+  "daily-command": "Home / Daily Command",
+  "launch-command-center": "Internal / Launch",
+  manager: "Sales Tools / AI Sales Manager",
+  contacts: "CRM / Contacts",
+  recruiting: "Team / Recruiting",
+  automation: "Sales Tools / Automations",
+  tasks: "CRM / Tasks",
+  activity: "Sales Tools / Activity",
+  communications: "CRM / Communications",
+  dial: "Sales Tools / Dial",
+  calendar: "CRM / Calendar",
+  admin: "Business / Admin",
+  settings: "Business / Settings",
 };
 const subpageCatalog = {
   pipeline: [
@@ -1477,6 +1512,13 @@ document.querySelectorAll("[data-open-page]").forEach((button) => {
     renderRoute();
   });
 });
+mobileNavToggle?.addEventListener("click", () => {
+  const open = document.body.dataset.mobileNavOpen !== "true";
+  setMobileNavOpen(open);
+});
+document.querySelector(".nav-links")?.addEventListener("click", (event) => {
+  if (event.target.closest("[data-nav-page]")) setMobileNavOpen(false);
+});
 flowCompleteNextButton.addEventListener("click", completeCurrentFlowAction);
 exitFlowModeButton?.addEventListener("click", exitFlowMode);
 restartFlowButton.addEventListener("click", startMyDay);
@@ -1621,6 +1663,14 @@ window.addEventListener("hashchange", () => {
   routeFromHash();
   renderRoute();
   queueDemoScrollTop();
+});
+
+window.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") setMobileNavOpen(false);
+});
+
+window.addEventListener("resize", () => {
+  if (!window.matchMedia("(max-width: 820px)").matches) setMobileNavOpen(false);
 });
 
 window.addEventListener("online", () => {
@@ -2206,7 +2256,10 @@ function renderRoute() {
       link.hidden = !canAccessPage(link.dataset.navPage);
       link.classList.toggle("active", link.dataset.navPage === activePage);
     });
+    syncNavGroups();
     pageTitle.textContent = "Access needed";
+    if (pageDescription) pageDescription.textContent = "This workspace role does not include the selected module.";
+    if (pageBreadcrumb) pageBreadcrumb.textContent = "Access control";
     document.body.dataset.activePage = "access-denied";
     applyDemoFocusPanels();
     return;
@@ -2229,10 +2282,13 @@ function renderRoute() {
     link.hidden = !canAccessPage(link.dataset.navPage);
     link.classList.toggle("active", link.dataset.navPage === activePage);
   });
+  syncNavGroups();
   syncActiveMobileNav();
 
   document.body.dataset.activePage = activePage;
   pageTitle.textContent = pageTitles[activePage] || pageTitles.pipeline;
+  if (pageDescription) pageDescription.textContent = pageDescriptions[activePage] || pageDescriptions.pipeline;
+  if (pageBreadcrumb) pageBreadcrumb.textContent = pageBreadcrumbs[activePage] || "Sales operating system";
   applyContactPageMode();
   if (activePage === "daily-command") renderCustomerDailyCommandPage();
   if (activePage === "launch-command-center") renderLaunchCommandCenterPage();
@@ -2241,6 +2297,18 @@ function renderRoute() {
     history.replaceState(null, "", `#${activePage}`);
   }
   applyDemoFocusPanels();
+}
+
+function syncNavGroups() {
+  document.querySelectorAll(".nav-group").forEach((group) => {
+    const visibleLinks = [...group.querySelectorAll("[data-nav-page]")].filter((link) => !link.hidden);
+    group.hidden = visibleLinks.length === 0;
+  });
+}
+
+function setMobileNavOpen(open) {
+  document.body.dataset.mobileNavOpen = open ? "true" : "false";
+  if (mobileNavToggle) mobileNavToggle.setAttribute("aria-expanded", open ? "true" : "false");
 }
 
 function syncActiveMobileNav() {

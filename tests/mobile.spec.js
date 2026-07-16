@@ -18,17 +18,26 @@ async function expectPageFitsViewport(page) {
   expect(measurement.scrollWidth).toBeLessThanOrEqual(measurement.clientWidth + 1);
 }
 
+async function openMobileNav(page) {
+  const menu = page.getByRole('button', { name: 'Menu' });
+  await expect(menu).toBeVisible();
+  await menu.click();
+  await expect(page.locator('body')).toHaveAttribute('data-mobile-nav-open', 'true');
+}
+
 test('CRM pages adapt to a phone viewport', async ({ page }) => {
   await openMobile(page, '/?setup-workspace');
 
   await expect(page.locator('.topbar h1')).toHaveText('Dashboard');
-  await expect(page.locator('.nav-links')).toHaveCSS('position', 'static');
-  await expect(page.locator('.nav-links')).toHaveCSS('overflow-x', 'auto');
+  await expect(page.getByRole('button', { name: 'Menu' })).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('.sidebar')).toHaveCSS('position', 'fixed');
   await expect(page.locator('#subpageNav')).toHaveCSS('overflow-x', 'auto');
   await expect(page.locator('#mobileQuickAction')).toBeHidden();
   await expectPageFitsViewport(page);
 
+  await openMobileNav(page);
   await page.getByRole('link', { name: 'Contacts' }).click();
+  await expect(page.locator('body')).toHaveAttribute('data-mobile-nav-open', 'false');
   await expect(page.locator('.topbar h1')).toHaveText('Contacts');
   await expect(page.locator('#contacts')).toBeVisible();
   await expectPageFitsViewport(page);
@@ -38,16 +47,19 @@ test('CRM pages adapt to a phone viewport', async ({ page }) => {
   await expect(page.locator('#contacts')).toBeHidden();
   await expectPageFitsViewport(page);
 
+  await openMobileNav(page);
   await page.getByRole('link', { name: 'Dial' }).click();
   await expect(page.locator('.topbar h1')).toHaveText('Dial floor');
   await page.getByRole('button', { name: 'My schedule' }).click();
   await expect(page.locator('#dialSchedulePanel')).toBeVisible();
   await expectPageFitsViewport(page);
 
+  await openMobileNav(page);
   await page.getByRole('link', { name: 'Admin' }).click();
   await expect(page.locator('.topbar h1')).toHaveText('Workspace admin');
   await expectPageFitsViewport(page);
 
+  await openMobileNav(page);
   await page.getByRole('link', { name: 'Settings' }).click();
   await expect(page.locator('.topbar h1')).toHaveText('Settings');
   await expect(page.locator('#customizationForm')).toBeVisible();
@@ -59,6 +71,7 @@ test('CRM mobile layout works with reduced motion enabled', async ({ page }) => 
   await openMobile(page, '/?setup-workspace');
 
   await expect(page.locator('.topbar h1')).toHaveText('Dashboard');
+  await openMobileNav(page);
   await page.getByRole('link', { name: 'Communications' }).click();
   await expect(page.locator('.topbar h1')).toHaveText('Communications');
   await expectPageFitsViewport(page);

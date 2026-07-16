@@ -47,24 +47,126 @@ const recruitSubpages = [
 ];
 const recruitSubpageIds = new Set(recruitSubpages.map((page) => page.id));
 const boards = [
-  { id: "indeed", name: "Indeed", type: "Sponsored job API" },
-  { id: "linkedin", name: "LinkedIn", type: "Company page connector" },
+  { id: "indeed", name: "Indeed", type: "Direct employer/API posting" },
+  { id: "linkedin", name: "LinkedIn Jobs", type: "Company page or recruiter posting" },
   { id: "ziprecruiter", name: "ZipRecruiter", type: "Distribution partner" },
-  { id: "glassdoor", name: "Glassdoor", type: "Employer profile" },
+  { id: "glassdoor", name: "Glassdoor", type: "Employer profile listing" },
   { id: "google", name: "Google Jobs", type: "Structured job feed" },
-  { id: "facebook", name: "Facebook Jobs", type: "Social listing" },
+  { id: "monster", name: "Monster", type: "Employer posting" },
+  { id: "careerbuilder", name: "CareerBuilder", type: "Employer posting" },
+  { id: "craigslist", name: "Craigslist", type: "Manual local posting" },
+  { id: "handshake", name: "Handshake", type: "Campus recruiting" },
+  { id: "wellfound", name: "Wellfound", type: "Startup recruiting" },
+  { id: "greenhouse", name: "Greenhouse", type: "ATS job feed" },
+  { id: "lever", name: "Lever", type: "ATS job feed" },
+  { id: "workable", name: "Workable", type: "ATS distribution" },
+  { id: "custom", name: "Custom job board", type: "Any site with posting, feed, email, or webhook support" },
+];
+
+const postingMethodOptions = [
+  ["api", "Direct API"],
+  ["ats_feed", "ATS or XML job feed"],
+  ["webhook", "Apply webhook"],
+  ["manual", "Manual posting checklist"],
+  ["email", "Email applicant export"],
 ];
 
 const integrationProviders = {
   indeed: {
     label: "Indeed",
     accountLabel: "Advertiser / employer account",
+    method: "api",
     detail: "Use this for sponsored job posting, applicant import, campaign budgets, and apply webhook handoff.",
   },
-  monsterzip: {
-    label: "Monster / ZipRecruiter",
-    accountLabel: "MonsterZip employer account",
-    detail: "Use this for Monster or ZipRecruiter distribution, candidate sync, posting budgets, and apply URL routing.",
+  linkedin: {
+    label: "LinkedIn Jobs",
+    accountLabel: "Company page or recruiter contract",
+    method: "manual",
+    detail: "Use this for LinkedIn company page jobs, paid job slots, recruiter handoff, and apply URL routing.",
+  },
+  ziprecruiter: {
+    label: "ZipRecruiter",
+    accountLabel: "ZipRecruiter employer account",
+    method: "api",
+    detail: "Use this for distribution, campaign budget tracking, candidate sync, and apply URL routing.",
+  },
+  monster: {
+    label: "Monster",
+    accountLabel: "Monster employer account",
+    method: "api",
+    detail: "Use this for Monster postings, candidate exports, posting budgets, and apply routing.",
+  },
+  glassdoor: {
+    label: "Glassdoor",
+    accountLabel: "Employer profile account",
+    method: "manual",
+    detail: "Use this for employer profile listings, manual posting checks, and apply URL routing.",
+  },
+  google: {
+    label: "Google Jobs",
+    accountLabel: "Structured data or feed owner",
+    method: "ats_feed",
+    detail: "Use this for structured job feeds that point applicants back to Kira Recruit or the CRM career page.",
+  },
+  careerbuilder: {
+    label: "CareerBuilder",
+    accountLabel: "CareerBuilder employer account",
+    method: "api",
+    detail: "Use this for paid posting metadata, candidate export handoff, and apply URL routing.",
+  },
+  craigslist: {
+    label: "Craigslist",
+    accountLabel: "Posting account or city market",
+    method: "manual",
+    detail: "Use this for local/manual listings, market notes, and applicant inbox forwarding.",
+  },
+  handshake: {
+    label: "Handshake",
+    accountLabel: "School or employer account",
+    method: "manual",
+    detail: "Use this for campus recruiting posts, school approvals, and candidate export tracking.",
+  },
+  wellfound: {
+    label: "Wellfound",
+    accountLabel: "Company profile account",
+    method: "manual",
+    detail: "Use this for startup-focused listings, profile routing, and applicant inbox forwarding.",
+  },
+  greenhouse: {
+    label: "Greenhouse",
+    accountLabel: "Greenhouse job board or harvest setup",
+    method: "ats_feed",
+    detail: "Use this for ATS job feeds, candidate export handoff, and Kira Recruit applicant sync.",
+  },
+  lever: {
+    label: "Lever",
+    accountLabel: "Lever postings or API setup",
+    method: "ats_feed",
+    detail: "Use this for Lever postings, apply links, candidate exports, and webhook routing.",
+  },
+  workable: {
+    label: "Workable",
+    accountLabel: "Workable account or careers page",
+    method: "ats_feed",
+    detail: "Use this for Workable career page jobs, applicant exports, and feed-based posting.",
+  },
+  bamboohr: {
+    label: "BambooHR",
+    accountLabel: "BambooHR hiring account",
+    method: "ats_feed",
+    detail: "Use this for HRIS/ATS job feed routing, candidate export, and onboarding handoff.",
+  },
+  jazzhr: {
+    label: "JazzHR",
+    accountLabel: "JazzHR account",
+    method: "ats_feed",
+    detail: "Use this for ATS postings, candidate export, and apply URL routing.",
+  },
+  custom: {
+    label: "Custom job board / ATS",
+    accountLabel: "Board, employer, or ATS account",
+    method: "manual",
+    detail: "Use this for any job site that supports employer posting, job feed import, apply forwarding, email export, or manual posting.",
   },
 };
 
@@ -223,6 +325,11 @@ const elements = {
   integrationGrid: document.querySelector("#integrationGrid"),
   integrationMessage: document.querySelector("#integrationMessage"),
   testIntegration: document.querySelector("#testIntegration"),
+  integrationCustomNameWrap: document.querySelector("#integrationCustomNameWrap"),
+  integrationCustomName: document.querySelector("#integrationCustomName"),
+  integrationMethod: document.querySelector("#integrationMethod"),
+  integrationPostingUrl: document.querySelector("#integrationPostingUrl"),
+  integrationFeedUrl: document.querySelector("#integrationFeedUrl"),
   onboardingForm: document.querySelector("#onboardingForm"),
   workerName: document.querySelector("#workerName"),
   workerEmail: document.querySelector("#workerEmail"),
@@ -396,18 +503,17 @@ function defaultState() {
       requirements: "Phone confidence, reliable follow-up, clear written notes, CRM experience, weekend availability preferred.",
       status: "Draft",
     },
-    postings: boards.map((board) => ({ ...board, status: "Not listed", applicants: 0, lastSync: "" })),
+    postings: defaultPostings(),
     candidates: [],
     interviews: [],
     feedSyncedAt: "",
-    integrations: {
-      indeed: emptyIntegration("indeed"),
-      monsterzip: emptyIntegration("monsterzip"),
-    },
+    integrations: defaultIntegrations(),
     connectorSettings: {
       crmApp: "ClosePilot CRM",
       module: "Kira Recruit",
       allowedRoles: ["owner", "admin", "manager"],
+      supportedPostingMethods: postingMethodOptions.map(([, label]) => label),
+      customBoardsAllowed: true,
     },
     onboardingWorkers: [],
     payrollProvider: {
@@ -425,19 +531,37 @@ function defaultState() {
 }
 
 function emptyIntegration(provider) {
+  const providerDefinition = integrationProviderDefinition(provider);
   return {
     provider,
+    providerType: baseProviderId(provider),
+    customName: "",
+    method: providerDefinition.method || "manual",
     accountId: "",
     email: "",
     tokenConfigured: false,
     tokenLast4: "",
     webhookUrl: "",
+    postingUrl: "",
+    feedUrl: "",
     budget: "",
     notes: "",
     status: "Not connected",
     lastTestedAt: "",
     savedAt: "",
   };
+}
+
+function defaultPostings() {
+  return boards.map((board) => defaultPosting(board));
+}
+
+function defaultPosting(board) {
+  return { ...board, status: "Not listed", applicants: 0, lastSync: "" };
+}
+
+function defaultIntegrations() {
+  return Object.fromEntries(Object.keys(integrationProviders).map((provider) => [provider, emptyIntegration(provider)]));
 }
 
 function loadState() {
@@ -448,13 +572,10 @@ function loadState() {
       ...defaultState(),
       ...stored,
       job: { ...defaultState().job, ...(stored.job || {}) },
-      postings: Array.isArray(stored.postings) && stored.postings.length ? stored.postings : defaultState().postings,
+      postings: normalizePostings(stored.postings),
       candidates: Array.isArray(stored.candidates) ? stored.candidates : [],
       interviews: Array.isArray(stored.interviews) ? stored.interviews : [],
-      integrations: {
-        indeed: { ...emptyIntegration("indeed"), ...(stored.integrations?.indeed || {}) },
-        monsterzip: { ...emptyIntegration("monsterzip"), ...(stored.integrations?.monsterzip || {}) },
-      },
+      integrations: normalizeIntegrations(stored.integrations),
       connectorSettings: { ...defaultState().connectorSettings, ...(stored.connectorSettings || {}) },
       onboardingWorkers: Array.isArray(stored.onboardingWorkers) ? stored.onboardingWorkers : [],
       payrollProvider: { ...defaultState().payrollProvider, ...(stored.payrollProvider || {}) },
@@ -466,6 +587,142 @@ function loadState() {
   } catch {
     return defaultState();
   }
+}
+
+function normalizePostings(postings) {
+  const storedPostings = Array.isArray(postings) ? postings : [];
+  const byId = new Map(storedPostings.map((posting) => [posting.id, posting]));
+  const defaults = defaultPostings().map((posting) => ({ ...posting, ...(byId.get(posting.id) || {}) }));
+  const customPostings = storedPostings.filter((posting) => posting.id && !boards.some((board) => board.id === posting.id));
+  return [...defaults, ...customPostings];
+}
+
+function normalizeIntegrations(integrations) {
+  const normalized = defaultIntegrations();
+  Object.entries(integrations || {}).forEach(([rawKey, value]) => {
+    const provider = normalizeProviderKey(value?.provider || rawKey);
+    if (!provider) return;
+    const base = baseProviderId(provider);
+    const customName = cleanString(value?.customName || (base === "custom" && provider !== "custom" ? value?.label || value?.name : ""));
+    normalized[provider] = {
+      ...emptyIntegration(provider),
+      ...value,
+      provider,
+      providerType: base,
+      customName,
+      method: normalizePostingMethod(value?.method || integrationProviderDefinition(provider, value).method),
+      postingUrl: cleanString(value?.postingUrl),
+      feedUrl: cleanString(value?.feedUrl),
+    };
+  });
+  return normalized;
+}
+
+function cleanString(value) {
+  return String(value || "").trim();
+}
+
+function normalizeProviderKey(value) {
+  const raw = cleanString(value).toLowerCase();
+  if (!raw) return "";
+  if (raw === "monsterzip" || raw === "monster-ziprecruiter") return "ziprecruiter";
+  return raw
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+}
+
+function baseProviderId(provider) {
+  const key = normalizeProviderKey(provider);
+  if (integrationProviders[key]) return key;
+  if (key.startsWith("custom-")) return "custom";
+  return "custom";
+}
+
+function providerKeyForSelection(provider, customName) {
+  const selected = normalizeProviderKey(provider);
+  if (baseProviderId(selected) !== "custom") return selected;
+  if (selected !== "custom") return selected;
+  return `custom-${normalizeProviderKey(customName) || "job-board"}`;
+}
+
+function integrationProviderDefinition(provider, integration = {}) {
+  const base = baseProviderId(provider);
+  const definition = integrationProviders[base] || integrationProviders.custom;
+  const customName = cleanString(integration.customName);
+  if (base === "custom" && customName) {
+    return {
+      ...definition,
+      label: customName,
+      accountLabel: `${customName} account`,
+    };
+  }
+  return definition;
+}
+
+function normalizePostingMethod(value) {
+  const method = cleanString(value).toLowerCase();
+  return postingMethodOptions.some(([option]) => option === method) ? method : "manual";
+}
+
+function postingMethodLabel(value) {
+  return postingMethodOptions.find(([option]) => option === normalizePostingMethod(value))?.[1] || "Manual posting checklist";
+}
+
+function renderIntegrationProviderOptions(selectedProvider = "") {
+  if (!elements.integrationProvider) return;
+  const selected = selectedProvider || elements.integrationProvider.value || "indeed";
+  const baseOptions = Object.entries(integrationProviders)
+    .map(([providerId, provider]) => `<option value="${escapeHtml(providerId)}">${escapeHtml(provider.label)}</option>`)
+    .join("");
+  const customOptions = Object.entries(state.integrations || {})
+    .filter(([providerId, integration]) => baseProviderId(providerId) === "custom" && providerId !== "custom" && integration?.customName)
+    .map(([providerId, integration]) => `<option value="${escapeHtml(providerId)}">${escapeHtml(integration.customName)} custom</option>`)
+    .join("");
+  elements.integrationProvider.innerHTML = `${baseOptions}${customOptions ? `<optgroup label="Saved custom boards">${customOptions}</optgroup>` : ""}`;
+  elements.integrationProvider.value = state.integrations[selected] ? selected : "indeed";
+}
+
+function upsertPostingForIntegration(provider, integration) {
+  const postingId = provider;
+  const posting = {
+    id: postingId,
+    name: providerLabel(provider),
+    type: postingMethodLabel(integration.method),
+    method: normalizePostingMethod(integration.method),
+    status: integration.savedAt ? "Ready" : "Not listed",
+    applicants: 0,
+    lastSync: "",
+  };
+  const existingIndex = state.postings.findIndex((item) => item.id === postingId);
+  if (existingIndex >= 0) {
+    state.postings[existingIndex] = {
+      ...state.postings[existingIndex],
+      ...posting,
+      applicants: state.postings[existingIndex].applicants || 0,
+      lastSync: state.postings[existingIndex].lastSync || "",
+    };
+    return;
+  }
+  state.postings = [...state.postings, posting];
+}
+
+function publishablePostingIds() {
+  const readyIds = new Set();
+  Object.entries(state.integrations || {}).forEach(([provider, integration]) => {
+    if (!integration) return;
+    const configured = Boolean(
+      integration.savedAt ||
+        integration.tokenConfigured ||
+        integration.webhookUrl ||
+        integration.postingUrl ||
+        integration.feedUrl ||
+        integration.status === "Demo connected" ||
+        integration.status === "Live configured",
+    );
+    if (configured) readyIds.add(provider);
+  });
+  return readyIds;
 }
 
 function saveState() {
@@ -481,6 +738,7 @@ async function bootRecruiting() {
     await initializeLiveRecruiting();
   }
   hydrateJobForm();
+  renderIntegrationProviderOptions();
   hydrateIntegrationForm();
   hydratePayrollProviderForm();
   hydrateDefaultDates();
@@ -531,11 +789,8 @@ function applyLiveRecruitingState(liveState, candidates) {
     ...state,
     ...liveState,
     job: { ...state.job, ...(liveState.job || {}) },
-    postings: Array.isArray(liveState.postings) && liveState.postings.length ? liveState.postings : state.postings,
-    integrations: {
-      indeed: { ...state.integrations.indeed, ...(liveState.integrations?.indeed || {}) },
-      monsterzip: { ...state.integrations.monsterzip, ...(liveState.integrations?.monsterzip || {}) },
-    },
+    postings: Array.isArray(liveState.postings) && liveState.postings.length ? normalizePostings(liveState.postings) : state.postings,
+    integrations: normalizeIntegrations({ ...state.integrations, ...(liveState.integrations || {}) }),
     connectorSettings: { ...state.connectorSettings, ...(liveState.connectorSettings || {}) },
     interviews: Array.isArray(liveState.interviews) ? liveState.interviews : state.interviews,
     onboardingWorkers: Array.isArray(liveState.onboardingWorkers) ? liveState.onboardingWorkers : state.onboardingWorkers,
@@ -683,12 +938,19 @@ function hydrateJobForm() {
 }
 
 function hydrateIntegrationForm() {
-  const provider = elements.integrationProvider.value;
+  const provider = elements.integrationProvider.value || "indeed";
   const integration = state.integrations[provider] || emptyIntegration(provider);
+  const definition = integrationProviderDefinition(provider, integration);
+  const isCustom = baseProviderId(provider) === "custom";
+  if (elements.integrationCustomNameWrap) elements.integrationCustomNameWrap.hidden = !isCustom;
+  if (elements.integrationCustomName) elements.integrationCustomName.value = integration.customName || (isCustom && provider !== "custom" ? definition.label : "");
+  if (elements.integrationMethod) elements.integrationMethod.value = normalizePostingMethod(integration.method || definition.method);
   elements.integrationAccountId.value = integration.accountId || "";
   elements.integrationEmail.value = integration.email || "";
   elements.integrationApiToken.value = "";
   elements.integrationWebhookUrl.value = integration.webhookUrl || "";
+  if (elements.integrationPostingUrl) elements.integrationPostingUrl.value = integration.postingUrl || "";
+  if (elements.integrationFeedUrl) elements.integrationFeedUrl.value = integration.feedUrl || "";
   elements.integrationBudget.value = integration.budget || "";
   elements.integrationNotes.value = integration.notes || "";
 }
@@ -730,13 +992,17 @@ function publishJob() {
   if (!elements.jobForm.reportValidity()) return;
   const now = new Date().toISOString();
   state.job = { ...readJobForm(), status: "Live", listedAt: now };
-  state.postings = boards.map((board, index) => ({
-    ...board,
-    status: index < 5 ? "Live" : "Queued",
-    applicants: index < 5 ? index + 1 : 0,
-    lastSync: now,
-  }));
-  elements.jobMessage.textContent = "Job listed to active board connectors.";
+  const readyPostings = publishablePostingIds();
+  state.postings = normalizePostings(state.postings).map((posting, index) => {
+    const publishable = readyPostings.has(posting.id) || (readyPostings.size === 0 && index < 5);
+    return {
+      ...posting,
+      status: publishable ? "Live" : "Queued",
+      applicants: publishable ? Math.max(posting.applicants || 0, index + 1) : posting.applicants || 0,
+      lastSync: now,
+    };
+  });
+  elements.jobMessage.textContent = "Job listed to active board connectors and queued for manual/custom destinations.";
   saveState();
   render();
 }
@@ -744,29 +1010,48 @@ function publishJob() {
 async function saveIntegration(event) {
   event.preventDefault();
   if (!guardRecruitingAccess("save job board integrations", { adminOnly: true })) return;
-  const provider = elements.integrationProvider.value;
+  const selectedProvider = elements.integrationProvider.value || "indeed";
+  const customName = cleanString(elements.integrationCustomName?.value);
+  if (baseProviderId(selectedProvider) === "custom" && !customName && selectedProvider === "custom") {
+    elements.integrationMessage.textContent = "Add a site or ATS name for the custom connector.";
+    return;
+  }
+  const provider = providerKeyForSelection(selectedProvider, customName);
   const existing = state.integrations[provider] || emptyIntegration(provider);
+  const method = normalizePostingMethod(elements.integrationMethod?.value || existing.method);
   const tokenValue = accessContext.demo || accessContext.locked ? "" : elements.integrationApiToken.value.trim();
   state.integrations[provider] = {
     ...existing,
     provider,
+    providerType: baseProviderId(provider),
+    customName: customName || existing.customName || "",
+    method,
     accountId: elements.integrationAccountId.value.trim(),
     email: elements.integrationEmail.value.trim(),
     tokenConfigured: Boolean(tokenValue) || existing.tokenConfigured,
     tokenLast4: tokenValue ? tokenValue.slice(-4) : existing.tokenLast4,
     webhookUrl: elements.integrationWebhookUrl.value.trim(),
+    postingUrl: elements.integrationPostingUrl?.value.trim() || "",
+    feedUrl: elements.integrationFeedUrl?.value.trim() || "",
     budget: elements.integrationBudget.value.trim(),
     notes: elements.integrationNotes.value.trim(),
     status: "Saved",
     savedAt: new Date().toISOString(),
   };
+  upsertPostingForIntegration(provider, state.integrations[provider]);
   state.connectorSettings = {
     ...state.connectorSettings,
     [`jobboard:${provider}`]: {
       provider,
+      providerLabel: providerLabel(provider),
+      providerType: baseProviderId(provider),
+      customName: state.integrations[provider].customName,
+      method,
       accountId: state.integrations[provider].accountId,
       email: state.integrations[provider].email,
       webhookUrl: state.integrations[provider].webhookUrl,
+      postingUrl: state.integrations[provider].postingUrl,
+      feedUrl: state.integrations[provider].feedUrl,
       budget: state.integrations[provider].budget,
       status: state.integrations[provider].status,
       tokenConfigured: state.integrations[provider].tokenConfigured,
@@ -791,6 +1076,8 @@ async function saveIntegration(event) {
       elements.integrationMessage.textContent = `Connector saved locally, but live status failed: ${error.message}`;
     }
   }
+  renderIntegrationProviderOptions(provider);
+  hydrateIntegrationForm();
   render();
 }
 
@@ -798,10 +1085,14 @@ async function testIntegrationConnection() {
   if (!guardRecruitingAccess("test job board connections", { adminOnly: true })) return;
   const provider = elements.integrationProvider.value;
   const integration = state.integrations[provider] || emptyIntegration(provider);
-  if (!integration.accountId || !integration.email || (!accessContext.demo && !integration.tokenConfigured)) {
+  const hasRouting = Boolean(integration.accountId || integration.webhookUrl || integration.postingUrl || integration.feedUrl);
+  const tokenRequired = normalizePostingMethod(integration.method) === "api" && !accessContext.demo;
+  if (!hasRouting || !integration.email || (tokenRequired && !integration.tokenConfigured)) {
     elements.integrationMessage.textContent = accessContext.demo
-      ? `Add ${providerLabel(provider)} account ID and employer email before testing demo metadata.`
-      : `Add ${providerLabel(provider)} account ID, employer email, and a server-side token before testing.`;
+      ? `Add ${providerLabel(provider)} account, routing, and employer email before testing demo metadata.`
+      : tokenRequired
+        ? `Add ${providerLabel(provider)} account, employer email, and a server-side token before testing.`
+        : `Add ${providerLabel(provider)} routing details and employer email before testing.`;
     return;
   }
   state.integrations[provider] = {
@@ -968,10 +1259,16 @@ function buildFeed() {
     postings: state.postings,
     integrations: Object.values(state.integrations).map((integration) => ({
       provider: integration.provider,
+      providerLabel: providerLabel(integration.provider),
+      providerType: integration.providerType || baseProviderId(integration.provider),
+      customName: integration.customName || "",
+      method: normalizePostingMethod(integration.method),
       status: integration.status,
       accountId: integration.accountId,
       email: integration.email,
       webhookUrl: integration.webhookUrl,
+      postingUrl: integration.postingUrl,
+      feedUrl: integration.feedUrl,
       budget: integration.budget,
       tokenConfigured: integration.tokenConfigured,
       lastTestedAt: integration.lastTestedAt,
@@ -1044,6 +1341,7 @@ function resetRecruiting() {
   localStorage.removeItem(crmFeedKey);
   localStorage.removeItem(sharedRecruitingFeedKey);
   hydrateJobForm();
+  renderIntegrationProviderOptions();
   hydrateIntegrationForm();
   hydratePayrollProviderForm();
   hydrateDefaultDates();
@@ -1150,6 +1448,10 @@ function renderAccessState() {
     elements.integrationAccountId,
     elements.integrationEmail,
     elements.integrationWebhookUrl,
+    elements.integrationCustomName,
+    elements.integrationMethod,
+    elements.integrationPostingUrl,
+    elements.integrationFeedUrl,
     elements.integrationBudget,
     elements.integrationNotes,
     elements.integrationProvider,
@@ -1937,14 +2239,17 @@ function renderBoards() {
 }
 
 function renderIntegrations() {
-  elements.integrationGrid.innerHTML = Object.entries(integrationProviders)
-    .map(([providerId, provider]) => renderIntegrationCard(state.integrations[providerId] || emptyIntegration(providerId), provider))
+  elements.integrationGrid.innerHTML = Object.entries(state.integrations)
+    .filter(([providerId, integration]) => integrationProviders[providerId] || integration?.savedAt || baseProviderId(providerId) === "custom")
+    .map(([providerId, integration]) => renderIntegrationCard(integration || emptyIntegration(providerId), integrationProviderDefinition(providerId, integration)))
     .join("");
 }
 
 function renderIntegrationCard(integration, provider) {
-  const connected = integration?.status === "Demo connected";
+  const connected = ["Demo connected", "Live configured"].includes(integration?.status);
   const saved = Boolean(integration?.savedAt);
+  const method = postingMethodLabel(integration?.method || provider.method);
+  const routing = integration?.feedUrl || integration?.postingUrl || integration?.webhookUrl || "";
   return `
     <article class="integration-card ${connected ? "connected" : ""}">
       <div>
@@ -1953,8 +2258,10 @@ function renderIntegrationCard(integration, provider) {
         <p>${escapeHtml(provider.detail)}</p>
       </div>
       <div class="integration-facts">
+        <span>${escapeHtml(method)}</span>
         <span>${escapeHtml(integration?.accountId || "No account ID yet")}</span>
         <span>${integration?.tokenConfigured ? `Token configured ••••${escapeHtml(integration.tokenLast4 || "****")}` : "Token not configured"}</span>
+        <span>${escapeHtml(routing || "No posting/feed route")}</span>
         <span>${escapeHtml(integration?.budget || "No default budget")}</span>
       </div>
       <strong class="connection-status">${connected ? "Connected" : saved ? "Saved" : "Not connected"}</strong>
@@ -2692,7 +2999,7 @@ function outcomeLabel(value) {
 }
 
 function providerLabel(provider) {
-  return integrationProviders[provider]?.label || "Job board";
+  return integrationProviderDefinition(provider, state.integrations?.[provider] || {}).label || "Job board";
 }
 
 function payrollProviderLabel(provider) {

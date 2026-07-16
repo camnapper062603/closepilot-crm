@@ -366,6 +366,24 @@ test('opens primary sidebar items as separate app pages', async ({ page }) => {
   await expect(page.locator('.topbar h1')).toHaveText('Settings');
 });
 
+test('renders grouped navigation and standard page headers', async ({ page }) => {
+  await expect(page.locator('.nav-group[data-nav-group="home"]')).toContainText('Home');
+  await expect(page.locator('.nav-group[data-nav-group="crm"]')).toContainText('CRM');
+  await expect(page.locator('.nav-group[data-nav-group="sales-tools"]')).toContainText('Sales tools');
+  await expect(page.locator('.nav-group[data-nav-group="team"]')).toContainText('Team');
+  await expect(page.locator('.nav-group[data-nav-group="business"]')).toContainText('Business');
+  await expect(page.locator('#pageBreadcrumb')).toHaveText('CRM / Dashboard');
+  await expect(page.locator('#pageDescription')).toContainText(/today.s priorities/);
+
+  await navigateTo(page, 'Contacts', 'contacts');
+  await expect(page.locator('#pageBreadcrumb')).toHaveText('CRM / Contacts');
+  await expect(page.locator('#pageDescription')).toContainText('Manage prospects');
+
+  await navigateTo(page, 'Automations', 'automation');
+  await expect(page.locator('#pageBreadcrumb')).toHaveText('Sales Tools / Automations');
+  await expect(page.locator('#pageDescription')).toContainText('workflow templates');
+});
+
 test('syncs Kira Recruit candidates into the CRM Recruiting Inbox', async ({ page }) => {
   await installRecruitingFeed(page);
 
@@ -917,7 +935,7 @@ test('runs stage and won automation templates without duplicating automatic runs
 
   await navigateTo(page, 'Dashboard', 'pipeline');
   await openLeadBrief(page);
-  await page.locator('#leadBrief').getByRole('button', { name: 'Mark won' }).click();
+  await trigger(page.locator('#leadBrief').getByRole('button', { name: 'Mark won' }));
   await navigateTo(page, 'Tasks', 'tasks');
   await page.getByRole('button', { name: /Today/ }).click();
   await expect(page.locator('#taskList')).toContainText('Send onboarding checklist to Northstar Roofing');
@@ -926,8 +944,8 @@ test('runs stage and won automation templates without duplicating automatic runs
 
   await navigateTo(page, 'Dashboard', 'pipeline');
   await openLeadBrief(page);
-  await page.locator('#leadBrief').getByRole('button', { name: 'Reopen deal' }).click();
-  await page.locator('#leadBrief').getByRole('button', { name: 'Mark won' }).click();
+  await trigger(page.locator('#leadBrief').getByRole('button', { name: 'Reopen deal' }));
+  await trigger(page.locator('#leadBrief').getByRole('button', { name: 'Mark won' }));
   await navigateTo(page, 'Automations', 'automation');
   await openAutomationSubpage(page, 'Automation runs');
 
@@ -1005,7 +1023,7 @@ test('shows a global activity feed and opens related leads', async ({ page }) =>
 
   await navigateTo(page, 'Dashboard', 'pipeline');
   await openLeadBrief(page);
-  await page.locator('#leadBrief').getByRole('button', { name: 'Add follow-up' }).click();
+  await trigger(page.locator('#leadBrief').getByRole('button', { name: 'Add follow-up' }));
   await navigateTo(page, 'Activity', 'activity');
   await activityFilters.getByRole('button', { name: 'Tasks' }).click();
   await expect(page.locator('#activityFeed')).toContainText('Follow-up task added.');
@@ -1221,7 +1239,7 @@ test('moves a lead forward and updates the lead brief', async ({ page }) => {
 
 test('marks the selected lead won and queues onboarding', async ({ page }) => {
   await openLeadBrief(page);
-  await page.locator('#leadBrief').getByRole('button', { name: 'Mark won' }).click();
+  await trigger(page.locator('#leadBrief').getByRole('button', { name: 'Mark won' }));
 
   await expect(page.locator('#leadBrief')).toContainText('Won');
   await expect(page.locator('#leadBrief')).toContainText('Deal marked Won.');
@@ -1282,7 +1300,7 @@ test('tracks monthly revenue target progress', async ({ page }) => {
   await expect(page.locator('#revenueProgressBar')).toHaveAttribute('data-progress', '89%');
 
   await openLeadBrief(page);
-  await page.locator('#leadBrief').getByRole('button', { name: 'Mark won' }).click();
+  await trigger(page.locator('#leadBrief').getByRole('button', { name: 'Mark won' }));
 
   await openSubpage(page, 'Monthly target');
   await expect(page.locator('#revenueGoalSummary')).toContainText('$13,500');
@@ -1657,11 +1675,11 @@ test('saves UI customization preferences and applies them to the workspace shell
 
 test('edits the selected lead', async ({ page }) => {
   await openLeadBrief(page);
-  await page.locator('#leadBrief').getByRole('button', { name: 'Edit lead' }).click();
+  await trigger(page.locator('#leadBrief').getByRole('button', { name: 'Edit lead' }));
   await expect(page.getByRole('dialog', { name: 'Edit lead' })).toBeVisible();
   await page.getByLabel('Company').fill('Northstar Exterior Group');
   await page.getByLabel('Deal value').fill('11400');
-  await page.getByRole('button', { name: 'Save lead' }).click();
+  await trigger(page.getByRole('button', { name: 'Save lead' }));
 
   await expect(page.locator('#leadBrief')).toContainText('Northstar Exterior Group');
   await openDashboardOverview(page);
@@ -1681,7 +1699,7 @@ test('deletes the selected lead', async ({ page }) => {
 
 test('creates a follow-up task from the selected lead', async ({ page }) => {
   await openLeadBrief(page);
-  await page.locator('#leadBrief').getByRole('button', { name: 'Add follow-up' }).click();
+  await trigger(page.locator('#leadBrief').getByRole('button', { name: 'Add follow-up' }));
 
   await expect(page.locator('#taskList')).toContainText(
     'Send workflow proposal and ask for install calendar. (Northstar Roofing)',
