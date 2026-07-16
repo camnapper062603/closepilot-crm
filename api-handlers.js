@@ -13,6 +13,9 @@ import {
   providerStatusesFromEnv,
 } from "./command-center-config.js";
 import { sendInviteEmailWithResend } from "./email-service.js";
+import { logServerEvent, redactLogValue } from "./lib/logger.js";
+import { captureMonitoringEvent, monitoringStatus } from "./lib/monitoring.js";
+import { requestContextFrom, safeRequestId } from "./lib/request-context.js";
 
 const planCatalog = {
   starter: { label: "Starter", seatLimit: 100, priceEnv: "STRIPE_PRICE_STARTER", productEnv: "STRIPE_PRODUCT_STARTER" },
@@ -71,6 +74,18 @@ const dailyCommandCenterEndpoints = new Set([
   "/api/workspace/daily-goals",
 ]);
 
+const healthEndpoints = new Set([
+  "/api/health",
+  "/api/health/live",
+  "/api/health/ready",
+]);
+
+const operationsEndpoints = new Set([
+  "/api/admin/operations/health",
+  "/api/workspace/operations/provider-failures",
+  "/api/support/report",
+]);
+
 export const closePilotApiRoutes = [
   { method: "POST", route: "/api/stripe/create-checkout-session" },
   { method: "POST", route: "/api/stripe/create-portal-session" },
@@ -81,6 +96,12 @@ export const closePilotApiRoutes = [
   { method: "GET", route: "/api/google/calendar/callback" },
   { method: "POST", route: "/api/google/calendar/status" },
   { method: "POST", route: "/api/google/calendar/create-event" },
+  { method: "GET", route: "/api/health" },
+  { method: "GET", route: "/api/health/live" },
+  { method: "GET", route: "/api/health/ready" },
+  { method: "GET", route: "/api/admin/operations/health" },
+  { method: "POST", route: "/api/workspace/operations/provider-failures" },
+  { method: "POST", route: "/api/support/report" },
   { method: "POST", route: "/api/system/readiness" },
   ...[...launchCommandCenterEndpoints].map((route) => ({ method: "POST", route })),
   ...[...dailyCommandCenterEndpoints].map((route) => ({ method: "POST", route })),
@@ -108,6 +129,22 @@ const readinessChecks = [
   { key: "resend", label: "Resend API key", env: "RESEND_API_KEY" },
   { key: "inviteFrom", label: "Invite sender email", env: "INVITE_FROM_EMAIL" },
   { key: "supportEmail", label: "Support email", env: "SUPPORT_EMAIL", public: true },
+  { key: "supportUrl", label: "Support URL", env: "SUPPORT_URL", public: true, optional: true },
+  { key: "statusPageUrl", label: "Status page URL", env: "STATUS_PAGE_URL", public: true, optional: true },
+  { key: "monitoringEnabled", label: "Monitoring enabled flag", env: "MONITORING_ENABLED", public: true, optional: true },
+  { key: "monitoringDsn", label: "Server monitoring DSN", env: "SENTRY_DSN", optional: true },
+  { key: "browserMonitoringDsn", label: "Browser monitoring DSN", env: "PUBLIC_SENTRY_DSN", public: true, optional: true },
+  { key: "logLevel", label: "Structured log level", env: "LOG_LEVEL", public: true, optional: true },
+  { key: "appRelease", label: "Application release identifier", env: "APP_RELEASE", public: true, optional: true },
+  { key: "appCommitSha", label: "Application commit SHA", env: "APP_COMMIT_SHA", public: true, optional: true },
+  { key: "healthEndpointsVerified", label: "Health endpoints verified", env: "HEALTH_ENDPOINTS_VERIFIED", optional: true },
+  { key: "uptimeMonitoringConfigured", label: "Uptime monitoring configured", env: "UPTIME_MONITORING_CONFIGURED", optional: true },
+  { key: "productionSmokePassed", label: "Production smoke passing evidence", env: "PRODUCTION_SMOKE_PASSED", optional: true },
+  { key: "backupEvidenceRecorded", label: "Backup evidence recorded", env: "BACKUP_EVIDENCE_RECORDED", optional: true },
+  { key: "incidentResponseReviewed", label: "Incident response reviewed", env: "INCIDENT_RESPONSE_REVIEWED", optional: true },
+  { key: "mobileQaCompleted", label: "Mobile QA completed", env: "MOBILE_QA_COMPLETED", optional: true },
+  { key: "accessibilityQaCompleted", label: "Accessibility QA completed", env: "ACCESSIBILITY_QA_COMPLETED", optional: true },
+  { key: "performanceBudgetVerified", label: "Performance budget verified", env: "PERFORMANCE_BUDGET_VERIFIED", optional: true },
   { key: "twilioSid", label: "Twilio account SID", env: "TWILIO_ACCOUNT_SID" },
   { key: "twilioToken", label: "Twilio auth token", env: "TWILIO_AUTH_TOKEN" },
   { key: "twilioPhone", label: "Twilio phone number", env: "TWILIO_PHONE_NUMBER" },
@@ -130,6 +167,8 @@ export function isClosePilotApiPath(pathname) {
     pathname === "/api/google/calendar/callback" ||
     pathname === "/api/google/calendar/status" ||
     pathname === "/api/google/calendar/create-event" ||
+    healthEndpoints.has(pathname) ||
+    operationsEndpoints.has(pathname) ||
     pathname === "/api/system/readiness" ||
     launchCommandCenterEndpoints.has(pathname) ||
     dailyCommandCenterEndpoints.has(pathname) ||
@@ -143,6 +182,8 @@ export async function handleClosePilotApiRequest(request, response) {
   const url = new URL(request.url || "/", `http://${request.headers.host || "localhost"}`);
   response.__request = request;
   response.__requestId = requestIdFor(request);
+  response.__requestContext = requestContextFrom(request, { requestId: response.__requestId });
+  request.__requestId = response.__requestId;
 
   if (request.method === "OPTIONS") {
     if (!isCorsOriginAllowed(request)) {
@@ -153,8 +194,32 @@ export async function handleClosePilotApiRequest(request, response) {
     return;
   }
 
+  if (healthEndpoints.has(url.pathname)) {
+    if (request.method !== "GET") {
+      sendJson(response, 405, { error: { code: "METHOD_NOT_ALLOWED", message: "Health endpoints use GET." }, message: "Method not allowed." });
+      return;
+    }
+    try {
+      assertRateLimit(request, url.pathname);
+      await handleHealthRequest(url.pathname, request, response);
+    } catch (error) {
+      sendError(response, error);
+    }
+    return;
+  }
+
   if (url.pathname === "/api/google/calendar/callback" && request.method === "GET") {
     await handleGoogleCalendarCallback(request, response, url);
+    return;
+  }
+
+  if (url.pathname === "/api/admin/operations/health" && request.method === "GET") {
+    try {
+      assertRateLimit(request, url.pathname);
+      await handleAdminOperationsHealth(request, response);
+    } catch (error) {
+      sendError(response, error);
+    }
     return;
   }
 
@@ -191,6 +256,14 @@ export async function handleClosePilotApiRequest(request, response) {
     }
     if (url.pathname === "/api/system/readiness") {
       await handleSystemReadiness(request, response, payload);
+      return;
+    }
+    if (url.pathname === "/api/workspace/operations/provider-failures") {
+      await handleWorkspaceProviderFailures(request, response, payload);
+      return;
+    }
+    if (url.pathname === "/api/support/report") {
+      await handleSupportReport(request, response, payload);
       return;
     }
     if (launchCommandCenterEndpoints.has(url.pathname)) {
@@ -251,6 +324,8 @@ async function handleSystemReadiness(request, response, payload = {}) {
     ai: ["OPENAI_API_KEY"],
     calendar: ["GOOGLE_CALENDAR_CLIENT_ID", "GOOGLE_CALENDAR_CLIENT_SECRET"],
     app: ["APP_BASE_URL"],
+    monitoring: monitoringStatus(process.env).configured,
+    support: supportStatus().configured,
     domain: Boolean(process.env.APP_BASE_URL) && !looksLikePreviewUrl(process.env.APP_BASE_URL),
     publicDemoConfigured: Object.prototype.hasOwnProperty.call(process.env, "PUBLIC_DEMO_ENABLED"),
     publicDemoEnabled: publicDemoIsEnabled(),
@@ -322,6 +397,329 @@ async function handleSystemReadiness(request, response, payload = {}) {
     workspaceId: detailAccess.workspaceId,
     checks,
   });
+}
+
+async function handleHealthRequest(pathname, request, response) {
+  const snapshot = await buildOperationsHealthSnapshot(request, { includeProtected: false });
+  if (pathname.endsWith("/live")) {
+    sendJson(response, 200, {
+      status: "ok",
+      service: "closepilot-crm",
+      checkedAt: snapshot.checkedAt,
+      requestId: response.__requestId,
+    });
+    return;
+  }
+
+  if (pathname.endsWith("/ready")) {
+    sendJson(response, 200, {
+      status: snapshot.status,
+      ready: snapshot.ready,
+      checkedAt: snapshot.checkedAt,
+      requestId: response.__requestId,
+      checks: snapshot.publicChecks,
+      detail: "Public readiness is coarse and never includes secret values.",
+    });
+    return;
+  }
+
+  sendJson(response, 200, {
+    status: snapshot.status,
+    ready: snapshot.ready,
+    checkedAt: snapshot.checkedAt,
+    requestId: response.__requestId,
+    live: { status: "ok" },
+    readyEndpoint: "/api/health/ready",
+  });
+}
+
+async function handleAdminOperationsHealth(request, response) {
+  const founder = await requireFounderAccess(request);
+  const providerFailures = await loadOperationalEvents({ limit: 25 });
+  const snapshot = await buildOperationsHealthSnapshot(request, { includeProtected: true, providerFailures });
+  sendJson(response, 200, {
+    checkedBy: founder.email,
+    ...snapshot,
+  });
+}
+
+async function handleWorkspaceProviderFailures(request, response, payload = {}) {
+  const auth = await requireAuthenticatedRequest(request);
+  const access = await requireWorkspaceAccess(auth, payload.workspaceId, { allowedRoles: ["owner", "admin", "manager"] });
+  const providerFailures = await loadOperationalEvents({ workspaceId: access.workspaceId, limit: 25 });
+  sendJson(response, 200, {
+    workspaceId: access.workspaceId,
+    requestId: response.__requestId,
+    providerFailures,
+    message: providerFailures.length
+      ? "Recent provider and operational failures are available for this workspace."
+      : "No recent provider failures are recorded for this workspace.",
+  });
+}
+
+async function handleSupportReport(request, response, payload = {}) {
+  const auth = await requireAuthenticatedRequest(request);
+  const workspaceId = cleanUuid(payload.workspaceId);
+  const access = workspaceId
+    ? await requireWorkspaceAccess(auth, workspaceId, { allowedRoles: ["owner", "admin", "manager", "member"] })
+    : null;
+  const description = cleanText(payload.description).slice(0, 2000);
+  if (!description) throwInputError("Describe what went wrong before sending a support report.");
+  const support = supportStatus();
+  const route = cleanText(payload.route || response.__requestContext?.route || "").slice(0, 180);
+  const diagnosticsConsent = Boolean(payload.includeDiagnostics);
+  const safeDiagnostics = diagnosticsConsent
+    ? redactLogValue({
+        route,
+        browser: cleanText(payload.browser || "").slice(0, 180),
+        viewport: cleanText(payload.viewport || "").slice(0, 80),
+        appMode: process.env.APP_MODE || "development",
+      })
+    : {};
+
+  await recordOperationalEvent({
+    provider: "support",
+    operation: "report_problem",
+    workspaceId: access?.workspaceId || null,
+    actorId: auth.userId,
+    resourceType: "support_report",
+    safeErrorCode: "USER_REPORTED_PROBLEM",
+    outcome: "reported",
+    retryable: false,
+    requestId: response.__requestId,
+    metadata: {
+      route,
+      diagnosticsIncluded: diagnosticsConsent,
+      descriptionLength: description.length,
+      diagnostics: safeDiagnostics,
+    },
+  });
+
+  sendJson(response, 200, {
+    reported: true,
+    requestId: response.__requestId,
+    support,
+    message: support.configured
+      ? "Support report captured. Include the request ID if you follow up."
+      : "Support report captured locally. Configure SUPPORT_EMAIL or SUPPORT_URL before staffed beta support.",
+  });
+}
+
+async function buildOperationsHealthSnapshot(request, { includeProtected = false, providerFailures = [] } = {}) {
+  const checkedAt = new Date().toISOString();
+  const monitor = monitoringStatus(process.env);
+  const support = supportStatus();
+  const healthChecks = [
+    operationCheck("app_process", "Application process", "healthy", "Server process responded to the health route."),
+    operationCheck(
+      "database",
+      "Supabase database/auth",
+      process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY ? "healthy" : isLiveLikeMode() ? "failing" : "not_configured",
+      hasSupabaseServiceConfig()
+        ? "Supabase service configuration is present."
+        : "Supabase service configuration is not complete.",
+    ),
+    operationCheck("monitoring", "Error monitoring", monitor.status, monitor.detail),
+    operationCheck("support", "Support contact", support.status, support.detail),
+    operationCheck(
+      "uptime_monitoring",
+      "External uptime monitoring",
+      process.env.UPTIME_MONITORING_CONFIGURED === "true" || process.env.STATUS_PAGE_URL ? "unknown" : "not_configured",
+      process.env.STATUS_PAGE_URL
+        ? "A status page URL is configured; external monitor evidence still needs verification."
+        : "External uptime monitoring evidence has not been recorded.",
+    ),
+    operationCheck(
+      "production_smoke",
+      "Production smoke verification",
+      process.env.PRODUCTION_SMOKE_URL ? "unknown" : "not_configured",
+      process.env.PRODUCTION_SMOKE_URL
+        ? "Production smoke target is configured; last passing run must be verified through CI or launch evidence."
+        : "Set PRODUCTION_SMOKE_URL before running production smoke verification.",
+    ),
+    operationCheck(
+      "backup_evidence",
+      "Backup and recovery evidence",
+      process.env.BACKUP_EVIDENCE_RECORDED === "true" ? "unknown" : "not_configured",
+      "Backup status must remain unknown until Supabase backup/PITR evidence and restore-test notes are recorded.",
+    ),
+  ];
+  const failureCount = providerFailures.filter((event) => event.outcome !== "resolved").length;
+  if (failureCount) {
+    healthChecks.push(operationCheck("recent_provider_failures", "Recent provider failures", "degraded", `${failureCount} unresolved operational event(s) recorded.`));
+  }
+  const failing = healthChecks.some((check) => check.status === "failing");
+  const degraded = healthChecks.some((check) => ["degraded", "unknown", "not_configured"].includes(check.status));
+  const status = failing ? "failing" : degraded ? "degraded" : "healthy";
+  const publicChecks = healthChecks.map((check) => ({
+    key: check.key,
+    label: check.label,
+    status: check.status,
+    detail: publicOperationDetail(check),
+  }));
+  return {
+    status,
+    ready: !failing,
+    checkedAt,
+    requestId: request?.__requestId || "",
+    environment: process.env.SENTRY_ENVIRONMENT || process.env.VERCEL_ENV || process.env.APP_MODE || "development",
+    release: process.env.SENTRY_RELEASE || process.env.APP_RELEASE || process.env.APP_COMMIT_SHA || "",
+    publicChecks,
+    checks: includeProtected
+      ? healthChecks.map((check) => ({
+          ...check,
+          lastCheckedAt: checkedAt,
+          suggestedNextStep: nextStepForOperationCheck(check.key, check.status),
+        }))
+      : undefined,
+    providerFailures: includeProtected ? providerFailures : undefined,
+    requestContext: includeProtected ? requestContextFrom(request, { requestId: request?.__requestId || "" }) : undefined,
+  };
+}
+
+function operationCheck(key, label, status, detail) {
+  const normalizedStatus = ["healthy", "degraded", "failing", "unknown", "not_configured", "demo_only"].includes(status)
+    ? status
+    : "unknown";
+  return { key, label, status: normalizedStatus, detail };
+}
+
+function publicOperationDetail(check) {
+  if (check.status === "healthy") return `${check.label} is configured.`;
+  const details = {
+    app_process: "Server process responded to the health route.",
+    database: "Data service readiness is incomplete.",
+    monitoring: "Provider-backed monitoring evidence has not been configured.",
+    support: "Beta support intake is not configured.",
+    uptime_monitoring: "External uptime monitoring evidence has not been recorded.",
+    production_smoke: "Production smoke evidence has not been recorded.",
+    backup_evidence: "Backup and recovery evidence has not been recorded.",
+    recent_provider_failures: "Recent unresolved provider failures are recorded.",
+  };
+  return details[check.key] || "This operational check needs attention.";
+}
+
+function nextStepForOperationCheck(key, status) {
+  if (status === "healthy") return "Continue monitoring.";
+  const nextSteps = {
+    database: "Configure Supabase URL, anon key, service role, and run required migrations.",
+    monitoring: "Set MONITORING_ENABLED=true with a server-side monitoring DSN, then verify a test event.",
+    support: "Configure SUPPORT_EMAIL or SUPPORT_URL and verify a beta support intake.",
+    uptime_monitoring: "Configure external uptime checks for landing page, health, login, manifest, and service worker.",
+    production_smoke: "Run the production smoke test from CI against the intended deployment URL.",
+    backup_evidence: "Record Supabase backup/PITR settings and a restore-test note before launch.",
+    recent_provider_failures: "Triage unresolved provider failures and mark resolved only after verification.",
+  };
+  return nextSteps[key] || "Review configuration and recent logs.";
+}
+
+function supportStatus() {
+  const email = cleanEmail(process.env.SUPPORT_EMAIL || "");
+  const supportUrl = cleanUrl(process.env.SUPPORT_URL || "", "");
+  const statusPageUrl = cleanUrl(process.env.STATUS_PAGE_URL || "", "");
+  const configured = Boolean(email || supportUrl);
+  return {
+    configured,
+    status: configured ? "healthy" : "not_configured",
+    emailConfigured: Boolean(email),
+    supportUrlConfigured: Boolean(supportUrl),
+    statusPageConfigured: Boolean(statusPageUrl),
+    supportUrl: supportUrl || "",
+    statusPageUrl: statusPageUrl || "",
+    detail: configured
+      ? "A support contact is configured. Verify staffing and response process separately."
+      : "Configure SUPPORT_EMAIL or SUPPORT_URL before beta support is considered staffed.",
+  };
+}
+
+async function loadOperationalEvents({ workspaceId = "", limit = 25 } = {}) {
+  if (!hasSupabaseServiceConfig()) return [];
+  const filters = ["select=*", "order=last_seen_at.desc", `limit=${Math.min(Math.max(Number(limit) || 25, 1), 100)}`];
+  if (workspaceId) filters.unshift(`workspace_id=eq.${encodeURIComponent(workspaceId)}`);
+  try {
+    const rows = await supabaseRequest(`operational_events?${filters.join("&")}`, { method: "GET" });
+    return Array.isArray(rows) ? rows.map(normalizeOperationalEvent) : [];
+  } catch (error) {
+    if (isMissingTableError(error, "operational_events")) return [];
+    throw error;
+  }
+}
+
+async function recordOperationalEvent(event = {}) {
+  const safeEvent = normalizeOperationalEvent({
+    ...event,
+    first_seen_at: event.firstSeenAt || new Date().toISOString(),
+    last_seen_at: event.lastSeenAt || new Date().toISOString(),
+    occurrence_count: event.occurrenceCount || 1,
+  });
+  captureMonitoringEvent({
+    type: "operational_event",
+    provider: safeEvent.provider,
+    operation: safeEvent.operation,
+    outcome: safeEvent.outcome,
+    safeErrorCode: safeEvent.safeErrorCode,
+    requestId: safeEvent.requestId,
+    workspaceId: safeEvent.workspaceId,
+  });
+  if (!hasSupabaseServiceConfig()) return { saved: false, event: safeEvent };
+  try {
+    await supabaseRequest("operational_events", {
+      method: "POST",
+      body: [
+        {
+          provider: safeEvent.provider,
+          operation: safeEvent.operation,
+          workspace_id: safeEvent.workspaceId || null,
+          actor_id: safeEvent.actorId || null,
+          resource_type: safeEvent.resourceType,
+          resource_id: safeEvent.resourceId,
+          safe_error_code: safeEvent.safeErrorCode,
+          outcome: safeEvent.outcome,
+          retryable: safeEvent.retryable,
+          first_seen_at: safeEvent.firstSeenAt,
+          last_seen_at: safeEvent.lastSeenAt,
+          occurrence_count: safeEvent.occurrenceCount,
+          resolved: safeEvent.resolved,
+          request_id: safeEvent.requestId,
+          metadata: safeEvent.metadata,
+        },
+      ],
+      prefer: "return=minimal",
+    });
+    return { saved: true, event: safeEvent };
+  } catch (error) {
+    if (isMissingTableError(error, "operational_events")) return { saved: false, event: safeEvent };
+    throw error;
+  }
+}
+
+function normalizeOperationalEvent(event = {}) {
+  return {
+    id: cleanText(event.id),
+    provider: cleanProviderKey(event.provider),
+    operation: cleanText(event.operation || "unknown").slice(0, 120),
+    workspaceId: cleanUuid(event.workspace_id || event.workspaceId) || "",
+    actorId: cleanUuid(event.actor_id || event.actorId) || "",
+    resourceType: cleanText(event.resource_type || event.resourceType).slice(0, 80),
+    resourceId: cleanText(event.resource_id || event.resourceId).slice(0, 120),
+    safeErrorCode: cleanText(event.safe_error_code || event.safeErrorCode || "UNKNOWN").toUpperCase().replace(/[^A-Z0-9_:-]+/g, "_").slice(0, 120),
+    outcome: cleanText(event.outcome || "failed").slice(0, 80),
+    retryable: Boolean(event.retryable),
+    firstSeenAt: cleanTimestamp(event.first_seen_at || event.firstSeenAt) || new Date().toISOString(),
+    lastSeenAt: cleanTimestamp(event.last_seen_at || event.lastSeenAt) || new Date().toISOString(),
+    occurrenceCount: boundedNumber(event.occurrence_count ?? event.occurrenceCount, 1, 1000000, 1),
+    resolved: Boolean(event.resolved),
+    requestId: cleanText(event.request_id || event.requestId).slice(0, 120),
+    metadata: redactLogValue(sanitizeJson(event.metadata || {})),
+  };
+}
+
+function cleanProviderKey(value) {
+  return cleanText(value || "unknown")
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 80) || "unknown";
 }
 
 async function handleLaunchCommandCenterRequest(pathname, request, response, payload = {}) {
@@ -1025,6 +1423,15 @@ async function handleStripeWebhook(request, response) {
   try {
     event = stripe.webhooks.constructEvent(rawBody, request.headers["stripe-signature"], webhookSecret);
   } catch (error) {
+    await recordOperationalEvent({
+      provider: "stripe",
+      operation: "webhook_signature_verification",
+      safeErrorCode: "STRIPE_WEBHOOK_SIGNATURE_INVALID",
+      outcome: "failed",
+      retryable: false,
+      requestId: response.__requestId,
+      metadata: { status: 400 },
+    });
     sendJson(response, 400, { error: `Webhook signature verification failed: ${error.message}` });
     return;
   }
@@ -1120,6 +1527,19 @@ async function handleSendInvite(request, response, payload) {
       authMessage: authProvisioning.message,
     });
   } catch (error) {
+    await recordOperationalEvent({
+      provider: "resend",
+      operation: "invite_delivery",
+      workspaceId,
+      actorId: auth.userId,
+      resourceType: "workspace_invitation",
+      resourceId: inviteId,
+      safeErrorCode: "INVITE_EMAIL_DELIVERY_FAILED",
+      outcome: "failed",
+      retryable: true,
+      requestId: response.__requestId,
+      metadata: { message: error.message },
+    });
     delivery = {
       sent: false,
       setupError: true,
@@ -1264,6 +1684,15 @@ async function handleGoogleCalendarCallback(request, response, url) {
 
     sendRedirectHtml(response, `${baseUrl}/?calendar=connected#calendar`, "Google Calendar connected. Returning to Kira Home...");
   } catch (error) {
+    await recordOperationalEvent({
+      provider: "google_calendar",
+      operation: "oauth_callback",
+      safeErrorCode: "GOOGLE_OAUTH_CALLBACK_FAILED",
+      outcome: "failed",
+      retryable: true,
+      requestId: response.__requestId,
+      metadata: { message: error.message },
+    });
     const target = `${baseUrl}/?calendar=error&calendarMessage=${encodeURIComponent(error.message || "Google Calendar connect failed.")}#calendar`;
     sendRedirectHtml(response, target, "Google Calendar needs attention. Returning to Kira Home...");
   }
@@ -1352,6 +1781,16 @@ async function handleGoogleCalendarCreateEvent(request, response, payload) {
   if (!googleResponse.ok) {
     const error = new Error(data.error?.message || `Google Calendar event failed with ${googleResponse.status}.`);
     error.statusCode = 502;
+    await recordOperationalEvent({
+      provider: "google_calendar",
+      operation: "create_event",
+      workspaceId,
+      safeErrorCode: "GOOGLE_CALENDAR_EVENT_FAILED",
+      outcome: "failed",
+      retryable: googleResponse.status >= 500 || googleResponse.status === 429,
+      requestId: response.__requestId,
+      metadata: { status: googleResponse.status, calendarId },
+    });
     throw error;
   }
 
@@ -1602,6 +2041,14 @@ async function callOpenAi(prompt, fallback) {
     const content = data.choices?.[0]?.message?.content || "{}";
     return { ...fallback, ...JSON.parse(content) };
   } catch (error) {
+    await recordOperationalEvent({
+      provider: "openai",
+      operation: "ai_completion",
+      safeErrorCode: "OPENAI_FALLBACK_ACTIVATED",
+      outcome: "fallback",
+      retryable: true,
+      metadata: { message: error.message },
+    });
     return {
       ...fallback,
       providerWarning: `OpenAI unavailable, deterministic fallback used: ${error.message}`,
@@ -1639,6 +2086,18 @@ async function sendSms(payload, request) {
   if (!response.ok) {
     const error = new Error(data.message || `Twilio request failed with ${response.status}.`);
     error.statusCode = 502;
+    await recordOperationalEvent({
+      provider: "twilio",
+      operation: "send_sms",
+      workspaceId: payload.workspaceId,
+      resourceType: "lead",
+      resourceId: cleanUuid(payload.leadId) || "",
+      safeErrorCode: "TWILIO_SEND_FAILED",
+      outcome: "failed",
+      retryable: response.status >= 500 || response.status === 429,
+      requestId: request.__requestId,
+      metadata: { status: response.status },
+    });
     throw error;
   }
   return {
@@ -1676,6 +2135,17 @@ async function sendEmail(payload, subject) {
   if (!response.ok) {
     const error = new Error(data.message || `Resend request failed with ${response.status}.`);
     error.statusCode = 502;
+    await recordOperationalEvent({
+      provider: "resend",
+      operation: "send_email",
+      workspaceId: payload.workspaceId,
+      resourceType: "lead",
+      resourceId: cleanUuid(payload.leadId) || "",
+      safeErrorCode: "RESEND_SEND_FAILED",
+      outcome: "failed",
+      retryable: response.status >= 500 || response.status === 429,
+      metadata: { status: response.status },
+    });
     throw error;
   }
   return {
@@ -2432,6 +2902,8 @@ function launchWarnings(groups) {
   if (!groups.sms) warnings.push("SMS is logged only until Twilio credentials and a sending number are configured.");
   if (!groups.ai) warnings.push("AI features use deterministic fallback until OPENAI_API_KEY is configured.");
   if (!groups.calendar) warnings.push("Calendar events are CRM-only until Google Calendar OAuth is configured.");
+  if (!groups.monitoring) warnings.push("Production error monitoring is not configured.");
+  if (!groups.support) warnings.push("Support contact is not configured for staffed beta support.");
   return warnings;
 }
 
@@ -3255,7 +3727,7 @@ function readRawBody(request) {
 function sendJson(response, statusCode, payload) {
   const request = response.__request || { headers: {} };
   const headers = {
-    "access-control-allow-methods": "POST, OPTIONS",
+    "access-control-allow-methods": "GET, POST, OPTIONS",
     "access-control-allow-headers": "authorization, content-type, stripe-signature",
     "content-security-policy": "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
     "cache-control": "no-store",
@@ -3283,15 +3755,34 @@ function sendError(response, error) {
       ? "The request could not be completed."
       : error.message || "The request could not be completed.";
   if (error.retryAfterSeconds) response.__extraHeaders = { ...(response.__extraHeaders || {}), "retry-after": String(error.retryAfterSeconds) };
+  if (safeStatus >= 500) {
+    captureMonitoringEvent({
+      type: "api_error",
+      requestId: response.__requestId,
+      route: response.__requestContext?.route,
+      method: response.__requestContext?.method,
+      status: safeStatus,
+      errorCode: code,
+      message,
+    });
+  }
+  logServerEvent(safeStatus >= 500 ? "error" : "warn", "api.request_failed", {
+    requestId: response.__requestId,
+    route: response.__requestContext?.route,
+    method: response.__requestContext?.method,
+    status: safeStatus,
+    code,
+    message,
+  });
   sendJson(response, safeStatus, {
     error: { code, message },
     message,
+    requestId: response.__requestId,
   });
 }
 
 function requestIdFor(request) {
-  const incoming = cleanText(request?.headers?.["x-request-id"]);
-  return incoming && incoming.length <= 120 ? incoming : randomBytes(12).toString("hex");
+  return safeRequestId(request?.headers?.["x-request-id"]);
 }
 
 function allowedCorsOrigin(request) {

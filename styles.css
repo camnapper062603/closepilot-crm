@@ -568,8 +568,22 @@ button:disabled {
   text-decoration: none;
 }
 
+.nav-action-button {
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: #dfe5ef;
+  cursor: pointer;
+  font: inherit;
+  min-height: 44px;
+  padding: 11px 12px;
+  text-align: left;
+}
+
 .nav-links a.active,
-.nav-links a:hover {
+.nav-links a:hover,
+.nav-action-button:hover,
+.nav-action-button:focus-visible {
   background: var(--navy);
   color: #ffffff;
 }
@@ -592,6 +606,26 @@ button:disabled {
   display: grid;
   gap: 22px;
   padding: 26px;
+}
+
+.offline-banner {
+  align-items: center;
+  background: #fff8e8;
+  border: 1px solid #ead2b6;
+  border-radius: 8px;
+  color: #5f451a;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  padding: 10px 12px;
+}
+
+.offline-banner[hidden] {
+  display: none;
+}
+
+.offline-banner span {
+  overflow-wrap: anywhere;
 }
 
 .topbar {
@@ -5966,12 +6000,53 @@ button.insight-card:hover {
   width: 100%;
 }
 
+.lead-address-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) 84px 112px;
+}
+
 .import-card {
   max-width: 640px;
 }
 
 .detail-card {
   max-width: 760px;
+}
+
+.support-card {
+  max-width: 560px;
+}
+
+.support-safe-copy,
+.support-report-status {
+  color: var(--muted);
+  margin: 0;
+}
+
+.checkbox-row {
+  align-items: start;
+  color: var(--ink);
+  display: grid;
+  font-weight: 600;
+  gap: 10px;
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.checkbox-row input {
+  min-height: 20px;
+  min-width: 20px;
+}
+
+.support-diagnostics {
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  display: grid;
+  font-size: 0.86rem;
+  gap: 4px;
+  padding: 10px;
 }
 
 .lead-detail-content {
@@ -6155,6 +6230,33 @@ button.insight-card:hover {
   color: var(--ink);
   min-height: 40px;
   padding: 9px 10px;
+}
+
+.lead-contact-summary,
+.contact-profile-contact {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.lead-contact-summary article,
+.contact-profile-contact article {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+}
+
+.lead-contact-summary span,
+.contact-profile-contact span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.lead-contact-summary strong,
+.contact-profile-contact strong {
+  overflow-wrap: anywhere;
 }
 
 .icon-button {
@@ -7026,6 +7128,9 @@ button.insight-card:hover {
   .automation-run-row,
   .forecast-summary,
   .forecast-row,
+  .lead-address-grid,
+  .lead-contact-summary,
+  .contact-profile-contact,
   .contact-profile-stats,
   .contact-next-form,
   .import-preview-list article,
@@ -9504,7 +9609,8 @@ body[data-dashboard-layout="focus"] .daily-command-center > [data-dashboard-size
     padding-bottom: 0;
   }
 
-  .nav-links a {
+  .nav-links a,
+  .nav-action-button {
     font-size: 0.93rem;
     min-height: 44px;
     padding: 10px 12px;

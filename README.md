@@ -125,7 +125,19 @@ npm run security:verify-migration -- --json
 npm run security:check-plaintext-tokens -- --json
 ```
 
-See `docs/SECURITY_TESTING.md`, `docs/DEPLOYMENT_CHECKLIST.md`, and `docs/ROUTE_PERMISSION_MATRIX.md`.
+Operational endpoints:
+
+```text
+GET /api/health/live
+GET /api/health/ready
+GET /api/admin/operations/health
+POST /api/workspace/operations/provider-failures
+POST /api/support/report
+```
+
+Monitoring, uptime, backup, support, mobile QA, accessibility QA, and performance status are evidence-based. Leave `MONITORING_ENABLED`, `HEALTH_ENDPOINTS_VERIFIED`, `UPTIME_MONITORING_CONFIGURED`, `PRODUCTION_SMOKE_PASSED`, `BACKUP_EVIDENCE_RECORDED`, `MOBILE_QA_COMPLETED`, `ACCESSIBILITY_QA_COMPLETED`, and `PERFORMANCE_BUDGET_VERIFIED` blank until verified.
+
+See `docs/SECURITY_TESTING.md`, `docs/DEPLOYMENT_CHECKLIST.md`, `docs/ROUTE_PERMISSION_MATRIX.md`, `docs/BETA_EXPERIENCE_AUDIT.md`, `docs/PRODUCTION_OPERATIONS.md`, `docs/UPTIME_MONITORING.md`, `docs/SUPPORT_OPERATIONS.md`, `docs/INCIDENT_RESPONSE.md`, `docs/BACKUP_AND_RECOVERY.md`, `docs/PERFORMANCE_BUDGET.md`, and `docs/MOBILE_QA.md`.
 
 ## Mobile App Store Packaging
 

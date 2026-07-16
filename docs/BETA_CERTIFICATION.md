@@ -12,6 +12,9 @@ Use this checklist before inviting a beta customer to ClosePilot CRM or Kira Rec
 - Resend invite delivery is configured or invite fallback links are clearly labeled.
 - `npm run release:check` passes.
 - `npm run security:scan-secrets` passes.
+- `npm run test:operations`, `npm run test:ux`, and `npm run test:accessibility` pass.
+- `/api/health/live` and `/api/health/ready` return safe non-secret status.
+- Support intake is configured or explicitly shown as not configured.
 - Launch Command Center recommendation is not `NO_GO` for the target stage.
 - Required migration verification passes or every warning is documented as an accepted risk.
 
@@ -29,6 +32,9 @@ Use this checklist before inviting a beta customer to ClosePilot CRM or Kira Rec
 - Google Calendar OAuth and encrypted token migration.
 - OpenAI responses beyond rule-based fallback.
 - CI status feed for automated release-health reporting.
+- Error monitoring provider and uptime monitoring evidence.
+- Backup/PITR evidence and restore test.
+- Mobile, accessibility, and performance-budget verification.
 
 ## Release Evidence
 
@@ -40,6 +46,9 @@ Record the following in the Launch Command Center:
 - Beta company status, onboarding stage, assigned owner, next action, issue count, feedback count, and conversion likelihood.
 - Checklist completion.
 - Latest release gate result.
+- Latest production smoke result.
+- Health endpoint and provider-failure status.
+- Support, uptime, monitoring, backup, mobile QA, accessibility QA, and performance evidence.
 - Founder launch recommendation.
 
 ## Manual Verification Checklist

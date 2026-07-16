@@ -17,6 +17,118 @@
     ]
   },
   {
+    "method": "GET",
+    "route": "/api/admin/operations/health",
+    "category": "operations",
+    "public": false,
+    "requiredAuthentication": "supabase-bearer plus founder allowlist",
+    "workspaceRequired": false,
+    "minimumRole": "internal-founder",
+    "resourceOwnershipChecks": [
+      "founder allowlist or internal admin metadata required server-side"
+    ],
+    "provider": "supabase-operational-events",
+    "rateLimit": "80/minute per request identity",
+    "tests": [
+      "operations",
+      "founder-access",
+      "secret-redaction"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/health",
+    "category": "health",
+    "public": true,
+    "requiredAuthentication": "none",
+    "workspaceRequired": false,
+    "minimumRole": "public",
+    "resourceOwnershipChecks": [
+      "coarse public status only"
+    ],
+    "provider": "server-process",
+    "rateLimit": "80/minute per request identity",
+    "tests": [
+      "operations",
+      "production-smoke"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/health/live",
+    "category": "health",
+    "public": true,
+    "requiredAuthentication": "none",
+    "workspaceRequired": false,
+    "minimumRole": "public",
+    "resourceOwnershipChecks": [
+      "liveness only; no tenant data"
+    ],
+    "provider": "server-process",
+    "rateLimit": "80/minute per request identity",
+    "tests": [
+      "operations",
+      "production-smoke"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/health/ready",
+    "category": "health",
+    "public": true,
+    "requiredAuthentication": "none",
+    "workspaceRequired": false,
+    "minimumRole": "public",
+    "resourceOwnershipChecks": [
+      "coarse readiness only; no secret names or tenant data"
+    ],
+    "provider": "server-process",
+    "rateLimit": "80/minute per request identity",
+    "tests": [
+      "operations",
+      "production-smoke"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/support/report",
+    "category": "support",
+    "public": false,
+    "requiredAuthentication": "supabase-bearer",
+    "workspaceRequired": false,
+    "minimumRole": "member",
+    "resourceOwnershipChecks": [
+      "optional workspace ID must belong to authenticated user"
+    ],
+    "provider": "support-operational-events",
+    "rateLimit": "80/minute per request identity",
+    "tests": [
+      "operations",
+      "support",
+      "secret-redaction"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/workspace/operations/provider-failures",
+    "category": "operations",
+    "public": false,
+    "requiredAuthentication": "supabase-bearer",
+    "workspaceRequired": true,
+    "minimumRole": "manager",
+    "resourceOwnershipChecks": [
+      "workspace membership and role are checked server-side",
+      "operational events are filtered by workspace ID"
+    ],
+    "provider": "supabase-operational-events",
+    "rateLimit": "80/minute per request identity",
+    "tests": [
+      "operations",
+      "tenant-isolation",
+      "provider-failures"
+    ]
+  },
+  {
     "method": "POST",
     "route": "/api/ai/conversation-summary",
     "category": "ai",

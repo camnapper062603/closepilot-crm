@@ -27,6 +27,13 @@ create table if not exists public.leads (
   notes text not null default '',
   next_action text not null default '',
   source text not null default 'Manual',
+  assigned_to text,
+  phone text not null default '',
+  email text not null default '',
+  street_address text not null default '',
+  city text not null default '',
+  state text not null default '',
+  zip text not null default '',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -157,6 +164,27 @@ create table if not exists public.workspace_audit_events (
   action text not null,
   detail text not null default '',
   created_at timestamptz not null default now()
+);
+
+create table if not exists public.operational_events (
+  id uuid primary key default gen_random_uuid(),
+  provider text not null default 'unknown',
+  operation text not null default 'unknown',
+  workspace_id uuid references public.workspaces(id) on delete cascade,
+  actor_id uuid references auth.users(id) on delete set null,
+  resource_type text not null default '',
+  resource_id text not null default '',
+  safe_error_code text not null default 'UNKNOWN',
+  outcome text not null default 'failed',
+  retryable boolean not null default false,
+  first_seen_at timestamptz not null default now(),
+  last_seen_at timestamptz not null default now(),
+  occurrence_count integer not null default 1 check (occurrence_count >= 1),
+  resolved boolean not null default false,
+  request_id text not null default '',
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
 create table if not exists public.communications (
@@ -379,7 +407,13 @@ alter table if exists public.workspace_members
   add column if not exists team_function text;
 
 alter table if exists public.leads
-  add column if not exists assigned_to text;
+  add column if not exists assigned_to text,
+  add column if not exists phone text not null default '',
+  add column if not exists email text not null default '',
+  add column if not exists street_address text not null default '',
+  add column if not exists city text not null default '',
+  add column if not exists state text not null default '',
+  add column if not exists zip text not null default '';
 
 alter table if exists public.recruiting_candidates
   add column if not exists assigned_recruiter text not null default '',
@@ -443,6 +477,7 @@ alter table public.workspace_addons enable row level security;
 alter table public.recruiting_app_state enable row level security;
 alter table public.workspace_invitations enable row level security;
 alter table public.workspace_audit_events enable row level security;
+alter table public.operational_events enable row level security;
 alter table public.communications enable row level security;
 alter table public.message_drafts enable row level security;
 alter table public.calls enable row level security;
@@ -472,6 +507,10 @@ create index if not exists jobs_workspace_status_idx on public.jobs(workspace_id
 create index if not exists automation_runs_workspace_created_idx on public.automation_runs(workspace_id, created_at desc);
 create index if not exists ai_outputs_workspace_lead_idx on public.ai_outputs(workspace_id, lead_id, created_at desc);
 create index if not exists calendar_connections_workspace_status_idx on public.calendar_connections(workspace_id, status);
+create index if not exists operational_events_workspace_last_seen_idx
+  on public.operational_events(workspace_id, last_seen_at desc);
+create index if not exists operational_events_provider_outcome_idx
+  on public.operational_events(provider, outcome, resolved, last_seen_at desc);
 
 create or replace view public.calendar_connection_status
 with (security_invoker = true)
@@ -619,6 +658,8 @@ drop policy if exists "Managers can manage recruiting app state" on public.recru
 drop policy if exists "Members can manage invitations" on public.workspace_invitations;
 drop policy if exists "Invited users can read their own pending invitations" on public.workspace_invitations;
 drop policy if exists "Members can manage audit events" on public.workspace_audit_events;
+drop policy if exists "Service role can manage operational events" on public.operational_events;
+drop policy if exists "Workspace admins can read operational events" on public.operational_events;
 drop policy if exists "Members can manage communications" on public.communications;
 drop policy if exists "Members can manage message drafts" on public.message_drafts;
 drop policy if exists "Members can manage calls" on public.calls;
@@ -803,6 +844,15 @@ create policy "Members can manage audit events"
   on public.workspace_audit_events for all
   using (public.is_workspace_member(workspace_id))
   with check (public.is_workspace_member(workspace_id));
+
+create policy "Service role can manage operational events"
+  on public.operational_events for all
+  using (auth.role() = 'service_role')
+  with check (auth.role() = 'service_role');
+
+create policy "Workspace admins can read operational events"
+  on public.operational_events for select
+  using (workspace_id is not null and public.is_workspace_admin(workspace_id));
 
 create policy "Members can manage communications"
   on public.communications for all

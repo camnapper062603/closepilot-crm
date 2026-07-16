@@ -19,12 +19,17 @@ ClosePilot should stay keyboard-readable, screen-reader friendly, and usable wit
 
 - Sidebar links include `aria-label` for compact mode.
 - Mobile navigation has a real button with `aria-expanded` and `aria-controls`.
+- Mobile navigation focus moves into the drawer and returns to the trigger on close.
+- The support dialog has labeled fields, a status region, and Escape close behavior.
 - Page header descriptions give screen-reader users quick context.
 - Existing status messages remain text-based.
 - Reduced-motion CSS continues to disable long transitions.
 
 ## Future Checks
 
-- Add focused keyboard tests for lead modal, mobile drawer, and communications composer.
+- `npm run test:accessibility` covers critical shell names, toast announcements, support dialog labels, and status announcements.
+- Add deeper manual keyboard tests for lead modal and communications composer.
 - Add dialog focus trapping for any newly introduced modal/drawer component.
 - Add automated contrast checks before a large theme change.
+
+Set `ACCESSIBILITY_QA_COMPLETED=true` only after automated checks and manual keyboard/focus verification pass in the target deployment.

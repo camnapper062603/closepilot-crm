@@ -23,3 +23,18 @@ Each category stores a score, weight, status, source, evidence, and timestamp in
 `GO` requires all stage-required categories, providers, verification checks, migrations, checklist items, and weighted score thresholds to pass with no launch-blocking high severity blockers.
 
 The recommendation output includes `status`, score, blocking reasons, warnings, passed requirements, unknown requirements, accepted risks, evaluated stage, and timestamp.
+
+## Operational Evidence
+
+Production operations must not be marked passing from documentation alone. Use explicit provider status rows, status snapshots, or evidence flags for monitoring, health endpoints, uptime monitoring, support contact, production smoke, backup evidence, incident response, mobile QA, accessibility QA, and performance budget.
+
+Leave these unknown or not configured until verified:
+
+- `HEALTH_ENDPOINTS_VERIFIED`
+- `UPTIME_MONITORING_CONFIGURED`
+- `PRODUCTION_SMOKE_PASSED`
+- `BACKUP_EVIDENCE_RECORDED`
+- `INCIDENT_RESPONSE_REVIEWED`
+- `MOBILE_QA_COMPLETED`
+- `ACCESSIBILITY_QA_COMPLETED`
+- `PERFORMANCE_BUDGET_VERIFIED`

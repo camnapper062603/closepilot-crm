@@ -17,6 +17,9 @@ This runs:
 - `npm run test:launch-policy`
 - `npm run test:daily-goals`
 - `npm run test:team-performance`
+- `npm run test:operations`
+- `npm run test:ux`
+- `npm run test:accessibility`
 - `npm test`
 - `npm run test:browser-smoke`
 - `npm run security:scan-secrets`
@@ -34,6 +37,9 @@ SUPABASE_SERVICE_ROLE_KEY=...
 APP_BASE_URL=https://your-production-domain
 PRODUCT_URL=https://your-production-domain
 SUPPORT_EMAIL=support@your-domain
+SUPPORT_URL=
+STATUS_PAGE_URL=
+MONITORING_ENABLED=false
 LAUNCH_STAGE=private_beta
 ```
 
@@ -51,7 +57,11 @@ Provider-specific features remain setup-gated until their keys are configured:
 PRODUCTION_SMOKE_URL=https://your-production-domain npm run test:production-smoke
 ```
 
-The smoke test checks app shell, manifest, service worker, public readiness, protected API auth, and unknown API JSON 404 behavior.
+The smoke test checks app shell, static assets, manifest, service worker, health endpoints, public readiness, security headers, CORS, invalid JSON handling, protected API auth, support entry, stack-trace leakage, and unknown API JSON 404 behavior.
+
+Also run the manual `Production Smoke` GitHub Actions workflow against the deployed URL.
+
+Before marking Launch Command Center operations passing, record evidence for health endpoints, uptime monitoring, production smoke, support contact, backup/PITR, incident-response review, mobile QA, accessibility QA, and performance-budget verification.
 
 ## Manual Live Database Verification
 
@@ -68,4 +78,5 @@ Apply the command-center migrations in order before a live Launch Command Center
 supabase/migrations/20260712_launch_command_center.sql
 supabase/migrations/20260713_launch_policy_categories.sql
 supabase/migrations/20260713_launch_blocker_beta_fields.sql
+supabase/migrations/20260716_operational_events.sql
 ```

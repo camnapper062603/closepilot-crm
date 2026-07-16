@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import "./local-env.js";
 import { handleClosePilotApiRequest, isClosePilotApiPath } from "./api-handlers.js";
 import { handleBusinessEnrichmentRequest } from "./business-enrichment-service.js";
+import { safeRequestId } from "./lib/request-context.js";
 
 const root = fileURLToPath(new URL(".", import.meta.url));
 const host = process.env.HOST || "127.0.0.1";
@@ -69,14 +70,16 @@ createServer((request, response) => {
   }
 
   if (url.pathname.startsWith("/api/")) {
+    const requestId = safeRequestId(request.headers["x-request-id"]);
     response.writeHead(404, {
       "content-type": "application/json; charset=utf-8",
       "cache-control": "no-store",
       "content-security-policy": "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
       "x-content-type-options": "nosniff",
       "x-frame-options": "DENY",
+      "x-request-id": requestId,
     });
-    response.end(JSON.stringify({ error: { code: "API_ROUTE_NOT_FOUND", message: "API route not found." } }));
+    response.end(JSON.stringify({ error: { code: "API_ROUTE_NOT_FOUND", message: "API route not found." }, requestId }));
     return;
   }
 

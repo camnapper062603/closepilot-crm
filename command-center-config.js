@@ -170,6 +170,13 @@ export const launchVerificationDefinitions = [
   { key: "required_migrations", label: "Required DB migrations" },
   { key: "plaintext_provider_tokens", label: "Plaintext provider token scan" },
   { key: "auth_authorization", label: "Auth and workspace authorization" },
+  { key: "operational_health", label: "Operational health endpoints" },
+  { key: "support_ready", label: "Support intake and escalation path" },
+  { key: "backup_verified", label: "Backup and recovery evidence" },
+  { key: "incident_response_reviewed", label: "Incident response playbooks reviewed" },
+  { key: "mobile_qa", label: "Mobile QA completion" },
+  { key: "accessibility_qa", label: "Accessibility QA completion" },
+  { key: "performance_budget", label: "Performance budget verification" },
 ];
 
 export const launchProviderDefinitions = [
@@ -241,9 +248,73 @@ export const launchProviderDefinitions = [
   {
     key: "error_monitoring",
     label: "Error monitoring",
-    env: ["SENTRY_DSN"],
+    env: ["MONITORING_ENABLED", "SENTRY_DSN"],
     required: false,
     category: "production_operations",
+  },
+  {
+    key: "health_endpoints",
+    label: "Health endpoints verified",
+    env: ["HEALTH_ENDPOINTS_VERIFIED"],
+    required: false,
+    category: "production_operations",
+  },
+  {
+    key: "uptime_monitoring",
+    label: "External uptime monitoring",
+    env: ["UPTIME_MONITORING_CONFIGURED"],
+    required: false,
+    category: "production_operations",
+  },
+  {
+    key: "support_contact",
+    label: "Support contact configured",
+    env: [],
+    anyEnv: ["SUPPORT_EMAIL", "SUPPORT_URL"],
+    required: false,
+    category: "customer_experience",
+  },
+  {
+    key: "production_smoke",
+    label: "Production smoke last passing evidence",
+    env: ["PRODUCTION_SMOKE_PASSED"],
+    required: false,
+    category: "deployment",
+  },
+  {
+    key: "backup_recovery",
+    label: "Backup and recovery evidence",
+    env: ["BACKUP_EVIDENCE_RECORDED"],
+    required: false,
+    category: "production_operations",
+  },
+  {
+    key: "incident_response",
+    label: "Incident response reviewed",
+    env: ["INCIDENT_RESPONSE_REVIEWED"],
+    required: false,
+    category: "documentation",
+  },
+  {
+    key: "mobile_qa",
+    label: "Mobile QA completed",
+    env: ["MOBILE_QA_COMPLETED"],
+    required: false,
+    category: "mobile",
+  },
+  {
+    key: "accessibility_qa",
+    label: "Accessibility QA completed",
+    env: ["ACCESSIBILITY_QA_COMPLETED"],
+    required: false,
+    category: "frontend",
+  },
+  {
+    key: "performance_budget",
+    label: "Performance budget verified",
+    env: ["PERFORMANCE_BUDGET_VERIFIED"],
+    required: false,
+    category: "frontend",
   },
 ];
 
@@ -1267,6 +1338,8 @@ function buildVerificationMap(statusSnapshot = {}, providers = []) {
   }
   for (const provider of providers) {
     if (launchVerificationDefinitions.some((definition) => definition.key === provider.key)) {
+      const existing = map.get(provider.key);
+      if (existing && existing.status !== "unknown") continue;
       map.set(provider.key, {
         key: provider.key,
         label: provider.label,

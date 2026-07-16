@@ -687,24 +687,24 @@ test('runs the unified communications center', async ({ page }) => {
 test('opens section subpages inside CRM tabs', async ({ page }) => {
   await navigateTo(page, 'Dashboard', 'pipeline');
   await expect(page.locator('#subpageNav')).toContainText('Pipeline insights');
-  await page.getByRole('button', { name: 'Pipeline insights' }).click();
+  await trigger(page.getByRole('button', { name: 'Pipeline insights' }));
   await expect(page.locator('#insightsPanel')).toBeVisible();
   await expect(page.locator('#pipeline')).toBeHidden();
 
-  await page.getByRole('button', { name: 'Lead brief' }).click();
+  await trigger(page.getByRole('button', { name: 'Lead brief' }));
   await expect(page.locator('#leadBrief')).toBeVisible();
   await expect(page.locator('#pipeline')).toBeHidden();
 
   await navigateTo(page, 'Automations', 'automation');
-  await page.getByRole('button', { name: 'Automation builder' }).click();
+  await trigger(page.getByRole('button', { name: 'Automation builder' }));
   await expect(page.locator('#automation .automation-builder')).toBeVisible();
   await expect(page.locator('#automationTemplateList')).toBeHidden();
 
-  await page.getByRole('button', { name: 'Automation templates' }).click();
+  await trigger(page.getByRole('button', { name: 'Automation templates' }));
   await expect(page.locator('#automationTemplateList')).toBeVisible();
 
   await navigateTo(page, 'Admin', 'admin');
-  await page.getByRole('button', { name: 'Backup center' }).click();
+  await trigger(page.getByRole('button', { name: 'Backup center' }));
   await expect(page.locator('#workspaceBackup')).toBeVisible();
   await expect(page.locator('#saasAdmin')).toBeHidden();
 });
@@ -910,6 +910,12 @@ test('runs saved automation templates from lead triggers', async ({ page }) => {
   const dialog = page.getByRole('dialog', { name: 'Add lead' });
   await dialog.getByLabel('Contact name').fill('Avery Price');
   await dialog.getByLabel('Company').fill('Bright Path Solar');
+  await dialog.getByLabel('Phone number').fill('(512) 555-0137');
+  await dialog.getByLabel('Email address').fill('avery.price@example.test');
+  await dialog.getByLabel('Street address').fill('118 Solar Ridge Dr');
+  await dialog.getByLabel('City').fill('Austin');
+  await dialog.getByLabel('State').fill('TX');
+  await dialog.getByLabel('Zip').fill('78705');
   await dialog.getByLabel('Deal value').fill('7200');
   await dialog.getByLabel('Stage').selectOption('new');
   await dialog.getByRole('button', { name: 'Create lead' }).click();
@@ -1204,6 +1210,18 @@ test('creates a lead and an automated follow-up task', async ({ page }) => {
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Contact name').fill('Cameron Ellis');
   await dialog.getByLabel('Company').fill('Plus Growth Studio');
+  await expect(dialog.getByLabel('Phone number')).toHaveAttribute('required', '');
+  await expect(dialog.getByLabel('Email address')).toHaveAttribute('required', '');
+  await expect(dialog.getByLabel('Street address')).toHaveAttribute('required', '');
+  await expect(dialog.getByLabel('City')).toHaveAttribute('required', '');
+  await expect(dialog.getByLabel('State')).toHaveAttribute('required', '');
+  await expect(dialog.getByLabel('Zip')).toHaveAttribute('required', '');
+  await dialog.getByLabel('Phone number').fill('(512) 555-0199');
+  await dialog.getByLabel('Email address').fill('cameron.ellis@example.test');
+  await dialog.getByLabel('Street address').fill('440 Congress Ave');
+  await dialog.getByLabel('City').fill('Austin');
+  await dialog.getByLabel('State').fill('tx');
+  await dialog.getByLabel('Zip').fill('78701');
   await dialog.getByLabel('Deal value').fill('9600');
   await dialog.getByLabel('Stage').selectOption('proposal');
   await dialog.getByLabel('Source', { exact: true }).fill('Trade show');
@@ -1215,6 +1233,9 @@ test('creates a lead and an automated follow-up task', async ({ page }) => {
   await expect(page.locator('#pipelineBoard').getByText('Plus Growth Studio')).toBeVisible();
   await openLeadBrief(page);
   await expect(page.locator('#leadBrief')).toContainText('Trade show');
+  await expect(page.locator('#leadBrief')).toContainText('(512) 555-0199');
+  await expect(page.locator('#leadBrief')).toContainText('cameron.ellis@example.test');
+  await expect(page.locator('#leadBrief')).toContainText('440 Congress Ave, Austin, TX 78701');
   await expect(page.locator('#leadBrief')).toContainText('Book discovery call');
   await expect(page.locator('#leadBrief')).toContainText('Lead created from Trade show.');
   await expect(page.locator('#activityFeed')).toContainText('Plus Growth Studio');

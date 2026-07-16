@@ -632,6 +632,13 @@ const seedState = {
       stage: "qualified",
       value: 8400,
       score: 92,
+      phone: "(512) 555-0184",
+      email: "maya.johnson@example.test",
+      streetAddress: "1840 Northstar Dr",
+      city: "Austin",
+      state: "TX",
+      zip: "78701",
+      address: "1840 Northstar Dr, Austin, TX 78701",
       notes: "Owner wants a faster quote follow-up flow before storm season.",
       nextAction: "Send workflow proposal and ask for install calendar.",
       source: "Website",
@@ -643,6 +650,13 @@ const seedState = {
       stage: "new",
       value: 3200,
       score: 74,
+      phone: "(512) 555-0119",
+      email: "eli.ramirez@example.test",
+      streetAddress: "2108 Summit Park Ave",
+      city: "Austin",
+      state: "TX",
+      zip: "78702",
+      address: "2108 Summit Park Ave, Austin, TX 78702",
       notes: "Interested in automated reminders for repeat customers.",
       nextAction: "Qualify budget and current CRM setup.",
       source: "Referral",
@@ -654,6 +668,13 @@ const seedState = {
       stage: "proposal",
       value: 12600,
       score: 88,
+      phone: "(512) 555-0147",
+      email: "nia.brooks@example.test",
+      streetAddress: "903 Harbor Point Ct",
+      city: "Austin",
+      state: "TX",
+      zip: "78703",
+      address: "903 Harbor Point Ct, Austin, TX 78703",
       notes: "Needs member retention campaign and missed-payment follow-up.",
       nextAction: "Review proposal pricing and implementation timeline.",
       source: "LinkedIn",
@@ -665,6 +686,13 @@ const seedState = {
       stage: "won",
       value: 5100,
       score: 81,
+      phone: "(512) 555-0168",
+      email: "caleb.stone@example.test",
+      streetAddress: "49 Finch Ct",
+      city: "Austin",
+      state: "TX",
+      zip: "78704",
+      address: "49 Finch Ct, Austin, TX 78704",
       notes: "Closed starter CRM setup. Expansion possible after onboarding.",
       nextAction: "Schedule onboarding and ask for first import file.",
       source: "Cold email",
@@ -818,6 +846,8 @@ let selectedTaskIds = new Set();
 let activePage = "pipeline";
 let customerDailyCommandState = { status: "idle", data: null, error: "" };
 let launchCommandState = { status: "idle", data: null, error: "" };
+let lastBackendRequestId = "";
+let supportReportReturnFocus = null;
 let editingAutomationTemplateId = null;
 let selectedWorkflowId = null;
 let selectedWorkflowNodeId = null;
@@ -1137,6 +1167,18 @@ const adminMessage = document.querySelector("#adminMessage");
 const leadDetailModal = document.querySelector("#leadDetailModal");
 const leadDetailContent = document.querySelector("#leadDetailContent");
 const closeLeadDetailModalButton = document.querySelector("#closeLeadDetailModal");
+const offlineBanner = document.querySelector("#offlineBanner");
+const openSupportReportButton = document.querySelector("#openSupportReport");
+const openSupportReportNavButton = document.querySelector("#openSupportReportNav");
+const supportReportModal = document.querySelector("#supportReportModal");
+const supportReportForm = document.querySelector("#supportReportForm");
+const supportReportDescription = document.querySelector("#supportReportDescription");
+const supportIncludeDiagnostics = document.querySelector("#supportIncludeDiagnostics");
+const supportDiagnosticsPreview = document.querySelector("#supportDiagnosticsPreview");
+const supportReportStatus = document.querySelector("#supportReportStatus");
+const submitSupportReportButton = document.querySelector("#submitSupportReport");
+const closeSupportReportButton = document.querySelector("#closeSupportReport");
+const cancelSupportReportButton = document.querySelector("#cancelSupportReport");
 
 const config = window.KiraHomeConfig || window.ClosePilotConfig || {};
 const hasSupabaseConfig = Boolean(config.supabaseUrl && config.supabaseAnonKey);
@@ -1516,6 +1558,12 @@ mobileNavToggle?.addEventListener("click", () => {
   const open = document.body.dataset.mobileNavOpen !== "true";
   setMobileNavOpen(open);
 });
+openSupportReportButton?.addEventListener("click", () => openSupportReport(openSupportReportButton));
+openSupportReportNavButton?.addEventListener("click", () => openSupportReport(openSupportReportNavButton));
+closeSupportReportButton?.addEventListener("click", closeSupportReport);
+cancelSupportReportButton?.addEventListener("click", closeSupportReport);
+supportIncludeDiagnostics?.addEventListener("change", renderSupportDiagnosticsPreview);
+supportReportForm?.addEventListener("submit", submitSupportReport);
 document.querySelector(".nav-links")?.addEventListener("click", (event) => {
   if (event.target.closest("[data-nav-page]")) setMobileNavOpen(false);
 });
@@ -1666,7 +1714,10 @@ window.addEventListener("hashchange", () => {
 });
 
 window.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") setMobileNavOpen(false);
+  if (event.key === "Escape") {
+    if (supportReportModal && !supportReportModal.hidden) closeSupportReport();
+    setMobileNavOpen(false);
+  }
 });
 
 window.addEventListener("resize", () => {
@@ -1674,11 +1725,13 @@ window.addEventListener("resize", () => {
 });
 
 window.addEventListener("online", () => {
+  syncOfflineBanner();
   setCloudMode(Boolean(hasSupabaseConfig), hasSupabaseConfig ? "Live workspace" : "Demo workspace");
   showAppToast("Back online", "ClosePilot can reach the network again.");
 });
 
 window.addEventListener("offline", () => {
+  syncOfflineBanner();
   setCloudMode(Boolean(hasSupabaseConfig), hasSupabaseConfig ? "Live workspace - offline" : "Demo workspace - offline");
   showAppToast("Offline", "Changes stay local until the network returns.");
 });
@@ -1693,6 +1746,7 @@ window.addEventListener("unhandledrejection", (event) => {
 
 async function boot() {
   const params = new URLSearchParams(window.location.search);
+  syncOfflineBanner();
   syncBetaAccessUi();
   if (params.get("tour") === "1") {
     showHome();
@@ -2012,11 +2066,30 @@ function setAuthMessage(message) {
   authMessage.textContent = message;
 }
 
+function readLeadContactForm() {
+  const streetAddress = document.querySelector("#leadStreetAddress").value.trim();
+  const city = document.querySelector("#leadCity").value.trim();
+  const stateValue = document.querySelector("#leadState").value.trim().toUpperCase();
+  const zip = document.querySelector("#leadZip").value.trim();
+  return {
+    phone: document.querySelector("#leadPhone").value.trim(),
+    email: document.querySelector("#leadEmail").value.trim().toLowerCase(),
+    streetAddress,
+    city,
+    state: stateValue,
+    zip,
+    address: formatLeadAddress({ streetAddress, city, state: stateValue, zip }),
+  };
+}
+
 async function createLeadFromForm() {
   if (isSavingLead) return;
+  if (!leadForm.reportValidity()) return;
+
   const name = document.querySelector("#leadName").value.trim();
   const company = document.querySelector("#leadCompany").value.trim();
   if (!name || !company) return;
+  const contact = readLeadContactForm();
 
   const createLeadButton = document.querySelector("#createLeadButton");
   const originalButtonText = createLeadButton.textContent;
@@ -2027,6 +2100,7 @@ async function createLeadFromForm() {
   const lead = {
     name,
     company,
+    ...contact,
     value: Number(document.querySelector("#leadValue").value),
     stage: document.querySelector("#leadStage").value,
     notes: document.querySelector("#leadNotes").value.trim() || "New lead created from the CRM workspace.",
@@ -2084,15 +2158,22 @@ async function createLeadFromForm() {
 
 function openLeadModal(lead = null) {
   editingLeadId = lead?.id || null;
+  const normalized = lead ? normalizedLead(lead) : null;
   document.querySelector("#addLeadHeading").textContent = lead ? "Edit lead" : "Add lead";
   document.querySelector("#createLeadButton").textContent = lead ? "Save lead" : "Create lead";
-  document.querySelector("#leadName").value = lead?.name || "";
-  document.querySelector("#leadCompany").value = lead?.company || "";
-  document.querySelector("#leadValue").value = lead?.value || 2500;
-  document.querySelector("#leadStage").value = lead?.stage || "new";
-  document.querySelector("#leadSource").value = lead?.source || workspaceSetupSettings().defaultSource || "Manual";
-  document.querySelector("#leadNextAction").value = lead?.nextAction || "";
-  document.querySelector("#leadNotes").value = lead?.notes || "";
+  document.querySelector("#leadName").value = normalized?.name || "";
+  document.querySelector("#leadCompany").value = normalized?.company || "";
+  document.querySelector("#leadPhone").value = normalized?.phone || "";
+  document.querySelector("#leadEmail").value = normalized?.email || "";
+  document.querySelector("#leadStreetAddress").value = normalized?.streetAddress || "";
+  document.querySelector("#leadCity").value = normalized?.city || "";
+  document.querySelector("#leadState").value = normalized?.state || "";
+  document.querySelector("#leadZip").value = normalized?.zip || "";
+  document.querySelector("#leadValue").value = normalized?.value || 2500;
+  document.querySelector("#leadStage").value = normalized?.stage || "new";
+  document.querySelector("#leadSource").value = normalized?.source || workspaceSetupSettings().defaultSource || "Manual";
+  document.querySelector("#leadNextAction").value = normalized?.nextAction || "";
+  document.querySelector("#leadNotes").value = normalized?.notes || "";
   leadModal.hidden = false;
   document.querySelector("#leadName").focus();
 }
@@ -2309,6 +2390,87 @@ function syncNavGroups() {
 function setMobileNavOpen(open) {
   document.body.dataset.mobileNavOpen = open ? "true" : "false";
   if (mobileNavToggle) mobileNavToggle.setAttribute("aria-expanded", open ? "true" : "false");
+  if (open) {
+    document.querySelector("#appSidebar")?.focus?.();
+    document.querySelector(".nav-links [data-nav-page]")?.focus?.();
+  } else if (document.activeElement?.closest?.("#appSidebar")) {
+    mobileNavToggle?.focus();
+  }
+}
+
+function syncOfflineBanner() {
+  if (!offlineBanner) return;
+  const offline = navigator.onLine === false;
+  offlineBanner.hidden = !offline;
+}
+
+function openSupportReport(trigger = null) {
+  supportReportReturnFocus = trigger || document.activeElement;
+  setMobileNavOpen(false);
+  if (supportReportStatus) supportReportStatus.textContent = "";
+  renderSupportDiagnosticsPreview();
+  if (supportReportModal) supportReportModal.hidden = false;
+  supportReportDescription?.focus();
+}
+
+function closeSupportReport() {
+  if (supportReportModal) supportReportModal.hidden = true;
+  supportReportReturnFocus?.focus?.();
+  supportReportReturnFocus = null;
+}
+
+function supportDiagnostics() {
+  return {
+    requestId: lastBackendRequestId || "not available",
+    route: window.location.hash || "#pipeline",
+    browser: navigator.userAgent.replace(/\s+/g, " ").slice(0, 160),
+    viewport: `${window.innerWidth}x${window.innerHeight}`,
+  };
+}
+
+function renderSupportDiagnosticsPreview() {
+  if (!supportDiagnosticsPreview) return;
+  const diagnostics = supportDiagnostics();
+  supportDiagnosticsPreview.innerHTML = Object.entries(diagnostics)
+    .map(([key, value]) => `<span><strong>${escapeHtml(key)}:</strong> ${escapeHtml(value)}</span>`)
+    .join("");
+  supportDiagnosticsPreview.hidden = !supportIncludeDiagnostics?.checked;
+}
+
+async function submitSupportReport(event) {
+  event.preventDefault();
+  if (!supportReportForm?.reportValidity()) return;
+  const originalText = submitSupportReportButton?.textContent || "Send report";
+  if (submitSupportReportButton) {
+    submitSupportReportButton.disabled = true;
+    submitSupportReportButton.textContent = "Sending...";
+  }
+  try {
+    const diagnostics = supportDiagnostics();
+    const result = await postBackendJson("/api/support/report", {
+      ...workspaceApiContext(),
+      description: supportReportDescription?.value || "",
+      includeDiagnostics: Boolean(supportIncludeDiagnostics?.checked),
+      route: diagnostics.route,
+      browser: diagnostics.browser,
+      viewport: diagnostics.viewport,
+    });
+    lastBackendRequestId = result.requestId || lastBackendRequestId;
+    const requestId = result.requestId || lastBackendRequestId || "not available";
+    const captured = result.reported !== false;
+    if (supportReportStatus) {
+      supportReportStatus.textContent = `${result.message || (captured ? "Support report captured." : "Support report was not sent.")} Request ID: ${requestId}.`;
+    }
+    showAppToast(captured ? "Support report captured" : "Support report not sent", `Request ID: ${requestId}`);
+    if (captured) window.setTimeout(closeSupportReport, 900);
+  } catch (error) {
+    if (supportReportStatus) supportReportStatus.textContent = `Support report needs attention: ${error.message}`;
+  } finally {
+    if (submitSupportReportButton) {
+      submitSupportReportButton.disabled = false;
+      submitSupportReportButton.textContent = originalText;
+    }
+  }
 }
 
 function syncActiveMobileNav() {
@@ -6502,6 +6664,17 @@ async function applyStageMove(lead, direction) {
   await runAutomationTrigger(triggerForStage(nextStage.id), updatedLead);
 }
 
+function renderLeadContactSummary(lead) {
+  const normalized = normalizedLead(lead);
+  return `
+    <div class="lead-contact-summary">
+      <article><span>Phone</span><strong>${escapeHtml(normalized.phone || "Not provided")}</strong></article>
+      <article><span>Email</span><strong>${escapeHtml(normalized.email || "Not provided")}</strong></article>
+      <article><span>Address</span><strong>${escapeHtml(normalized.address || "Not provided")}</strong></article>
+    </div>
+  `;
+}
+
 function renderLeadBrief() {
   const lead = state.leads.find((item) => item.id === state.selectedLeadId) || state.leads[0];
   if (!lead) {
@@ -6523,6 +6696,7 @@ function renderLeadBrief() {
       <div><span>Opportunity Health</span><strong>${health.score}/100 ${escapeHtml(health.label)}</strong></div>
       <div><span>Recommended</span><strong>${escapeHtml(intelligence.recommendedAction)}</strong></div>
     </div>
+    ${renderLeadContactSummary(lead)}
     ${renderLeadIntelligencePanel(lead, "compact")}
     ${renderOpportunityHealthPanel(lead, "compact")}
     <div class="brief-actions">
@@ -6625,6 +6799,7 @@ function renderLeadDetail(lead) {
         <strong>${Math.round((stageProbabilities[lead.stage] || 0) * 100)}%</strong>
       </article>
     </div>
+    ${renderLeadContactSummary(lead)}
     ${renderLeadIntelligencePanel(lead)}
     ${renderOpportunityHealthPanel(lead)}
     <div class="detail-actions">
@@ -8097,6 +8272,11 @@ function renderContactProfile(leads) {
         <span>${escapeHtml(lead.name)} · ${escapeHtml(lead.source)}</span>
       </div>
       <strong>${formatter.format(lead.value)}</strong>
+    </div>
+    <div class="contact-profile-contact">
+      <article><span>Phone</span><strong>${escapeHtml(lead.phone || "Not provided")}</strong></article>
+      <article><span>Email</span><strong>${escapeHtml(lead.email || "Not provided")}</strong></article>
+      <article><span>Address</span><strong>${escapeHtml(lead.address || "Not provided")}</strong></article>
     </div>
     <div class="contact-profile-stats">
       <article>
@@ -9745,6 +9925,7 @@ function communicationCustomerProfile(lead, index = 0) {
   ];
   const projectTypes = ["Roof replacement", "Solar consultation", "Window upgrade", "HVAC estimate"];
   const emailName = lead.name.toLowerCase().replace(/[^a-z0-9]+/g, ".").replace(/^\.+|\.+$/g, "");
+  const normalized = normalizedLead(lead);
   const tags = [
     stageLabel(lead.stage),
     lead.source || "Manual",
@@ -9752,9 +9933,9 @@ function communicationCustomerProfile(lead, index = 0) {
   ];
 
   return {
-    phone: phones[index % phones.length],
-    email: `${emailName || "customer"}@example.com`,
-    address: addresses[index % addresses.length],
+    phone: normalized.phone || phones[index % phones.length],
+    email: normalized.email || `${emailName || "customer"}@example.com`,
+    address: normalized.address || addresses[index % addresses.length],
     projectType: projectTypes[index % projectTypes.length],
     tags,
   };
@@ -12577,8 +12758,10 @@ function workspaceApiContext() {
 async function postBackendJson(path, payload) {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), backendTimeoutForPath(path));
+  const requestId = clientRequestId();
   try {
     const headers = await backendAuthHeaders();
+    headers["x-request-id"] = requestId;
     const response = await fetch(path, {
       method: "POST",
       headers,
@@ -12595,6 +12778,7 @@ async function postBackendJson(path, payload) {
       }
       return backendDemoFallback(path, payload);
     }
+    lastBackendRequestId = response.headers.get("x-request-id") || data.requestId || requestId;
     if (!response.ok) {
       const message =
         typeof data.error === "object" && data.error?.message
@@ -12603,6 +12787,7 @@ async function postBackendJson(path, payload) {
       const error = new Error(message);
       error.status = response.status;
       error.code = typeof data.error === "object" ? data.error.code : "";
+      error.requestId = data.requestId || lastBackendRequestId;
       throw error;
     }
     return data;
@@ -12613,6 +12798,11 @@ async function postBackendJson(path, payload) {
   } finally {
     window.clearTimeout(timeout);
   }
+}
+
+function clientRequestId() {
+  if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+  return `web-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 async function backendAuthHeaders() {
@@ -12731,6 +12921,15 @@ function backendDemoFallback(path, payload = {}) {
       sent: false,
       saved: true,
       message: "Communication provider is not configured. ClosePilot logged this in demo mode.",
+    };
+  }
+  if (path.includes("/api/support/report")) {
+    return {
+      demo: true,
+      reported: false,
+      requestId: lastBackendRequestId || "browser-fallback",
+      support: { configured: false, status: "not_configured" },
+      message: "Support backend is unavailable. Copy this report and use the configured support contact when available.",
     };
   }
   return { demo: true, message: "Production backend is not configured yet." };
@@ -13349,10 +13548,18 @@ function safeLeadToCrmLead(lead) {
   const countyLine = lead.county ? `County: ${lead.county}` : "";
   const parcelLine = lead.parcelId ? `Parcel: ${lead.parcelId}` : "";
   const complianceLine = lead.compliance ? `Compliance: ${lead.compliance}` : "";
+  const addressParts = parseLeadAddress(lead.propertyAddress);
 
   return {
     name: lead.ownerName,
     company: lead.propertyAddress,
+    phone: lead.phone,
+    email: lead.email,
+    streetAddress: addressParts.streetAddress,
+    city: addressParts.city,
+    state: addressParts.state,
+    zip: addressParts.zip,
+    address: formatLeadAddress(addressParts) || lead.propertyAddress,
     stage: "new",
     value: 0,
     score: lead.score,
@@ -13520,9 +13727,22 @@ function parseLeadsCsv(text) {
     const stage = stages.some((item) => item.id === record.stage) ? record.stage : "new";
     const value = Number(record.value || 0);
     const notes = record.notes || "Imported from CSV.";
+    const rawAddress = readCsvField(record, ["address", "property_address", "street_address", "streetAddress"]);
+    const parsedAddress = parseLeadAddress(rawAddress);
+    const streetAddress = readCsvField(record, ["street_address", "streetAddress"]) || parsedAddress.streetAddress;
+    const city = readCsvField(record, ["city"]) || parsedAddress.city;
+    const stateValue = readCsvField(record, ["state"]) || parsedAddress.state;
+    const zip = readCsvField(record, ["zip", "postal_code", "postalCode"]) || parsedAddress.zip;
     leads.push({
       name: record.name.trim(),
       company: record.company.trim(),
+      phone: readCsvField(record, ["phone", "phone_number", "phoneNumber"]),
+      email: readCsvField(record, ["email", "email_address", "emailAddress"]).toLowerCase(),
+      streetAddress,
+      city,
+      state: stateValue.toUpperCase(),
+      zip,
+      address: formatLeadAddress({ streetAddress, city, state: stateValue, zip }) || rawAddress,
       stage,
       value: Number.isFinite(value) ? value : 0,
       score: Number(record.score) || calculateLeadScore({ value, stage, notes }),
@@ -14458,23 +14678,84 @@ function createSupabaseStore(client, user) {
   };
 }
 
-function toLeadRow(lead) {
+function leadNoteField(lead, field) {
+  const match = String(lead?.notes || "")
+    .split(/\n+/)
+    .find((line) => line.toLowerCase().startsWith(`${field.toLowerCase()}:`));
+  return match?.replace(/^[^:]+:\s*/, "").trim() || "";
+}
+
+function parseLeadAddress(address) {
+  const parts = String(address || "")
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const [streetAddress = "", city = "", region = ""] = parts;
+  const regionMatch = region.match(/^([A-Za-z]{2})\s+([0-9]{5}(?:-[0-9]{4})?)$/);
+  const stateValue = regionMatch?.[1] || (parts.length >= 4 ? region : "");
+  const zip = regionMatch?.[2] || (parts.length >= 4 ? parts[3] : "");
   return {
-    workspace_id: lead.workspaceId,
-    name: lead.name,
-    company: lead.company,
-    stage: lead.stage,
-    value: lead.value,
-    score: lead.score,
-    notes: lead.notes,
-    next_action: lead.nextAction,
-    source: lead.source,
+    streetAddress,
+    city,
+    state: stateValue.toUpperCase(),
+    zip,
+  };
+}
+
+function formatLeadAddress(lead) {
+  const streetAddress = String(lead?.streetAddress || lead?.street_address || "").trim();
+  const city = String(lead?.city || "").trim();
+  const stateValue = String(lead?.state || "").trim().toUpperCase();
+  const zip = String(lead?.zip || "").trim();
+  return [streetAddress, city, [stateValue, zip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+}
+
+function normalizedLead(lead = {}) {
+  const companyLooksLikeAddress = /^\d+\s/.test(String(lead.company || ""));
+  const parsedAddress = parseLeadAddress(lead.address || (companyLooksLikeAddress ? lead.company : ""));
+  const streetAddress = String(lead.streetAddress || lead.street_address || parsedAddress.streetAddress || "").trim();
+  const city = String(lead.city || parsedAddress.city || "").trim();
+  const stateValue = String(lead.state || parsedAddress.state || "").trim().toUpperCase();
+  const zip = String(lead.zip || parsedAddress.zip || "").trim();
+  const normalized = {
+    ...lead,
+    phone: String(lead.phone || leadNoteField(lead, "phone") || "").trim(),
+    email: String(lead.email || leadNoteField(lead, "email") || "").trim().toLowerCase(),
+    streetAddress,
+    city,
+    state: stateValue,
+    zip,
+    assignedTo: lead.assignedTo || lead.assigned_to || "",
+  };
+  normalized.address = formatLeadAddress(normalized) || String(lead.address || "").trim();
+  return normalized;
+}
+
+function toLeadRow(lead) {
+  const normalized = normalizedLead(lead);
+  return {
+    workspace_id: normalized.workspaceId,
+    name: normalized.name,
+    company: normalized.company,
+    stage: normalized.stage,
+    value: normalized.value,
+    score: normalized.score,
+    notes: normalized.notes,
+    next_action: normalized.nextAction,
+    source: normalized.source,
+    assigned_to: normalized.assignedTo || null,
+    phone: normalized.phone,
+    email: normalized.email,
+    street_address: normalized.streetAddress,
+    city: normalized.city,
+    state: normalized.state,
+    zip: normalized.zip,
     updated_at: new Date().toISOString(),
   };
 }
 
 function fromLeadRow(row) {
-  return {
+  return normalizedLead({
     id: row.id,
     name: row.name,
     company: row.company,
@@ -14485,7 +14766,13 @@ function fromLeadRow(row) {
     nextAction: row.next_action,
     source: row.source,
     assignedTo: row.assigned_to || "",
-  };
+    phone: row.phone || "",
+    email: row.email || "",
+    streetAddress: row.street_address || "",
+    city: row.city || "",
+    state: row.state || "",
+    zip: row.zip || "",
+  });
 }
 
 function fromTaskRow(row) {
@@ -14590,10 +14877,7 @@ function fromRecruitingCandidateRow(row) {
 
 function normalizeLoadedState() {
   state.leads ||= [];
-  state.leads = state.leads.map((lead) => ({
-    ...lead,
-    assignedTo: lead.assignedTo || lead.assigned_to || "",
-  }));
+  state.leads = state.leads.map(normalizedLead);
   state.tasks ||= [];
   state.automations ||= defaultAutomations.map((automation, index) => ({
     id: `auto-${index + 1}`,

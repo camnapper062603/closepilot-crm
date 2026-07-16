@@ -10,6 +10,10 @@ Client fields such as `actorRole`, `actorUserId`, `ownerEmail`, `inviterEmail`, 
 
 | Endpoint family | Auth required | Workspace role | Notes |
 | --- | --- | --- | --- |
+| `/api/health/*` | No | N/A | Returns coarse liveness/readiness only, never secrets or tenant data. |
+| `/api/admin/operations/health` | Yes plus internal allowlist | Internal founder/admin only | Founder-only health, monitoring, support, and provider-failure diagnostics. |
+| `/api/workspace/operations/provider-failures` | Yes | Owner/Admin/Manager | Returns only operational events scoped to the requested workspace. |
+| `/api/support/report` | Yes | Workspace member when workspace ID is supplied | Stores only safe report metadata and optional diagnostics with user consent. |
 | `/api/system/readiness` | No for public summary, yes for detailed diagnostics | Owner/Admin for detailed diagnostics | Public response omits protected server-secret diagnostics. |
 | `/api/stripe/create-checkout-session` | Yes | Owner/Admin | Stripe customer is loaded from `workspace_subscriptions`; client customer IDs are ignored. |
 | `/api/stripe/create-portal-session` | Yes | Owner/Admin | Opens only the workspace customer stored server-side. |
@@ -82,6 +86,10 @@ npm run security:verify-migration -- --json
 ## Logging And Redaction
 
 Use `redactSecurityLog()` before logging request context, provider errors, or backend diagnostics that might include headers, tokens, passwords, API keys, webhook secrets, Google tokens, or invite tokens. Security tests assert recursive redaction for common provider secret shapes.
+
+All JSON API responses include `X-Request-ID`; server error bodies include `requestId`. Use request IDs in support reports and incident notes.
+
+Operational diagnostics are stored in `operational_events` with recursive redaction. Do not store tokens, passwords, webhook signatures, private message bodies, uploaded customer files, raw provider responses, or full database records. Monitoring is disabled unless `MONITORING_ENABLED=true` and a server-side monitoring DSN are configured. Missing monitoring, uptime, backup, support, mobile QA, accessibility QA, and performance evidence must remain `unknown` or `not_configured` in launch readiness.
 
 ## More Detail
 

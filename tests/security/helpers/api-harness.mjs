@@ -93,6 +93,7 @@ export function createMockFetch(options = {}) {
   const store = {
     recruitingCandidates: [...(options.candidateRows || [])],
     recruitingState: options.recruitingState ? [options.recruitingState] : [],
+    operationalEvents: [...(options.operationalEvents || [])],
   };
 
   const fetchMock = async (url, init = {}) => {
@@ -279,6 +280,18 @@ export function createMockFetch(options = {}) {
     if (href.includes("/rest/v1/ai_outputs")) return jsonResponse([]);
     if (href.includes("/rest/v1/integration_settings")) return jsonResponse([]);
     if (href.includes("/rest/v1/workspace_audit_events")) return jsonResponse([]);
+    if (href.includes("/rest/v1/operational_events")) {
+      if (init.method === "POST") {
+        store.operationalEvents = [...store.operationalEvents, ...(body || [])];
+        return jsonResponse(body || []);
+      }
+      const requestedWorkspace = requestedWorkspaceId(href);
+      return jsonResponse(
+        requestedWorkspace
+          ? store.operationalEvents.filter((event) => event.workspace_id === requestedWorkspace)
+          : store.operationalEvents,
+      );
+    }
 
     if (href.includes("https://api.twilio.com")) return jsonResponse({ sid: "SM_unit" });
     if (href.includes("https://api.resend.com")) return jsonResponse({ id: "email_unit" });

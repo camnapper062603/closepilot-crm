@@ -1,0 +1,52 @@
+name: Production Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment label
+        required: true
+        default: preview
+        type: choice
+        options:
+          - preview
+          - beta
+          - production
+      base_url:
+        description: Base URL to smoke test
+        required: true
+        type: string
+
+jobs:
+  smoke:
+    name: Safe Production Smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Run non-destructive smoke test
+        run: npm run test:production-smoke | tee production-smoke-report.txt
+        env:
+          PRODUCTION_SMOKE_URL: ${{ inputs.base_url }}
+      - name: Summarize
+        if: always()
+        run: |
+          {
+            echo "## Production smoke"
+            echo "- Environment: ${{ inputs.environment }}"
+            echo "- Target: ${{ inputs.base_url }}"
+            echo ""
+            cat production-smoke-report.txt || true
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: production-smoke-report
+          path: production-smoke-report.txt
+          retention-days: 7

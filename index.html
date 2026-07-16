@@ -231,7 +231,7 @@
     </section>
 
     <div class="app-shell" hidden>
-      <aside class="sidebar" id="appSidebar" aria-label="Workspace navigation">
+      <aside class="sidebar" id="appSidebar" aria-label="Workspace navigation" tabindex="-1">
         <div class="brand">
           <span class="brand-mark" aria-hidden="true">CP</span>
           <div>
@@ -268,6 +268,7 @@
             <span class="nav-group-label">Business</span>
             <a data-nav-page="admin" href="#admin" aria-label="Admin">Admin</a>
             <a data-nav-page="settings" href="#settings" aria-label="Settings">Settings</a>
+            <button class="nav-action-button" id="openSupportReportNav" type="button">Report problem</button>
           </div>
           <div class="nav-group" data-nav-group="internal">
             <span class="nav-group-label">Internal</span>
@@ -299,9 +300,15 @@
               <input id="searchInput" type="search" placeholder="Search leads, companies, notes" />
             </label>
             <button class="primary-button" id="openLeadModal" type="button">+ Lead</button>
+            <button class="secondary-button" id="openSupportReport" type="button">Support</button>
             <button class="secondary-button" id="signOutButton" type="button" hidden>Sign out</button>
           </div>
         </header>
+
+        <div class="offline-banner" id="offlineBanner" role="status" aria-live="polite" hidden>
+          <strong>Offline mode</strong>
+          <span>You can keep reviewing cached workspace data. Provider actions will not be marked successful until the network returns.</span>
+        </div>
 
         <nav class="subpage-nav" id="subpageNav" aria-label="Section pages"></nav>
         <section class="panel access-denied-panel" id="accessDeniedPanel" aria-labelledby="accessDeniedHeading" hidden>
@@ -1854,8 +1861,34 @@
           <input id="leadCompany" type="text" required />
         </label>
         <label>
+          Phone number
+          <input id="leadPhone" type="tel" autocomplete="tel" required />
+        </label>
+        <label>
+          Email address
+          <input id="leadEmail" type="email" autocomplete="email" required />
+        </label>
+        <label>
+          Street address
+          <input id="leadStreetAddress" type="text" autocomplete="street-address" required />
+        </label>
+        <div class="lead-address-grid">
+          <label>
+            City
+            <input id="leadCity" type="text" autocomplete="address-level2" required />
+          </label>
+          <label>
+            State
+            <input id="leadState" type="text" autocomplete="address-level1" maxlength="2" required />
+          </label>
+          <label>
+            Zip
+            <input id="leadZip" type="text" autocomplete="postal-code" inputmode="numeric" pattern="[0-9]{5}(-[0-9]{4})?" required />
+          </label>
+        </div>
+        <label>
           Deal value
-          <input id="leadValue" type="number" min="0" step="500" value="2500" required />
+          <input id="leadValue" type="number" min="0" step="100" value="2500" required />
         </label>
         <label>
           Stage
@@ -1910,6 +1943,33 @@
         </div>
         <div id="leadDetailContent" class="lead-detail-content"></div>
       </section>
+    </div>
+
+    <div class="modal-backdrop" id="supportReportModal" hidden>
+      <form class="modal-card support-card" id="supportReportForm" role="dialog" aria-modal="true" aria-labelledby="supportReportHeading">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Support</p>
+            <h2 id="supportReportHeading">Report a problem</h2>
+          </div>
+          <button class="icon-button" id="closeSupportReport" type="button" aria-label="Close">×</button>
+        </div>
+        <p class="support-safe-copy" id="supportReportContext">Request ID and route help support trace issues without exposing private records.</p>
+        <label>
+          What happened?
+          <textarea id="supportReportDescription" rows="5" maxlength="2000" required placeholder="Describe what you tried, what happened, and what you expected."></textarea>
+        </label>
+        <label class="checkbox-row">
+          <input id="supportIncludeDiagnostics" type="checkbox" />
+          Include safe route, browser, viewport, and request ID diagnostics
+        </label>
+        <div class="support-diagnostics" id="supportDiagnosticsPreview" aria-label="Support diagnostics preview"></div>
+        <p class="support-report-status" id="supportReportStatus" role="status"></p>
+        <div class="modal-actions">
+          <button class="secondary-button" id="cancelSupportReport" type="button">Cancel</button>
+          <button class="primary-button" id="submitSupportReport" type="submit">Send report</button>
+        </div>
+      </form>
     </div>
 
     <div class="toast-region" id="communicationToastRegion" aria-live="polite" aria-label="Communication notifications"></div>

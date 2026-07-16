@@ -21,6 +21,9 @@
     "test": "playwright test",
     "test:browser-smoke": "playwright test tests/auth-shell.spec.js tests/recruiting.spec.js --project=chromium",
     "test:security": "node --test tests/security/*.test.mjs",
+    "test:operations": "node --test tests/operations/*.test.mjs",
+    "test:ux": "playwright test tests/ux/ui-states.spec.js --project=chromium",
+    "test:accessibility": "playwright test tests/ux/accessibility.spec.js --project=chromium",
     "test:security:auth": "node --test tests/security/authentication.test.mjs tests/security/api-authz.test.mjs",
     "test:security:tenant": "node --test tests/security/api-authz.test.mjs tests/security/recruiting.test.mjs",
     "test:security:oauth": "node --test tests/security/google-oauth.test.mjs",
@@ -32,7 +35,7 @@
     "test:team-performance": "node --test tests/security/team-performance.test.mjs",
     "test:route-inventory": "node scripts/validate-route-inventory.mjs",
     "test:production-smoke": "node scripts/production-smoke-test.mjs",
-    "release:check": "npm run build && npm run test:route-inventory && npm run test:security && npm run test:command-center && npm run test:launch-policy && npm run test:daily-goals && npm run test:team-performance && npm test && npm run test:browser-smoke && npm run security:scan-secrets",
+    "release:check": "npm run build && npm run test:route-inventory && npm run test:security && npm run test:command-center && npm run test:launch-policy && npm run test:daily-goals && npm run test:team-performance && npm run test:operations && npm run test:ux && npm run test:accessibility && npm test && npm run test:browser-smoke && npm run security:scan-secrets",
     "release:verify-production": "npm run test:production-smoke && npm run security:verify-migration -- --json",
     "test:ui": "playwright test --ui"
   },
